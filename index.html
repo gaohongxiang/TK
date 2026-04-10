@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>海兔工具箱 · 利润计算器</title>
+<title>TK 电商工具箱 · 利润计算器</title>
 <meta name="description" content="TikTok Shop 日本跨境店利润计算器：采购价 + 目标利润率 反推原价，多折扣档位一键对比。" />
 <style>
   :root{
@@ -92,7 +92,7 @@
 
   <header>
     <div>
-      <h1>海兔工具箱 <span style="opacity:.4">/</span> 利润计算器</h1>
+      <h1>TK 电商工具箱 <span style="opacity:.4">/</span> 利润计算器</h1>
       <div class="sub">TikTok Shop 日本跨境店 · 采购价 + 目标利润率 反推原价</div>
     </div>
     <nav class="modules" aria-label="模块导航">
@@ -126,17 +126,12 @@
           <div class="hint">以该档位为目标利润率的基准来反推原价</div>
         </div>
         <div class="field readonly">
-          <label for="origPrice">商品原价（日元 ¥）<span class="kbd">可手动覆盖</span></label>
+          <label for="origPrice">商品原价（円）<span class="kbd">可手动覆盖</span></label>
           <input id="origPrice" type="number" step="1" min="0" />
         </div>
       </div>
 
-      <div class="btnbar">
-        <button class="primary" id="recalcBtn">根据目标利润率反推原价</button>
-        <button class="ghost" id="resetBtn" title="恢复默认参数">恢复默认</button>
-      </div>
-
-      <details style="margin-top:16px">
+      <details open style="margin-top:16px">
         <summary>⚙️ 全局参数（平台手续费 / 汇率 / 运费 / 折扣档位）</summary>
 
         <div class="row triple" style="margin-top:10px">
@@ -145,7 +140,7 @@
             <input id="fee" type="number" step="0.01" min="0" max="100" />
           </div>
           <div class="field">
-            <label for="rate">日元汇率（1¥ = ? 円）</label>
+            <label for="rate">日元汇率（1元 = ? 円）</label>
             <input id="rate" type="number" step="0.01" min="0" />
           </div>
           <div class="field">
@@ -174,7 +169,6 @@
             <th>日元售价</th>
             <th>人民币到手</th>
             <th>利润率</th>
-            <th>状态</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -191,7 +185,7 @@
   </div>
 
   <footer>
-    数据保存在本地浏览器（localStorage），刷新不丢失 · 海兔工具箱 © <span id="yr"></span>
+    数据保存在本地浏览器（localStorage），刷新不丢失 · TK 电商工具箱 © <span id="yr"></span>
   </footer>
 </div>
 
@@ -208,7 +202,7 @@
     origPrice: null   // 由反推得出
   };
 
-  const LS_KEY = 'haitu.profit.v1';
+  const LS_KEY = 'tk.profit.v1';
   const $ = id => document.getElementById(id);
   const state = load();
 
@@ -217,7 +211,6 @@
     cost: $('cost'), targetMargin: $('targetMargin'),
     anchor: $('anchor'), origPrice: $('origPrice'),
     tbody: $('tbody'),
-    recalcBtn: $('recalcBtn'), resetBtn: $('resetBtn'),
     yr: $('yr')
   };
   els.yr.textContent = new Date().getFullYear();
@@ -292,18 +285,11 @@
     const rows = state.discounts.slice().sort((a,b)=>a-b).map(d=>calcRow(state.origPrice||0, d));
     els.tbody.innerHTML = rows.map(r=>{
       const isAnchor = Math.abs(r.d - state.anchor) < 1e-9;
-      let pill = '';
-      if (state.cost>0 && !isNaN(r.margin)){
-        if (r.margin >= state.targetMargin) pill = '<span class="pill ok">达标</span>';
-        else if (r.margin >= state.targetMargin*0.9) pill = '<span class="pill warn">接近</span>';
-        else pill = '<span class="pill bad">未达</span>';
-      }
       return `<tr class="${isAnchor?'anchor':''}">
         <td>${fmtDiscount(r.d)}${isAnchor?' ★':''}</td>
-        <td>¥${fmtMoney(r.jpyPrice,0)}</td>
+        <td>${fmtMoney(r.jpyPrice,0)} 円</td>
         <td>¥${fmtMoney(r.cnyNet,2)}</td>
         <td>${fmtMargin(r.margin)}</td>
-        <td>${pill}</td>
       </tr>`;
     }).join('');
   }
@@ -318,13 +304,6 @@
     renderAnchorOptions();
     if (state.origPrice == null) state.origPrice = deriveOrigPrice();
     els.origPrice.value = Math.round(state.origPrice);
-  }
-
-  function recalcFromTarget(){
-    state.origPrice = deriveOrigPrice();
-    els.origPrice.value = Math.round(state.origPrice);
-    renderTable();
-    save();
   }
 
   // —— 事件绑定 ——
@@ -367,15 +346,6 @@
       state.origPrice = v;
       renderTable(); save();
     }
-  });
-
-  els.recalcBtn.addEventListener('click', recalcFromTarget);
-  els.resetBtn.addEventListener('click', ()=>{
-    if (!confirm('恢复默认参数？当前保存的数据会被覆盖。')) return;
-    Object.assign(state, structuredClone(DEFAULTS));
-    state.origPrice = null;
-    syncInputsFromState();
-    renderTable(); save();
   });
 
   // 初始化

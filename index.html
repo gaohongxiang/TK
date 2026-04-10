@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>海兔工具箱 · 利润计算器</title>
+<meta name="description" content="TikTok Shop 日本跨境店利润计算器：采购价 + 目标利润率 反推原价，多折扣档位一键对比。" />
+<style>
+  :root{
+    --bg:#0b1020;
+    --panel:#121833;
+    --panel2:#1a2247;
+    --border:#283166;
+    --text:#e7ecff;
+    --muted:#8b93c2;
+    --accent:#6ea8ff;
+    --accent2:#8affcf;
+    --danger:#ff6b8a;
+    --ok:#37d399;
+    --warn:#ffc857;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+    --radius:14px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f5f7ff;
+      --panel:#ffffff;
+      --panel2:#f0f3ff;
+      --border:#dce1ff;
+      --text:#17203d;
+      --muted:#5a6388;
+      --accent:#3b66ff;
+      --accent2:#00b477;
+      --shadow:0 10px 30px rgba(20,30,80,.08);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft Yahei",system-ui,sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 18px 80px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+  header h1{margin:0;font-size:22px;letter-spacing:.5px}
+  header .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  nav.modules{display:flex;gap:8px;flex-wrap:wrap}
+  nav.modules a{
+    padding:7px 12px;border:1px solid var(--border);border-radius:999px;
+    background:var(--panel);color:var(--text);font-size:13px
+  }
+  nav.modules a.active{background:var(--accent);color:#fff;border-color:transparent}
+  .grid{display:grid;gap:18px;grid-template-columns:1.1fr 1fr}
+  @media (max-width:860px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+  .card h2{margin:0 0 14px;font-size:15px;display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row.triple{grid-template-columns:1fr 1fr 1fr}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:12px;color:var(--muted)}
+  .field .hint{font-size:11px;color:var(--muted);opacity:.8}
+  .field input,.field select{
+    width:100%;padding:10px 12px;border-radius:10px;
+    border:1px solid var(--border);background:var(--panel2);color:var(--text);font:inherit;outline:none;
+    transition:border-color .15s,box-shadow .15s;
+  }
+  .field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(110,168,255,.18)}
+  .field.readonly input{background:transparent;border-style:dashed;color:var(--accent2);font-weight:600}
+  .row + .row{margin-top:12px}
+  .btnbar{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  button{
+    padding:9px 14px;border-radius:10px;border:1px solid var(--border);
+    background:var(--panel2);color:var(--text);cursor:pointer;font:inherit
+  }
+  button.primary{background:var(--accent);color:#fff;border-color:transparent}
+  button.ghost{background:transparent}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:14px}
+  th,td{padding:10px 10px;text-align:right;border-bottom:1px dashed var(--border)}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+  tr.anchor td{background:linear-gradient(90deg,rgba(110,168,255,.12),transparent)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.ok{background:rgba(55,211,153,.15);color:var(--ok)}
+  .pill.bad{background:rgba(255,107,138,.15);color:var(--danger)}
+  .pill.warn{background:rgba(255,200,87,.18);color:var(--warn)}
+  .kbd{font:12px/1 ui-monospace,Consolas,monospace;padding:2px 6px;border:1px solid var(--border);border-radius:6px;background:var(--panel2);color:var(--muted)}
+  footer{margin-top:30px;color:var(--muted);font-size:12px;text-align:center}
+  details summary{cursor:pointer;color:var(--muted);font-size:13px}
+  details[open] summary{margin-bottom:10px}
+  .mono{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>海兔工具箱 <span style="opacity:.4">/</span> 利润计算器</h1>
+      <div class="sub">TikTok Shop 日本跨境店 · 采购价 + 目标利润率 反推原价</div>
+    </div>
+    <nav class="modules" aria-label="模块导航">
+      <a href="#" class="active">利润计算器</a>
+      <a href="#" title="后续模块">订单跟踪器 ·</a>
+      <a href="#" title="后续模块">更多 ·</a>
+    </nav>
+  </header>
+
+  <div class="grid">
+
+    <!-- 左侧：输入区 -->
+    <section class="card">
+      <h2>核心输入</h2>
+      <div class="row">
+        <div class="field">
+          <label for="cost">采购价（人民币 ¥）</label>
+          <input id="cost" type="number" step="0.01" min="0" />
+        </div>
+        <div class="field">
+          <label for="targetMargin">目标利润率（倍）</label>
+          <input id="targetMargin" type="number" step="0.01" min="0" />
+          <div class="hint">人民币到手价 ÷ 采购价，例如 1.4 表示到手价 = 1.4 × 采购价</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="anchor">基准折扣档位</label>
+          <select id="anchor"></select>
+          <div class="hint">以该档位为目标利润率的基准来反推原价</div>
+        </div>
+        <div class="field readonly">
+          <label for="origPrice">商品原价（日元 ¥）<span class="kbd">可手动覆盖</span></label>
+          <input id="origPrice" type="number" step="1" min="0" />
+        </div>
+      </div>
+
+      <div class="btnbar">
+        <button class="primary" id="recalcBtn">根据目标利润率反推原价</button>
+        <button class="ghost" id="resetBtn" title="恢复默认参数">恢复默认</button>
+      </div>
+
+      <details style="margin-top:16px">
+        <summary>⚙️ 全局参数（平台手续费 / 汇率 / 运费 / 折扣档位）</summary>
+
+        <div class="row triple" style="margin-top:10px">
+          <div class="field">
+            <label for="fee">TK 平台手续费（%）</label>
+            <input id="fee" type="number" step="0.01" min="0" max="100" />
+          </div>
+          <div class="field">
+            <label for="rate">日元汇率（1¥ = ? 円）</label>
+            <input id="rate" type="number" step="0.01" min="0" />
+          </div>
+          <div class="field">
+            <label for="shipping">100g 运费+贴单费（¥）</label>
+            <input id="shipping" type="number" step="0.01" min="0" />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <div class="field" style="grid-column:1/-1">
+            <label for="discounts">折扣档位（逗号分隔，例如 0.35,0.38,0.4,0.42,0.45,0.48,0.5）</label>
+            <input id="discounts" type="text" />
+            <div class="hint">支持填 0.38 或 38%；任意增删档位都可以。</div>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- 右侧：结果表 -->
+    <section class="card">
+      <h2>各折扣档位定价 / 利润一览</h2>
+      <table class="mono">
+        <thead>
+          <tr>
+            <th>折扣</th>
+            <th>日元售价</th>
+            <th>人民币到手</th>
+            <th>利润率</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <div class="hint" style="margin-top:14px">
+        公式：<br>
+        日元售价 = 原价 × 折扣 × (1 − 手续费)<br>
+        人民币到手 = 日元售价 ÷ 汇率 − 运费<br>
+        利润率 = 人民币到手 ÷ 采购价
+      </div>
+    </section>
+
+  </div>
+
+  <footer>
+    数据保存在本地浏览器（localStorage），刷新不丢失 · 海兔工具箱 © <span id="yr"></span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const DEFAULTS = {
+    fee: 7,           // %
+    rate: 23.5,       // 日元 / 人民币
+    shipping: 17,     // ¥
+    discounts: [0.35, 0.38, 0.40, 0.42, 0.45, 0.48, 0.50],
+    cost: 30,         // ¥
+    targetMargin: 1.4,
+    anchor: 0.40,     // 4折
+    origPrice: null   // 由反推得出
+  };
+
+  const LS_KEY = 'haitu.profit.v1';
+  const $ = id => document.getElementById(id);
+  const state = load();
+
+  const els = {
+    fee: $('fee'), rate: $('rate'), shipping: $('shipping'), discounts: $('discounts'),
+    cost: $('cost'), targetMargin: $('targetMargin'),
+    anchor: $('anchor'), origPrice: $('origPrice'),
+    tbody: $('tbody'),
+    recalcBtn: $('recalcBtn'), resetBtn: $('resetBtn'),
+    yr: $('yr')
+  };
+  els.yr.textContent = new Date().getFullYear();
+
+  function load(){
+    try{
+      const s = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+      if (!s) return {...DEFAULTS};
+      return {...DEFAULTS, ...s};
+    }catch(e){ return {...DEFAULTS}; }
+  }
+  function save(){
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+  }
+  function parseDiscounts(str){
+    return String(str||'').split(/[,，\s]+/).filter(Boolean).map(x=>{
+      x = x.trim();
+      if (x.endsWith('%')) return parseFloat(x)/100;
+      const n = parseFloat(x);
+      return n > 1 ? n/100 : n;
+    }).filter(n=>!isNaN(n) && n>0 && n<=1);
+  }
+  function fmtDiscount(d){
+    // 0.4 -> 4折；0.38 -> 3.8折
+    const v = +(d*10).toFixed(2);
+    return v + '折';
+  }
+  function fmtMoney(n, digits=2){
+    if (n===null || n===undefined || isNaN(n)) return '-';
+    return Number(n).toLocaleString('en-US', {maximumFractionDigits:digits, minimumFractionDigits:digits});
+  }
+  function fmtMargin(n){
+    if (n===null || n===undefined || isNaN(n)) return '-';
+    return n.toFixed(3) + '×';
+  }
+
+  // —— 核心公式 ——
+  // 给定 origPrice，计算某折扣档位的结果
+  function calcRow(origPrice, d){
+    const feeRate = state.fee/100;
+    const jpyPrice = origPrice * d * (1 - feeRate);
+    const cnyNet = jpyPrice / state.rate - state.shipping;
+    const margin = state.cost > 0 ? cnyNet / state.cost : NaN;
+    return { d, jpyPrice, cnyNet, margin };
+  }
+
+  // 反推：给定 cost、targetMargin、anchor → origPrice
+  function deriveOrigPrice(){
+    const feeRate = state.fee/100;
+    const need = state.cost * state.targetMargin + state.shipping; // 人民币到手前的 "人民币售价"
+    const jpyNeed = need * state.rate;
+    const orig = jpyNeed / (state.anchor * (1 - feeRate));
+    return Math.max(0, orig);
+  }
+
+  function renderAnchorOptions(){
+    els.anchor.innerHTML = '';
+    state.discounts.forEach(d=>{
+      const o = document.createElement('option');
+      o.value = d;
+      o.textContent = fmtDiscount(d);
+      els.anchor.appendChild(o);
+    });
+    // 选中最接近的
+    const want = state.anchor;
+    const nearest = state.discounts.reduce((a,b)=> Math.abs(b-want)<Math.abs(a-want)?b:a, state.discounts[0]);
+    state.anchor = nearest;
+    els.anchor.value = String(nearest);
+  }
+
+  function renderTable(){
+    const rows = state.discounts.slice().sort((a,b)=>a-b).map(d=>calcRow(state.origPrice||0, d));
+    els.tbody.innerHTML = rows.map(r=>{
+      const isAnchor = Math.abs(r.d - state.anchor) < 1e-9;
+      let pill = '';
+      if (state.cost>0 && !isNaN(r.margin)){
+        if (r.margin >= state.targetMargin) pill = '<span class="pill ok">达标</span>';
+        else if (r.margin >= state.targetMargin*0.9) pill = '<span class="pill warn">接近</span>';
+        else pill = '<span class="pill bad">未达</span>';
+      }
+      return `<tr class="${isAnchor?'anchor':''}">
+        <td>${fmtDiscount(r.d)}${isAnchor?' ★':''}</td>
+        <td>¥${fmtMoney(r.jpyPrice,0)}</td>
+        <td>¥${fmtMoney(r.cnyNet,2)}</td>
+        <td>${fmtMargin(r.margin)}</td>
+        <td>${pill}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function syncInputsFromState(){
+    els.fee.value = state.fee;
+    els.rate.value = state.rate;
+    els.shipping.value = state.shipping;
+    els.discounts.value = state.discounts.map(d=>d).join(',');
+    els.cost.value = state.cost;
+    els.targetMargin.value = state.targetMargin;
+    renderAnchorOptions();
+    if (state.origPrice == null) state.origPrice = deriveOrigPrice();
+    els.origPrice.value = Math.round(state.origPrice);
+  }
+
+  function recalcFromTarget(){
+    state.origPrice = deriveOrigPrice();
+    els.origPrice.value = Math.round(state.origPrice);
+    renderTable();
+    save();
+  }
+
+  // —— 事件绑定 ——
+  function bindNumber(el, key, {derive=true} = {}){
+    el.addEventListener('input', ()=>{
+      const v = parseFloat(el.value);
+      if (!isNaN(v)) state[key] = v;
+      if (derive) state.origPrice = deriveOrigPrice(), els.origPrice.value = Math.round(state.origPrice);
+      renderTable(); save();
+    });
+  }
+  bindNumber(els.fee, 'fee');
+  bindNumber(els.rate, 'rate');
+  bindNumber(els.shipping, 'shipping');
+  bindNumber(els.cost, 'cost');
+  bindNumber(els.targetMargin, 'targetMargin');
+
+  els.discounts.addEventListener('input', ()=>{
+    const arr = parseDiscounts(els.discounts.value);
+    if (arr.length){
+      state.discounts = arr;
+      renderAnchorOptions();
+      state.origPrice = deriveOrigPrice();
+      els.origPrice.value = Math.round(state.origPrice);
+      renderTable(); save();
+    }
+  });
+
+  els.anchor.addEventListener('change', ()=>{
+    state.anchor = parseFloat(els.anchor.value);
+    state.origPrice = deriveOrigPrice();
+    els.origPrice.value = Math.round(state.origPrice);
+    renderTable(); save();
+  });
+
+  // 手动修改原价：直接用这个原价计算（不再反推），但目标利润率保持作为"达标线"
+  els.origPrice.addEventListener('input', ()=>{
+    const v = parseFloat(els.origPrice.value);
+    if (!isNaN(v)){
+      state.origPrice = v;
+      renderTable(); save();
+    }
+  });
+
+  els.recalcBtn.addEventListener('click', recalcFromTarget);
+  els.resetBtn.addEventListener('click', ()=>{
+    if (!confirm('恢复默认参数？当前保存的数据会被覆盖。')) return;
+    Object.assign(state, structuredClone(DEFAULTS));
+    state.origPrice = null;
+    syncInputsFromState();
+    renderTable(); save();
+  });
+
+  // 初始化
+  syncInputsFromState();
+  renderTable();
+})();
+</script>
+</body>
+</html>

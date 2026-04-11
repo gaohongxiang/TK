@@ -44,17 +44,29 @@
   }
 
   function calcRow(origPrice, d) {
-    const feeRate = state.fee / 100;
+    const feeRate = (state.fee || 0) / 100;
+    const cost = state.cost || 0;
+    const rate = state.rate || 1; // 避免除以 0
+    const shipping = state.shipping || 0;
+
     const jpyPrice = origPrice * d * (1 - feeRate);
-    const cnyNet = jpyPrice / state.rate - state.shipping;
-    const margin = state.cost > 0 ? cnyNet / state.cost : NaN;
+    const cnyNet = jpyPrice / rate - shipping;
+    const margin = cost > 0 ? cnyNet / cost : NaN;
     return { d, jpyPrice, cnyNet, margin };
   }
   function deriveOrigPrice() {
-    const feeRate = state.fee / 100;
-    const need = state.cost * state.targetMargin + state.shipping;
-    const jpyNeed = need * state.rate;
-    const orig = jpyNeed / (state.anchor * (1 - feeRate));
+    const feeRate = (state.fee || 0) / 100;
+    const cost = state.cost || 0;
+    const rate = state.rate || 1;
+    const shipping = state.shipping || 0;
+    const targetMargin = state.targetMargin || 0;
+    const anchor = state.anchor || 0.40;
+
+    if (anchor === 0 || feeRate >= 1) return 0;
+
+    const need = cost * targetMargin + shipping;
+    const jpyNeed = need * rate;
+    const orig = jpyNeed / (anchor * (1 - feeRate));
     return Math.max(0, orig);
   }
   function renderAnchorOptions() {
@@ -95,10 +107,10 @@
   function bindNumber(el, key, { derive = true } = {}) {
     el.addEventListener('input', () => {
       const v = parseFloat(el.value);
-      if (!isNaN(v)) state[key] = v;
+      state[key] = isNaN(v) ? 0 : v;
       if (derive) {
         state.origPrice = deriveOrigPrice();
-        els.origPrice.value = Math.round(state.origPrice);
+        els.origPrice.value = state.origPrice ? Math.round(state.origPrice) : '';
       }
       renderTable(); save();
     });

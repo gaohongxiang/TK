@@ -1,390 +1,372 @@
 <!doctype html>
 <html lang="zh-CN">
+
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>TK 电商工具箱 · 利润计算器</title>
-<meta name="description" content="TikTok Shop 日本跨境店利润计算器：采购价 + 目标利润率 反推原价，多折扣档位一键对比。" />
-<style>
-  :root{
-    --bg:#0b1020;
-    --panel:#121833;
-    --panel2:#1a2247;
-    --border:#283166;
-    --text:#e7ecff;
-    --muted:#8b93c2;
-    --accent:#6ea8ff;
-    --accent2:#8affcf;
-    --danger:#ff6b8a;
-    --ok:#37d399;
-    --warn:#ffc857;
-    --shadow:0 10px 30px rgba(0,0,0,.35);
-    --radius:14px;
-  }
-  @media (prefers-color-scheme: light){
-    :root{
-      --bg:#f5f7ff;
-      --panel:#ffffff;
-      --panel2:#f0f3ff;
-      --border:#dce1ff;
-      --text:#17203d;
-      --muted:#5a6388;
-      --accent:#3b66ff;
-      --accent2:#00b477;
-      --shadow:0 10px 30px rgba(20,30,80,.08);
-    }
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:15px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft Yahei",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-  a{color:var(--accent);text-decoration:none}
-  .wrap{max-width:1080px;margin:0 auto;padding:28px 18px 80px}
-  header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
-  header h1{margin:0;font-size:22px;letter-spacing:.5px}
-  header .sub{color:var(--muted);font-size:13px;margin-top:4px}
-  nav.modules{display:flex;gap:8px;flex-wrap:wrap}
-  nav.modules a{
-    padding:7px 12px;border:1px solid var(--border);border-radius:999px;
-    background:var(--panel);color:var(--text);font-size:13px
-  }
-  nav.modules a.active{background:var(--accent);color:#fff;border-color:transparent}
-  .grid{display:grid;gap:18px;grid-template-columns:1.1fr 1fr}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
-  .card h2{margin:0 0 16px;font-size:14px;display:flex;align-items:center;gap:8px;color:var(--muted);font-weight:600;letter-spacing:.3px;text-transform:uppercase}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  .row.triple{grid-template-columns:1fr 1fr 1fr}
-  .row + .row{margin-top:14px}
-  .field{display:flex;flex-direction:column;gap:8px;min-width:0}
-  .field label{
-    font-size:12.5px;color:var(--muted);
-    display:flex;align-items:center;flex-wrap:wrap;gap:6px;
-    line-height:1.3;min-height:18px
-  }
-  .field .hint{font-size:11.5px;color:var(--muted);opacity:.85;line-height:1.4}
-  .field input,.field select{
-    width:100%;padding:11px 13px;border-radius:10px;
-    border:1px solid var(--border);background:var(--panel2);color:var(--text);
-    font:inherit;outline:none;
-    transition:border-color .15s,box-shadow .15s,background .15s;
-    -webkit-appearance:none;appearance:none
-  }
-  .field input[type=number]{font-variant-numeric:tabular-nums}
-  .field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(110,168,255,.2)}
-  .field.readonly input{background:transparent;border-style:dashed;color:var(--accent2);font-weight:700;font-size:18px;letter-spacing:.5px}
-  .field.primary input{
-    background:linear-gradient(180deg,rgba(255,200,87,.18),rgba(255,200,87,.08));
-    border-color:rgba(255,200,87,.55);
-    color:var(--warn);font-weight:700;font-size:18px;letter-spacing:.5px
-  }
-  .field.primary input:focus{border-color:var(--warn);box-shadow:0 0 0 3px rgba(255,200,87,.22)}
-  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:14px}
-  th,td{padding:11px 10px;text-align:right;border-bottom:1px dashed var(--border)}
-  th:first-child,td:first-child{text-align:left}
-  th{color:var(--muted);font-weight:600;font-size:11.5px;letter-spacing:.3px;text-transform:uppercase}
-  tr.anchor td{background:linear-gradient(90deg,rgba(110,168,255,.14),transparent);font-weight:600}
-  .kbd{font:11px/1 ui-monospace,Consolas,monospace;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--panel2);color:var(--muted);white-space:nowrap}
-  .var{
-    display:inline-block;
-    font:11px/1 ui-monospace,Consolas,monospace;padding:3px 7px;border-radius:6px;
-    background:rgba(110,168,255,.16);color:var(--accent);
-    border:1px solid rgba(110,168,255,.28);
-    white-space:nowrap
-  }
-  footer{margin-top:30px;color:var(--muted);font-size:12px;text-align:center}
-  details summary{cursor:pointer;color:var(--muted);font-size:13px;padding:6px 0}
-  details summary:hover{color:var(--text)}
-  details[open] summary{margin-bottom:10px}
-  .mono{font-variant-numeric:tabular-nums}
-
-  /* —— 响应式：平板 —— */
-  @media (max-width:860px){
-    .grid{grid-template-columns:1fr}
-  }
-
-  /* —— 响应式：手机 —— */
-  @media (max-width:640px){
-    .wrap{padding:18px 14px 60px}
-    header{flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:16px}
-    header h1{font-size:19px}
-    header .sub{font-size:12px}
-    nav.modules{width:100%;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:2px}
-    nav.modules a{flex:0 0 auto;font-size:12px;padding:6px 11px}
-    .card{padding:16px;border-radius:12px}
-    .card h2{font-size:13px;margin-bottom:14px}
-    .row,.row.triple{grid-template-columns:1fr;gap:12px}
-    .row + .row{margin-top:12px}
-    .field input,.field select{padding:12px 13px;font-size:16px}
-    .field.readonly input,.field.primary input{font-size:19px}
-    table{font-size:13px}
-    th,td{padding:9px 6px}
-    th{font-size:10.5px}
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>TK 电商工具箱</title>
+  <meta name="description" content="TikTok Shop 日本跨境店工具箱：利润计算器 + 订单跟踪器。" />
+  <link rel="stylesheet" href="css/style.css" />
 </head>
+
 <body>
-<div class="wrap">
+  <div class="wrap">
 
-  <header>
-    <div>
-      <h1>TK 电商工具箱 <span style="opacity:.4">/</span> 利润计算器</h1>
-      <div class="sub">TikTok Shop 日本跨境店 · 采购价 + 目标利润率 反推原价</div>
+    <header>
+      <div>
+        <h1>TK 电商工具箱 <span id="module-title" style="opacity:.4">/ 利润计算器</span></h1>
+        <div class="sub" id="module-sub">TikTok Shop 日本跨境店 · 采购价 + 目标利润率 反推原价</div>
+      </div>
+      <nav class="modules" aria-label="模块导航">
+        <a href="#calc" data-view="calc" class="active">利润计算器</a>
+        <a href="#orders" data-view="orders">订单跟踪器</a>
+        <a href="#" title="后续模块">更多 ·</a>
+      </nav>
+    </header>
+
+    <!-- ============================================================
+       VIEW 1 · 利润计算器
+       ============================================================ -->
+    <div id="view-calc" class="view active">
+      <div class="grid">
+
+        <!-- 左侧：输入区 -->
+        <section class="card">
+          <h2>核心输入</h2>
+          <div class="row">
+            <div class="field primary">
+              <label for="cost">采购价（人民币 ¥）</label>
+              <input id="cost" type="number" step="0.01" min="0" inputmode="decimal" />
+            </div>
+            <div class="field">
+              <label for="targetMargin">目标利润率（倍）</label>
+              <input id="targetMargin" type="number" step="0.01" min="0" />
+              <div class="hint">人民币到手价 ÷ 采购价，例如 1.4 表示到手价 = 1.4 × 采购价</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="anchor">基准折扣档位</label>
+              <select id="anchor"></select>
+              <div class="hint">以该档位为目标利润率的基准来反推原价</div>
+            </div>
+            <div class="field readonly">
+              <label for="origPrice">商品原价（円）<span class="kbd">可手动覆盖</span></label>
+              <input id="origPrice" type="number" step="1" min="0" />
+            </div>
+          </div>
+
+          <details open style="margin-top:16px">
+            <summary>⚙️ 全局参数（平台手续费 / 汇率 / 运费 / 折扣档位）</summary>
+
+            <div class="row triple" style="margin-top:10px">
+              <div class="field">
+                <label for="fee">TK 平台手续费（%）<span class="var">fee</span></label>
+                <input id="fee" type="number" step="0.01" min="0" max="100" />
+              </div>
+              <div class="field">
+                <label for="rate">日元汇率（1元 = ? 円）<span class="var">rate</span></label>
+                <input id="rate" type="number" step="0.01" min="0" />
+              </div>
+              <div class="field">
+                <label for="shipping">100g 运费+贴单费（¥）<span class="var">ship</span></label>
+                <input id="shipping" type="number" step="0.01" min="0" />
+              </div>
+            </div>
+
+            <div class="row" style="margin-top:12px">
+              <div class="field" style="grid-column:1/-1">
+                <label for="discounts">折扣档位（逗号分隔，例如 0.35,0.38,0.4,0.42,0.45,0.48,0.5）</label>
+                <input id="discounts" type="text" />
+                <div class="hint">支持填 0.38 或 38%；任意增删档位都可以。</div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- 右侧：结果表 -->
+        <section class="card">
+          <h2>各折扣档位定价 / 利润一览</h2>
+          <table class="mono">
+            <thead>
+              <tr>
+                <th>折扣</th>
+                <th>日元售价</th>
+                <th>人民币到手</th>
+                <th>利润率</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+
+          <!-- 公式（简洁版） -->
+          <div
+            style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--border);color:var(--muted)">
+            <div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;opacity:.7">◇ 公式</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:8px 12px;font:11.5px/1.4 ui-monospace,Consolas,monospace">
+              <div>日元售价 = 原价 × 折扣 × (1 − <span class="var">fee</span>)</div>
+              <div>人民币到手 = 日元售价 ÷ <span class="var">rate</span> − <span class="var">ship</span></div>
+              <div>利润率 = 人民币到手 ÷ 采购价</div>
+              <div>原价反推 = (采购价 × 目标利润率 + <span class="var">ship</span>) × <span class="var">rate</span> ÷ [基准折扣 × (1 − <span class="var">fee</span>)]</div>
+            </div>
+          </div>
+
+        </section>
+
+      </div>
+
+      <!-- 物流运费参考表（静态，用户参考用） -->
+      <section class="card ship-ref">
+        <h2>📦 物流运费参考表</h2>
+        <table class="ship mono">
+          <thead>
+            <tr>
+              <th>重量 (g)</th>
+              <th>预估运费 (円)</th>
+              <th>客户邮费 (円)</th>
+              <th>实际支出 (¥)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="w">100</td><td>494.50</td><td>350</td><td class="actual">6.6</td></tr>
+            <tr><td class="w">150</td><td>504.25</td><td>350</td><td class="actual">7.1</td></tr>
+            <tr><td class="w">200</td><td>514.00</td><td>350</td><td class="actual">7.5</td></tr>
+            <tr><td class="w">250</td><td>523.75</td><td>350</td><td class="actual">8.0</td></tr>
+            <tr><td class="w">300</td><td>533.50</td><td>350</td><td class="actual">8.4</td></tr>
+            <tr><td class="w">350</td><td>543.25</td><td>350</td><td class="actual">8.9</td></tr>
+            <tr><td class="w">400</td><td>553.00</td><td>350</td><td class="actual">9.3</td></tr>
+            <tr><td class="w">500</td><td>572.50</td><td>350</td><td class="actual">10.2</td></tr>
+            <tr><td class="w">750</td><td>621.25</td><td>350</td><td class="actual">12.4</td></tr>
+            <tr><td class="w">1000</td><td>670.00</td><td>350</td><td class="actual">14.7</td></tr>
+            <tr><td class="w">1250</td><td>718.75</td><td>350</td><td class="actual">16.9</td></tr>
+            <tr><td class="w">1500</td><td>767.50</td><td>350</td><td class="actual">19.1</td></tr>
+            <tr><td class="w">1750</td><td>816.25</td><td>350</td><td class="actual">21.4</td></tr>
+            <tr><td class="w">2000</td><td>865.00</td><td>350</td><td class="actual">23.6</td></tr>
+          </tbody>
+        </table>
+      </section>
     </div>
-    <nav class="modules" aria-label="模块导航">
-      <a href="#" class="active">利润计算器</a>
-      <a href="#" title="后续模块">订单跟踪器 ·</a>
-      <a href="#" title="后续模块">更多 ·</a>
-    </nav>
-  </header>
 
-  <div class="grid">
+    <!-- ============================================================
+       VIEW 2 · 订单跟踪器（GitHub Gist 存储）
+       ============================================================ -->
+    <div id="view-orders" class="view">
 
-    <!-- 左侧：输入区 -->
-    <section class="card">
-      <h2>核心输入</h2>
-      <div class="row">
-        <div class="field primary">
-          <label for="cost">采购价（人民币 ¥）</label>
-          <input id="cost" type="number" step="0.01" min="0" inputmode="decimal" />
-        </div>
-        <div class="field">
-          <label for="targetMargin">目标利润率（倍）</label>
-          <input id="targetMargin" type="number" step="0.01" min="0" />
-          <div class="hint">人民币到手价 ÷ 采购价，例如 1.4 表示到手价 = 1.4 × 采购价</div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="field">
-          <label for="anchor">基准折扣档位</label>
-          <select id="anchor"></select>
-          <div class="hint">以该档位为目标利润率的基准来反推原价</div>
-        </div>
-        <div class="field readonly">
-          <label for="origPrice">商品原价（円）<span class="kbd">可手动覆盖</span></label>
-          <input id="origPrice" type="number" step="1" min="0" />
-        </div>
-      </div>
-
-      <details open style="margin-top:16px">
-        <summary>⚙️ 全局参数（平台手续费 / 汇率 / 运费 / 折扣档位）</summary>
-
-        <div class="row triple" style="margin-top:10px">
-          <div class="field">
-            <label for="fee">TK 平台手续费（%）<span class="var">fee</span></label>
-            <input id="fee" type="number" step="0.01" min="0" max="100" />
-          </div>
-          <div class="field">
-            <label for="rate">日元汇率（1元 = ? 円）<span class="var">rate</span></label>
-            <input id="rate" type="number" step="0.01" min="0" />
-          </div>
-          <div class="field">
-            <label for="shipping">100g 运费+贴单费（¥）<span class="var">ship</span></label>
-            <input id="shipping" type="number" step="0.01" min="0" />
+      <!-- (a) 首次进入 / 未配置 Token 时显示 -->
+      <section class="card ot-setup" id="ot-setup">
+        <h2>连接你的 GitHub</h2>
+        <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
+          订单数据保存在你自己 GitHub 账号下的私有 Gist 里，别人看不到，跨设备也能同步。
+          首次使用需要生成一个仅带 <code>gist</code> 权限的 Token。
+        </p>
+        <ol>
+          <li>打开 <a href="https://github.com/settings/tokens/new?description=TK%20Toolbox%20Order%20Tracker&scopes=gist"
+              target="_blank">GitHub Token 生成页</a>（已预填权限）</li>
+          <li>确认只勾选 <code>gist</code>，有效期按需选（建议 90 天及以上）</li>
+          <li>点底部 <code>Generate token</code>，复制 <code>ghp_</code> 开头的 Token 粘贴到下方</li>
+          <li>首次会自动创建私有 Gist；如果你已经有数据 Gist，把它的 ID 填到"可选"栏即可</li>
+        </ol>
+        <div class="row" style="margin-top:6px">
+          <div class="field full" style="grid-column:1/-1">
+            <label for="ot-token">Personal Access Token</label>
+            <input id="ot-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
           </div>
         </div>
-
         <div class="row" style="margin-top:12px">
-          <div class="field" style="grid-column:1/-1">
-            <label for="discounts">折扣档位（逗号分隔，例如 0.35,0.38,0.4,0.42,0.45,0.48,0.5）</label>
-            <input id="discounts" type="text" />
-            <div class="hint">支持填 0.38 或 38%；任意增删档位都可以。</div>
+          <div class="field full" style="grid-column:1/-1">
+            <label for="ot-gistid">已有 Gist ID（可选，不填会自动创建新的）</label>
+            <input id="ot-gistid" type="text" placeholder="例如 a1b2c3d4e5f6…" autocomplete="off">
           </div>
         </div>
-      </details>
-    </section>
+        <div style="display:flex;gap:8px;margin-top:18px">
+          <button id="ot-connect" class="btn primary">连接并开始使用</button>
+        </div>
+      </section>
 
-    <!-- 右侧：结果表 -->
-    <section class="card">
-      <h2>各折扣档位定价 / 利润一览</h2>
-      <table class="mono">
-        <thead>
-          <tr>
-            <th>折扣</th>
-            <th>日元售价</th>
-            <th>人民币到手</th>
-            <th>利润率</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
+      <!-- (b) 配置完成后显示主面板 -->
+      <section class="card" id="ot-main" style="display:none">
+        <div class="ot-bar">
+          <div class="left">
+            <span id="ot-user">—</span>
+            <span style="opacity:.5">·</span>
+            <span class="sync" id="ot-sync">就绪</span>
+          </div>
+          <div class="right">
+            <button id="ot-add" class="btn primary">+ 新增订单</button>
+            <button id="ot-refresh" class="btn sm">↻ 刷新</button>
+            <button id="ot-copy-gist" class="btn sm">复制 Gist ID</button>
+            <button id="ot-logout" class="btn sm danger">退出</button>
+          </div>
+        </div>
 
-      <div class="hint" style="margin-top:14px">
-        公式：<br>
-        日元售价 = 原价 × 折扣 × (1 − <span class="var">fee</span>)<br>
-        人民币到手 = 日元售价 ÷ <span class="var">rate</span> − <span class="var">ship</span><br>
-        利润率 = 人民币到手 ÷ 采购价
-      </div>
-    </section>
+        <!-- 公式说明 -->
+        <div class="ot-formula">
+          <div class="title">◇ 自动计算公式</div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center">
+            <div class="f-row" style="margin:0;width:100%">
+              <span class="k">最晚到仓</span>
+              <span class="op">=</span>
+              <span>下单时间 + 6 天</span>
+            </div>
+            <div class="f-row" style="margin:0;width:100%">
+              <span class="k" style="padding-top:2px">订单预警</span>
+              <span class="op">=</span>
+              <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+                <div class="f-rules-grid">
+                  <span class="rule"><span class="cond">订单取消</span><span class="arrow">→</span><span class="result">取消订单</span></span>
+                  <span class="rule"><span class="cond">已入仓</span><span class="arrow">→</span><span class="result">入仓完成</span></span>
+                  <span class="rule"><span class="cond">已完成</span><span class="arrow">→</span><span class="result">订单完成</span></span>
+                  <span class="rule"><span class="cond">已送达</span><span class="arrow">→</span><span class="result">订单送达</span></span>
+                </div>
+                <div class="f-rules-grid">
+                  <span class="rule"><span class="cond">今天 ≥ 最晚到仓</span><span class="arrow">→</span><span class="result">已超期</span></span>
+                  <span class="rule"><span class="cond">最晚到仓 − 今天 ≤ 2天</span><span class="arrow">→</span><span class="result">延误风险</span></span>
+                  <span class="rule"><span class="cond">最晚到仓 − 今天 > 2天</span><span class="arrow">→</span><span class="result">剩 N 天</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
+        <!-- 账号标签栏 -->
+        <div class="ot-acc-tabs" id="ot-acc-tabs"></div>
+
+        <div class="ot-table-wrap">
+          <div id="ot-table-container"></div>
+        </div>
+      </section>
+
+    </div>
+
+    <footer>
+      本地参数保存在浏览器（localStorage），订单数据保存在你自己的 GitHub Gist · TK 电商工具箱 © <span id="yr"></span>
+    </footer>
   </div>
 
-  <footer>
-    数据保存在本地浏览器（localStorage），刷新不丢失 · TK 电商工具箱 © <span id="yr"></span>
-  </footer>
-</div>
+  <!-- =============== 订单跟踪器 · 新增/编辑 弹窗 =============== -->
+  <div id="ot-modal" class="modal-mask">
+    <div class="modal">
+      <h3 id="ot-modal-title">新增订单</h3>
+      <form id="ot-form" autocomplete="off">
+        <div class="row">
+          <div class="field full" style="grid-column:1/-1">
+            <label>账号</label>
+            <select name="账号" id="ot-acc-select" required>
+              <!-- 动态填充 -->
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field">
+            <label>下单时间 *</label>
+            <input type="date" name="下单时间" required>
+          </div>
+          <div class="field">
+            <label>采购日期</label>
+            <input type="date" name="采购日期">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field">
+            <label>最晚到仓时间 <span class="kbd">自动 = 下单时间+6天</span></label>
+            <input type="date" name="最晚到仓时间" readonly>
+          </div>
+          <div class="field">
+            <label>订单预警 <span class="kbd">自动</span></label>
+            <input type="text" name="订单预警" readonly>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field">
+            <label>订单号</label>
+            <input type="text" name="订单号">
+          </div>
+          <div class="field">
+            <label>产品名称</label>
+            <input type="text" name="产品名称">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field">
+            <label>数量</label>
+            <input type="number" name="数量" min="0" step="1">
+          </div>
+          <div class="field">
+            <label>采购价格（元）</label>
+            <input type="number" name="采购价格" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field">
+            <label>订单状态</label>
+            <input type="text" name="订单状态" placeholder="例如 已付款 / 待发货">
+          </div>
+          <div class="field">
+            <label>快递公司</label>
+            <select name="快递公司">
+              <option value="">- 请选择 -</option>
+              <option>韵达快递</option>
+              <option>中通快递</option>
+              <option>邮政快递</option>
+              <option>圆通快递</option>
+              <option>申通快递</option>
+              <option>景光物流</option>
+              <option>安能物流</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field">
+            <label>快递单号</label>
+            <input type="text" name="快递单号">
+          </div>
+          <div class="field">
+            <label>入仓状态</label>
+            <select name="入仓状态">
+              <option value="">- 请选择 -</option>
+              <option>已完成</option>
+              <option>已入仓</option>
+              <option>未采购</option>
+              <option>在途</option>
+              <option>订单取消</option>
+              <option>已送达</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" id="ot-cancel" class="btn">取消</button>
+          <button type="submit" class="btn primary">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-<script>
-(function(){
-  const DEFAULTS = {
-    fee: 7,           // %
-    rate: 23.5,       // 日元 / 人民币
-    shipping: 17,     // ¥
-    discounts: [0.35, 0.38, 0.40, 0.42, 0.45, 0.48, 0.50],
-    cost: 30,         // ¥
-    targetMargin: 1.4,
-    anchor: 0.40,     // 4折
-    origPrice: null   // 由反推得出
-  };
+  <!-- =============== 订单跟踪器 · 新增账号短弹窗 =============== -->
+  <div id="ot-add-acc-modal" class="modal-mask">
+    <div class="modal" style="max-width:400px">
+      <h3>添加新账号</h3>
+      <form id="ot-add-acc-form" autocomplete="off">
+        <div class="row">
+          <div class="field full" style="grid-column:1/-1">
+            <label>新账号名称</label>
+            <input type="text" id="ot-new-acc-input" placeholder="例如：US-TK-01" required>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:20px">
+          <button type="button" id="ot-add-acc-cancel" class="btn">取消</button>
+          <button type="submit" class="btn primary">确定</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-  const LS_KEY = 'tk.profit.v1';
-  const $ = id => document.getElementById(id);
-  const state = load();
+  <div id="toast" class="toast"></div>
 
-  const els = {
-    fee: $('fee'), rate: $('rate'), shipping: $('shipping'), discounts: $('discounts'),
-    cost: $('cost'), targetMargin: $('targetMargin'),
-    anchor: $('anchor'), origPrice: $('origPrice'),
-    tbody: $('tbody'),
-    yr: $('yr')
-  };
-  els.yr.textContent = new Date().getFullYear();
-
-  function load(){
-    try{
-      const s = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
-      if (!s) return {...DEFAULTS};
-      return {...DEFAULTS, ...s};
-    }catch(e){ return {...DEFAULTS}; }
-  }
-  function save(){
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-  }
-  function parseDiscounts(str){
-    return String(str||'').split(/[,，\s]+/).filter(Boolean).map(x=>{
-      x = x.trim();
-      if (x.endsWith('%')) return parseFloat(x)/100;
-      const n = parseFloat(x);
-      return n > 1 ? n/100 : n;
-    }).filter(n=>!isNaN(n) && n>0 && n<=1);
-  }
-  function fmtDiscount(d){
-    // 0.4 -> 4折；0.38 -> 3.8折
-    const v = +(d*10).toFixed(2);
-    return v + '折';
-  }
-  function fmtMoney(n, digits=2){
-    if (n===null || n===undefined || isNaN(n)) return '-';
-    return Number(n).toLocaleString('en-US', {maximumFractionDigits:digits, minimumFractionDigits:digits});
-  }
-  function fmtMargin(n){
-    if (n===null || n===undefined || isNaN(n)) return '-';
-    return n.toFixed(2);
-  }
-
-  // —— 核心公式 ——
-  // 给定 origPrice，计算某折扣档位的结果
-  function calcRow(origPrice, d){
-    const feeRate = state.fee/100;
-    const jpyPrice = origPrice * d * (1 - feeRate);
-    const cnyNet = jpyPrice / state.rate - state.shipping;
-    const margin = state.cost > 0 ? cnyNet / state.cost : NaN;
-    return { d, jpyPrice, cnyNet, margin };
-  }
-
-  // 反推：给定 cost、targetMargin、anchor → origPrice
-  function deriveOrigPrice(){
-    const feeRate = state.fee/100;
-    const need = state.cost * state.targetMargin + state.shipping; // 人民币到手前的 "人民币售价"
-    const jpyNeed = need * state.rate;
-    const orig = jpyNeed / (state.anchor * (1 - feeRate));
-    return Math.max(0, orig);
-  }
-
-  function renderAnchorOptions(){
-    els.anchor.innerHTML = '';
-    state.discounts.forEach(d=>{
-      const o = document.createElement('option');
-      o.value = d;
-      o.textContent = fmtDiscount(d);
-      els.anchor.appendChild(o);
-    });
-    // 选中最接近的
-    const want = state.anchor;
-    const nearest = state.discounts.reduce((a,b)=> Math.abs(b-want)<Math.abs(a-want)?b:a, state.discounts[0]);
-    state.anchor = nearest;
-    els.anchor.value = String(nearest);
-  }
-
-  function renderTable(){
-    const rows = state.discounts.slice().sort((a,b)=>a-b).map(d=>calcRow(state.origPrice||0, d));
-    els.tbody.innerHTML = rows.map(r=>{
-      const isAnchor = Math.abs(r.d - state.anchor) < 1e-9;
-      return `<tr class="${isAnchor?'anchor':''}">
-        <td>${fmtDiscount(r.d)}${isAnchor?' ★':''}</td>
-        <td>${fmtMoney(r.jpyPrice,0)} 円</td>
-        <td>¥${fmtMoney(r.cnyNet,2)}</td>
-        <td>${fmtMargin(r.margin)}</td>
-      </tr>`;
-    }).join('');
-  }
-
-  function syncInputsFromState(){
-    els.fee.value = state.fee;
-    els.rate.value = state.rate;
-    els.shipping.value = state.shipping;
-    els.discounts.value = state.discounts.map(d=>d).join(',');
-    els.cost.value = state.cost;
-    els.targetMargin.value = state.targetMargin;
-    renderAnchorOptions();
-    if (state.origPrice == null) state.origPrice = deriveOrigPrice();
-    els.origPrice.value = Math.round(state.origPrice);
-  }
-
-  // —— 事件绑定 ——
-  function bindNumber(el, key, {derive=true} = {}){
-    el.addEventListener('input', ()=>{
-      const v = parseFloat(el.value);
-      if (!isNaN(v)) state[key] = v;
-      if (derive) state.origPrice = deriveOrigPrice(), els.origPrice.value = Math.round(state.origPrice);
-      renderTable(); save();
-    });
-  }
-  bindNumber(els.fee, 'fee');
-  bindNumber(els.rate, 'rate');
-  bindNumber(els.shipping, 'shipping');
-  bindNumber(els.cost, 'cost');
-  bindNumber(els.targetMargin, 'targetMargin');
-
-  els.discounts.addEventListener('input', ()=>{
-    const arr = parseDiscounts(els.discounts.value);
-    if (arr.length){
-      state.discounts = arr;
-      renderAnchorOptions();
-      state.origPrice = deriveOrigPrice();
-      els.origPrice.value = Math.round(state.origPrice);
-      renderTable(); save();
-    }
-  });
-
-  els.anchor.addEventListener('change', ()=>{
-    state.anchor = parseFloat(els.anchor.value);
-    state.origPrice = deriveOrigPrice();
-    els.origPrice.value = Math.round(state.origPrice);
-    renderTable(); save();
-  });
-
-  // 手动修改原价：直接用这个原价计算（不再反推），但目标利润率保持作为"达标线"
-  els.origPrice.addEventListener('input', ()=>{
-    const v = parseFloat(els.origPrice.value);
-    if (!isNaN(v)){
-      state.origPrice = v;
-      renderTable(); save();
-    }
-  });
-
-  // 初始化
-  syncInputsFromState();
-  renderTable();
-})();
-</script>
+  <!-- JS 模块（defer 保证顺序加载：路由 → 利润计算器 → 订单跟踪器） -->
+  <script src="js/app.js" defer></script>
+  <script src="js/calc.js" defer></script>
+  <script src="js/orders.js" defer></script>
 </body>
+
 </html>

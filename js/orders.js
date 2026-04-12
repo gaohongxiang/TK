@@ -382,12 +382,12 @@ const OrderTracker = (function () {
     }
     const allIds = state.orders.map(o => o.id);
 
-    // 按添加时间正/倒序排列
+    // 按添加时间正/倒序排列（orders 数组新的在前，所以正序需反转 index）
     let sorted = [...filtered];
     sorted.sort((a, b) => {
       const ia = allIds.indexOf(a.id);
       const ib = allIds.indexOf(b.id);
-      return state.sortOrder === 'asc' ? ia - ib : ib - ia;
+      return state.sortOrder === 'asc' ? ib - ia : ia - ib;
     });
     const total = sorted.length;
 

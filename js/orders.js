@@ -6,7 +6,7 @@ const OrderTracker = (function () {
   const LS_ACC_KEY = 'tk.orders.accounts.v1';
   const GIST_FILENAME = 'tk-order-tracker.json';
 
-  const state = { token: '', gistId: '', user: '', orders: [], editingId: null, loaded: false, accounts: [], activeAccount: null };
+  const state = { token: '', gistId: '', user: '', orders: [], editingId: null, loaded: false, accounts: [], activeAccount: null, sortOrder: 'asc' };
 
   const $ = sel => document.querySelector(sel);
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -380,11 +380,23 @@ const OrderTracker = (function () {
         </div>`;
       return;
     }
-    const rows = filtered.map((o, i) => {
+    const allIds = state.orders.map(o => o.id);
+
+    // 按添加时间正/倒序排列
+    let sorted = [...filtered];
+    sorted.sort((a, b) => {
+      const ia = allIds.indexOf(a.id);
+      const ib = allIds.indexOf(b.id);
+      return state.sortOrder === 'asc' ? ia - ib : ib - ia;
+    });
+    const total = sorted.length;
+
+    const rows = sorted.map((o, i) => {
+      const seqNum = state.sortOrder === 'asc' ? i + 1 : total - i;
       const warn = computeWarning(o);
       return `
         <tr>
-          <td style="color:var(--muted)">${i + 1}</td>
+          <td style="color:var(--muted)">${seqNum}</td>
           ${isAll ? `<td><span class="chip muted">${escapeHtml(o['账号'] || '-')}</span></td>` : ''}
           <td>${escapeHtml(o['下单时间'])}</td>
           <td>${escapeHtml(o['采购日期'])}</td>
@@ -405,11 +417,14 @@ const OrderTracker = (function () {
         </tr>`;
     }).join('');
 
+    const sortIcon = state.sortOrder === 'asc' ? '↑' : '↓';
+    const sortTitle = state.sortOrder === 'asc' ? '当前正序（最早在上），点击切换' : '当前倒序（最新在上），点击切换';
+
     wrap.innerHTML = `
       <table class="ot">
         <thead>
           <tr>
-            <th>#</th>${isAll ? '<th>账号</th>' : ''}<th>下单时间</th><th>采购日期</th><th>最晚到仓</th>
+            <th><span id="ot-sort-btn" title="${sortTitle}" style="cursor:pointer;user-select:none"># ${sortIcon}</span></th>${isAll ? '<th>账号</th>' : ''}<th>下单时间</th><th>采购日期</th><th>最晚到仓</th>
             <th>订单预警</th><th>订单号</th><th>产品名称</th>
             <th>数量</th><th>采购价(元)</th><th>订单状态</th>
             <th>快递公司</th><th>快递单号</th><th>入仓状态</th><th>操作</th>
@@ -417,6 +432,14 @@ const OrderTracker = (function () {
         </thead>
         <tbody>${rows}</tbody>
       </table>`;
+
+    const sortBtn = wrap.querySelector('#ot-sort-btn');
+    if (sortBtn) {
+      sortBtn.addEventListener('click', () => {
+        state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
+        renderTable();
+      });
+    }
 
     wrap.querySelectorAll('[data-edit]').forEach(b => {
       b.onclick = () => openModal(b.dataset.edit);

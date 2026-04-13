@@ -101,14 +101,17 @@
           </table>
 
           <!-- 公式（简洁版） -->
-          <div
-            style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--border);color:var(--muted)">
-            <div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;opacity:.7">◇ 公式</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:8px 12px;font:11.5px/1.4 ui-monospace,Consolas,monospace">
+          <div style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--border);color:var(--muted)">
+            <div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;opacity:.7">◇ 公式
+            </div>
+            <div
+              style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:8px 12px;font:11.5px/1.4 ui-monospace,Consolas,monospace">
               <div>日元售价 = 原价 × 折扣 × (1 − <span class="var">fee</span>)</div>
               <div>人民币到手 = 日元售价 ÷ <span class="var">rate</span> − <span class="var">ship</span></div>
               <div>利润率 = 人民币到手 ÷ 采购价</div>
-              <div>原价反推 = (采购价 × 目标利润率 + <span class="var">ship</span>) × <span class="var">rate</span> ÷ [基准折扣 × (1 − <span class="var">fee</span>)]</div>
+              <div>原价反推 = (采购价 × 目标利润率 + <span class="var">ship</span>) × <span class="var">rate</span> ÷ [基准折扣 × (1 −
+                <span class="var">fee</span>)]
+              </div>
             </div>
           </div>
 
@@ -129,20 +132,90 @@
             </tr>
           </thead>
           <tbody>
-            <tr><td class="w">100</td><td>494.50</td><td>350</td><td class="actual">6.6</td></tr>
-            <tr><td class="w">150</td><td>504.25</td><td>350</td><td class="actual">7.1</td></tr>
-            <tr><td class="w">200</td><td>514.00</td><td>350</td><td class="actual">7.5</td></tr>
-            <tr><td class="w">250</td><td>523.75</td><td>350</td><td class="actual">8.0</td></tr>
-            <tr><td class="w">300</td><td>533.50</td><td>350</td><td class="actual">8.4</td></tr>
-            <tr><td class="w">350</td><td>543.25</td><td>350</td><td class="actual">8.9</td></tr>
-            <tr><td class="w">400</td><td>553.00</td><td>350</td><td class="actual">9.3</td></tr>
-            <tr><td class="w">500</td><td>572.50</td><td>350</td><td class="actual">10.2</td></tr>
-            <tr><td class="w">750</td><td>621.25</td><td>350</td><td class="actual">12.4</td></tr>
-            <tr><td class="w">1000</td><td>670.00</td><td>350</td><td class="actual">14.7</td></tr>
-            <tr><td class="w">1250</td><td>718.75</td><td>350</td><td class="actual">16.9</td></tr>
-            <tr><td class="w">1500</td><td>767.50</td><td>350</td><td class="actual">19.1</td></tr>
-            <tr><td class="w">1750</td><td>816.25</td><td>350</td><td class="actual">21.4</td></tr>
-            <tr><td class="w">2000</td><td>865.00</td><td>350</td><td class="actual">23.6</td></tr>
+            <tr>
+              <td class="w">100</td>
+              <td>494.50</td>
+              <td>350</td>
+              <td class="actual">6.6</td>
+            </tr>
+            <tr>
+              <td class="w">150</td>
+              <td>504.25</td>
+              <td>350</td>
+              <td class="actual">7.1</td>
+            </tr>
+            <tr>
+              <td class="w">200</td>
+              <td>514.00</td>
+              <td>350</td>
+              <td class="actual">7.5</td>
+            </tr>
+            <tr>
+              <td class="w">250</td>
+              <td>523.75</td>
+              <td>350</td>
+              <td class="actual">8.0</td>
+            </tr>
+            <tr>
+              <td class="w">300</td>
+              <td>533.50</td>
+              <td>350</td>
+              <td class="actual">8.4</td>
+            </tr>
+            <tr>
+              <td class="w">350</td>
+              <td>543.25</td>
+              <td>350</td>
+              <td class="actual">8.9</td>
+            </tr>
+            <tr>
+              <td class="w">400</td>
+              <td>553.00</td>
+              <td>350</td>
+              <td class="actual">9.3</td>
+            </tr>
+            <tr>
+              <td class="w">500</td>
+              <td>572.50</td>
+              <td>350</td>
+              <td class="actual">10.2</td>
+            </tr>
+            <tr>
+              <td class="w">750</td>
+              <td>621.25</td>
+              <td>350</td>
+              <td class="actual">12.4</td>
+            </tr>
+            <tr>
+              <td class="w">1000</td>
+              <td>670.00</td>
+              <td>350</td>
+              <td class="actual">14.7</td>
+            </tr>
+            <tr>
+              <td class="w">1250</td>
+              <td>718.75</td>
+              <td>350</td>
+              <td class="actual">16.9</td>
+            </tr>
+            <tr>
+              <td class="w">1500</td>
+              <td>767.50</td>
+              <td>350</td>
+              <td class="actual">19.1</td>
+            </tr>
+            <tr>
+              <td class="w">1750</td>
+              <td>816.25</td>
+              <td>350</td>
+              <td class="actual">21.4</td>
+            </tr>
+            <tr>
+              <td class="w">2000</td>
+              <td>865.00</td>
+              <td>350</td>
+              <td class="actual">23.6</td>
+            </tr>
           </tbody>
         </table>
       </section>
@@ -214,15 +287,22 @@
               <span class="op">=</span>
               <div style="display:flex;flex-direction:column;gap:8px;flex:1">
                 <div class="f-rules-grid">
-                  <span class="rule"><span class="cond">订单取消</span><span class="arrow">→</span><span class="result">取消订单</span></span>
-                  <span class="rule"><span class="cond">已入仓</span><span class="arrow">→</span><span class="result">入仓完成</span></span>
-                  <span class="rule"><span class="cond">已完成</span><span class="arrow">→</span><span class="result">订单完成</span></span>
-                  <span class="rule"><span class="cond">已送达</span><span class="arrow">→</span><span class="result">订单送达</span></span>
+                  <span class="rule"><span class="cond">订单取消</span><span class="arrow">→</span><span
+                      class="result">取消订单</span></span>
+                  <span class="rule"><span class="cond">已入仓</span><span class="arrow">→</span><span
+                      class="result">入仓完成</span></span>
+                  <span class="rule"><span class="cond">已完成</span><span class="arrow">→</span><span
+                      class="result">订单完成</span></span>
+                  <span class="rule"><span class="cond">已送达</span><span class="arrow">→</span><span
+                      class="result">订单送达</span></span>
                 </div>
                 <div class="f-rules-grid">
-                  <span class="rule"><span class="cond">今天 ≥ 最晚到仓</span><span class="arrow">→</span><span class="result">已超期</span></span>
-                  <span class="rule"><span class="cond">最晚到仓 − 今天 ≤ 2天</span><span class="arrow">→</span><span class="result">延误风险</span></span>
-                  <span class="rule"><span class="cond">最晚到仓 − 今天 > 2天</span><span class="arrow">→</span><span class="result">剩 N 天</span></span>
+                  <span class="rule"><span class="cond">今天 ≥ 最晚到仓</span><span class="arrow">→</span><span
+                      class="result">已超期</span></span>
+                  <span class="rule"><span class="cond">最晚到仓 − 今天 ≤ 2天</span><span class="arrow">→</span><span
+                      class="result">延误风险</span></span>
+                  <span class="rule"><span class="cond">最晚到仓 − 今天 > 2天</span><span class="arrow">→</span><span
+                      class="result">剩 N 天</span></span>
                 </div>
               </div>
             </div>
@@ -311,6 +391,8 @@
               <option>邮政快递</option>
               <option>圆通快递</option>
               <option>申通快递</option>
+              <option>极兔快递</option>
+              <option>顺丰快递</option>
               <option>景光物流</option>
               <option>安能物流</option>
             </select>

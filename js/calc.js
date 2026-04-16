@@ -6,7 +6,7 @@
     fee: 7, rate: 23.5, shipping: 17,
     discounts: [0.35, 0.38, 0.40, 0.42, 0.45, 0.48, 0.50],
     cost: 30, targetMargin: 1.4, anchor: 0.40, origPrice: null,
-    costNew: 10, labelFeeNew: 1.2, overseasShippingNew: 0, shippingMultiplierNew: 1.1,
+    costNew: 10, labelFeeNew: 1.2, overseasShippingNew: 0, shippingMultiplierNew: 1.1, shippingSourceNew: 'manual',
     feeNew: 10, rateNew: 23.5, discountsNew: [0.35, 0.38, 0.40, 0.42, 0.45, 0.48, 0.50],
     targetMarginNew: 1.4, anchorNew: 0.40, origPriceNew: null,
     shipCargoTypeNew: 'general', shipActualWeightNew: 100,
@@ -369,12 +369,23 @@
     const shippingCny = quote.cnyFee * multiplier + labelFee;
     return Number(shippingCny.toFixed(2));
   }
+  function applyCalculatedShippingCostNew(quote = computePricingNewShipping(), { markSource = false } = {}) {
+    const calculated = getCalculatedShippingCostNew(quote);
+    if (calculated === null) return null;
+    state.overseasShippingNew = calculated;
+    if (markSource) state.shippingSourceNew = 'calculator';
+    setInputValue(els.overseasShippingNew, calculated);
+    setInputValue(els.shippingReview, calculated);
+    return calculated;
+  }
   function computeTotalCostNew() {
     const cost = state.costNew || 0;
     return cost + getManualShippingCostNew();
   }
-  function rerenderAll({ derive = true } = {}) {
-    renderPricingNewShipping();
+  function rerenderAll({ derive = true, autoFillShipping = false } = {}) {
+    const quote = computePricingNewShipping();
+    if (autoFillShipping) applyCalculatedShippingCostNew(quote);
+    renderPricingNewShipping(quote);
     if (derive) state.origPriceNew = deriveOrigPrice('pricingNew');
     if (els.origPriceNew) setInputValue(els.origPriceNew, state.origPriceNew ? Math.round(state.origPriceNew) : '');
     if (els.totalCostNew) setInputValue(els.totalCostNew, computeTotalCostNew().toFixed(2));
@@ -679,8 +690,7 @@
     els.saleProfit.className = `value mono ${profitClass}`.trim();
     els.saleMargin.className = `value mono ${profitClass}`.trim();
   }
-  function renderPricingNewShipping() {
-    const quote = computePricingNewShipping();
+  function renderPricingNewShipping(quote = computePricingNewShipping()) {
     const multiplier = getShippingMultiplierNew();
     const labelFee = state.labelFeeNew || 0;
     const finalCnyFee = getCalculatedShippingCostNew(quote);
@@ -748,7 +758,7 @@
     setInputValue(els.shipWidth, state.shipWidth);
     setInputValue(els.shipHeight, state.shipHeight);
   }
-  function bindNumber(el, key, { derive = true, sync = false } = {}) {
+  function bindNumber(el, key, { derive = true, sync = false, autoFillShipping = false, shippingSource = null } = {}) {
     if (!el) return;
     ensureDecimalInputBehavior(el);
     el.addEventListener('input', () => {
@@ -757,30 +767,34 @@
         applyNormalizedValue(el, normalized);
       }
       state[key] = toNumber(normalized);
+      if (shippingSource) state.shippingSourceNew = shippingSource;
       if (sync) setSyncedInputValue(key, state[key], el);
-      rerenderAll({ derive });
+      rerenderAll({
+        derive,
+        autoFillShipping: typeof autoFillShipping === 'function' ? autoFillShipping() : autoFillShipping
+      });
     });
   }
   bindLegacyPricing();
   bindNumber(els.costReview, 'costNew');
-  bindNumber(els.shippingReview, 'overseasShippingNew');
+  bindNumber(els.shippingReview, 'overseasShippingNew', { shippingSource: 'manual' });
   bindNumber(els.feeNew, 'feeNew');
-  bindNumber(els.rateNew, 'rateNew');
+  bindNumber(els.rateNew, 'rateNew', { autoFillShipping: () => state.shippingSourceNew === 'calculator' });
   bindNumber(els.costNew, 'costNew');
-  bindNumber(els.overseasShippingNew, 'overseasShippingNew');
-  bindNumber(els.labelFeeNew, 'labelFeeNew');
-  bindNumber(els.labelFeeReview, 'labelFeeNew');
-  bindNumber(els.shippingMultiplierNew, 'shippingMultiplierNew');
-  bindNumber(els.shippingMultiplierReview, 'shippingMultiplierNew');
+  bindNumber(els.overseasShippingNew, 'overseasShippingNew', { shippingSource: 'manual' });
+  bindNumber(els.labelFeeNew, 'labelFeeNew', { autoFillShipping: true, shippingSource: 'calculator' });
+  bindNumber(els.labelFeeReview, 'labelFeeNew', { autoFillShipping: true, shippingSource: 'calculator' });
+  bindNumber(els.shippingMultiplierNew, 'shippingMultiplierNew', { autoFillShipping: true, shippingSource: 'calculator' });
+  bindNumber(els.shippingMultiplierReview, 'shippingMultiplierNew', { autoFillShipping: true, shippingSource: 'calculator' });
   bindNumber(els.targetMarginNew, 'targetMarginNew');
-  bindNumber(els.shipActualWeightNew, 'shipActualWeightNew');
-  bindNumber(els.shipActualWeightReviewCalc, 'shipActualWeightNew');
-  bindNumber(els.shipLengthNew, 'shipLengthNew');
-  bindNumber(els.shipLengthReviewCalc, 'shipLengthNew');
-  bindNumber(els.shipWidthNew, 'shipWidthNew');
-  bindNumber(els.shipWidthReviewCalc, 'shipWidthNew');
-  bindNumber(els.shipHeightNew, 'shipHeightNew');
-  bindNumber(els.shipHeightReviewCalc, 'shipHeightNew');
+  bindNumber(els.shipActualWeightNew, 'shipActualWeightNew', { autoFillShipping: true, shippingSource: 'calculator' });
+  bindNumber(els.shipActualWeightReviewCalc, 'shipActualWeightNew', { autoFillShipping: true, shippingSource: 'calculator' });
+  bindNumber(els.shipLengthNew, 'shipLengthNew', { autoFillShipping: true, shippingSource: 'calculator' });
+  bindNumber(els.shipLengthReviewCalc, 'shipLengthNew', { autoFillShipping: true, shippingSource: 'calculator' });
+  bindNumber(els.shipWidthNew, 'shipWidthNew', { autoFillShipping: true, shippingSource: 'calculator' });
+  bindNumber(els.shipWidthReviewCalc, 'shipWidthNew', { autoFillShipping: true, shippingSource: 'calculator' });
+  bindNumber(els.shipHeightNew, 'shipHeightNew', { autoFillShipping: true, shippingSource: 'calculator' });
+  bindNumber(els.shipHeightReviewCalc, 'shipHeightNew', { autoFillShipping: true, shippingSource: 'calculator' });
   bindNumber(els.salePrice, 'salePrice', { derive: false });
   bindNumber(els.shipActualWeight, 'shipActualWeight', { derive: false });
   bindNumber(els.shipLength, 'shipLength', { derive: false });
@@ -833,30 +847,28 @@
   if (els.shipCargoTypeNew) {
     els.shipCargoTypeNew.addEventListener('change', () => {
       state.shipCargoTypeNew = els.shipCargoTypeNew.value;
-      rerenderAll();
+      state.shippingSourceNew = 'calculator';
+      rerenderAll({ autoFillShipping: true });
     });
   }
   if (els.shipCargoTypeReview) {
     els.shipCargoTypeReview.addEventListener('change', () => {
       state.shipCargoTypeNew = els.shipCargoTypeReview.value;
-      rerenderAll();
+      state.shippingSourceNew = 'calculator';
+      rerenderAll({ autoFillShipping: true });
     });
   }
   if (els.importShippingNew) {
     els.importShippingNew.addEventListener('click', () => {
-      const calculated = getCalculatedShippingCostNew();
+      const calculated = applyCalculatedShippingCostNew(computePricingNewShipping(), { markSource: true });
       if (calculated === null) return;
-      state.overseasShippingNew = calculated;
-      if (els.overseasShippingNew) els.overseasShippingNew.value = calculated;
       rerenderAll();
     });
   }
   if (els.importShippingReview) {
     els.importShippingReview.addEventListener('click', () => {
-      const calculated = getCalculatedShippingCostNew();
+      const calculated = applyCalculatedShippingCostNew(computePricingNewShipping(), { markSource: true });
       if (calculated === null) return;
-      state.overseasShippingNew = calculated;
-      if (els.shippingReview) els.shippingReview.value = calculated;
       rerenderAll();
     });
   }

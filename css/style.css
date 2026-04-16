@@ -8,6 +8,7 @@
   --accent: #6ea8ff;
   --accent2: #8affcf;
   --danger: #ff6b8a;
+  --expense: #f08a86;
   --ok: #37d399;
   --warn: #ffc857;
   --shadow: 0 10px 30px rgba(0, 0, 0, .35);
@@ -24,6 +25,7 @@
     --muted: #5a6388;
     --accent: #3b66ff;
     --accent2: #00b477;
+    --expense: #bf4f5d;
     --shadow: 0 10px 30px rgba(20, 30, 80, .08);
   }
 }
@@ -48,7 +50,7 @@ a {
 }
 
 .wrap {
-  max-width: 1080px;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 28px 18px 80px
 }
@@ -72,6 +74,37 @@ header .sub {
   color: var(--muted);
   font-size: 13px;
   margin-top: 4px
+}
+
+.calc-help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 999px;
+  flex-shrink: 0;
+  transition: all .15s
+}
+
+.calc-help-icon:hover {
+  border-color: var(--accent);
+  color: var(--accent)
+}
+
+.calc-help-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round
 }
 
 nav.modules {
@@ -102,6 +135,70 @@ nav.modules a.active {
   grid-template-columns: 1.1fr 1fr
 }
 
+.calc-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap
+}
+
+.calc-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 6px
+}
+
+.calc-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap
+}
+
+.calc-tab {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .15s
+}
+
+.calc-tab:hover {
+  border-color: var(--accent);
+  color: var(--accent)
+}
+
+.calc-tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600
+}
+
+.calc-shared {
+  margin-bottom: 18px
+}
+
+.calc-shared-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr 1fr;
+  gap: 14px;
+  align-items: start
+}
+
+.calc-panel {
+  display: none
+}
+
+.calc-panel.active {
+  display: block
+}
+
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -125,15 +222,20 @@ nav.modules a.active {
 .row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px
+  gap: 18px
 }
 
 .row.triple {
   grid-template-columns: 1fr 1fr 1fr
 }
 
+.row.quad {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px
+}
+
 .row+.row {
-  margin-top: 14px
+  margin-top: 18px
 }
 
 .field {
@@ -165,7 +267,7 @@ nav.modules a.active {
 .field select,
 .field textarea {
   width: 100%;
-  padding: 11px 13px;
+  padding: 9px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--panel2);
@@ -177,7 +279,8 @@ nav.modules a.active {
   appearance: none
 }
 
-.field input[type=number] {
+.field input[type=number],
+.field input[inputmode=decimal] {
   font-variant-numeric: tabular-nums
 }
 
@@ -189,12 +292,17 @@ nav.modules a.active {
 }
 
 .field.readonly input {
-  background: transparent;
-  border-style: dashed;
+  background: linear-gradient(180deg, rgba(138, 255, 207, .18), rgba(138, 255, 207, .08));
+  border-color: rgba(138, 255, 207, .42);
   color: var(--accent2);
   font-weight: 700;
   font-size: 18px;
   letter-spacing: .5px
+}
+
+.field.readonly input:focus {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 3px rgba(138, 255, 207, .18)
 }
 
 .field.primary input {
@@ -211,6 +319,245 @@ nav.modules a.active {
   box-shadow: 0 0 0 3px rgba(255, 200, 87, .22)
 }
 
+.field.expense-field input {
+  background: linear-gradient(180deg, rgba(240, 138, 134, .18), rgba(240, 138, 134, .08));
+  border-color: rgba(240, 138, 134, .48);
+  color: var(--expense);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: .5px
+}
+
+.field.expense-field input:focus {
+  border-color: var(--expense);
+  box-shadow: 0 0 0 3px rgba(240, 138, 134, .18)
+}
+
+.field.success input {
+  background: linear-gradient(180deg, rgba(138, 255, 207, .18), rgba(138, 255, 207, .08));
+  border-color: rgba(138, 255, 207, .42);
+  color: var(--accent2);
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: .5px
+}
+
+.field.success input:focus {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 3px rgba(138, 255, 207, .18)
+}
+
+.pricing-ship-inline {
+  margin-top: 18px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(110, 168, 255, .07), rgba(138, 255, 207, .04))
+}
+
+.pricing-ship-inline-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px
+}
+
+.pricing-ship-inline-title {
+  font-size: 12px;
+  letter-spacing: .5px;
+  color: var(--muted);
+  font-weight: 600
+}
+
+.pricing-ship-inline-tip {
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--accent)
+}
+
+.pricing-ship-inline-alert {
+  min-width: 0;
+  flex: 0 1 auto;
+  text-align: left;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--danger);
+  white-space: normal
+}
+
+.pricing-ship-inline-inputs {
+  display: grid;
+  grid-template-columns: 1.05fr .95fr .8fr .8fr .8fr;
+  gap: 10px;
+  align-items: end
+}
+
+.pricing-ship-inline .field {
+  gap: 6px
+}
+
+.pricing-ship-inline .field label {
+  min-height: auto;
+  font-size: 12px
+}
+
+.pricing-ship-inline .field input,
+.pricing-ship-inline .field select {
+  padding: 8px 10px;
+  font-size: 13.5px;
+  border-radius: 9px
+}
+
+.pricing-ship-inline-metrics {
+  display: grid;
+  grid-template-columns: .92fr .92fr 1.16fr;
+  gap: 10px;
+  margin-top: 10px
+}
+
+.pricing-ship-inline-summary {
+  display: grid;
+  grid-template-columns: 1.84fr 1.16fr;
+  gap: 10px;
+  margin-top: 10px;
+  align-items: stretch
+}
+
+.pricing-ship-inline-summary-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0
+}
+
+.pricing-ship-inline-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(110, 168, 255, .18);
+  background: var(--panel2)
+}
+
+.pricing-ship-inline-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px
+}
+
+.pricing-ship-inline-item .k {
+  font-size: 11px;
+  letter-spacing: .5px;
+  color: var(--muted);
+  font-weight: 600
+}
+
+.pricing-ship-inline-rule {
+  font-size: 10px;
+  line-height: 1.25;
+  color: var(--muted);
+  white-space: normal
+}
+
+.pricing-ship-inline-item .v {
+  font-size: 16px;
+  color: var(--text);
+  font-weight: 700;
+  text-align: right
+}
+
+.pricing-ship-inline-item.expense .v {
+  color: var(--expense)
+}
+
+.pricing-ship-inline-price {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  min-width: 0
+}
+
+.pricing-ship-inline-price .v {
+  font-size: 20px;
+  color: var(--expense);
+  font-weight: 700;
+  text-align: center
+}
+
+.pricing-ship-inline-price-clickable {
+  width: 100%;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s, opacity .15s
+}
+
+.pricing-ship-inline-price-clickable:hover {
+  background: rgba(240, 138, 134, .08)
+}
+
+.pricing-ship-inline-price-clickable.is-disabled {
+  cursor: not-allowed;
+  opacity: .5
+}
+
+.pricing-ship-inline-formula {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 9px;
+  line-height: 1.35;
+  color: var(--muted);
+  white-space: nowrap
+}
+
+.pricing-ship-inline-summary .field label {
+  font-size: 11px
+}
+
+.pricing-ship-inline-summary .field input {
+  padding: 7px 10px;
+  font-size: 13px
+}
+
+.calc-formula-block {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  color: var(--muted)
+}
+
+.calc-formula-title {
+  margin-bottom: 4px;
+  font-size: 9.5px;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  opacity: .7
+}
+
+.calc-formula-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font: 10.5px/1.28 ui-monospace, Consolas, monospace
+}
+
+.pricing-ship-inline-band {
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--text)
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -221,13 +568,8 @@ table {
 th,
 td {
   padding: 11px 10px;
-  text-align: right;
+  text-align: center;
   border-bottom: 1px dashed var(--border)
-}
-
-th:first-child,
-td:first-child {
-  text-align: left
 }
 
 th {
@@ -241,6 +583,124 @@ th {
 tr.anchor td {
   background: linear-gradient(90deg, rgba(110, 168, 255, .14), transparent);
   font-weight: 600
+}
+
+td.profit-pos {
+  color: var(--ok);
+  font-weight: 600
+}
+
+td.profit-neg {
+  color: var(--danger);
+  font-weight: 600
+}
+
+.orig-row td {
+  background: linear-gradient(180deg, rgba(138, 255, 207, .16), rgba(138, 255, 207, .08));
+  font-weight: 600
+}
+
+.orig-row td:first-child,
+.orig-row td.orig-price-cell {
+  color: var(--accent2);
+  font-weight: 700
+}
+
+.known-sale {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border)
+}
+
+.known-sale-title {
+  margin-bottom: 12px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600
+}
+
+.known-sale-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch
+}
+
+.review-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr))
+}
+
+.known-sale-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel2)
+}
+
+.known-sale-item .label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted)
+}
+
+.known-sale-item .value {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text)
+}
+
+.known-sale-item .value.profit-pos {
+  color: var(--ok)
+}
+
+.known-sale-item .value.profit-neg {
+  color: var(--danger)
+}
+
+.review-formula {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  display: grid;
+  gap: 6px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted)
+}
+
+.calc-help-copy {
+  display: grid;
+  gap: 12px
+}
+
+.calc-help-item {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel2)
+}
+
+.calc-help-item .k {
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700
+}
+
+.calc-help-item .v {
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.7
 }
 
 .kbd {
@@ -318,6 +778,14 @@ details[open] summary {
 .btn.primary:hover {
   filter: brightness(1.1);
   color: #fff
+}
+
+.btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+  filter: none;
+  color: var(--text);
+  border-color: var(--border)
 }
 
 .btn.danger {
@@ -465,6 +933,7 @@ details[open] summary {
   mask-image: linear-gradient(to right, transparent, black 10px);
   -webkit-mask-image: linear-gradient(to right, transparent, black 10px);
 }
+
 .ot-acc-tabs .tab.active .tab-actions {
   background: var(--accent);
 }
@@ -496,6 +965,7 @@ details[open] summary {
   background: rgba(110, 168, 255, .15);
   color: var(--accent);
 }
+
 .ot-acc-tabs .tab.active .tab-actions .t-btn:hover {
   background: rgba(255, 255, 255, .25);
   color: #fff;
@@ -505,6 +975,7 @@ details[open] summary {
   background: rgba(255, 107, 138, .15);
   color: var(--danger);
 }
+
 .ot-acc-tabs .tab.active .tab-actions .t-btn.danger:hover {
   background: rgba(255, 255, 255, .25);
   color: #fff;
@@ -528,7 +999,7 @@ details[open] summary {
 .ot-acc-tabs .tab-add:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(110,168,255,.08)
+  background: rgba(110, 168, 255, .08)
 }
 
 .ot-acc-tabs .tab-count {
@@ -816,11 +1287,13 @@ table.ot tbody tr:hover {
   border: 1px solid rgba(110, 168, 255, .32)
 }
 
-/* —— 运费参考表 —— */
+/* —— 运费计算器 / 参考表 —— */
+.ship-calc,
 .ship-ref {
   margin-top: 18px
 }
 
+.ship-calc .ship-meta,
 .ship-ref .ship-meta {
   display: flex;
   gap: 10px;
@@ -834,13 +1307,266 @@ table.ot tbody tr:hover {
   color: var(--muted)
 }
 
+.ship-calc .ship-meta b,
 .ship-ref .ship-meta b {
   color: var(--text);
   font-weight: 600
 }
 
+.ship-calc .ship-meta .sep,
 .ship-ref .ship-meta .sep {
   opacity: .4
+}
+
+.ship-note {
+  margin-bottom: 14px;
+  padding: 13px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 200, 87, .28);
+  background: linear-gradient(180deg, rgba(255, 200, 87, .10), rgba(255, 200, 87, .04));
+}
+
+.ship-note .title {
+  margin-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--warn);
+  font-weight: 700
+}
+
+.ship-note .text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted)
+}
+
+.ship-note .text + .text {
+  margin-top: 6px
+}
+
+.ship-inputs {
+  display: grid;
+  grid-template-columns: 1.05fr .95fr .8fr .8fr .8fr;
+  gap: 10px;
+  align-items: end
+}
+
+.ship-calc .ship-inputs .field {
+  gap: 6px
+}
+
+.ship-calc .ship-inputs .field label {
+  min-height: auto;
+  font-size: 12px
+}
+
+.ship-calc .ship-inputs .field input,
+.ship-calc .ship-inputs .field select {
+  padding: 9px 11px;
+  font-size: 14px;
+  border-radius: 9px
+}
+
+.ship-calc .ship-inputs .field.ship-accent input {
+  background: linear-gradient(180deg, rgba(255, 200, 87, .18), rgba(255, 200, 87, .08));
+  border-color: rgba(255, 200, 87, .55);
+  color: var(--warn);
+  font-weight: 700
+}
+
+.ship-calc .ship-inputs .field.ship-accent input:focus {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 3px rgba(255, 200, 87, .22)
+}
+
+.ship-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px
+}
+
+.ship-kpi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(110, 168, 255, .09), rgba(138, 255, 207, .04));
+  border: 1px solid rgba(110, 168, 255, .18)
+}
+
+.ship-card-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1
+}
+
+.ship-kpi .label,
+.ship-result .eyebrow {
+  font-size: 12.5px;
+  letter-spacing: .4px;
+  color: var(--muted);
+  margin-bottom: 0;
+  font-weight: 600;
+  line-height: 1.25
+}
+
+.ship-kpi .value {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  text-align: right;
+  align-self: center;
+  flex: 0 0 auto
+}
+
+#shipActualKg,
+#shipVolWeight,
+#shipBand {
+  font-weight: 500
+}
+
+#shipChargeWeight {
+  color: var(--expense);
+  text-shadow: 0 0 18px rgba(240, 138, 134, .16)
+}
+
+.ship-kpi .meta,
+.ship-result .subline {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.45
+}
+
+.ship-reason-line {
+  display: block
+}
+
+.ship-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 14px
+}
+
+.ship-result-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 92px;
+  padding: 16px 14px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--panel2)
+}
+
+.ship-card-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding-right: 50px;
+  text-align: right
+}
+
+.ship-result .line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap
+}
+
+.ship-result .line {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2
+}
+
+.ship-result .line #shipFeeJpy,
+.ship-result .line #shipFeeCny {
+  color: var(--expense);
+  text-shadow: 0 0 18px rgba(240, 138, 134, .16)
+}
+
+.ship-result .line .unit {
+  font-size: 14px;
+  color: var(--muted);
+  margin-left: 0
+}
+
+.ship-result .subline {
+  margin-top: 0;
+  padding: 0;
+  max-width: 240px
+}
+
+.ship-inline-action {
+  padding: 4px 10px;
+  font-size: 11.5px;
+  line-height: 1.2
+}
+
+.ship-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px
+}
+
+.ship-alerts:empty {
+  display: none
+}
+
+.ship-alert {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(110, 168, 255, .06);
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6
+}
+
+.ship-alert.warn {
+  border-color: rgba(255, 200, 87, .34);
+  background: rgba(255, 200, 87, .10);
+  color: var(--text)
+}
+
+.ship-alert.error {
+  border-color: rgba(255, 107, 138, .34);
+  background: rgba(255, 107, 138, .10);
+  color: var(--text)
+}
+
+.ship-rate-wrap {
+  margin-top: 16px;
+  overflow-x: auto
+}
+
+.ship-rate-title {
+  margin-bottom: 10px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted)
+}
+
+table.ship-rate td,
+table.ship-rate th {
+  padding: 10px 8px
 }
 
 table.ship {
@@ -1026,6 +1752,46 @@ table.ship td.actual {
   .grid {
     grid-template-columns: 1fr
   }
+
+  .row.quad {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .calc-shared-grid,
+  .known-sale-grid {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .pricing-ship-inline-inputs {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+  }
+
+  .pricing-ship-inline-metrics {
+    grid-template-columns: .92fr .92fr 1.16fr
+  }
+
+  .pricing-ship-inline-summary {
+    grid-template-columns: 1.84fr 1.16fr
+  }
+
+  .pricing-ship-inline-summary-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+  }
+
+  .ship-inputs {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+  }
+
+  .ship-kpis {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .ship-kpi .value,
+  .ship-result .line,
+  .ship-result .line #shipFeeJpy,
+  .ship-result .line #shipFeeCny {
+    font-size: 18px
+  }
 }
 
 /* —— 响应式：手机 —— */
@@ -1074,8 +1840,66 @@ table.ship td.actual {
   }
 
   .row,
-  .row.triple {
+  .row.triple,
+  .row.quad {
     grid-template-columns: 1fr;
+    gap: 12px
+  }
+
+  .calc-toolbar {
+    align-items: stretch
+  }
+
+  .calc-tabbar {
+    width: 100%;
+  }
+
+  .calc-tabs {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+
+  .calc-tab {
+    flex: 1 1 auto;
+    text-align: center
+  }
+
+  .pricing-ship-inline-inputs {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .pricing-ship-inline-metrics {
+    grid-template-columns: 1fr
+  }
+
+  .pricing-ship-inline-summary {
+    grid-template-columns: 1fr
+  }
+
+  .pricing-ship-inline-summary-fields {
+    grid-template-columns: 1fr
+  }
+
+  .ship-inputs {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .calc-shared-grid,
+  .known-sale-grid {
+    grid-template-columns: 1fr
+  }
+
+  .known-sale-item .value {
+    font-size: 18px
+  }
+
+  .ship-result {
+    grid-template-columns: 1fr
+  }
+
+  .ship-kpi,
+  .ship-result-card {
     gap: 12px
   }
 
@@ -1090,12 +1914,13 @@ table.ship td.actual {
   .field input,
   .field select,
   .field textarea {
-    padding: 12px 13px;
+    padding: 10px 12px;
     font-size: 16px
   }
 
   .field.readonly input,
-  .field.primary input {
+  .field.primary input,
+  .field.success input {
     font-size: 19px
   }
 
@@ -1140,6 +1965,7 @@ table.ship td.actual {
     padding: 0 16px
   }
 
+  table.ship-rate,
   table.ship {
     min-width: 640px
   }

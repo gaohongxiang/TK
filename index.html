@@ -15,7 +15,7 @@
     <header>
       <div>
         <h1>TK 电商工具箱 <span id="module-title" style="opacity:.4">/ 利润计算器</span></h1>
-        <div class="sub" id="module-sub">TikTok Shop 日本跨境店 · 采购价 + 目标利润率 反推原价</div>
+        <div class="sub" id="module-sub">TikTok Shop 日本跨境店 · 定价旧 / 定价新 / 利润复盘</div>
       </div>
       <nav class="modules" aria-label="模块导航">
         <a href="#calc" data-view="calc" class="active">利润计算器</a>
@@ -28,100 +28,505 @@
        VIEW 1 · 利润计算器
        ============================================================ -->
     <div id="view-calc" class="view active">
-      <div class="grid">
-
-        <!-- 左侧：输入区 -->
-        <section class="card">
-          <h2>核心输入</h2>
-          <div class="row">
-            <div class="field primary">
-              <label for="cost">采购价（人民币 ¥）</label>
-              <input id="cost" type="number" step="0.01" min="0" inputmode="decimal" />
-            </div>
-            <div class="field">
-              <label for="targetMargin">目标利润率（倍）</label>
-              <input id="targetMargin" type="number" step="0.01" min="0" />
-              <div class="hint">人民币到手价 ÷ 采购价，例如 1.4 表示到手价 = 1.4 × 采购价</div>
-            </div>
+      <div class="calc-toolbar">
+        <div class="calc-tabbar">
+          <div class="calc-tabs" role="tablist" aria-label="利润计算模式">
+            <button type="button" class="calc-tab" data-calc-tab="pricing">定价旧</button>
+            <button type="button" class="calc-tab active" data-calc-tab="pricingNew">定价新</button>
+            <button type="button" class="calc-tab" data-calc-tab="review">利润复盘</button>
           </div>
+          <button id="calc-help-btn" type="button" class="calc-help-icon" aria-controls="calc-help-modal"
+            aria-haspopup="dialog" aria-label="模式说明" title="模式说明">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.5 4.5h8a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2h-9a2 2 0 0 0-2 2v-11a3 3 0 0 1 2-3Z" />
+              <path d="M8.5 8.25h6.5M8.5 11.25h6.5M8.5 14.25h4.5" />
+            </svg>
+          </button>
+        </div>
+      </div>
 
-          <div class="row">
-            <div class="field">
-              <label for="anchor">基准折扣档位</label>
-              <select id="anchor"></select>
-              <div class="hint">以该档位为目标利润率的基准来反推原价</div>
-            </div>
-            <div class="field readonly">
-              <label for="origPrice">商品原价（円）<span class="kbd">可手动覆盖</span></label>
-              <input id="origPrice" type="number" step="1" min="0" />
-            </div>
-          </div>
+      <div class="calc-panel" id="calc-panel-pricing">
+        <div class="grid">
 
-          <details open style="margin-top:16px">
-            <summary>⚙️ 全局参数（平台手续费 / 汇率 / 运费 / 折扣档位）</summary>
-
-            <div class="row triple" style="margin-top:10px">
-              <div class="field">
-                <label for="fee">TK 平台手续费（%）<span class="var">fee</span></label>
-                <input id="fee" type="number" step="0.01" min="0" max="100" />
+          <section class="card">
+            <h2>核心输入</h2>
+            <div class="row">
+              <div class="field primary">
+                <label for="cost">采购价（人民币 ¥）</label>
+                <input id="cost" type="text" inputmode="decimal" autocomplete="off" />
               </div>
               <div class="field">
-                <label for="rate">日元汇率（1元 = ? 円）<span class="var">rate</span></label>
-                <input id="rate" type="number" step="0.01" min="0" />
+                <label for="targetMargin">目标利润率（倍）</label>
+                <input id="targetMargin" type="text" inputmode="decimal" autocomplete="off" />
+                <div class="hint">人民币到手价 ÷ 采购价，例如 1.4 表示到手价 = 1.4 × 采购价</div>
               </div>
+            </div>
+
+            <div class="row">
               <div class="field">
-                <label for="shipping">100g 运费+贴单费（¥）<span class="var">ship</span></label>
-                <input id="shipping" type="number" step="0.01" min="0" />
+                <label for="anchor">基准折扣档位</label>
+                <select id="anchor"></select>
+                <div class="hint">以该档位为目标利润率的基准来反推原价</div>
+              </div>
+              <div class="field readonly">
+                <label for="origPrice">商品原价（円）<span class="kbd">可手动覆盖</span></label>
+                <input id="origPrice" type="text" inputmode="decimal" autocomplete="off" />
               </div>
             </div>
 
-            <div class="row" style="margin-top:12px">
-              <div class="field" style="grid-column:1/-1">
-                <label for="discounts">折扣档位（逗号分隔，例如 0.35,0.38,0.4,0.42,0.45,0.48,0.5）</label>
-                <input id="discounts" type="text" />
-                <div class="hint">支持填 0.38 或 38%；任意增删档位都可以。</div>
+            <details open style="margin-top:16px">
+              <summary>⚙️ 全局参数（平台手续费 / 汇率 / 运费 / 折扣档位）</summary>
+
+              <div class="row triple" style="margin-top:10px">
+                <div class="field">
+                  <label for="fee">TK 平台手续费（%）<span class="var">fee</span></label>
+                  <input id="fee" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="rate">日元汇率（1元 = ? 円）<span class="var">rate</span></label>
+                  <input id="rate" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="shipping">100g 运费+贴单费（¥）<span class="var">ship</span></label>
+                  <input id="shipping" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+              </div>
+
+              <div class="row" style="margin-top:12px">
+                <div class="field" style="grid-column:1/-1">
+                  <label for="discounts">折扣档位（逗号分隔，例如 0.35,0.38,0.4,0.42,0.45,0.48,0.5）</label>
+                  <input id="discounts" type="text" />
+                  <div class="hint">支持填 0.38 或 38%；任意增删档位都可以。</div>
+                </div>
+              </div>
+            </details>
+          </section>
+
+          <section class="card">
+            <h2>各折扣档位定价 / 利润一览</h2>
+            <table class="mono calc-result-table">
+              <thead>
+                <tr>
+                  <th>折扣</th>
+                  <th>日元售价</th>
+                  <th>人民币到手</th>
+                  <th>利润率</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+
+            <div class="calc-formula-block">
+              <div class="calc-formula-title">◇
+                公式
+              </div>
+              <div class="calc-formula-list"
+                style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:8px 12px">
+                <div>日元售价 = 原价 × 折扣 × (1 − fee)</div>
+                <div>人民币到手 = 日元售价 ÷ rate − ship</div>
+                <div>利润率 = 人民币到手 ÷ 采购价</div>
+                <div>原价反推 = (采购价 × 目标利润率 + ship) × rate ÷ [基准折扣 × (1 − fee)]</div>
               </div>
             </div>
-          </details>
-        </section>
+          </section>
 
-        <!-- 右侧：结果表 -->
-        <section class="card">
-          <h2>各折扣档位定价 / 利润一览</h2>
-          <table class="mono">
+        </div>
+      </div>
+
+      <div class="calc-panel active" id="calc-panel-pricing-new">
+        <div class="grid">
+
+          <section class="card">
+            <h2>定价输入</h2>
+            <div class="row triple">
+              <div class="field expense-field">
+                <label for="costNew">采购价 ¥</label>
+                <input id="costNew" type="text" inputmode="decimal" autocomplete="off" />
+              </div>
+              <div class="field expense-field">
+                <label for="overseasShippingNew">海外运费 ¥</label>
+                <input id="overseasShippingNew" type="text" inputmode="decimal" autocomplete="off" />
+              </div>
+              <div class="field expense-field">
+                <label for="totalCostNew">总费用 ¥<span class="var">采购价+海外运费</span></label>
+                <input id="totalCostNew" type="number" step="0.01" min="0" readonly />
+              </div>
+            </div>
+
+            <div class="pricing-ship-inline">
+              <div class="pricing-ship-inline-title-row">
+                <div class="pricing-ship-inline-title">海外运费计算器</div>
+                <div class="pricing-ship-inline-tip">点击计算结果可回填到海外运费框</div>
+                <div class="pricing-ship-inline-alert mono" id="shipChargeReasonNew"></div>
+              </div>
+              <div class="pricing-ship-inline-inputs">
+                <div class="field">
+                  <label for="shipCargoTypeNew">货物类型</label>
+                  <select id="shipCargoTypeNew">
+                    <option value="general">普货</option>
+                    <option value="special">特货</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="shipActualWeightNew">实重（g）</label>
+                  <input id="shipActualWeightNew" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="shipLengthNew">长（cm）</label>
+                  <input id="shipLengthNew" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="shipWidthNew">宽（cm）</label>
+                  <input id="shipWidthNew" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="shipHeightNew">高（cm）</label>
+                  <input id="shipHeightNew" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+              </div>
+              <div class="pricing-ship-inline-metrics">
+                <div class="pricing-ship-inline-item">
+                  <div class="pricing-ship-inline-head">
+                    <span class="k">实重</span>
+                    <span class="v mono" id="shipActualKgNew">-</span>
+                  </div>
+                  <span class="pricing-ship-inline-rule mono" id="shipActualRuleNew">按输入重量换算</span>
+                </div>
+                <div class="pricing-ship-inline-item">
+                  <div class="pricing-ship-inline-head">
+                    <span class="k">体积重</span>
+                    <span class="v mono" id="shipVolWeightNew">-</span>
+                  </div>
+                  <span class="pricing-ship-inline-rule mono" id="shipVolFormulaNew">长 × 宽 × 高 ÷ 8000</span>
+                </div>
+                <div class="pricing-ship-inline-item">
+                  <div class="pricing-ship-inline-head">
+                    <span class="k">计费重</span>
+                    <span class="v mono" id="shipChargeWeightNew">-</span>
+                  </div>
+                  <span class="pricing-ship-inline-rule mono" id="shipChargeRuleNew">输入实重和尺寸后显示计费依据</span>
+                </div>
+              </div>
+              <div class="pricing-ship-inline-summary">
+                <div class="pricing-ship-inline-summary-fields">
+                  <div class="field">
+                    <label for="shipBandNew">命中价卡区间</label>
+                    <input id="shipBandNew" type="text" readonly />
+                  </div>
+                  <div class="field">
+                    <label for="shippingMultiplierNew">运费倍率</label>
+                    <input id="shippingMultiplierNew" type="text" inputmode="decimal" autocomplete="off" />
+                  </div>
+                  <div class="field">
+                    <label for="labelFeeNew">贴单费 ¥</label>
+                    <input id="labelFeeNew" type="text" inputmode="decimal" autocomplete="off" />
+                  </div>
+                </div>
+                <div id="importShippingNew"
+                  class="pricing-ship-inline-price pricing-ship-inline-price-clickable expense" title="点击导入到上方海外运费">
+                  <span class="v mono" id="shipFeeCnyNew">-</span>
+                </div>
+              </div>
+              <div class="pricing-ship-inline-formula mono" id="shipFeeFormulaNew">海外运费 =（基础费 + 每千克重量费 × 千克 - 用户承担）×
+                运费倍率 / 汇率</div>
+            </div>
+
+            <div style="margin-top:18px">
+              <div class="row quad">
+                <div class="field">
+                  <label for="anchorNew">基准折扣档位</label>
+                  <select id="anchorNew"></select>
+                  <div class="hint">以该档位为目标利润率的基准来反推原价</div>
+                </div>
+                <div class="field">
+                  <label for="targetMarginNew">目标利润率（倍）</label>
+                  <input id="targetMarginNew" type="text" inputmode="decimal" autocomplete="off" />
+                  <div class="hint">总费用的多少倍</div>
+                </div>
+                <div class="field">
+                  <label for="feeNew">TK 平台手续费（%）</label>
+                  <input id="feeNew" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="rateNew">日元汇率</label>
+                  <input id="rateNew" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+              </div>
+
+              <div class="row" style="margin-top:24px">
+                <div class="field" style="grid-column:1/-1">
+                  <label for="discountsNew">折扣档位（逗号分隔，例如 0.35,0.4,0.5）支持填 0.38 或 38%；任意增删档位都可以。</label>
+                  <input id="discountsNew" type="text" />
+                </div>
+              </div>
+            </div>
+
+            <div hidden aria-hidden="true">
+              <input id="origPriceNew" type="text" inputmode="decimal" autocomplete="off" />
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>各折扣档位定价 / 利润一览</h2>
+            <table class="mono calc-result-table">
+              <thead>
+                <tr>
+                  <th>折扣</th>
+                  <th>日元售价</th>
+                  <th>人民币到手</th>
+                  <th>利润</th>
+                  <th>利润率</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyNew"></tbody>
+            </table>
+
+            <div class="calc-formula-block">
+              <div class="calc-formula-title">◇
+                公式
+              </div>
+              <div class="calc-formula-list">
+                <div>日元售价 = 原价 × 折扣 × (1 − 平台手续费)</div>
+                <div>海外运费 =（基础费 + 每千克重量费 × 计费重 − 用户承担）× 运费倍率 ÷ 汇率 + 贴单费</div>
+                <div>总费用 = 采购价 + 海外运费</div>
+                <div>人民币到手 = 日元售价 ÷ 汇率</div>
+                <div>利润 = 人民币到手 − 总费用</div>
+                <div>利润率 = 人民币到手 ÷ 总费用</div>
+                <div>原价反推 = 总费用 × 目标利润率 × 汇率 ÷ [基准折扣 × (1 − 平台手续费)]</div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+
+      <div class="calc-panel" id="calc-panel-review">
+        <div class="grid">
+          <section class="card">
+            <h2>成交输入</h2>
+            <div class="row">
+              <div class="field success">
+                <label for="salePrice">实际售价（円）</label>
+                <input id="salePrice" type="text" inputmode="decimal" autocomplete="off" />
+              </div>
+              <div class="field expense-field">
+                <label for="totalCostReview">总费用 ¥<span class="var">采购价+海外运费</span></label>
+                <input id="totalCostReview" type="number" step="0.01" min="0" readonly />
+              </div>
+            </div>
+
+            <div style="margin-top:18px">
+              <div class="row">
+                <div class="field expense-field">
+                  <label for="costReview">采购价 ¥</label>
+                  <input id="costReview" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+                <div class="field expense-field">
+                  <label for="shippingReview">海外运费 ¥</label>
+                  <input id="shippingReview" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+              </div>
+            </div>
+
+            <div class="pricing-ship-inline" style="margin-top:18px">
+              <div class="pricing-ship-inline-title-row">
+                <div class="pricing-ship-inline-title">海外运费计算器</div>
+                <div class="pricing-ship-inline-tip">点击计算结果可回填到海外运费框</div>
+                <div class="pricing-ship-inline-alert mono" id="shipChargeReasonReview"></div>
+              </div>
+              <div class="pricing-ship-inline-inputs">
+                <div class="field">
+                  <label for="shipCargoTypeReview">货物类型</label>
+                  <select id="shipCargoTypeReview">
+                    <option value="general">普货</option>
+                    <option value="special">特货</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="shipActualWeightReviewCalc">实重（g）</label>
+                  <input id="shipActualWeightReviewCalc" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="shipLengthReviewCalc">长（cm）</label>
+                  <input id="shipLengthReviewCalc" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="shipWidthReviewCalc">宽（cm）</label>
+                  <input id="shipWidthReviewCalc" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+                <div class="field">
+                  <label for="shipHeightReviewCalc">高（cm）</label>
+                  <input id="shipHeightReviewCalc" type="text" inputmode="decimal" autocomplete="off" />
+                </div>
+              </div>
+              <div class="pricing-ship-inline-metrics">
+                <div class="pricing-ship-inline-item">
+                  <div class="pricing-ship-inline-head">
+                    <span class="k">实重</span>
+                    <span class="v mono" id="shipActualKgReview">-</span>
+                  </div>
+                  <span class="pricing-ship-inline-rule mono" id="shipActualRuleReview">按输入重量换算</span>
+                </div>
+                <div class="pricing-ship-inline-item">
+                  <div class="pricing-ship-inline-head">
+                    <span class="k">体积重</span>
+                    <span class="v mono" id="shipVolWeightReview">-</span>
+                  </div>
+                  <span class="pricing-ship-inline-rule mono" id="shipVolFormulaReview">长 × 宽 × 高 ÷ 8000</span>
+                </div>
+                <div class="pricing-ship-inline-item">
+                  <div class="pricing-ship-inline-head">
+                    <span class="k">计费重</span>
+                    <span class="v mono" id="shipChargeWeightReview">-</span>
+                  </div>
+                  <span class="pricing-ship-inline-rule mono" id="shipChargeRuleReview">输入实重和尺寸后显示计费依据</span>
+                </div>
+              </div>
+              <div class="pricing-ship-inline-summary">
+                <div class="pricing-ship-inline-summary-fields">
+                  <div class="field">
+                    <label for="shipBandReview">命中价卡区间</label>
+                    <input id="shipBandReview" type="text" readonly />
+                  </div>
+                  <div class="field">
+                    <label for="shippingMultiplierReview">运费倍率</label>
+                    <input id="shippingMultiplierReview" type="text" inputmode="decimal" autocomplete="off" />
+                  </div>
+                  <div class="field">
+                    <label for="labelFeeReview">贴单费 ¥</label>
+                    <input id="labelFeeReview" type="text" inputmode="decimal" autocomplete="off" />
+                  </div>
+                </div>
+                <div id="importShippingReview"
+                  class="pricing-ship-inline-price pricing-ship-inline-price-clickable expense" title="点击导入到上方海外运费">
+                  <span class="v mono" id="shipFeeCnyReview">-</span>
+                </div>
+              </div>
+              <div class="pricing-ship-inline-formula mono" id="shipFeeFormulaReview">海外运费 =（基础费 + 每千克重量费 × 千克 - 用户承担）×
+                运费倍率 / 汇率</div>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>利润复盘</h2>
+            <div class="known-sale-grid review-metrics">
+              <div class="known-sale-item">
+                <div class="label">人民币到手</div>
+                <div class="value mono" id="saleNet">-</div>
+              </div>
+              <div class="known-sale-item">
+                <div class="label">利润</div>
+                <div class="value mono" id="saleProfit">-</div>
+              </div>
+              <div class="known-sale-item">
+                <div class="label">利润率</div>
+                <div class="value mono" id="saleMargin">-</div>
+              </div>
+            </div>
+
+            <div class="review-formula mono">
+              <div>人民币到手 = 实际售价 ÷ 日元汇率</div>
+              <div>总费用 = 采购价 + 海外运费</div>
+              <div>利润 = 人民币到手 − 总费用</div>
+              <div>利润率 = 人民币到手 ÷ 总费用</div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <section class="card ship-calc">
+        <h2>📦 新版海外运费参考表</h2>
+
+        <div class="ship-meta">
+          <span><b>使用新规</b> 2026/04/24 00:00（GMT+8）起生效</span>
+          <span class="sep">•</span>
+          <span>50g 起重，按 g 计费</span>
+          <span class="sep">•</span>
+          <span>当体积重 &gt; 1.5 × 实重时，按体积重计费</span>
+        </div>
+
+        <div class="ship-note">
+          <div class="title">注意事项</div>
+          <div class="text">计泡会直接影响运费，打包时请尽量包好边角；若包裹边角外凸或形状不规整，平台可能按最长边计算体积重，从而产生额外费用。</div>
+          <div class="text">硬盒包装、气泡柱包装、大件轻泡品，以及虽非盒装但有明显框架、不可压缩的包裹，建议重点关注。</div>
+        </div>
+
+        <div class="ship-rate-wrap">
+          <div class="ship-rate-title">2026/04/24 起新版价卡</div>
+          <table class="ship ship-rate mono">
             <thead>
               <tr>
-                <th>折扣</th>
-                <th>日元售价</th>
-                <th>人民币到手</th>
-                <th>利润率</th>
+                <th>重量区间</th>
+                <th>普货基础费</th>
+                <th>普货重量费</th>
+                <th>特货基础费</th>
+                <th>特货重量费</th>
               </tr>
             </thead>
-            <tbody id="tbody"></tbody>
+            <tbody>
+              <tr>
+                <td class="w">0 - 0.5 kg</td>
+                <td>545 円</td>
+                <td>340 円/kg</td>
+                <td>555 円</td>
+                <td>400 円/kg</td>
+              </tr>
+              <tr>
+                <td class="w">0.5 - 1 kg</td>
+                <td>560 円</td>
+                <td>340 円/kg</td>
+                <td>580 円</td>
+                <td>420 円/kg</td>
+              </tr>
+              <tr>
+                <td class="w">1 - 2 kg</td>
+                <td>590 円</td>
+                <td>340 円/kg</td>
+                <td>610 円</td>
+                <td>420 円/kg</td>
+              </tr>
+              <tr>
+                <td class="w">2 - 5 kg</td>
+                <td>590 円</td>
+                <td>405 円/kg</td>
+                <td>610 円</td>
+                <td>510 円/kg</td>
+              </tr>
+              <tr>
+                <td class="w">5 - 10 kg</td>
+                <td>590 円</td>
+                <td>415 円/kg</td>
+                <td>610 円</td>
+                <td>525 円/kg</td>
+              </tr>
+              <tr>
+                <td class="w">10 - 20 kg</td>
+                <td>590 円</td>
+                <td>425 円/kg</td>
+                <td>610 円</td>
+                <td>535 円/kg</td>
+              </tr>
+              <tr>
+                <td class="w">20 - 30 kg</td>
+                <td>590 円</td>
+                <td>435 円/kg</td>
+                <td>610 円</td>
+                <td>545 円/kg</td>
+              </tr>
+            </tbody>
           </table>
+        </div>
 
-          <!-- 公式（简洁版） -->
-          <div style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--border);color:var(--muted)">
-            <div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;opacity:.7">◇ 公式
-            </div>
-            <div
-              style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:8px 12px;font:11.5px/1.4 ui-monospace,Consolas,monospace">
-              <div>日元售价 = 原价 × 折扣 × (1 − <span class="var">fee</span>)</div>
-              <div>人民币到手 = 日元售价 ÷ <span class="var">rate</span> − <span class="var">ship</span></div>
-              <div>利润率 = 人民币到手 ÷ 采购价</div>
-              <div>原价反推 = (采购价 × 目标利润率 + <span class="var">ship</span>) × <span class="var">rate</span> ÷ [基准折扣 × (1 −
-                <span class="var">fee</span>)]
-              </div>
-            </div>
-          </div>
-
-        </section>
-
-      </div>
+      </section>
 
       <!-- 物流运费参考表（静态，用户参考用） -->
       <section class="card ship-ref">
-        <h2>📦 物流运费参考表</h2>
+        <h2>📦 旧版海外运费参考表</h2>
+        <div class="ship-meta">
+          <span><b>仅保留对照</b> 以下为旧版参考表</span>
+          <span class="sep">•</span>
+          <span>2026/04/24 00:00（GMT+8）起请以上方新版价卡为准</span>
+        </div>
         <table class="ship mono">
           <thead>
             <tr>
@@ -219,6 +624,29 @@
           </tbody>
         </table>
       </section>
+
+      <div id="calc-help-modal" class="modal-mask" role="dialog" aria-modal="true" aria-labelledby="calc-help-title">
+        <div class="modal" style="max-width:560px">
+          <h3 id="calc-help-title">定价旧 / 定价新 / 利润复盘有什么区别？</h3>
+          <div class="calc-help-copy">
+            <div class="calc-help-item">
+              <div class="k">定价旧</div>
+              <div class="v">旧版定价逻辑，独立使用旧口径的采购价、手续费、汇率和运费参数来反推原价。它不和定价新、利润复盘共用逻辑，后续也可能被移除。</div>
+            </div>
+            <div class="calc-help-item">
+              <div class="k">定价新</div>
+              <div class="v">新版定价逻辑，按采购价、海外运费和新版运费口径来计算总费用，再结合折扣、平台手续费和汇率反推原价。</div>
+            </div>
+            <div class="calc-help-item">
+              <div class="k">利润复盘</div>
+              <div class="v">适合订单已经成交、商品售价已经确定时使用。按新版定价口径，基于采购价、海外运费和实际售价，直接复盘人民币到手、利润和利润率。</div>
+            </div>
+          </div>
+          <div class="actions">
+            <button id="calc-help-close" type="button" class="btn primary">知道了</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ============================================================

@@ -4,7 +4,7 @@
 document.getElementById('yr').textContent = new Date().getFullYear();
 
 const MODULES = {
-  calc: { title: '/ 利润计算器', sub: 'TikTok Shop 日本跨境店 · 采购价 + 目标利润率 反推原价' },
+  calc: { title: '/ 利润计算器', sub: 'TikTok Shop 日本跨境店 · 定价 / 利润复盘' },
   orders: { title: '/ 订单跟踪器', sub: 'TikTok Shop 日本跨境店 · 采购 / 物流 / 入仓 进度追踪' }
 };
 
@@ -23,4 +23,3 @@ window.addEventListener('hashchange', () => {
   const key = (location.hash || '#calc').slice(1);
   switchView(key);
 });
-

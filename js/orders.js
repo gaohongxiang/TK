@@ -1,15 +1,39 @@
 /* ============================================================
- * 模块 2：订单跟踪器（GitHub Gist 存储，多用户隔离）
+ * 模块 2：订单跟踪器（IndexedDB 本地优先 + GitHub Gist 同步）
  * ============================================================ */
 const OrderTracker = (function () {
   const LS_KEY = 'tk.orders.cfg.v1';
   const LS_ACC_KEY = 'tk.orders.accounts.v1';
   const GIST_FILENAME = 'tk-order-tracker.json';
+  const CACHE_DB_NAME = 'tk-toolbox-cache';
+  const CACHE_STORE = 'order-tracker-sessions';
+  const CACHE_VERSION = 1;
+  const REMOTE_DATA_VERSION = 2;
+  const SYNC_DEBOUNCE_MS = 700;
 
-  const state = { token: '', gistId: '', user: '', orders: [], editingId: null, loaded: false, accounts: [], activeAccount: null, sortOrder: 'asc' };
+  const state = {
+    token: '',
+    gistId: '',
+    user: '',
+    orders: [],
+    editingId: null,
+    loaded: false,
+    accounts: [],
+    activeAccount: null,
+    sortOrder: 'asc',
+    dirty: false,
+    localUpdatedAt: '',
+    lastRemoteUpdatedAt: '',
+    lastSyncedAt: '',
+    localRevision: 0
+  };
 
   const $ = sel => document.querySelector(sel);
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  let dbPromise = null;
+  let syncTimer = null;
+  let syncInFlight = false;
+  let syncQueued = false;
 
   /* ---------- util ---------- */
   function toast(msg, type = 'ok') {
@@ -33,6 +57,98 @@ const OrderTracker = (function () {
     try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); }
     catch (e) { return null; }
   }
+  function nowIso() {
+    return new Date().toISOString();
+  }
+  function getCacheKey(gistId = state.gistId) {
+    return gistId ? `gist:${gistId}` : '';
+  }
+  async function openCacheDb() {
+    if (typeof indexedDB === 'undefined') return null;
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(CACHE_DB_NAME, CACHE_VERSION);
+      req.onerror = () => reject(req.error || new Error('IndexedDB 打开失败'));
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(CACHE_STORE)) {
+          db.createObjectStore(CACHE_STORE, { keyPath: 'key' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+    }).catch(err => {
+      dbPromise = null;
+      throw err;
+    });
+    return dbPromise;
+  }
+  async function readCacheRecord(gistId = state.gistId) {
+    const key = getCacheKey(gistId);
+    if (!key) return null;
+    const db = await openCacheDb();
+    if (!db) return null;
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(CACHE_STORE, 'readonly');
+      const store = tx.objectStore(CACHE_STORE);
+      const req = store.get(key);
+      req.onerror = () => reject(req.error || new Error('读取本地缓存失败'));
+      req.onsuccess = () => resolve(req.result || null);
+    });
+  }
+  async function writeCacheRecord() {
+    const key = getCacheKey();
+    if (!key) return false;
+    const db = await openCacheDb();
+    if (!db) return false;
+    const record = {
+      key,
+      gistId: state.gistId,
+      version: REMOTE_DATA_VERSION,
+      orders: state.orders,
+      dirty: !!state.dirty,
+      localUpdatedAt: state.localUpdatedAt || '',
+      lastRemoteUpdatedAt: state.lastRemoteUpdatedAt || '',
+      lastSyncedAt: state.lastSyncedAt || '',
+      cachedAt: nowIso()
+    };
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(CACHE_STORE, 'readwrite');
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error || new Error('写入本地缓存失败'));
+      tx.objectStore(CACHE_STORE).put(record);
+    });
+    return true;
+  }
+  function applyCacheRecord(record) {
+    state.orders = Array.isArray(record?.orders) ? record.orders : [];
+    state.dirty = !!record?.dirty;
+    state.localUpdatedAt = record?.localUpdatedAt || '';
+    state.lastRemoteUpdatedAt = record?.lastRemoteUpdatedAt || '';
+    state.lastSyncedAt = record?.lastSyncedAt || '';
+    state.localRevision = 0;
+  }
+  async function persistCache() {
+    try {
+      await writeCacheRecord();
+      return true;
+    } catch (e) {
+      setSync('本地缓存写入失败', 'error');
+      toast('本地缓存写入失败: ' + e.message, 'error');
+      return false;
+    }
+  }
+  async function hydrateCache(gistId = state.gistId) {
+    try {
+      const record = await readCacheRecord(gistId);
+      if (!record) return false;
+      applyCacheRecord(record);
+      return true;
+    } catch (e) {
+      setSync('本地缓存读取失败', 'error');
+      toast('本地缓存读取失败: ' + e.message, 'error');
+      return false;
+    }
+  }
 
   /* ---------- 账号历史记忆 ---------- */
   function loadAccounts() {
@@ -55,7 +171,6 @@ const OrderTracker = (function () {
   function removeAccount(acc) {
     state.accounts = state.accounts.filter(a => a !== acc);
     saveAccounts();
-    renderAccDropdown();
   }
   function promptAddAccount(initialValue = '', title = '添加新账号') {
     return new Promise(resolve => {
@@ -172,48 +287,147 @@ const OrderTracker = (function () {
     const g = await gh('POST', '/gists', {
       description: 'TK Toolbox · Order Tracker Data (private)',
       public: false,
-      files: { [GIST_FILENAME]: { content: JSON.stringify({ version: 1, orders: [] }, null, 2) } }
+      files: { [GIST_FILENAME]: { content: JSON.stringify({ version: REMOTE_DATA_VERSION, updatedAt: nowIso(), orders: [] }, null, 2) } }
     });
     return g.id;
   }
-  async function loadFromGist() {
-    setSync('加载中…', 'saving');
-    try {
-      const g = await gh('GET', '/gists/' + state.gistId);
-      let file = g.files[GIST_FILENAME];
-      if (!file) {
-        // 兼容旧文件名
-        const firstKey = Object.keys(g.files)[0];
-        file = firstKey ? g.files[firstKey] : null;
-      }
-      if (!file) { state.orders = []; }
-      else {
-        let content = file.content;
-        if (file.truncated && file.raw_url) {
-          const r = await fetch(file.raw_url);
-          content = await r.text();
-        }
-        const data = JSON.parse(content || '{}');
-        state.orders = Array.isArray(data.orders) ? data.orders : [];
-      }
-      setSync(`已同步 · ${state.orders.length} 条`, 'saved');
-    } catch (e) {
-      setSync('加载失败', 'error');
-      toast('加载失败: ' + e.message, 'error');
-      throw e;
-    }
+  function normalizeRemoteSnapshot(data, gistUpdatedAt = '') {
+    return {
+      version: typeof data?.version === 'number' ? data.version : 1,
+      updatedAt: (typeof data?.updatedAt === 'string' && data.updatedAt) ? data.updatedAt : gistUpdatedAt,
+      orders: Array.isArray(data?.orders) ? data.orders : []
+    };
   }
-  async function saveToGist() {
-    setSync('保存中…', 'saving');
+  async function fetchGistSnapshot() {
+    const g = await gh('GET', '/gists/' + state.gistId);
+    let file = g.files[GIST_FILENAME];
+    if (!file) {
+      const firstKey = Object.keys(g.files)[0];
+      file = firstKey ? g.files[firstKey] : null;
+    }
+    if (!file) return normalizeRemoteSnapshot({ version: REMOTE_DATA_VERSION, orders: [] }, g.updated_at || '');
+
+    let content = file.content;
+    if (file.truncated && file.raw_url) {
+      const r = await fetch(file.raw_url);
+      content = await r.text();
+    }
+    const data = JSON.parse(content || '{}');
+    return normalizeRemoteSnapshot(data, g.updated_at || '');
+  }
+  function buildRemotePayload() {
+    return {
+      version: REMOTE_DATA_VERSION,
+      updatedAt: state.localUpdatedAt || nowIso(),
+      orders: state.orders
+    };
+  }
+  async function pushStateToGist(payload = buildRemotePayload()) {
+    await gh('PATCH', '/gists/' + state.gistId, {
+      files: { [GIST_FILENAME]: { content: JSON.stringify(payload, null, 2) } }
+    });
+    return payload;
+  }
+  function applyRemoteSnapshot(snapshot) {
+    state.orders = snapshot.orders;
+    state.localUpdatedAt = snapshot.updatedAt || nowIso();
+    state.lastRemoteUpdatedAt = snapshot.updatedAt || '';
+    state.lastSyncedAt = nowIso();
+    state.dirty = false;
+    state.localRevision = 0;
+  }
+  async function applyAndRenderRemoteSnapshot(snapshot) {
+    applyRemoteSnapshot(snapshot);
+    await persistCache();
+    renderAccTabs();
+    renderTable();
+  }
+  function renderLocalOrders(statusText, statusClass = 'local') {
+    renderAccTabs();
+    renderTable();
+    setSync(statusText, statusClass);
+  }
+  function markOrdersDirty() {
+    state.dirty = true;
+    state.localUpdatedAt = nowIso();
+    state.localRevision += 1;
+  }
+  function queueSync(delay = SYNC_DEBOUNCE_MS) {
+    if (!state.token || !state.gistId) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+      syncTimer = null;
+      void syncNow();
+    }, delay);
+  }
+  async function commitLocalOrders(statusText = '已保存到本地，等待同步…') {
+    renderLocalOrders(statusText, 'local');
+    await persistCache();
+    queueSync();
+  }
+  async function syncNow({ forcePull = false } = {}) {
+    if (!state.token || !state.gistId) return false;
+    if (syncInFlight) {
+      syncQueued = true;
+      return false;
+    }
+    if (syncTimer) {
+      clearTimeout(syncTimer);
+      syncTimer = null;
+    }
+
+    syncInFlight = true;
     try {
-      await gh('PATCH', '/gists/' + state.gistId, {
-        files: { [GIST_FILENAME]: { content: JSON.stringify({ version: 1, orders: state.orders }, null, 2) } }
-      });
+      if (state.dirty) {
+        setSync('正在同步到 Gist…', 'saving');
+        const remote = await fetchGistSnapshot();
+        const remoteUpdatedAt = remote.updatedAt || '';
+        const knownRemoteUpdatedAt = state.lastRemoteUpdatedAt || '';
+        if (knownRemoteUpdatedAt && remoteUpdatedAt && remoteUpdatedAt !== knownRemoteUpdatedAt) {
+          setSync('云端有更新，请先刷新', 'error');
+          toast('检测到另一端已修改 Gist，当前未自动覆盖，请先点刷新。', 'error');
+          return false;
+        }
+
+        const payload = buildRemotePayload();
+        const syncedRevision = state.localRevision;
+        await pushStateToGist(payload);
+        state.lastSyncedAt = nowIso();
+        state.lastRemoteUpdatedAt = payload.updatedAt;
+        if (state.localRevision === syncedRevision) {
+          state.localUpdatedAt = payload.updatedAt;
+          state.dirty = false;
+        } else {
+          state.dirty = true;
+          syncQueued = true;
+        }
+        await persistCache();
+        setSync(state.dirty ? '本地已更新，继续等待同步…' : `已同步 · ${state.orders.length} 条`, state.dirty ? 'saving' : 'saved');
+        return !state.dirty;
+      }
+
+      setSync(forcePull ? '正在刷新云端数据…' : '正在检查云端更新…', 'saving');
+      const remote = await fetchGistSnapshot();
+      const remoteUpdatedAt = remote.updatedAt || '';
+      const shouldApplyRemote = forcePull
+        || !state.lastRemoteUpdatedAt
+        || remoteUpdatedAt !== state.lastRemoteUpdatedAt;
+
+      if (shouldApplyRemote) {
+        await applyAndRenderRemoteSnapshot(remote);
+      }
       setSync(`已同步 · ${state.orders.length} 条`, 'saved');
+      return true;
     } catch (e) {
-      setSync('保存失败', 'error');
-      toast('保存失败: ' + e.message, 'error');
-      throw e;
+      setSync(state.dirty ? '同步失败，已保留本地缓存' : '加载失败', 'error');
+      toast((state.dirty ? '同步失败' : '加载失败') + ': ' + e.message, 'error');
+      return false;
+    } finally {
+      syncInFlight = false;
+      if (syncQueued) {
+        syncQueued = false;
+        void syncNow();
+      }
     }
   }
 
@@ -284,9 +498,9 @@ const OrderTracker = (function () {
       });
 
       if (state.activeAccount === oldName) state.activeAccount = newName;
-      renderAccTabs();
-      renderTable();
-      saveToGist().then(() => toast('已重命名账号', 'ok')).catch(() => { });
+      markOrdersDirty();
+      await commitLocalOrders('账号已重命名，等待同步…');
+      toast('已重命名账号', 'ok');
     }
 
     // 点击/双击切换和重命名
@@ -340,9 +554,9 @@ const OrderTracker = (function () {
         removeAccount(acc);
         // 重置选中
         if (state.activeAccount === acc) state.activeAccount = '__all__';
-        renderAccTabs();
-        renderTable();
-        saveToGist().then(() => toast('已删除该账号标记', 'ok')).catch(() => { });
+        markOrdersDirty();
+        void commitLocalOrders('账号标记已更新，等待同步…');
+        toast('已删除该账号标记', 'ok');
       });
     });
     const addBtn = container.querySelector('#ot-tab-add');
@@ -370,7 +584,7 @@ const OrderTracker = (function () {
         : state.orders;
 
     if (!filtered.length) {
-      const msg = state.activeAccount
+      const msg = (state.activeAccount && state.activeAccount !== '__all__')
         ? `账号「${escapeHtml(state.activeAccount)}」下还没有订单`
         : '还没有订单';
       wrap.innerHTML = `
@@ -517,16 +731,16 @@ const OrderTracker = (function () {
       state.orders.unshift({ id: uid(), ...obj });
     }
     closeModal();
-    renderAccTabs();
-    renderTable();
-    try { await saveToGist(); toast('已保存到 Gist', 'ok'); } catch (e) { }
+    markOrdersDirty();
+    await commitLocalOrders('已保存到本地，等待同步…');
+    toast('已保存到本地', 'ok');
   }
   async function deleteOrder(id) {
     if (!confirm('确定删除这条订单？删除后需要手动从 Gist 历史恢复。')) return;
     state.orders = state.orders.filter(o => o.id !== id);
-    renderAccTabs();
-    renderTable();
-    try { await saveToGist(); toast('已删除', 'ok'); } catch (e) { }
+    markOrdersDirty();
+    await commitLocalOrders('已删除，本地已更新，等待同步…');
+    toast('已删除', 'ok');
   }
 
   /* ---------- 切换到主面板 ---------- */
@@ -561,9 +775,20 @@ const OrderTracker = (function () {
       }
       saveCfg();
       showMain();
-      await loadFromGist();
-      renderAccTabs();
-      renderTable();
+      const hasCache = await hydrateCache();
+      if (hasCache) {
+        renderLocalOrders(state.dirty ? `本地缓存已恢复 · ${state.orders.length} 条，等待同步…` : `本地缓存已恢复 · ${state.orders.length} 条`);
+      } else {
+        state.orders = [];
+        state.activeAccount = '__all__';
+        state.dirty = false;
+        state.localUpdatedAt = '';
+        state.lastRemoteUpdatedAt = '';
+        state.lastSyncedAt = '';
+        renderLocalOrders('本地暂无缓存，正在读取 Gist…', 'saving');
+      }
+      await syncNow({ forcePull: !state.dirty });
+      state.loaded = true;
       toast(`已连接: ${user.login}`, 'ok');
     } catch (e) {
       toast('连接失败: ' + e.message, 'error');
@@ -578,6 +803,11 @@ const OrderTracker = (function () {
     localStorage.removeItem(LS_KEY);
     state.token = ''; state.gistId = ''; state.user = '';
     state.orders = []; state.loaded = false;
+    state.dirty = false;
+    state.localUpdatedAt = '';
+    state.lastRemoteUpdatedAt = '';
+    state.lastSyncedAt = '';
+    state.localRevision = 0;
     showSetup();
     $('#ot-token').value = '';
     $('#ot-gistid').value = '';
@@ -585,7 +815,8 @@ const OrderTracker = (function () {
 
   async function refresh() {
     if (!state.token) { return; }
-    try { await loadFromGist(); renderAccTabs(); renderTable(); toast('已刷新', 'ok'); } catch (e) { }
+    const ok = await syncNow({ forcePull: !state.dirty });
+    if (ok) toast('已刷新', 'ok');
   }
 
   function copyGist() {
@@ -636,23 +867,43 @@ const OrderTracker = (function () {
   async function onEnter() {
     // 每次进入都重新加载账号历史（可能在另一个 tab 里有变更）
     state.accounts = loadAccounts();
-    if (state.loaded) return;
+    if (state.loaded) {
+      renderAccTabs();
+      renderTable();
+      if (state.token && state.gistId) {
+        if (state.dirty) setSync(`本地缓存已就绪 · ${state.orders.length} 条，等待同步…`, 'local');
+        else setSync(`本地缓存已就绪 · ${state.orders.length} 条`, 'local');
+        if (state.dirty) queueSync(0);
+      }
+      return;
+    }
     const cfg = loadCfg();
     if (cfg && cfg.token && cfg.gistId) {
       state.token = cfg.token;
       state.gistId = cfg.gistId;
       state.user = cfg.user || '';
       showMain();
-      try {
-        await loadFromGist();
-        renderAccTabs();
-        renderTable();
-        state.loaded = true;
-      } catch (e) {
-        showSetup();
+      const hasCache = await hydrateCache();
+      if (hasCache) {
+        renderLocalOrders(state.dirty ? `本地缓存已就绪 · ${state.orders.length} 条，等待同步…` : `本地缓存已就绪 · ${state.orders.length} 条`);
+      } else {
+        state.orders = [];
+        state.activeAccount = '__all__';
+        state.dirty = false;
+        state.localUpdatedAt = '';
+        state.lastRemoteUpdatedAt = '';
+        state.lastSyncedAt = '';
+        renderLocalOrders('本地暂无缓存，正在读取 Gist…', 'saving');
+      }
+      state.loaded = true;
+      if (hasCache) {
+        void syncNow({ forcePull: !state.dirty });
+      } else {
+        const ok = await syncNow({ forcePull: true });
+        if (!ok) showSetup();
       }
     } else {
-      showSetup();
+        showSetup();
     }
   }
 

@@ -871,8 +871,33 @@ details[open] summary {
   color: var(--ok)
 }
 
+.sync.local {
+  color: var(--accent)
+}
+
 .sync.error {
   color: var(--danger)
+}
+
+.ot-storage-note {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel2);
+}
+
+.ot-storage-note .title {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.ot-storage-note .text {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.7;
 }
 
 /* —— Account tabs —— */

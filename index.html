@@ -909,6 +909,26 @@
     </div>
   </div>
 
+  <div id="ot-export-modal" class="modal-mask" role="dialog" aria-modal="true" aria-labelledby="ot-export-title">
+    <div class="modal" style="max-width:460px">
+      <h3 id="ot-export-title">选择要导出的账号</h3>
+      <div class="modal-copy" style="margin-bottom:16px">可勾选一个或多个账号；如果有未关联订单，也可以单独导出。</div>
+      <div class="ot-export-selectors">
+        <label class="ot-export-option ot-export-option-all">
+          <span class="ot-export-option-main">
+            <input type="checkbox" id="ot-export-all">
+            <span>全部账号</span>
+          </span>
+        </label>
+        <div id="ot-export-options" class="ot-export-options"></div>
+      </div>
+      <div class="actions">
+        <button type="button" id="ot-export-cancel" class="btn">取消</button>
+        <button type="button" id="ot-export-confirm" class="btn primary">导出 CSV</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <!-- JS 模块（defer 保证顺序加载：路由 → 利润计算器 → 订单跟踪器） -->

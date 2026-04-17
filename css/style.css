@@ -1167,6 +1167,60 @@ table.ot tbody tr:hover {
   line-height: 1.75;
 }
 
+.ot-export-selectors {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ot-export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.ot-export-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .02);
+  cursor: pointer;
+}
+
+.ot-export-option-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ot-export-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.ot-export-option-name {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.ot-export-option-count {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ot-export-option-all {
+  background: rgba(255, 255, 255, .035);
+}
+
 /* —— Toast —— */
 .toast {
   position: fixed;

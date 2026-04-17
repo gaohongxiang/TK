@@ -5,11 +5,15 @@ const OrderTracker = (function () {
   const LS_KEY = 'tk.orders.cfg.v1';
   const LS_ACC_KEY = 'tk.orders.accounts.v1';
   const GIST_FILENAME = 'tk-order-tracker.json';
+  const META_FILENAME = 'tk-order-tracker-meta.json';
+  const ACCOUNT_FILE_PREFIX = 'tk-order-tracker__';
+  const ACCOUNT_FILE_SUFFIX = '.json';
   const CACHE_DB_NAME = 'tk-toolbox-cache';
   const CACHE_STORE = 'order-tracker-sessions';
   const CACHE_VERSION = 1;
   const REMOTE_DATA_VERSION = 2;
   const SYNC_DEBOUNCE_MS = 700;
+  const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
 
   const state = {
     token: '',
@@ -21,7 +25,18 @@ const OrderTracker = (function () {
     accounts: [],
     activeAccount: null,
     sortOrder: 'asc',
+    baseOrders: null,
     dirty: false,
+    dirtyAccounts: {},
+    accountRemoteUpdatedAt: {},
+    accountLastSyncedAt: {},
+    accountLocalUpdatedAt: {},
+    accountLocalRevisions: {},
+    accountsDirty: false,
+    accountsLocalUpdatedAt: '',
+    accountsLastRemoteUpdatedAt: '',
+    accountsLastSyncedAt: '',
+    accountsRevision: 0,
     localUpdatedAt: '',
     lastRemoteUpdatedAt: '',
     lastSyncedAt: '',
@@ -80,6 +95,271 @@ const OrderTracker = (function () {
   function normalizeOrderList(list) {
     return Array.isArray(list) ? list.map(normalizeOrderRecord) : [];
   }
+  function cloneOrder(order) {
+    return order ? normalizeOrderRecord({ ...order }) : null;
+  }
+  function serializeOrder(order) {
+    if (!order) return '';
+    const normalized = normalizeOrderRecord({ ...order });
+    const sorted = {};
+    Object.keys(normalized).sort().forEach(key => {
+      const value = normalized[key];
+      if (typeof value === 'undefined') return;
+      sorted[key] = value;
+    });
+    return JSON.stringify(sorted);
+  }
+  function ordersEqual(a, b) {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    return serializeOrder(a) === serializeOrder(b);
+  }
+  function mapOrdersById(orders) {
+    const map = new Map();
+    normalizeOrderList(orders).forEach(order => {
+      if (!order?.id) return;
+      map.set(String(order.id), order);
+    });
+    return map;
+  }
+  function getOrderLabel(order) {
+    if (!order) return '';
+    return String(order['订单号'] || order['产品名称'] || order.id || '').trim();
+  }
+  function getOrderChangeType(base, next) {
+    if (!base && next) return '新增';
+    if (base && !next) return '删除';
+    if (base && next && !ordersEqual(base, next)) return '修改';
+    return '未改动';
+  }
+  function confirmConflictResolution({ base, local, remote }) {
+    const localLabel = getOrderLabel(local);
+    const remoteLabel = getOrderLabel(remote);
+    const baseLabel = getOrderLabel(base);
+    const label = localLabel || remoteLabel || baseLabel || '未命名订单';
+    const localAction = getOrderChangeType(base, local);
+    const remoteAction = getOrderChangeType(base, remote);
+    return window.confirm(
+      `订单「${label}」在当前电脑和云端都被改动了。\n本地：${localAction}\n云端：${remoteAction}\n\n确定保留当前电脑的版本？\n确定 = 本地\n取消 = 云端`
+    );
+  }
+  function mergeOrdersById({ baseOrders = [], localOrders = [], remoteOrders = [] }) {
+    const baseMap = mapOrdersById(baseOrders);
+    const localMap = mapOrdersById(localOrders);
+    const remoteMap = mapOrdersById(remoteOrders);
+    const orderedIds = [];
+    const seen = new Set();
+    const pushId = id => {
+      const key = String(id || '');
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      orderedIds.push(key);
+    };
+
+    normalizeOrderList(localOrders).forEach(order => pushId(order.id));
+    normalizeOrderList(remoteOrders).forEach(order => pushId(order.id));
+    normalizeOrderList(baseOrders).forEach(order => pushId(order.id));
+
+    const merged = [];
+    let conflictCount = 0;
+
+    orderedIds.forEach(id => {
+      const base = baseMap.get(id) || null;
+      const local = localMap.get(id) || null;
+      const remote = remoteMap.get(id) || null;
+      const localChanged = !ordersEqual(local, base);
+      const remoteChanged = !ordersEqual(remote, base);
+      let resolved = null;
+
+      if (!base) {
+        if (local && remote) {
+          if (ordersEqual(local, remote)) resolved = local;
+          else {
+            conflictCount += 1;
+            resolved = confirmConflictResolution({ base, local, remote }) ? local : remote;
+          }
+        } else {
+          resolved = local || remote || null;
+        }
+      } else if (localChanged && remoteChanged) {
+        if (ordersEqual(local, remote)) resolved = local || remote;
+        else {
+          conflictCount += 1;
+          resolved = confirmConflictResolution({ base, local, remote }) ? local : remote;
+        }
+      } else if (localChanged) {
+        resolved = local;
+      } else if (remoteChanged) {
+        resolved = remote;
+      } else {
+        resolved = local || remote || base;
+      }
+
+      if (resolved) merged.push(cloneOrder(resolved));
+    });
+
+    return {
+      orders: normalizeOrderList(merged),
+      conflictCount
+    };
+  }
+  function normalizeAccountName(account) {
+    return String(account || '').trim();
+  }
+  function toAccountSlot(account) {
+    const normalized = normalizeAccountName(account);
+    return normalized || UNASSIGNED_ACCOUNT_SLOT;
+  }
+  function fromAccountSlot(slot) {
+    return slot === UNASSIGNED_ACCOUNT_SLOT ? '' : slot;
+  }
+  function getAccountFileName(account) {
+    const slot = toAccountSlot(account);
+    if (slot === UNASSIGNED_ACCOUNT_SLOT) {
+      return `${ACCOUNT_FILE_PREFIX}${UNASSIGNED_ACCOUNT_SLOT}${ACCOUNT_FILE_SUFFIX}`;
+    }
+    return `${ACCOUNT_FILE_PREFIX}${encodeURIComponent(slot)}${ACCOUNT_FILE_SUFFIX}`;
+  }
+  function parseAccountSlotFromFileName(filename) {
+    if (!filename.startsWith(ACCOUNT_FILE_PREFIX) || !filename.endsWith(ACCOUNT_FILE_SUFFIX)) return null;
+    const raw = filename.slice(ACCOUNT_FILE_PREFIX.length, -ACCOUNT_FILE_SUFFIX.length);
+    if (!raw) return null;
+    if (raw === UNASSIGNED_ACCOUNT_SLOT) return UNASSIGNED_ACCOUNT_SLOT;
+    try {
+      return decodeURIComponent(raw);
+    } catch (e) {
+      return raw;
+    }
+  }
+  function uniqueAccounts(accounts) {
+    return [...new Set((accounts || []).map(normalizeAccountName).filter(Boolean))];
+  }
+  function listOrderAccounts(orders = state.orders) {
+    return uniqueAccounts((orders || []).map(order => order['账号']));
+  }
+  function groupOrdersByAccountSlot(orders = state.orders) {
+    const grouped = {};
+    normalizeOrderList(orders).forEach(order => {
+      const slot = toAccountSlot(order['账号']);
+      if (!grouped[slot]) grouped[slot] = [];
+      grouped[slot].push(order);
+    });
+    return grouped;
+  }
+  function flattenOrdersByAccountSlot(grouped, preferredSlots = []) {
+    const result = [];
+    const seen = new Set();
+    preferredSlots.forEach(slot => {
+      if (seen.has(slot)) return;
+      seen.add(slot);
+      result.push(...(grouped[slot] || []));
+    });
+    Object.keys(grouped || {}).forEach(slot => {
+      if (seen.has(slot)) return;
+      result.push(...(grouped[slot] || []));
+    });
+    return normalizeOrderList(result);
+  }
+  function latestIso(values) {
+    return (values || []).filter(Boolean).sort().slice(-1)[0] || '';
+  }
+  function computeDirtyState() {
+    return !!(state.accountsDirty || Object.values(state.dirtyAccounts || {}).some(Boolean));
+  }
+  function refreshDirtyState() {
+    state.dirty = computeDirtyState();
+    state.localUpdatedAt = latestIso([
+      state.accountsLocalUpdatedAt,
+      ...Object.values(state.accountLocalUpdatedAt || {})
+    ]);
+    state.lastRemoteUpdatedAt = latestIso([
+      state.accountsLastRemoteUpdatedAt,
+      ...Object.values(state.accountRemoteUpdatedAt || {})
+    ]);
+    state.lastSyncedAt = latestIso([
+      state.accountsLastSyncedAt,
+      ...Object.values(state.accountLastSyncedAt || {})
+    ]);
+    state.localRevision = state.accountsRevision + Object.values(state.accountLocalRevisions || {}).reduce((sum, value) => sum + (value || 0), 0);
+  }
+  function markAccountsDirty() {
+    state.accountsDirty = true;
+    state.accountsLocalUpdatedAt = nowIso();
+    state.accountsRevision += 1;
+    refreshDirtyState();
+  }
+  function markOrderAccountsDirty(accounts) {
+    const slots = [...new Set((accounts || []).map(toAccountSlot))];
+    if (!slots.length) return;
+    const updatedAt = nowIso();
+    slots.forEach(slot => {
+      state.dirtyAccounts[slot] = true;
+      state.accountLocalUpdatedAt[slot] = updatedAt;
+      state.accountLocalRevisions[slot] = (state.accountLocalRevisions[slot] || 0) + 1;
+    });
+    refreshDirtyState();
+  }
+  function clearAccountDirtyState(slot) {
+    delete state.dirtyAccounts[slot];
+    delete state.accountLocalRevisions[slot];
+    refreshDirtyState();
+  }
+  function getDirtyAccountSlots() {
+    return Object.keys(state.dirtyAccounts || {}).filter(slot => state.dirtyAccounts[slot]);
+  }
+  function buildMetaPayload(updatedAt = state.accountsLocalUpdatedAt || nowIso(), orders = state.orders, accounts = state.accounts) {
+    return {
+      version: REMOTE_DATA_VERSION,
+      updatedAt,
+      accounts: uniqueAccounts([...(accounts || []), ...listOrderAccounts(orders)])
+    };
+  }
+  function normalizeMetaPayload(data, fallbackUpdatedAt = '') {
+    return {
+      version: typeof data?.version === 'number' ? data.version : REMOTE_DATA_VERSION,
+      updatedAt: (typeof data?.updatedAt === 'string' && data.updatedAt) ? data.updatedAt : fallbackUpdatedAt,
+      accounts: uniqueAccounts(data?.accounts)
+    };
+  }
+  function normalizeAccountPayload(data, account, fallbackUpdatedAt = '') {
+    return {
+      version: typeof data?.version === 'number' ? data.version : REMOTE_DATA_VERSION,
+      account: normalizeAccountName(typeof data?.account === 'string' ? data.account : account),
+      updatedAt: (typeof data?.updatedAt === 'string' && data.updatedAt) ? data.updatedAt : fallbackUpdatedAt,
+      orders: normalizeOrderList(data?.orders)
+    };
+  }
+  function buildAccountPayload(account, orders, updatedAt) {
+    return {
+      version: REMOTE_DATA_VERSION,
+      account: normalizeAccountName(account),
+      updatedAt: updatedAt || nowIso(),
+      orders: normalizeOrderList(orders)
+    };
+  }
+  function resetTrackerState({ preserveAccounts = true } = {}) {
+    state.orders = [];
+    state.editingId = null;
+    state.activeAccount = '__all__';
+    state.sortOrder = 'asc';
+    state.baseOrders = null;
+    state.dirty = false;
+    state.dirtyAccounts = {};
+    state.accountRemoteUpdatedAt = {};
+    state.accountLastSyncedAt = {};
+    state.accountLocalUpdatedAt = {};
+    state.accountLocalRevisions = {};
+    state.accountsDirty = false;
+    state.accountsLocalUpdatedAt = '';
+    state.accountsLastRemoteUpdatedAt = '';
+    state.accountsLastSyncedAt = '';
+    state.accountsRevision = 0;
+    state.localUpdatedAt = '';
+    state.lastRemoteUpdatedAt = '';
+    state.lastSyncedAt = '';
+    state.localRevision = 0;
+    if (!preserveAccounts) state.accounts = [];
+  }
   function getCacheKey(gistId = state.gistId) {
     return gistId ? `gist:${gistId}` : '';
   }
@@ -125,7 +405,19 @@ const OrderTracker = (function () {
       gistId: state.gistId,
       version: REMOTE_DATA_VERSION,
       orders: state.orders,
+      baseOrders: state.baseOrders,
+      accounts: state.accounts,
       dirty: !!state.dirty,
+      dirtyAccounts: state.dirtyAccounts,
+      accountRemoteUpdatedAt: state.accountRemoteUpdatedAt,
+      accountLastSyncedAt: state.accountLastSyncedAt,
+      accountLocalUpdatedAt: state.accountLocalUpdatedAt,
+      accountLocalRevisions: state.accountLocalRevisions,
+      accountsDirty: !!state.accountsDirty,
+      accountsLocalUpdatedAt: state.accountsLocalUpdatedAt || '',
+      accountsLastRemoteUpdatedAt: state.accountsLastRemoteUpdatedAt || '',
+      accountsLastSyncedAt: state.accountsLastSyncedAt || '',
+      accountsRevision: state.accountsRevision || 0,
       localUpdatedAt: state.localUpdatedAt || '',
       lastRemoteUpdatedAt: state.lastRemoteUpdatedAt || '',
       lastSyncedAt: state.lastSyncedAt || '',
@@ -141,11 +433,33 @@ const OrderTracker = (function () {
   }
   function applyCacheRecord(record) {
     state.orders = normalizeOrderList(record?.orders);
-    state.dirty = !!record?.dirty;
-    state.localUpdatedAt = record?.localUpdatedAt || '';
-    state.lastRemoteUpdatedAt = record?.lastRemoteUpdatedAt || '';
-    state.lastSyncedAt = record?.lastSyncedAt || '';
-    state.localRevision = 0;
+    state.baseOrders = Array.isArray(record?.baseOrders)
+      ? normalizeOrderList(record.baseOrders)
+      : (record?.dirty ? null : normalizeOrderList(record?.orders));
+    state.accounts = uniqueAccounts(record?.accounts || state.accounts);
+    state.dirtyAccounts = record?.dirtyAccounts || {};
+    state.accountRemoteUpdatedAt = record?.accountRemoteUpdatedAt || {};
+    state.accountLastSyncedAt = record?.accountLastSyncedAt || {};
+    state.accountLocalUpdatedAt = record?.accountLocalUpdatedAt || {};
+    state.accountLocalRevisions = record?.accountLocalRevisions || {};
+    state.accountsDirty = !!record?.accountsDirty;
+    state.accountsLocalUpdatedAt = record?.accountsLocalUpdatedAt || '';
+    state.accountsLastRemoteUpdatedAt = record?.accountsLastRemoteUpdatedAt || record?.lastRemoteUpdatedAt || '';
+    state.accountsLastSyncedAt = record?.accountsLastSyncedAt || record?.lastSyncedAt || '';
+    state.accountsRevision = record?.accountsRevision || 0;
+    if (!record?.accountRemoteUpdatedAt && record?.lastRemoteUpdatedAt) {
+      Object.keys(groupOrdersByAccountSlot(state.orders)).forEach(slot => {
+        state.accountRemoteUpdatedAt[slot] = record.lastRemoteUpdatedAt;
+      });
+    }
+    if (!record?.dirtyAccounts && record?.dirty) {
+      Object.keys(groupOrdersByAccountSlot(state.orders)).forEach(slot => {
+        state.dirtyAccounts[slot] = true;
+        state.accountLocalRevisions[slot] = state.accountLocalRevisions[slot] || 1;
+        state.accountLocalUpdatedAt[slot] = state.accountLocalUpdatedAt[slot] || record.localUpdatedAt || nowIso();
+      });
+    }
+    refreshDirtyState();
   }
   async function persistCache() {
     try {
@@ -182,15 +496,19 @@ const OrderTracker = (function () {
   }
   function addAccount(acc) {
     acc = (acc || '').trim();
-    if (!acc) return;
+    if (!acc) return false;
+    const existed = state.accounts.includes(acc);
     // 去重 & 最近使用置顶
     state.accounts = [acc, ...state.accounts.filter(a => a !== acc)];
     if (state.accounts.length > 30) state.accounts = state.accounts.slice(0, 30);
     saveAccounts();
+    return !existed;
   }
   function removeAccount(acc) {
+    const existed = state.accounts.includes(acc);
     state.accounts = state.accounts.filter(a => a !== acc);
     saveAccounts();
+    return existed;
   }
   function promptAddAccount(initialValue = '', title = '添加新账号') {
     return new Promise(resolve => {
@@ -307,54 +625,201 @@ const OrderTracker = (function () {
     const g = await gh('POST', '/gists', {
       description: 'TK Toolbox · Order Tracker Data (private)',
       public: false,
-      files: { [GIST_FILENAME]: { content: JSON.stringify({ version: REMOTE_DATA_VERSION, updatedAt: nowIso(), orders: [] }, null, 2) } }
+      files: { [META_FILENAME]: { content: JSON.stringify(buildMetaPayload(nowIso()), null, 2) } }
     });
     return g.id;
   }
-  function normalizeRemoteSnapshot(data, gistUpdatedAt = '') {
+  async function readGistFileJson(file) {
+    let content = file?.content || '';
+    if (file?.truncated && file?.raw_url) {
+      const response = await fetch(file.raw_url);
+      content = await response.text();
+    }
+    return JSON.parse(content || '{}');
+  }
+  function normalizeLegacySnapshot(data, gistUpdatedAt = '') {
     return {
-      version: typeof data?.version === 'number' ? data.version : 1,
+      version: typeof data?.version === 'number' ? data.version : REMOTE_DATA_VERSION,
       updatedAt: (typeof data?.updatedAt === 'string' && data.updatedAt) ? data.updatedAt : gistUpdatedAt,
       orders: normalizeOrderList(data?.orders)
     };
   }
   async function fetchGistSnapshot() {
-    const g = await gh('GET', '/gists/' + state.gistId);
-    let file = g.files[GIST_FILENAME];
-    if (!file) {
-      const firstKey = Object.keys(g.files)[0];
-      file = firstKey ? g.files[firstKey] : null;
-    }
-    if (!file) return normalizeRemoteSnapshot({ version: REMOTE_DATA_VERSION, orders: [] }, g.updated_at || '');
+    const gist = await gh('GET', '/gists/' + state.gistId);
+    const files = gist.files || {};
+    const grouped = {};
+    const accountRemoteUpdatedAt = {};
+    const metaFile = files[META_FILENAME] || null;
+    const legacyFile = files[GIST_FILENAME] || null;
+    const fallbackUpdatedAt = gist.updated_at || '';
 
-    let content = file.content;
-    if (file.truncated && file.raw_url) {
-      const r = await fetch(file.raw_url);
-      content = await r.text();
+    let meta = normalizeMetaPayload(null, fallbackUpdatedAt);
+    let hasMeta = false;
+    if (metaFile) {
+      meta = normalizeMetaPayload(await readGistFileJson(metaFile), fallbackUpdatedAt);
+      hasMeta = true;
     }
-    const data = JSON.parse(content || '{}');
-    return normalizeRemoteSnapshot(data, g.updated_at || '');
-  }
-  function buildRemotePayload() {
+
+    for (const [filename, file] of Object.entries(files)) {
+      const slot = parseAccountSlotFromFileName(filename);
+      if (!slot) continue;
+      const payload = normalizeAccountPayload(await readGistFileJson(file), fromAccountSlot(slot), fallbackUpdatedAt);
+      grouped[slot] = payload.orders;
+      accountRemoteUpdatedAt[slot] = payload.updatedAt;
+    }
+
+    Object.keys(grouped).forEach(slot => {
+      const orders = grouped[slot] || [];
+      const account = fromAccountSlot(slot);
+      const shouldKeep = orders.length > 0
+        || slot === UNASSIGNED_ACCOUNT_SLOT
+        || meta.accounts.includes(account);
+      if (!shouldKeep) {
+        delete grouped[slot];
+        delete accountRemoteUpdatedAt[slot];
+      }
+    });
+
+    const declaredSlots = meta.accounts.map(toAccountSlot);
+    const allSlots = [...new Set([...declaredSlots, ...Object.keys(grouped)])];
+    if (hasMeta || allSlots.length) {
+      return {
+        format: 'split',
+        hasMeta,
+        metaUpdatedAt: meta.updatedAt || fallbackUpdatedAt,
+        accounts: uniqueAccounts([...meta.accounts, ...Object.keys(grouped).map(fromAccountSlot)]),
+        grouped,
+        accountRemoteUpdatedAt,
+        orders: flattenOrdersByAccountSlot(grouped, allSlots),
+        updatedAt: latestIso([meta.updatedAt, ...Object.values(accountRemoteUpdatedAt)])
+      };
+    }
+
+    if (legacyFile) {
+      const legacy = normalizeLegacySnapshot(await readGistFileJson(legacyFile), fallbackUpdatedAt);
+      const legacyGrouped = groupOrdersByAccountSlot(legacy.orders);
+      Object.keys(legacyGrouped).forEach(slot => {
+        accountRemoteUpdatedAt[slot] = legacy.updatedAt || fallbackUpdatedAt;
+      });
+      return {
+        format: 'legacy',
+        hasMeta: false,
+        metaUpdatedAt: '',
+        accounts: listOrderAccounts(legacy.orders),
+        grouped: legacyGrouped,
+        accountRemoteUpdatedAt,
+        orders: legacy.orders,
+        updatedAt: legacy.updatedAt || fallbackUpdatedAt
+      };
+    }
+
     return {
-      version: REMOTE_DATA_VERSION,
-      updatedAt: state.localUpdatedAt || nowIso(),
-      orders: state.orders
+      format: 'split',
+      hasMeta: false,
+      metaUpdatedAt: '',
+      accounts: [],
+      grouped: {},
+      accountRemoteUpdatedAt: {},
+      orders: [],
+      updatedAt: fallbackUpdatedAt
     };
   }
-  async function pushStateToGist(payload = buildRemotePayload()) {
-    await gh('PATCH', '/gists/' + state.gistId, {
-      files: { [GIST_FILENAME]: { content: JSON.stringify(payload, null, 2) } }
+  async function pushFilesToGist(files) {
+    await gh('PATCH', '/gists/' + state.gistId, { files });
+  }
+  function buildSplitFilesPayload({ grouped, slots, includeMeta = false, metaUpdatedAt = '', remoteGrouped = {} }) {
+    const files = {};
+    const accountPayloads = {};
+    const deletedSlots = [];
+    let metaPayload = null;
+
+    if (includeMeta) {
+      metaPayload = buildMetaPayload(
+        metaUpdatedAt || state.accountsLocalUpdatedAt || nowIso(),
+        flattenOrdersByAccountSlot(grouped),
+        state.accounts
+      );
+      files[META_FILENAME] = { content: JSON.stringify(metaPayload, null, 2) };
+    }
+
+    (slots || []).forEach(slot => {
+      const account = fromAccountSlot(slot);
+      const orders = normalizeOrderList(grouped[slot] || []);
+      const filename = getAccountFileName(account);
+      if (!orders.length) {
+        if (remoteGrouped[slot]) {
+          files[filename] = null;
+          deletedSlots.push(slot);
+        }
+        return;
+      }
+      const payload = buildAccountPayload(account, orders, state.accountLocalUpdatedAt[slot] || nowIso());
+      accountPayloads[slot] = payload;
+      files[filename] = { content: JSON.stringify(payload, null, 2) };
     });
-    return payload;
+
+    return { files, metaPayload, accountPayloads, deletedSlots };
   }
   function applyRemoteSnapshot(snapshot) {
-    state.orders = snapshot.orders;
-    state.localUpdatedAt = snapshot.updatedAt || nowIso();
-    state.lastRemoteUpdatedAt = snapshot.updatedAt || '';
-    state.lastSyncedAt = nowIso();
-    state.dirty = false;
-    state.localRevision = 0;
+    state.orders = normalizeOrderList(snapshot.orders);
+    state.baseOrders = normalizeOrderList(snapshot.orders);
+    state.accounts = uniqueAccounts(snapshot.accounts || []);
+    saveAccounts();
+    state.accountRemoteUpdatedAt = { ...(snapshot.accountRemoteUpdatedAt || {}) };
+    state.accountLastSyncedAt = Object.fromEntries(Object.keys(state.accountRemoteUpdatedAt).map(slot => [slot, nowIso()]));
+    state.accountLocalUpdatedAt = {};
+    state.accountLocalRevisions = {};
+    state.dirtyAccounts = {};
+    state.accountsDirty = false;
+    state.accountsLocalUpdatedAt = '';
+    state.accountsRevision = 0;
+    state.accountsLastRemoteUpdatedAt = snapshot.metaUpdatedAt || '';
+    state.accountsLastSyncedAt = nowIso();
+    refreshDirtyState();
+  }
+  function finalizeSuccessfulSync({ metaPayload = null, accountPayloads = {}, deletedSlots = [], syncedAccountsRevision = 0, syncedAccountRevisions = {}, mergedOrders = null, nextAccountRemoteUpdatedAt = null }) {
+    const syncedAt = nowIso();
+
+    if (Array.isArray(mergedOrders)) {
+      state.orders = normalizeOrderList(mergedOrders);
+      state.baseOrders = normalizeOrderList(mergedOrders);
+      state.accounts = uniqueAccounts([...(metaPayload?.accounts || state.accounts), ...listOrderAccounts(state.orders)]);
+      saveAccounts();
+    }
+    if (nextAccountRemoteUpdatedAt && typeof nextAccountRemoteUpdatedAt === 'object') {
+      state.accountRemoteUpdatedAt = { ...nextAccountRemoteUpdatedAt };
+      state.accountLastSyncedAt = Object.fromEntries(Object.keys(state.accountRemoteUpdatedAt).map(slot => [slot, syncedAt]));
+    }
+
+    if (metaPayload) {
+      state.accounts = uniqueAccounts([...(metaPayload.accounts || []), ...listOrderAccounts(state.orders)]);
+      saveAccounts();
+      state.accountsLastRemoteUpdatedAt = metaPayload.updatedAt;
+      state.accountsLastSyncedAt = syncedAt;
+      if (state.accountsDirty && state.accountsRevision === syncedAccountsRevision) {
+        state.accountsDirty = false;
+        state.accountsLocalUpdatedAt = '';
+      } else if (state.accountsDirty) {
+        syncQueued = true;
+      }
+    }
+
+    const touchedSlots = [...new Set([...Object.keys(accountPayloads), ...(deletedSlots || [])])];
+    touchedSlots.forEach(slot => {
+      const payload = accountPayloads[slot] || null;
+      if (payload) state.accountRemoteUpdatedAt[slot] = payload.updatedAt;
+      else delete state.accountRemoteUpdatedAt[slot];
+      state.accountLastSyncedAt[slot] = syncedAt;
+      if ((state.accountLocalRevisions[slot] || 0) === (syncedAccountRevisions[slot] || 0)) {
+        delete state.dirtyAccounts[slot];
+        delete state.accountLocalRevisions[slot];
+        delete state.accountLocalUpdatedAt[slot];
+      } else if (state.dirtyAccounts[slot]) {
+        syncQueued = true;
+      }
+    });
+
+    refreshDirtyState();
   }
   async function applyAndRenderRemoteSnapshot(snapshot) {
     applyRemoteSnapshot(snapshot);
@@ -372,7 +837,7 @@ const OrderTracker = (function () {
     const filtered = isAll
       ? state.orders
       : state.activeAccount
-        ? state.orders.filter(o => (o['账号'] || '').trim() === state.activeAccount)
+        ? state.orders.filter(o => normalizeAccountName(o['账号']) === state.activeAccount)
         : state.orders;
     const allIds = state.orders.map(o => o.id);
     const sorted = [...filtered].sort((a, b) => {
@@ -381,11 +846,6 @@ const OrderTracker = (function () {
       return state.sortOrder === 'asc' ? ib - ia : ia - ib;
     });
     return { isAll, sorted };
-  }
-  function markOrdersDirty() {
-    state.dirty = true;
-    state.localUpdatedAt = nowIso();
-    state.localRevision += 1;
   }
   function queueSync(delay = SYNC_DEBOUNCE_MS) {
     if (!state.token || !state.gistId) return;
@@ -413,43 +873,143 @@ const OrderTracker = (function () {
 
     syncInFlight = true;
     try {
+      const dirtySlots = getDirtyAccountSlots();
       if (state.dirty) {
         setSync('正在同步到 Gist…', 'saving');
         const remote = await fetchGistSnapshot();
-        const remoteUpdatedAt = remote.updatedAt || '';
-        const knownRemoteUpdatedAt = state.lastRemoteUpdatedAt || '';
-        if (knownRemoteUpdatedAt && remoteUpdatedAt && remoteUpdatedAt !== knownRemoteUpdatedAt) {
-          setSync('云端有更新，请先刷新', 'error');
-          toast('检测到另一端已修改 Gist，当前未自动覆盖，请先点刷新。', 'error');
+        const localOrders = normalizeOrderList(state.orders);
+        const migratingLegacy = remote.format === 'legacy';
+        const hasMergeBase = Array.isArray(state.baseOrders);
+        let mergedOrders = localOrders;
+        let conflictCount = 0;
+
+        if (!migratingLegacy && state.accountsDirty && state.accountsLastRemoteUpdatedAt && remote.metaUpdatedAt !== state.accountsLastRemoteUpdatedAt) {
+          setSync('账号列表有更新，请先刷新', 'error');
+          toast('检测到另一端已修改账号列表，请先点刷新。', 'error');
           return false;
         }
 
-        const payload = buildRemotePayload();
-        const syncedRevision = state.localRevision;
-        await pushStateToGist(payload);
-        state.lastSyncedAt = nowIso();
-        state.lastRemoteUpdatedAt = payload.updatedAt;
-        if (state.localRevision === syncedRevision) {
-          state.localUpdatedAt = payload.updatedAt;
-          state.dirty = false;
+        if (hasMergeBase) {
+          const mergeResult = mergeOrdersById({
+            baseOrders: state.baseOrders,
+            localOrders,
+            remoteOrders: remote.orders
+          });
+          mergedOrders = mergeResult.orders;
+          conflictCount = mergeResult.conflictCount;
         } else {
-          state.dirty = true;
-          syncQueued = true;
+          for (const slot of dirtySlots) {
+            const knownRemoteUpdatedAt = state.accountRemoteUpdatedAt[slot] || '';
+            const remoteUpdatedAt = remote.accountRemoteUpdatedAt[slot] || '';
+            if (knownRemoteUpdatedAt && remoteUpdatedAt !== knownRemoteUpdatedAt) {
+              setSync('云端有更新，请先刷新', 'error');
+              toast(`检测到账号「${fromAccountSlot(slot) || '未关联'}」在另一端已被修改，请先点刷新。`, 'error');
+              return false;
+            }
+            if (!knownRemoteUpdatedAt && remoteUpdatedAt && !migratingLegacy) {
+              setSync('云端有更新，请先刷新', 'error');
+              toast(`检测到账号「${fromAccountSlot(slot) || '未关联'}」在另一端已有新数据，请先点刷新。`, 'error');
+              return false;
+            }
+          }
         }
+
+        const mergedGrouped = groupOrdersByAccountSlot(mergedOrders);
+        const slotsToPush = migratingLegacy
+          ? [...new Set([...Object.keys(mergedGrouped), ...Object.keys(remote.grouped || {})])]
+          : [...new Set(dirtySlots)];
+        const syncedAccountsRevision = state.accountsRevision;
+        const syncedAccountRevisions = Object.fromEntries(slotsToPush.map(slot => [slot, state.accountLocalRevisions[slot] || 0]));
+        const { files, metaPayload, accountPayloads, deletedSlots } = buildSplitFilesPayload({
+          grouped: mergedGrouped,
+          slots: slotsToPush,
+          includeMeta: migratingLegacy || state.accountsDirty || !remote.hasMeta,
+          metaUpdatedAt: state.accountsLocalUpdatedAt || nowIso(),
+          remoteGrouped: remote.grouped || {}
+        });
+        const nextAccountRemoteUpdatedAt = { ...(remote.accountRemoteUpdatedAt || {}) };
+        slotsToPush.forEach(slot => {
+          if (accountPayloads[slot]) nextAccountRemoteUpdatedAt[slot] = accountPayloads[slot].updatedAt;
+          else delete nextAccountRemoteUpdatedAt[slot];
+        });
+
+        if (!Object.keys(files).length) {
+          finalizeSuccessfulSync({
+            metaPayload,
+            accountPayloads,
+            deletedSlots: [...new Set([...(deletedSlots || []), ...slotsToPush])],
+            syncedAccountsRevision,
+            syncedAccountRevisions,
+            mergedOrders,
+            nextAccountRemoteUpdatedAt
+          });
+          refreshDirtyState();
+          await persistCache();
+          renderAccTabs();
+          renderTable();
+          if (conflictCount > 0) {
+            toast(`已处理 ${conflictCount} 条同订单冲突`, 'ok');
+          }
+          setSync(`已同步 · ${state.orders.length} 条`, 'saved');
+          return true;
+        }
+        await pushFilesToGist(files);
+        finalizeSuccessfulSync({
+          metaPayload,
+          accountPayloads,
+          deletedSlots,
+          syncedAccountsRevision,
+          syncedAccountRevisions,
+          mergedOrders,
+          nextAccountRemoteUpdatedAt
+        });
         await persistCache();
+        renderAccTabs();
+        renderTable();
+        if (conflictCount > 0) {
+          toast(`已处理 ${conflictCount} 条同订单冲突`, 'ok');
+        }
         setSync(state.dirty ? '本地已更新，继续等待同步…' : `已同步 · ${state.orders.length} 条`, state.dirty ? 'saving' : 'saved');
         return !state.dirty;
       }
 
       setSync(forcePull ? '正在刷新云端数据…' : '正在检查云端更新…', 'saving');
       const remote = await fetchGistSnapshot();
-      const remoteUpdatedAt = remote.updatedAt || '';
+      const remoteUpdatedAt = remote.updatedAt || remote.metaUpdatedAt || '';
       const shouldApplyRemote = forcePull
         || !state.lastRemoteUpdatedAt
         || remoteUpdatedAt !== state.lastRemoteUpdatedAt;
 
       if (shouldApplyRemote) {
         await applyAndRenderRemoteSnapshot(remote);
+        if (remote.format === 'legacy') {
+          setSync('正在升级为按账号分文件…', 'saving');
+          const grouped = groupOrdersByAccountSlot(state.orders);
+          const slotsToPush = Object.keys(grouped);
+          const { files, metaPayload, accountPayloads, deletedSlots } = buildSplitFilesPayload({
+            grouped,
+            slots: slotsToPush,
+            includeMeta: true,
+            metaUpdatedAt: nowIso(),
+            remoteGrouped: remote.grouped || {}
+          });
+          const nextAccountRemoteUpdatedAt = { ...(remote.accountRemoteUpdatedAt || {}) };
+          slotsToPush.forEach(slot => {
+            if (accountPayloads[slot]) nextAccountRemoteUpdatedAt[slot] = accountPayloads[slot].updatedAt;
+            else delete nextAccountRemoteUpdatedAt[slot];
+          });
+          await pushFilesToGist(files);
+          finalizeSuccessfulSync({
+            metaPayload,
+            accountPayloads,
+            deletedSlots,
+            syncedAccountsRevision: 0,
+            syncedAccountRevisions: {},
+            mergedOrders: state.orders,
+            nextAccountRemoteUpdatedAt
+          });
+          await persistCache();
+        }
       }
       setSync(`已同步 · ${state.orders.length} 条`, 'saved');
       return true;
@@ -533,7 +1093,8 @@ const OrderTracker = (function () {
       });
 
       if (state.activeAccount === oldName) state.activeAccount = newName;
-      markOrdersDirty();
+      markAccountsDirty();
+      markOrderAccountsDirty([oldName, newName]);
       await commitLocalOrders('账号已重命名，等待同步…');
       toast('已重命名账号', 'ok');
     }
@@ -586,10 +1147,10 @@ const OrderTracker = (function () {
         });
 
         // 从账号历史中移除
-        removeAccount(acc);
+        if (removeAccount(acc)) markAccountsDirty();
         // 重置选中
         if (state.activeAccount === acc) state.activeAccount = '__all__';
-        markOrdersDirty();
+        markOrderAccountsDirty([acc, '']);
         void commitLocalOrders('账号标记已更新，等待同步…');
         toast('已删除该账号标记', 'ok');
       });
@@ -599,7 +1160,10 @@ const OrderTracker = (function () {
       addBtn.addEventListener('click', async () => {
         const name = await promptAddAccount();
         if (!name) return;
-        addAccount(name);
+        if (addAccount(name)) {
+          markAccountsDirty();
+          void commitLocalOrders('账号已添加，等待同步…');
+        }
         state.activeAccount = name;
         renderAccTabs();
         renderTable();
@@ -810,22 +1374,28 @@ const OrderTracker = (function () {
     obj['最晚到仓时间'] = obj['下单时间'] ? addDays(obj['下单时间'], 6) : '';
     obj['订单预警'] = computeWarning(obj).text;
     // 记忆账号
-    if (obj['账号']) addAccount(obj['账号']);
+    if (obj['账号'] && addAccount(obj['账号'])) markAccountsDirty();
     if (state.editingId) {
       const idx = state.orders.findIndex(x => x.id === state.editingId);
-      if (idx >= 0) state.orders[idx] = normalizeOrderRecord({ ...state.orders[idx], ...obj });
+      if (idx >= 0) {
+        const previous = state.orders[idx];
+        state.orders[idx] = normalizeOrderRecord({ ...previous, ...obj });
+        markOrderAccountsDirty([previous['账号'], state.orders[idx]['账号']]);
+      }
     } else {
-      state.orders.unshift(normalizeOrderRecord({ id: uid(), ...obj }));
+      const created = normalizeOrderRecord({ id: uid(), ...obj });
+      state.orders.unshift(created);
+      markOrderAccountsDirty([created['账号']]);
     }
     closeModal();
-    markOrdersDirty();
     await commitLocalOrders('已保存到本地，等待同步…');
     toast('已保存到本地', 'ok');
   }
   async function deleteOrder(id) {
     if (!confirm('确定删除这条订单？删除后需要手动从 Gist 历史恢复。')) return;
+    const target = state.orders.find(o => o.id === id);
     state.orders = state.orders.filter(o => o.id !== id);
-    markOrdersDirty();
+    markOrderAccountsDirty([target?.['账号']]);
     await commitLocalOrders('已删除，本地已更新，等待同步…');
     toast('已删除', 'ok');
   }
@@ -866,12 +1436,7 @@ const OrderTracker = (function () {
       if (hasCache) {
         renderLocalOrders(state.dirty ? `本地缓存已恢复 · ${state.orders.length} 条，等待同步…` : `本地缓存已恢复 · ${state.orders.length} 条`);
       } else {
-        state.orders = [];
-        state.activeAccount = '__all__';
-        state.dirty = false;
-        state.localUpdatedAt = '';
-        state.lastRemoteUpdatedAt = '';
-        state.lastSyncedAt = '';
+        resetTrackerState();
         renderLocalOrders('本地暂无缓存，正在读取 Gist…', 'saving');
       }
       await syncNow({ forcePull: !state.dirty });
@@ -890,12 +1455,11 @@ const OrderTracker = (function () {
     if (!confirmed) return;
     localStorage.removeItem(LS_KEY);
     state.token = ''; state.gistId = ''; state.user = '';
-    state.orders = []; state.loaded = false;
-    state.dirty = false;
-    state.localUpdatedAt = '';
-    state.lastRemoteUpdatedAt = '';
-    state.lastSyncedAt = '';
-    state.localRevision = 0;
+    state.loaded = false;
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    syncQueued = false;
+    resetTrackerState({ preserveAccounts: false });
     showSetup();
     $('#ot-token').value = '';
     $('#ot-gistid').value = '';
@@ -969,6 +1533,7 @@ const OrderTracker = (function () {
         const newName = await promptAddAccount();
         if (newName) {
           addAccount(newName);
+          markAccountsDirty();
           updateModalAccountSelect(newName);
         } else {
           accSelect.value = prevAccValue; // 恢复原来的选项
@@ -1005,12 +1570,7 @@ const OrderTracker = (function () {
       if (hasCache) {
         renderLocalOrders(state.dirty ? `本地缓存已就绪 · ${state.orders.length} 条，等待同步…` : `本地缓存已就绪 · ${state.orders.length} 条`);
       } else {
-        state.orders = [];
-        state.activeAccount = '__all__';
-        state.dirty = false;
-        state.localUpdatedAt = '';
-        state.lastRemoteUpdatedAt = '';
-        state.lastSyncedAt = '';
+        resetTrackerState();
         renderLocalOrders('本地暂无缓存，正在读取 Gist…', 'saving');
       }
       state.loaded = true;

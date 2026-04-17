@@ -703,6 +703,7 @@
           <div class="right">
             <button id="ot-add" class="btn primary">+ 新增订单</button>
             <button id="ot-refresh" class="btn sm">↻ 刷新</button>
+            <button id="ot-export" class="btn sm">导出 CSV</button>
             <button id="ot-copy-gist" class="btn sm">复制 Gist ID</button>
             <button id="ot-logout" class="btn sm danger">退出</button>
           </div>
@@ -710,7 +711,8 @@
 
         <div class="ot-storage-note">
           <div class="title">数据存储说明</div>
-          <div class="text">当前模式为本地优先：订单先写入当前浏览器本地数据库（IndexedDB），页面会更快打开；随后后台同步到你自己的 GitHub 私有 Gist，用于跨设备同步和备份。请及时保存好 Token 和 Gist ID，之后换浏览器或设备时，需要这两项才能连回原来的数据。</div>
+          <div class="text">当前模式为本地优先：订单先写入当前浏览器本地数据库（IndexedDB），页面会更快打开；随后后台同步到你自己的 GitHub 私有 Gist，用于跨设备同步和备份。请及时保存好
+            Token 和 Gist ID，之后换浏览器或设备时，需要这两项才能连回原来的数据。</div>
         </div>
 
         <!-- 公式说明 -->
@@ -819,12 +821,12 @@
         </div>
         <div class="row" style="margin-top:12px">
           <div class="field">
-            <label>重量</label>
-            <input type="text" name="重量" placeholder="例如 500g / 1.2kg">
+            <label>重量(g)</label>
+            <input type="text" name="重量" placeholder="例如 500">
           </div>
           <div class="field">
-            <label>尺寸</label>
-            <input type="text" name="尺寸" placeholder="例如 20×15×10cm">
+            <label>尺寸(cm)</label>
+            <input type="text" name="尺寸" placeholder="例如 20×15×10">
           </div>
         </div>
         <div class="row" style="margin-top:12px">

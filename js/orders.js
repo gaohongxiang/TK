@@ -367,6 +367,21 @@ const OrderTracker = (function () {
     renderTable();
     setSync(statusText, statusClass);
   }
+  function getDisplayedOrders() {
+    const isAll = state.activeAccount === '__all__';
+    const filtered = isAll
+      ? state.orders
+      : state.activeAccount
+        ? state.orders.filter(o => (o['账号'] || '').trim() === state.activeAccount)
+        : state.orders;
+    const allIds = state.orders.map(o => o.id);
+    const sorted = [...filtered].sort((a, b) => {
+      const ia = allIds.indexOf(a.id);
+      const ib = allIds.indexOf(b.id);
+      return state.sortOrder === 'asc' ? ib - ia : ia - ib;
+    });
+    return { isAll, sorted };
+  }
   function markOrdersDirty() {
     state.dirty = true;
     state.localUpdatedAt = nowIso();
@@ -595,15 +610,9 @@ const OrderTracker = (function () {
   /* ---------- 渲染表格 ---------- */
   function renderTable() {
     const wrap = $('#ot-table-container');
-    // 按当前选中账号过滤
-    const isAll = state.activeAccount === '__all__';
-    const filtered = isAll
-      ? state.orders
-      : state.activeAccount
-        ? state.orders.filter(o => (o['账号'] || '').trim() === state.activeAccount)
-        : state.orders;
+    const { isAll, sorted } = getDisplayedOrders();
 
-    if (!filtered.length) {
+    if (!sorted.length) {
       const msg = (state.activeAccount && state.activeAccount !== '__all__')
         ? `账号「${escapeHtml(state.activeAccount)}」下还没有订单`
         : '还没有订单';
@@ -614,15 +623,6 @@ const OrderTracker = (function () {
         </div>`;
       return;
     }
-    const allIds = state.orders.map(o => o.id);
-
-    // 按添加时间正/倒序排列（orders 数组新的在前，所以正序需反转 index）
-    let sorted = [...filtered];
-    sorted.sort((a, b) => {
-      const ia = allIds.indexOf(a.id);
-      const ib = allIds.indexOf(b.id);
-      return state.sortOrder === 'asc' ? ib - ia : ia - ib;
-    });
     const total = sorted.length;
 
     const rows = sorted.map((o, i) => {
@@ -682,6 +682,51 @@ const OrderTracker = (function () {
     wrap.querySelectorAll('[data-del]').forEach(b => {
       b.onclick = () => deleteOrder(b.dataset.del);
     });
+  }
+  function csvEscape(value) {
+    const text = String(value ?? '');
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  function exportOrdersCsv() {
+    const { sorted } = getDisplayedOrders();
+    if (!sorted.length) {
+      toast('当前没有可导出的订单数据', 'error');
+      return;
+    }
+
+    const headers = ['账号', '下单时间', '采购日期', '最晚到仓时间', '订单预警', '订单号', '产品名称', '数量', '采购价格', '重量', '尺寸', '订单状态', '快递公司', '快递单号'];
+    const rows = sorted.map(order => {
+      const warning = computeWarning(order).text;
+      return [
+        order['账号'] || '',
+        order['下单时间'] || '',
+        order['采购日期'] || '',
+        order['最晚到仓时间'] || '',
+        warning,
+        order['订单号'] || '',
+        order['产品名称'] || '',
+        order['数量'] || '',
+        order['采购价格'] || '',
+        order['重量'] || '',
+        order['尺寸'] || '',
+        order['订单状态'] || '',
+        order['快递公司'] || '',
+        order['快递单号'] || ''
+      ];
+    });
+
+    const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const filename = `订单数据导出_${state.activeAccount && state.activeAccount !== '__all__' ? state.activeAccount + '_' : ''}${todayStr()}.csv`;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast('CSV 已开始导出', 'ok');
   }
 
   /* ---------- 弹窗 / CRUD ---------- */
@@ -899,6 +944,7 @@ const OrderTracker = (function () {
     $('#ot-connect').onclick = connect;
     $('#ot-add').onclick = () => openModal();
     $('#ot-refresh').onclick = refresh;
+    $('#ot-export').onclick = exportOrdersCsv;
     $('#ot-copy-gist').onclick = copyGist;
     $('#ot-logout').onclick = logout;
     $('#ot-cancel').onclick = closeModal;

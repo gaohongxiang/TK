@@ -1161,6 +1161,12 @@ table.ot tbody tr:hover {
   margin-top: 20px
 }
 
+.modal-copy {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.75;
+}
+
 /* —— Toast —— */
 .toast {
   position: fixed;

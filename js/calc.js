@@ -389,6 +389,7 @@
     if (derive) state.origPriceNew = deriveOrigPrice('pricingNew');
     if (els.origPriceNew) setInputValue(els.origPriceNew, state.origPriceNew ? Math.round(state.origPriceNew) : '');
     if (els.totalCostNew) setInputValue(els.totalCostNew, computeTotalCostNew().toFixed(2));
+    if (els.totalCostReview) setInputValue(els.totalCostReview, computeTotalCostNew().toFixed(2));
     renderAnchorOptions('pricingNew');
     renderTable('pricingNew');
     renderSalePrice();

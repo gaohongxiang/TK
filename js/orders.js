@@ -30,6 +30,7 @@ const OrderTracker = (function () {
 
   const $ = sel => document.querySelector(sel);
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const ORDER_STATUS_OPTIONS = ['未采购', '已采购', '在途', '已入仓', '已送达', '已完成', '订单取消'];
   let dbPromise = null;
   let syncTimer = null;
   let syncInFlight = false;
@@ -59,6 +60,19 @@ const OrderTracker = (function () {
   }
   function nowIso() {
     return new Date().toISOString();
+  }
+  function normalizeStatusValue(value) {
+    return String(value || '').trim();
+  }
+  function normalizeOrderRecord(order) {
+    const next = { ...order };
+    const mergedStatus = normalizeStatusValue(next['入仓状态']) || normalizeStatusValue(next['订单状态']);
+    next['订单状态'] = mergedStatus;
+    delete next['入仓状态'];
+    return next;
+  }
+  function normalizeOrderList(list) {
+    return Array.isArray(list) ? list.map(normalizeOrderRecord) : [];
   }
   function getCacheKey(gistId = state.gistId) {
     return gistId ? `gist:${gistId}` : '';
@@ -120,7 +134,7 @@ const OrderTracker = (function () {
     return true;
   }
   function applyCacheRecord(record) {
-    state.orders = Array.isArray(record?.orders) ? record.orders : [];
+    state.orders = normalizeOrderList(record?.orders);
     state.dirty = !!record?.dirty;
     state.localUpdatedAt = record?.localUpdatedAt || '';
     state.lastRemoteUpdatedAt = record?.lastRemoteUpdatedAt || '';
@@ -246,15 +260,15 @@ const OrderTracker = (function () {
    *         IF(TODAY()-C<0,
    *            IF(-(TODAY()-C)<=2,"延误风险",-(TODAY()-C)),
    *            "已超期")))))
-   * L = 入仓状态, C = 最晚到仓时间
+   * S = 订单状态, C = 最晚到仓时间
    * ------------------------------------------------ */
   function computeWarning(order) {
-    const L = order['入仓状态'] || '';
+    const S = normalizeStatusValue(order['订单状态']) || normalizeStatusValue(order['入仓状态']);
     const C = order['最晚到仓时间'] || '';
-    if (L === '订单取消') return { text: '取消订单', cls: 'muted' };
-    if (L === '已入仓') return { text: '入仓完成', cls: 'ok' };
-    if (L === '已完成') return { text: '订单完成', cls: 'ok' };
-    if (L === '已送达') return { text: '订单送达', cls: 'ok' };
+    if (S === '订单取消') return { text: '取消订单', cls: 'muted' };
+    if (S === '已入仓') return { text: '入仓完成', cls: 'ok' };
+    if (S === '已完成') return { text: '订单完成', cls: 'ok' };
+    if (S === '已送达') return { text: '订单送达', cls: 'ok' };
     if (!C) return { text: '-', cls: 'muted' };
     const tmc = diffDays(todayStr(), C);
     if (tmc < 0) {
@@ -295,7 +309,7 @@ const OrderTracker = (function () {
     return {
       version: typeof data?.version === 'number' ? data.version : 1,
       updatedAt: (typeof data?.updatedAt === 'string' && data.updatedAt) ? data.updatedAt : gistUpdatedAt,
-      orders: Array.isArray(data?.orders) ? data.orders : []
+      orders: normalizeOrderList(data?.orders)
     };
   }
   async function fetchGistSnapshot() {
@@ -623,7 +637,6 @@ const OrderTracker = (function () {
           <td>${escapeHtml(o['订单状态'])}</td>
           <td>${escapeHtml(o['快递公司'])}</td>
           <td>${escapeHtml(o['快递单号'])}</td>
-          <td>${escapeHtml(o['入仓状态'])}</td>
           <td>
             <button class="btn sm" data-edit="${o.id}">编辑</button>
             <button class="btn sm danger" data-del="${o.id}">删除</button>
@@ -641,7 +654,7 @@ const OrderTracker = (function () {
             <th><span id="ot-sort-btn" title="${sortTitle}" style="cursor:pointer;user-select:none"># ${sortIcon}</span></th>${isAll ? '<th>账号</th>' : ''}<th>下单时间</th><th>采购日期</th><th>最晚到仓</th>
             <th>订单预警</th><th>订单号</th><th>产品名称</th>
             <th>数量</th><th>采购价(元)</th><th>订单状态</th>
-            <th>快递公司</th><th>快递单号</th><th>入仓状态</th><th>操作</th>
+            <th>快递公司</th><th>快递单号</th><th>操作</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -672,16 +685,35 @@ const OrderTracker = (function () {
     if (selectedAcc && accs.includes(selectedAcc)) sel.value = selectedAcc;
     else if (accs.length) sel.value = accs[0];
   }
+  function ensureOrderStatusOption(selectedStatus = '') {
+    const sel = $('#ot-form [name="订单状态"]');
+    if (!sel) return;
+    const currentValue = normalizeStatusValue(selectedStatus);
+    const options = ['', ...ORDER_STATUS_OPTIONS];
+    sel.innerHTML = options.map(value => {
+      const label = value || '- 请选择 -';
+      return `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`;
+    }).join('');
+    if (currentValue && !options.includes(currentValue)) {
+      const option = document.createElement('option');
+      option.value = currentValue;
+      option.textContent = currentValue;
+      sel.appendChild(option);
+    }
+    sel.value = currentValue;
+  }
 
   function openModal(editId = null) {
     const form = $('#ot-form');
     form.reset();
     state.editingId = editId;
     if (editId) {
-      const o = state.orders.find(x => x.id === editId);
-      if (!o) return;
+      const found = state.orders.find(x => x.id === editId);
+      if (!found) return;
+      const o = normalizeOrderRecord(found);
       $('#ot-modal-title').textContent = '编辑订单';
       updateModalAccountSelect(o['账号'] || '');
+      ensureOrderStatusOption(o['订单状态']);
       for (const [k, v] of Object.entries(o)) {
         if (k === '账号') continue;
         const el = form.querySelector(`[name="${k}"]`);
@@ -698,6 +730,7 @@ const OrderTracker = (function () {
         defaultAcc = state.accounts[0];
       }
       updateModalAccountSelect(defaultAcc);
+      ensureOrderStatusOption('');
     }
     recomputeAuto();
     $('#ot-modal').classList.add('show');
@@ -715,7 +748,7 @@ const OrderTracker = (function () {
   }
   async function submitForm(e) {
     e.preventDefault();
-    const obj = Object.fromEntries(new FormData(e.target).entries());
+    const obj = normalizeOrderRecord(Object.fromEntries(new FormData(e.target).entries()));
     if (obj['账号'] === '__ADD__') {
       toast('请选择有效的账号', 'error');
       return;
@@ -726,9 +759,9 @@ const OrderTracker = (function () {
     if (obj['账号']) addAccount(obj['账号']);
     if (state.editingId) {
       const idx = state.orders.findIndex(x => x.id === state.editingId);
-      if (idx >= 0) state.orders[idx] = { ...state.orders[idx], ...obj };
+      if (idx >= 0) state.orders[idx] = normalizeOrderRecord({ ...state.orders[idx], ...obj });
     } else {
-      state.orders.unshift({ id: uid(), ...obj });
+      state.orders.unshift(normalizeOrderRecord({ id: uid(), ...obj }));
     }
     closeModal();
     markOrdersDirty();
@@ -789,7 +822,7 @@ const OrderTracker = (function () {
       }
       await syncNow({ forcePull: !state.dirty });
       state.loaded = true;
-      toast(`已连接: ${user.login}`, 'ok');
+      toast(`已连接: ${user.login}，请保存好 Token 和 Gist ID`, 'ok');
     } catch (e) {
       toast('连接失败: ' + e.message, 'error');
     } finally {
@@ -798,8 +831,9 @@ const OrderTracker = (function () {
     }
   }
 
-  function logout() {
-    if (!confirm('退出后需要重新粘贴 Token。你的订单数据仍保存在你 GitHub 账号的 Gist 里。确定？')) return;
+  async function logout() {
+    const confirmed = await promptLogoutConfirm();
+    if (!confirmed) return;
     localStorage.removeItem(LS_KEY);
     state.token = ''; state.gistId = ''; state.user = '';
     state.orders = []; state.loaded = false;
@@ -826,6 +860,30 @@ const OrderTracker = (function () {
       () => toast('复制失败，请手动选择', 'error')
     );
   }
+  function promptLogoutConfirm() {
+    return new Promise(resolve => {
+      const modal = $('#ot-logout-modal');
+      const cancelBtn = $('#ot-logout-cancel');
+      const confirmBtn = $('#ot-logout-confirm');
+
+      function cleanup(result) {
+        modal.classList.remove('show');
+        cancelBtn.onclick = null;
+        confirmBtn.onclick = null;
+        modal.onclick = null;
+        resolve(result);
+      }
+
+      cancelBtn.onclick = () => cleanup(false);
+      confirmBtn.onclick = () => cleanup(true);
+      modal.onclick = (e) => {
+        if (e.target.id === 'ot-logout-modal') cleanup(false);
+      };
+
+      modal.classList.add('show');
+      confirmBtn.focus();
+    });
+  }
 
   /* ---------- 事件绑定 ---------- */
   function init() {
@@ -837,7 +895,7 @@ const OrderTracker = (function () {
     $('#ot-cancel').onclick = closeModal;
     $('#ot-form').onsubmit = submitForm;
     $('#ot-form [name="下单时间"]').addEventListener('change', recomputeAuto);
-    $('#ot-form [name="入仓状态"]').addEventListener('change', recomputeAuto);
+    $('#ot-form [name="订单状态"]').addEventListener('change', recomputeAuto);
     $('#ot-modal').addEventListener('click', e => {
       if (e.target.id === 'ot-modal') closeModal();
     });

@@ -686,6 +686,7 @@ const OrderTracker = (function () {
       return {
         format: 'split',
         hasMeta,
+        hasLegacy: !!legacyFile,
         metaUpdatedAt: meta.updatedAt || fallbackUpdatedAt,
         accounts: uniqueAccounts([...meta.accounts, ...Object.keys(grouped).map(fromAccountSlot)]),
         grouped,
@@ -704,6 +705,7 @@ const OrderTracker = (function () {
       return {
         format: 'legacy',
         hasMeta: false,
+        hasLegacy: true,
         metaUpdatedAt: '',
         accounts: listOrderAccounts(legacy.orders),
         grouped: legacyGrouped,
@@ -716,6 +718,7 @@ const OrderTracker = (function () {
     return {
       format: 'split',
       hasMeta: false,
+      hasLegacy: false,
       metaUpdatedAt: '',
       accounts: [],
       grouped: {},
@@ -727,7 +730,7 @@ const OrderTracker = (function () {
   async function pushFilesToGist(files) {
     await gh('PATCH', '/gists/' + state.gistId, { files });
   }
-  function buildSplitFilesPayload({ grouped, slots, includeMeta = false, metaUpdatedAt = '', remoteGrouped = {} }) {
+  function buildSplitFilesPayload({ grouped, slots, includeMeta = false, metaUpdatedAt = '', remoteGrouped = {}, removeLegacyFile = false }) {
     const files = {};
     const accountPayloads = {};
     const deletedSlots = [];
@@ -757,6 +760,10 @@ const OrderTracker = (function () {
       accountPayloads[slot] = payload;
       files[filename] = { content: JSON.stringify(payload, null, 2) };
     });
+
+    if (removeLegacyFile) {
+      files[GIST_FILENAME] = null;
+    }
 
     return { files, metaPayload, accountPayloads, deletedSlots };
   }
@@ -925,7 +932,8 @@ const OrderTracker = (function () {
           slots: slotsToPush,
           includeMeta: migratingLegacy || state.accountsDirty || !remote.hasMeta,
           metaUpdatedAt: state.accountsLocalUpdatedAt || nowIso(),
-          remoteGrouped: remote.grouped || {}
+          remoteGrouped: remote.grouped || {},
+          removeLegacyFile: !!remote.hasLegacy
         });
         const nextAccountRemoteUpdatedAt = { ...(remote.accountRemoteUpdatedAt || {}) };
         slotsToPush.forEach(slot => {
@@ -991,7 +999,8 @@ const OrderTracker = (function () {
             slots: slotsToPush,
             includeMeta: true,
             metaUpdatedAt: nowIso(),
-            remoteGrouped: remote.grouped || {}
+            remoteGrouped: remote.grouped || {},
+            removeLegacyFile: !!remote.hasLegacy
           });
           const nextAccountRemoteUpdatedAt = { ...(remote.accountRemoteUpdatedAt || {}) };
           slotsToPush.forEach(slot => {

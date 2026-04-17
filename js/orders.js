@@ -61,6 +61,12 @@ const OrderTracker = (function () {
   function nowIso() {
     return new Date().toISOString();
   }
+  function showDatePicker(input) {
+    if (!input || input.readOnly || input.disabled || typeof input.showPicker !== 'function') return;
+    try {
+      input.showPicker();
+    } catch (e) { }
+  }
   function normalizeStatusValue(value) {
     return String(value || '').trim();
   }
@@ -634,6 +640,8 @@ const OrderTracker = (function () {
           <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(o['产品名称'])}">${escapeHtml(o['产品名称'])}</td>
           <td>${escapeHtml(o['数量'])}</td>
           <td>${escapeHtml(o['采购价格'])}</td>
+          <td>${escapeHtml(o['重量'])}</td>
+          <td>${escapeHtml(o['尺寸'])}</td>
           <td>${escapeHtml(o['订单状态'])}</td>
           <td>${escapeHtml(o['快递公司'])}</td>
           <td>${escapeHtml(o['快递单号'])}</td>
@@ -653,7 +661,7 @@ const OrderTracker = (function () {
           <tr>
             <th><span id="ot-sort-btn" title="${sortTitle}" style="cursor:pointer;user-select:none"># ${sortIcon}</span></th>${isAll ? '<th>账号</th>' : ''}<th>下单时间</th><th>采购日期</th><th>最晚到仓</th>
             <th>订单预警</th><th>订单号</th><th>产品名称</th>
-            <th>数量</th><th>采购价(元)</th><th>订单状态</th>
+            <th>数量</th><th>采购价(元)</th><th>重量</th><th>尺寸</th><th>订单状态</th>
             <th>快递公司</th><th>快递单号</th><th>操作</th>
           </tr>
         </thead>
@@ -722,6 +730,7 @@ const OrderTracker = (function () {
     } else {
       $('#ot-modal-title').textContent = '新增订单';
       form.querySelector('[name="下单时间"]').value = todayStr();
+      form.querySelector('[name="采购日期"]').value = todayStr();
       // 默认填入当前选中的账号
       let defaultAcc = null;
       if (state.activeAccount && state.activeAccount !== '__all__') {
@@ -896,6 +905,11 @@ const OrderTracker = (function () {
     $('#ot-form').onsubmit = submitForm;
     $('#ot-form [name="下单时间"]').addEventListener('change', recomputeAuto);
     $('#ot-form [name="订单状态"]').addEventListener('change', recomputeAuto);
+    $('#ot-form').querySelectorAll('input[type="date"]').forEach(input => {
+      if (input.readOnly) return;
+      input.addEventListener('click', () => showDatePicker(input));
+      input.addEventListener('focus', () => showDatePicker(input));
+    });
     $('#ot-modal').addEventListener('click', e => {
       if (e.target.id === 'ot-modal') closeModal();
     });

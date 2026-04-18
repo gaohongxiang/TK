@@ -935,8 +935,19 @@
 
   <!-- JS 模块（defer 保证顺序加载：路由 → 利润计算器 → 订单跟踪器） -->
   <script src="js/app.js" defer></script>
-  <script src="js/calc.js" defer></script>
-  <script src="js/orders.js" defer></script>
+  <script src="js/calc/shared.js" defer></script>
+  <script src="js/calc/shipping.js" defer></script>
+  <script src="js/calc/legacy.js" defer></script>
+  <script src="js/calc/pricing.js" defer></script>
+  <script src="js/calc/index.js" defer></script>
+  <script src="js/orders/table.js" defer></script>
+  <script src="js/orders/sync.js" defer></script>
+  <script src="js/orders/export.js" defer></script>
+  <script src="js/orders/tabs.js" defer></script>
+  <script src="js/orders/crud.js" defer></script>
+  <script src="js/orders/session.js" defer></script>
+  <script src="js/orders/shared.js" defer></script>
+  <script src="js/orders/index.js" defer></script>
 </body>
 
 </html>

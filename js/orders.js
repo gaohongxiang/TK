@@ -26,6 +26,7 @@ const OrderTracker = (function () {
     accounts: [],
     activeAccount: null,
     sortOrder: 'asc',
+    searchQuery: '',
     pageSize: 50,
     currentPage: 1,
     baseOrders: null,
@@ -98,6 +99,9 @@ const OrderTracker = (function () {
   function normalizeStatusValue(value) {
     return String(value || '').trim();
   }
+  function normalizeSearchValue(value) {
+    return String(value || '').trim().toLowerCase();
+  }
   function resetTablePage() {
     state.currentPage = 1;
   }
@@ -106,6 +110,65 @@ const OrderTracker = (function () {
     const totalPages = Math.max(1, Math.ceil((totalItems || 0) / pageSize));
     state.currentPage = Math.min(Math.max(1, Number(state.currentPage) || 1), totalPages);
     return totalPages;
+  }
+  function buildTableToolbarMarkup({ pageSize, totalPages, includeSearch = false, disabled = false }) {
+    return `
+      <div class="ot-table-toolbar${includeSearch ? '' : ' ot-table-toolbar-bottom'}">
+        <div class="ot-table-toolbar-right">
+          ${includeSearch ? `
+            <label class="ot-table-search">
+              <input id="ot-table-search-input" type="text" placeholder="搜索订单号 / 产品 / 快递" value="${escapeHtml(state.searchQuery)}" autocomplete="off">
+            </label>` : ''}
+          <div class="ot-table-pagination">
+            <label class="ot-page-size">
+              <span>每页</span>
+              <span class="ot-page-size-control">
+                <select id="${includeSearch ? 'ot-page-size' : 'ot-page-size-bottom'}">
+                  ${PAGE_SIZE_OPTIONS.map(size => `<option value="${size}" ${size === pageSize ? 'selected' : ''}>${size}</option>`).join('')}
+                </select>
+              </span>
+            </label>
+            <button class="btn sm" id="${includeSearch ? 'ot-page-prev' : 'ot-page-prev-bottom'}" ${disabled || state.currentPage <= 1 ? 'disabled' : ''}>上一页</button>
+            <span class="ot-page-indicator">${state.currentPage} / ${totalPages}</span>
+            <button class="btn sm" id="${includeSearch ? 'ot-page-next' : 'ot-page-next-bottom'}" ${disabled || state.currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
+          </div>
+        </div>
+      </div>`;
+  }
+  function bindTableToolbar(container, { totalPages, includeSearch = false } = {}) {
+    if (!container) return;
+    const searchInput = includeSearch ? container.querySelector('#ot-table-search-input') : null;
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        state.searchQuery = searchInput.value;
+        resetTablePage();
+        renderTable();
+      });
+    }
+    const pageSizeSelect = container.querySelector(includeSearch ? '#ot-page-size' : '#ot-page-size-bottom');
+    if (pageSizeSelect) {
+      pageSizeSelect.addEventListener('change', () => {
+        state.pageSize = Math.max(1, parseInt(pageSizeSelect.value, 10) || 50);
+        resetTablePage();
+        renderTable();
+      });
+    }
+    const prevBtn = container.querySelector(includeSearch ? '#ot-page-prev' : '#ot-page-prev-bottom');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        if (state.currentPage <= 1) return;
+        state.currentPage -= 1;
+        renderTable();
+      });
+    }
+    const nextBtn = container.querySelector(includeSearch ? '#ot-page-next' : '#ot-page-next-bottom');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        if (state.currentPage >= totalPages) return;
+        state.currentPage += 1;
+        renderTable();
+      });
+    }
   }
   function normalizeOrderRecord(order) {
     const next = { ...order };
@@ -895,11 +958,32 @@ const OrderTracker = (function () {
   }
   function getDisplayedOrders() {
     const isAll = state.activeAccount === '__all__';
-    const filtered = isAll
+    const accountFiltered = isAll
       ? state.orders
       : state.activeAccount
         ? state.orders.filter(o => normalizeAccountName(o['账号']) === state.activeAccount)
         : state.orders;
+    const query = normalizeSearchValue(state.searchQuery);
+    const filtered = !query
+      ? accountFiltered
+      : accountFiltered.filter(order => {
+        const haystack = normalizeSearchValue([
+          order['账号'],
+          order['下单时间'],
+          order['采购日期'],
+          order['最晚到仓时间'],
+          order['订单号'],
+          order['产品名称'],
+          order['数量'],
+          order['采购价格'],
+          order['重量'],
+          order['尺寸'],
+          order['订单状态'],
+          order['快递公司'],
+          order['快递单号']
+        ].join(' '));
+        return haystack.includes(query);
+      });
     const allIds = state.orders.map(o => o.id);
     const sorted = [...filtered].sort((a, b) => {
       const ia = allIds.indexOf(a.id);
@@ -1244,25 +1328,33 @@ const OrderTracker = (function () {
   /* ---------- 渲染表格 ---------- */
   function renderTable() {
     const toolbar = $('#ot-table-toolbar-container');
+    const footerToolbar = $('#ot-table-footer-toolbar-container');
     const wrap = $('#ot-table-container');
     const { isAll, sorted } = getDisplayedOrders();
+    const hasQuery = !!normalizeSearchValue(state.searchQuery);
+    const pageSize = Math.max(1, Number(state.pageSize) || 50);
 
     if (!sorted.length) {
-      if (toolbar) toolbar.innerHTML = '';
+      if (toolbar) {
+        toolbar.innerHTML = hasQuery ? buildTableToolbarMarkup({ pageSize, totalPages: 1, includeSearch: true, disabled: true }) : '';
+      }
+      if (footerToolbar) footerToolbar.innerHTML = '';
       resetTablePage();
-      const msg = (state.activeAccount && state.activeAccount !== '__all__')
-        ? `账号「${escapeHtml(state.activeAccount)}」下还没有订单`
-        : '还没有订单';
+      const msg = hasQuery
+        ? '没有匹配的订单'
+        : (state.activeAccount && state.activeAccount !== '__all__')
+          ? `账号「${escapeHtml(state.activeAccount)}」下还没有订单`
+          : '还没有订单';
       wrap.innerHTML = `
         <div class="ot-empty">
           <div style="font-size:15px;margin-bottom:6px">${msg}</div>
-          <div style="font-size:12.5px">点击右上角「+ 新增订单」开始记录</div>
+          <div style="font-size:12.5px">${hasQuery ? '试试更换关键词' : '点击右上角「+ 新增订单」开始记录'}</div>
         </div>`;
+      bindTableToolbar(toolbar, { totalPages: 1, includeSearch: true });
       return;
     }
     const total = sorted.length;
     const totalPages = clampPage(total);
-    const pageSize = Math.max(1, Number(state.pageSize) || 50);
     const startIndex = (state.currentPage - 1) * pageSize;
     const paged = sorted.slice(startIndex, startIndex + pageSize);
 
@@ -1298,36 +1390,24 @@ const OrderTracker = (function () {
     const sortTitle = state.sortOrder === 'asc' ? '当前正序（最早在上），点击切换' : '当前倒序（最新在上），点击切换';
 
     if (toolbar) {
-      toolbar.innerHTML = `
-        <div class="ot-table-toolbar">
-          <div class="ot-table-pagination">
-            <label class="ot-page-size">
-              <span>每页</span>
-              <span class="ot-page-size-control">
-                <select id="ot-page-size">
-                  ${PAGE_SIZE_OPTIONS.map(size => `<option value="${size}" ${size === pageSize ? 'selected' : ''}>${size}</option>`).join('')}
-                </select>
-              </span>
-            </label>
-            <button class="btn sm" id="ot-page-prev" ${state.currentPage <= 1 ? 'disabled' : ''}>上一页</button>
-            <span class="ot-page-indicator">${state.currentPage} / ${totalPages}</span>
-            <button class="btn sm" id="ot-page-next" ${state.currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
-          </div>
-        </div>`;
+      toolbar.innerHTML = buildTableToolbarMarkup({ pageSize, totalPages, includeSearch: true });
     }
+    if (footerToolbar) footerToolbar.innerHTML = buildTableToolbarMarkup({ pageSize, totalPages });
 
     wrap.innerHTML = `
-      <table class="ot">
-        <thead>
-          <tr>
-            <th><span id="ot-sort-btn" title="${sortTitle}" style="cursor:pointer;user-select:none"># ${sortIcon}</span></th>${isAll ? '<th>账号</th>' : ''}<th>下单时间</th><th>采购日期</th><th>最晚到仓</th>
-            <th>订单预警</th><th>订单号</th><th>产品名称</th>
-            <th>数量</th><th>采购价(元)</th><th>重量</th><th>尺寸</th><th>订单状态</th>
-            <th>快递公司</th><th>快递单号</th><th>操作</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
+      <div class="ot-table-inner">
+        <table class="ot">
+          <thead>
+            <tr>
+              <th><span id="ot-sort-btn" title="${sortTitle}" style="cursor:pointer;user-select:none"># ${sortIcon}</span></th>${isAll ? '<th>账号</th>' : ''}<th>下单时间</th><th>采购日期</th><th>最晚到仓</th>
+              <th>订单预警</th><th>订单号</th><th>产品名称</th>
+              <th>数量</th><th>采购价(元)</th><th>重量</th><th>尺寸</th><th>订单状态</th>
+              <th>快递公司</th><th>快递单号</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
 
     const sortBtn = wrap.querySelector('#ot-sort-btn');
     if (sortBtn) {
@@ -1338,30 +1418,8 @@ const OrderTracker = (function () {
       });
     }
 
-    const pageSizeSelect = toolbar?.querySelector('#ot-page-size');
-    if (pageSizeSelect) {
-      pageSizeSelect.addEventListener('change', () => {
-        state.pageSize = Math.max(1, parseInt(pageSizeSelect.value, 10) || 50);
-        resetTablePage();
-        renderTable();
-      });
-    }
-    const prevBtn = toolbar?.querySelector('#ot-page-prev');
-    if (prevBtn) {
-      prevBtn.addEventListener('click', () => {
-        if (state.currentPage <= 1) return;
-        state.currentPage -= 1;
-        renderTable();
-      });
-    }
-    const nextBtn = toolbar?.querySelector('#ot-page-next');
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        if (state.currentPage >= totalPages) return;
-        state.currentPage += 1;
-        renderTable();
-      });
-    }
+    bindTableToolbar(toolbar, { totalPages, includeSearch: true });
+    bindTableToolbar(footerToolbar, { totalPages });
 
     wrap.querySelectorAll('[data-edit]').forEach(b => {
       b.onclick = () => openModal(b.dataset.edit);

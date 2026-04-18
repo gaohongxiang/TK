@@ -714,7 +714,7 @@
 
         <div class="ot-storage-note">
           <div class="title">数据存储说明</div>
-          <div class="text">当前模式为本地优先：订单先写入当前浏览器本地数据库（IndexedDB），页面会更快打开；随后后台同步到你自己的 GitHub 私有 Gist，用于跨设备同步和备份。请及时保存好
+          <div class="text">当前模式为本地优先：订单先写入当前浏览器本地数据库（IndexedDB），页面会更快打开；有改动时会在后台自动同步到你自己的 GitHub 私有 Gist，用于跨设备同步和备份。请及时保存好
             Token 和 Gist ID，之后换浏览器或设备时，需要这两项才能连回原来的数据。</div>
           <div class="text">云端会按账号分文件同步。各自只操作自己的账号时，互相不会影响；同账号下如果改的是不同订单，会自动合并；如果两边同时改了同一条订单，同步时会让你选保留本地还是云端。</div>
         </div>
@@ -762,6 +762,7 @@
         <div class="ot-table-wrap">
           <div id="ot-table-container"></div>
         </div>
+        <div id="ot-table-footer-toolbar-container"></div>
       </section>
 
     </div>

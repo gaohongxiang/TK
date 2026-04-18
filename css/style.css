@@ -1040,19 +1040,33 @@ details[open] summary {
   padding: 0 20px
 }
 
+.ot-table-inner {
+  display: inline-block;
+  padding-right: 20px;
+  box-sizing: border-box;
+}
+
 .ot-table-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   margin: 0 0 12px;
   flex-wrap: wrap;
   padding: 0 2px;
 }
 
-.ot-table-summary {
-  font-size: 12.5px;
-  color: var(--muted);
+.ot-table-toolbar-bottom {
+  margin-top: 12px;
+}
+
+.ot-table-toolbar-right {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .ot-table-pagination {
@@ -1060,6 +1074,34 @@ details[open] summary {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.ot-table-search {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ot-table-search input {
+  width: 220px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .035);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+.ot-table-search input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(110, 168, 255, .14);
+}
+
+.ot-table-search input::placeholder {
+  color: rgba(255, 255, 255, .38);
 }
 
 .ot-page-size {
@@ -1079,7 +1121,7 @@ details[open] summary {
 .ot-page-size-control::after {
   content: '▾';
   position: absolute;
-  right: 10px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 10px;
@@ -1088,9 +1130,9 @@ details[open] summary {
 }
 
 .ot-page-size select {
-  min-width: 58px;
+  min-width: 54px;
   height: 30px;
-  padding: 0 26px 0 10px;
+  padding: 0 18px 0 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, .035);
@@ -1098,6 +1140,8 @@ details[open] summary {
   font-size: 12px;
   line-height: 30px;
   box-shadow: none;
+  text-align: center;
+  text-align-last: center;
 }
 
 .ot-page-indicator {

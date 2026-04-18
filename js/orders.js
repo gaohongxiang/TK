@@ -1243,10 +1243,12 @@ const OrderTracker = (function () {
 
   /* ---------- 渲染表格 ---------- */
   function renderTable() {
+    const toolbar = $('#ot-table-toolbar-container');
     const wrap = $('#ot-table-container');
     const { isAll, sorted } = getDisplayedOrders();
 
     if (!sorted.length) {
+      if (toolbar) toolbar.innerHTML = '';
       resetTablePage();
       const msg = (state.activeAccount && state.activeAccount !== '__all__')
         ? `账号「${escapeHtml(state.activeAccount)}」下还没有订单`
@@ -1295,21 +1297,26 @@ const OrderTracker = (function () {
     const sortIcon = state.sortOrder === 'asc' ? '↑' : '↓';
     const sortTitle = state.sortOrder === 'asc' ? '当前正序（最早在上），点击切换' : '当前倒序（最新在上），点击切换';
 
+    if (toolbar) {
+      toolbar.innerHTML = `
+        <div class="ot-table-toolbar">
+          <div class="ot-table-pagination">
+            <label class="ot-page-size">
+              <span>每页</span>
+              <span class="ot-page-size-control">
+                <select id="ot-page-size">
+                  ${PAGE_SIZE_OPTIONS.map(size => `<option value="${size}" ${size === pageSize ? 'selected' : ''}>${size}</option>`).join('')}
+                </select>
+              </span>
+            </label>
+            <button class="btn sm" id="ot-page-prev" ${state.currentPage <= 1 ? 'disabled' : ''}>上一页</button>
+            <span class="ot-page-indicator">${state.currentPage} / ${totalPages}</span>
+            <button class="btn sm" id="ot-page-next" ${state.currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
+          </div>
+        </div>`;
+    }
+
     wrap.innerHTML = `
-      <div class="ot-table-toolbar">
-        <div class="ot-table-summary">共 ${total} 条，第 ${state.currentPage} / ${totalPages} 页</div>
-        <div class="ot-table-pagination">
-          <label class="ot-page-size">
-            <span>每页</span>
-            <select id="ot-page-size">
-              ${PAGE_SIZE_OPTIONS.map(size => `<option value="${size}" ${size === pageSize ? 'selected' : ''}>${size}</option>`).join('')}
-            </select>
-          </label>
-          <button class="btn sm" id="ot-page-prev" ${state.currentPage <= 1 ? 'disabled' : ''}>上一页</button>
-          <span class="ot-page-indicator">${state.currentPage} / ${totalPages}</span>
-          <button class="btn sm" id="ot-page-next" ${state.currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
-        </div>
-      </div>
       <table class="ot">
         <thead>
           <tr>
@@ -1331,7 +1338,7 @@ const OrderTracker = (function () {
       });
     }
 
-    const pageSizeSelect = wrap.querySelector('#ot-page-size');
+    const pageSizeSelect = toolbar?.querySelector('#ot-page-size');
     if (pageSizeSelect) {
       pageSizeSelect.addEventListener('change', () => {
         state.pageSize = Math.max(1, parseInt(pageSizeSelect.value, 10) || 50);
@@ -1339,7 +1346,7 @@ const OrderTracker = (function () {
         renderTable();
       });
     }
-    const prevBtn = wrap.querySelector('#ot-page-prev');
+    const prevBtn = toolbar?.querySelector('#ot-page-prev');
     if (prevBtn) {
       prevBtn.addEventListener('click', () => {
         if (state.currentPage <= 1) return;
@@ -1347,7 +1354,7 @@ const OrderTracker = (function () {
         renderTable();
       });
     }
-    const nextBtn = wrap.querySelector('#ot-page-next');
+    const nextBtn = toolbar?.querySelector('#ot-page-next');
     if (nextBtn) {
       nextBtn.addEventListener('click', () => {
         if (state.currentPage >= totalPages) return;

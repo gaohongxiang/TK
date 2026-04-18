@@ -1047,6 +1047,7 @@ details[open] summary {
   gap: 12px;
   margin: 0 0 12px;
   flex-wrap: wrap;
+  padding: 0 2px;
 }
 
 .ot-table-summary {
@@ -1064,15 +1065,39 @@ details[open] summary {
 .ot-page-size {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-size: 12.5px;
   color: var(--muted);
 }
 
+.ot-page-size-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ot-page-size-control::after {
+  content: '▾';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
 .ot-page-size select {
-  min-width: 72px;
-  height: 34px;
-  padding: 0 10px;
+  min-width: 58px;
+  height: 30px;
+  padding: 0 26px 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .035);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 30px;
+  box-shadow: none;
 }
 
 .ot-page-indicator {

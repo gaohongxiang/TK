@@ -14,6 +14,7 @@ const OrderTracker = (function () {
   const REMOTE_DATA_VERSION = 2;
   const SYNC_DEBOUNCE_MS = 700;
   const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
+  const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 
   const state = {
     token: '',
@@ -25,6 +26,8 @@ const OrderTracker = (function () {
     accounts: [],
     activeAccount: null,
     sortOrder: 'asc',
+    pageSize: 50,
+    currentPage: 1,
     baseOrders: null,
     dirty: false,
     dirtyAccounts: {},
@@ -94,6 +97,15 @@ const OrderTracker = (function () {
   }
   function normalizeStatusValue(value) {
     return String(value || '').trim();
+  }
+  function resetTablePage() {
+    state.currentPage = 1;
+  }
+  function clampPage(totalItems) {
+    const pageSize = Math.max(1, Number(state.pageSize) || 50);
+    const totalPages = Math.max(1, Math.ceil((totalItems || 0) / pageSize));
+    state.currentPage = Math.min(Math.max(1, Number(state.currentPage) || 1), totalPages);
+    return totalPages;
   }
   function normalizeOrderRecord(order) {
     const next = { ...order };
@@ -352,6 +364,7 @@ const OrderTracker = (function () {
     state.editingId = null;
     state.activeAccount = '__all__';
     state.sortOrder = 'asc';
+    state.currentPage = 1;
     state.baseOrders = null;
     state.dirty = false;
     state.dirtyAccounts = {};
@@ -1159,11 +1172,13 @@ const OrderTracker = (function () {
         const targetAcc = tab.dataset.tabAcc;
         if (targetAcc === '__all__') {
           state.activeAccount = targetAcc;
+          resetTablePage();
           renderAccTabs();
           renderTable();
           return;
         }
         state.activeAccount = targetAcc;
+        resetTablePage();
         renderAccTabs();
         renderTable();
       });
@@ -1203,6 +1218,7 @@ const OrderTracker = (function () {
         if (removeAccount(acc)) markAccountsDirty();
         // 重置选中
         if (state.activeAccount === acc) state.activeAccount = '__all__';
+        resetTablePage();
         markOrderAccountsDirty([acc, '']);
         void commitLocalOrders('账号标记已更新，等待同步…');
         toast('已删除该账号标记', 'ok');
@@ -1218,6 +1234,7 @@ const OrderTracker = (function () {
           void commitLocalOrders('账号已添加，等待同步…');
         }
         state.activeAccount = name;
+        resetTablePage();
         renderAccTabs();
         renderTable();
       });
@@ -1230,6 +1247,7 @@ const OrderTracker = (function () {
     const { isAll, sorted } = getDisplayedOrders();
 
     if (!sorted.length) {
+      resetTablePage();
       const msg = (state.activeAccount && state.activeAccount !== '__all__')
         ? `账号「${escapeHtml(state.activeAccount)}」下还没有订单`
         : '还没有订单';
@@ -1241,9 +1259,14 @@ const OrderTracker = (function () {
       return;
     }
     const total = sorted.length;
+    const totalPages = clampPage(total);
+    const pageSize = Math.max(1, Number(state.pageSize) || 50);
+    const startIndex = (state.currentPage - 1) * pageSize;
+    const paged = sorted.slice(startIndex, startIndex + pageSize);
 
-    const rows = sorted.map((o, i) => {
-      const seqNum = state.sortOrder === 'asc' ? i + 1 : total - i;
+    const rows = paged.map((o, i) => {
+      const absoluteIndex = startIndex + i;
+      const seqNum = state.sortOrder === 'asc' ? absoluteIndex + 1 : total - absoluteIndex;
       const warn = computeWarning(o);
       return `
         <tr>
@@ -1273,6 +1296,20 @@ const OrderTracker = (function () {
     const sortTitle = state.sortOrder === 'asc' ? '当前正序（最早在上），点击切换' : '当前倒序（最新在上），点击切换';
 
     wrap.innerHTML = `
+      <div class="ot-table-toolbar">
+        <div class="ot-table-summary">共 ${total} 条，第 ${state.currentPage} / ${totalPages} 页</div>
+        <div class="ot-table-pagination">
+          <label class="ot-page-size">
+            <span>每页</span>
+            <select id="ot-page-size">
+              ${PAGE_SIZE_OPTIONS.map(size => `<option value="${size}" ${size === pageSize ? 'selected' : ''}>${size}</option>`).join('')}
+            </select>
+          </label>
+          <button class="btn sm" id="ot-page-prev" ${state.currentPage <= 1 ? 'disabled' : ''}>上一页</button>
+          <span class="ot-page-indicator">${state.currentPage} / ${totalPages}</span>
+          <button class="btn sm" id="ot-page-next" ${state.currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
+        </div>
+      </div>
       <table class="ot">
         <thead>
           <tr>
@@ -1289,6 +1326,32 @@ const OrderTracker = (function () {
     if (sortBtn) {
       sortBtn.addEventListener('click', () => {
         state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
+        resetTablePage();
+        renderTable();
+      });
+    }
+
+    const pageSizeSelect = wrap.querySelector('#ot-page-size');
+    if (pageSizeSelect) {
+      pageSizeSelect.addEventListener('change', () => {
+        state.pageSize = Math.max(1, parseInt(pageSizeSelect.value, 10) || 50);
+        resetTablePage();
+        renderTable();
+      });
+    }
+    const prevBtn = wrap.querySelector('#ot-page-prev');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        if (state.currentPage <= 1) return;
+        state.currentPage -= 1;
+        renderTable();
+      });
+    }
+    const nextBtn = wrap.querySelector('#ot-page-next');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        if (state.currentPage >= totalPages) return;
+        state.currentPage += 1;
         renderTable();
       });
     }
@@ -1554,6 +1617,7 @@ const OrderTracker = (function () {
       const created = normalizeOrderRecord({ id: uid(), ...obj });
       state.orders.unshift(created);
       markOrderAccountsDirty([created['账号']]);
+      resetTablePage();
     }
     closeModal();
     await commitLocalOrders('已保存到本地，等待同步…');

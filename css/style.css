@@ -1090,8 +1090,9 @@ details[open] summary {
   top: 50%;
   transform: translateY(-50%);
   font-size: 13px;
-  color: rgba(255, 255, 255, .42);
+  color: rgba(255, 255, 255, .58);
   pointer-events: none;
+  z-index: 1;
 }
 
 .ot-table-search input {
@@ -1114,7 +1115,7 @@ details[open] summary {
 }
 
 .ot-table-search input::placeholder {
-  color: rgba(255, 255, 255, .38);
+  color: rgba(255, 255, 255, .56);
 }
 
 .ot-page-size {

@@ -46,6 +46,16 @@ const OrderTracker = (function () {
   const $ = sel => document.querySelector(sel);
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const ORDER_STATUS_OPTIONS = ['未采购', '已采购', '在途', '已入仓', '已送达', '已完成', '订单取消'];
+  const COURIER_AUTO_DETECTORS = [
+    { name: '顺丰快递', test: value => /^SF[0-9A-Z]+$/i.test(value) || /^SFP[0-9A-Z]+$/i.test(value) },
+    { name: '极兔快递', test: value => /^JT[0-9A-Z]+$/i.test(value) },
+    { name: '中通快递', test: value => /^ZTO[0-9A-Z]+$/i.test(value) },
+    { name: '圆通快递', test: value => /^YTO[0-9A-Z]+$/i.test(value) },
+    { name: '申通快递', test: value => /^STO[0-9A-Z]+$/i.test(value) },
+    { name: '韵达快递', test: value => /^YD[0-9A-Z]+$/i.test(value) },
+    { name: '安能物流', test: value => /^ANE[0-9A-Z]+$/i.test(value) },
+    { name: '邮政快递', test: value => /^EMS[0-9A-Z]+$/i.test(value) || /^[A-Z]{2}\d{9}CN$/i.test(value) }
+  ];
   let dbPromise = null;
   let syncTimer = null;
   let syncInFlight = false;
@@ -551,6 +561,37 @@ const OrderTracker = (function () {
     return String(s ?? '').replace(/[&<>"']/g, c => (
       { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
     ));
+  }
+  function normalizeTrackingNumber(value) {
+    return String(value || '').replace(/[\s-]+/g, '').toUpperCase();
+  }
+  function detectCourierCompany(trackingNumber) {
+    const normalized = normalizeTrackingNumber(trackingNumber);
+    if (!normalized) return '';
+    const matched = COURIER_AUTO_DETECTORS.find(rule => rule.test(normalized));
+    return matched ? matched.name : '';
+  }
+  function getOrderFormCourierFields() {
+    const form = $('#ot-form');
+    if (!form) return { form: null, company: null, tracking: null };
+    return {
+      form,
+      company: form.querySelector('[name="快递公司"]'),
+      tracking: form.querySelector('[name="快递单号"]')
+    };
+  }
+  function maybeAutoDetectCourierFromForm({ force = false } = {}) {
+    const { company, tracking } = getOrderFormCourierFields();
+    if (!company || !tracking) return '';
+    const detected = detectCourierCompany(tracking.value);
+    const current = company.value || '';
+    const autoDetected = company.dataset.autoDetectedCourier || '';
+    if (!detected) return '';
+    if (!current || current === autoDetected || force) {
+      company.value = detected;
+      company.dataset.autoDetectedCourier = detected;
+    }
+    return detected;
   }
 
   /* ---------- date math ---------- */
@@ -1473,6 +1514,7 @@ const OrderTracker = (function () {
       updateModalAccountSelect(defaultAcc);
       ensureOrderStatusOption('');
     }
+    maybeAutoDetectCourierFromForm();
     recomputeAuto();
     $('#ot-modal').classList.add('show');
   }
@@ -1493,6 +1535,9 @@ const OrderTracker = (function () {
     if (obj['账号'] === '__ADD__') {
       toast('请选择有效的账号', 'error');
       return;
+    }
+    if (!obj['快递公司'] && obj['快递单号']) {
+      obj['快递公司'] = detectCourierCompany(obj['快递单号']);
     }
     obj['最晚到仓时间'] = obj['下单时间'] ? addDays(obj['下单时间'], 6) : '';
     obj['订单预警'] = computeWarning(obj).text;
@@ -1638,6 +1683,16 @@ const OrderTracker = (function () {
     $('#ot-form').onsubmit = submitForm;
     $('#ot-form [name="下单时间"]').addEventListener('change', recomputeAuto);
     $('#ot-form [name="订单状态"]').addEventListener('change', recomputeAuto);
+    const courierFields = getOrderFormCourierFields();
+    if (courierFields.tracking && courierFields.company) {
+      courierFields.tracking.addEventListener('input', () => maybeAutoDetectCourierFromForm());
+      courierFields.tracking.addEventListener('blur', () => maybeAutoDetectCourierFromForm());
+      courierFields.company.addEventListener('change', () => {
+        if (courierFields.company.value !== (courierFields.company.dataset.autoDetectedCourier || '')) {
+          courierFields.company.dataset.autoDetectedCourier = '';
+        }
+      });
+    }
     $('#ot-form').querySelectorAll('input[type="date"]').forEach(input => {
       if (input.readOnly) return;
       input.addEventListener('click', () => showDatePicker(input));

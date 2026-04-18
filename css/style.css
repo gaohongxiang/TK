@@ -1064,7 +1064,7 @@ details[open] summary {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 22px;
   flex-wrap: wrap;
   margin-left: auto;
 }
@@ -1077,14 +1077,27 @@ details[open] summary {
 }
 
 .ot-table-search {
+  position: relative;
   display: inline-flex;
   align-items: center;
+  margin-right: 4px;
+}
+
+.ot-table-search::before {
+  content: '⌕';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: rgba(255, 255, 255, .42);
+  pointer-events: none;
 }
 
 .ot-table-search input {
-  width: 220px;
+  width: 184px;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 12px 0 30px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, .035);
@@ -1113,26 +1126,14 @@ details[open] summary {
 }
 
 .ot-page-size-control {
-  position: relative;
   display: inline-flex;
   align-items: center;
-}
-
-.ot-page-size-control::after {
-  content: '▾';
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 10px;
-  color: var(--muted);
-  pointer-events: none;
 }
 
 .ot-page-size select {
   min-width: 54px;
   height: 30px;
-  padding: 0 18px 0 10px;
+  padding: 0 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, .035);
@@ -1140,6 +1141,9 @@ details[open] summary {
   font-size: 12px;
   line-height: 30px;
   box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   text-align: center;
   text-align-last: center;
 }

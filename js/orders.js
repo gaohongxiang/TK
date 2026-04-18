@@ -27,6 +27,7 @@ const OrderTracker = (function () {
     activeAccount: null,
     sortOrder: 'asc',
     searchQuery: '',
+    searchComposing: false,
     pageSize: 50,
     currentPage: 1,
     baseOrders: null,
@@ -102,6 +103,32 @@ const OrderTracker = (function () {
   function normalizeSearchValue(value) {
     return String(value || '').trim().toLowerCase();
   }
+  function captureSearchInputState() {
+    const active = document.activeElement;
+    if (!active || active.id !== 'ot-table-search-input') return null;
+    const value = active.value || '';
+    return {
+      selectionStart: active.selectionStart ?? value.length,
+      selectionEnd: active.selectionEnd ?? value.length
+    };
+  }
+  function restoreSearchInputState(snapshot, container) {
+    if (!snapshot || !container) return;
+    const nextInput = container.querySelector('#ot-table-search-input');
+    if (!nextInput) return;
+    nextInput.focus();
+    const valueLength = (nextInput.value || '').length;
+    const selectionStart = Math.min(snapshot.selectionStart ?? valueLength, valueLength);
+    const selectionEnd = Math.min(snapshot.selectionEnd ?? valueLength, valueLength);
+    try {
+      nextInput.setSelectionRange(selectionStart, selectionEnd);
+    } catch (e) { }
+  }
+  function applySearchQuery(value) {
+    state.searchQuery = value;
+    resetTablePage();
+    renderTable();
+  }
   function resetTablePage() {
     state.currentPage = 1;
   }
@@ -117,7 +144,14 @@ const OrderTracker = (function () {
         <div class="ot-table-toolbar-right">
           ${includeSearch ? `
             <label class="ot-table-search">
-              <input id="ot-table-search-input" type="text" placeholder="搜索订单号 / 产品 / 快递" value="${escapeHtml(state.searchQuery)}" autocomplete="off">
+              <span class="ot-table-search-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="6"></circle>
+                  <path d="M16 16L20 20"></path>
+                </svg>
+              </span>
+              <input id="ot-table-search-input" type="text" placeholder=" " value="${escapeHtml(state.searchQuery)}" autocomplete="off">
+              <span class="ot-table-search-hint">搜索订单号 / 产品 / 快递</span>
             </label>` : ''}
           <div class="ot-table-pagination">
             <label class="ot-page-size">
@@ -139,8 +173,16 @@ const OrderTracker = (function () {
     if (!container) return;
     const searchInput = includeSearch ? container.querySelector('#ot-table-search-input') : null;
     if (searchInput) {
-      searchInput.addEventListener('input', () => {
+      searchInput.addEventListener('compositionstart', () => {
+        state.searchComposing = true;
+      });
+      searchInput.addEventListener('compositionend', () => {
+        state.searchComposing = false;
+        applySearchQuery(searchInput.value);
+      });
+      searchInput.addEventListener('input', event => {
         state.searchQuery = searchInput.value;
+        if (event.isComposing || state.searchComposing) return;
         resetTablePage();
         renderTable();
       });
@@ -1330,6 +1372,7 @@ const OrderTracker = (function () {
     const toolbar = $('#ot-table-toolbar-container');
     const footerToolbar = $('#ot-table-footer-toolbar-container');
     const wrap = $('#ot-table-container');
+    const searchInputState = captureSearchInputState();
     const { isAll, sorted } = getDisplayedOrders();
     const hasQuery = !!normalizeSearchValue(state.searchQuery);
     const pageSize = Math.max(1, Number(state.pageSize) || 50);
@@ -1351,6 +1394,7 @@ const OrderTracker = (function () {
           <div style="font-size:12.5px">${hasQuery ? '试试更换关键词' : '点击右上角「+ 新增订单」开始记录'}</div>
         </div>`;
       bindTableToolbar(toolbar, { totalPages: 1, includeSearch: true });
+      restoreSearchInputState(searchInputState, toolbar);
       return;
     }
     const total = sorted.length;
@@ -1420,6 +1464,7 @@ const OrderTracker = (function () {
 
     bindTableToolbar(toolbar, { totalPages, includeSearch: true });
     bindTableToolbar(footerToolbar, { totalPages });
+    restoreSearchInputState(searchInputState, toolbar);
 
     wrap.querySelectorAll('[data-edit]').forEach(b => {
       b.onclick = () => openModal(b.dataset.edit);

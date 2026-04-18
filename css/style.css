@@ -1080,42 +1080,86 @@ details[open] summary {
   position: relative;
   display: inline-flex;
   align-items: center;
-  margin-right: 4px;
-}
-
-.ot-table-search::before {
-  content: '⌕';
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  color: rgba(255, 255, 255, .58);
-  pointer-events: none;
-  z-index: 1;
-}
-
-.ot-table-search input {
   width: 184px;
   height: 32px;
-  padding: 0 12px 0 30px;
+  margin-right: 4px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, .035);
-  color: var(--text);
-  font: inherit;
-  font-size: 12.5px;
-  outline: none;
+  overflow: hidden;
   transition: border-color .15s, box-shadow .15s, background .15s;
 }
 
-.ot-table-search input:focus {
+.ot-table-search:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(110, 168, 255, .14);
 }
 
-.ot-table-search input::placeholder {
-  color: rgba(255, 255, 255, .56);
+.ot-table-search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.ot-table-search-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ot-table-search input {
+  width: 100%;
+  height: 100%;
+  padding: 0 12px 0 34px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  box-shadow: none;
+  position: relative;
+  z-index: 2;
+}
+
+.ot-table-search input:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.ot-table-search-hint {
+  position: absolute;
+  left: 34px;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity .12s ease;
+  z-index: 1;
+}
+
+.ot-table-search input:focus+.ot-table-search-hint,
+.ot-table-search input:not(:placeholder-shown)+.ot-table-search-hint {
+  opacity: 0;
 }
 
 .ot-page-size {

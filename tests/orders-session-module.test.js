@@ -28,6 +28,36 @@ assert.match(
 
 assert.match(
   source,
+  /mode === 'supabase'/,
+  '订单会话模块需要按存储模式切换到 Supabase 分支'
+);
+
+assert.doesNotMatch(
+  source,
+  /mode === 'local'/,
+  '订单会话模块不应再保留仅本地模式分支'
+);
+
+assert.doesNotMatch(
+  source,
+  /provider\.signIn/,
+  '订单会话模块不应再触发 Supabase 邮箱登录'
+);
+
+assert.match(
+  source,
+  /\.supabase\.co/,
+  '订单会话模块需要把输入的 Supabase Project ID 组装成 Project URL'
+);
+
+assert.match(
+  source,
+  /provider\.init/,
+  '订单会话模块需要通过 provider.init 初始化远端连接'
+);
+
+assert.match(
+  source,
   /async function onEnter\(/,
   '订单会话模块需要包含进入模块时的恢复逻辑'
 );
@@ -54,9 +84,14 @@ const sessionTools = sandbox.OrderTrackerSession.create({
     renderAccTabs: () => {},
     renderTable: () => {}
   },
+  providers: {
+    getProviderByMode: () => ({
+      init: async () => {},
+      isConnected: () => false
+    })
+  },
   sync: {
-    verifyToken: async () => ({ login: 'tester' }),
-    createGist: async () => 'gist-id',
+    setRemoteProvider: () => {},
     hydrateCache: async () => false,
     syncNow: async () => true,
     resetTrackerState: () => {},

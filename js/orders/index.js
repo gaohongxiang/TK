@@ -1,5 +1,5 @@
 /* ============================================================
- * 模块 2：订单跟踪器（IndexedDB 本地优先 + GitHub Gist 同步）
+ * 模块 2：订单跟踪器（IndexedDB 本地优先 + 可选 Gist / Supabase）
  * ============================================================ */
 const OrderTracker = (function () {
   const LS_KEY = 'tk.orders.cfg.v1';
@@ -17,9 +17,14 @@ const OrderTracker = (function () {
   const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 
   const state = {
+    storageMode: 'gist',
+    remoteProvider: null,
     token: '',
     gistId: '',
+    supabaseUrl: '',
+    supabaseAnonKey: '',
     user: '',
+    clientId: '',
     orders: [],
     editingId: null,
     loaded: false,
@@ -31,6 +36,7 @@ const OrderTracker = (function () {
     pageSize: 50,
     currentPage: 1,
     baseOrders: null,
+    baseAccounts: [],
     dirty: false,
     dirtyAccounts: {},
     accountRemoteUpdatedAt: {},
@@ -45,7 +51,8 @@ const OrderTracker = (function () {
     localUpdatedAt: '',
     lastRemoteUpdatedAt: '',
     lastSyncedAt: '',
-    localRevision: 0
+    localRevision: 0,
+    remoteCursor: ''
   };
 
   const ORDER_STATUS_OPTIONS = ['未采购', '已采购', '在途', '已入仓', '已送达', '已完成', '订单取消'];
@@ -78,7 +85,10 @@ const OrderTracker = (function () {
     normalizeOrderRecord,
     normalizeOrderList,
     cloneOrder,
+    getOrderUpdatedAt,
+    ordersEqual,
     mergeOrdersById,
+    mergeOrdersLastWriteWins,
     normalizeAccountName,
     toAccountSlot,
     fromAccountSlot,
@@ -110,16 +120,54 @@ const OrderTracker = (function () {
     el.className = 'sync ' + cls;
   }
   function saveCfg() {
+    state.clientId = state.clientId || uid();
     localStorage.setItem(LS_KEY, JSON.stringify({
-      token: state.token, gistId: state.gistId, user: state.user
+      mode: state.storageMode || 'gist',
+      token: state.token,
+      gistId: state.gistId,
+      supabaseUrl: state.supabaseUrl,
+      supabaseAnonKey: state.supabaseAnonKey,
+      user: state.user,
+      clientId: state.clientId
     }));
   }
   function loadCfg() {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); }
-    catch (e) { return null; }
+    try {
+      const raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+      if (!raw) return null;
+      return {
+        mode: raw.mode === 'supabase' ? 'supabase' : 'gist',
+        token: raw.token || '',
+        gistId: raw.gistId || '',
+        supabaseUrl: raw.supabaseUrl || raw.url || '',
+        supabaseAnonKey: raw.supabaseAnonKey || raw.anonKey || '',
+        user: raw.user || '',
+        clientId: raw.clientId || uid()
+      };
+    } catch (e) {
+      return null;
+    }
   }
   function resetTablePage() {
     state.currentPage = 1;
+  }
+  function bindStorageHelpModal() {
+    const trigger = $('#ot-storage-help-btn');
+    const modal = $('#ot-storage-help-modal');
+    const closeBtn = $('#ot-storage-help-close');
+    if (!trigger || !modal || !closeBtn || trigger.dataset.bound === 'true') return;
+
+    const close = () => modal.classList.remove('show');
+
+    trigger.addEventListener('click', () => modal.classList.add('show'));
+    closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', event => {
+      if (event.target.id === 'ot-storage-help-modal') close();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && modal.classList.contains('show')) close();
+    });
+    trigger.dataset.bound = 'true';
   }
 
   /* ---------- 账号历史记忆 ---------- */
@@ -148,23 +196,18 @@ const OrderTracker = (function () {
     saveAccounts();
     return existed;
   }
-  const sync = OrderTrackerSync.create({
+
+  const providerGist = OrderTrackerProviderGist.create({
     state,
     constants: {
       GIST_FILENAME,
       META_FILENAME,
-      CACHE_DB_NAME,
-      CACHE_STORE,
-      CACHE_VERSION,
       REMOTE_DATA_VERSION,
-      SYNC_DEBOUNCE_MS,
       UNASSIGNED_ACCOUNT_SLOT
     },
     helpers: {
       nowIso,
       normalizeOrderList,
-      cloneOrder,
-      mergeOrdersById,
       uniqueAccounts,
       listOrderAccounts,
       groupOrdersByAccountSlot,
@@ -173,6 +216,41 @@ const OrderTracker = (function () {
       fromAccountSlot,
       getAccountFileName,
       parseAccountSlotFromFileName
+    }
+  });
+  const providerSupabase = OrderTrackerProviderSupabase.create({
+    state,
+    helpers: {
+      nowIso,
+      normalizeOrderList,
+      uniqueAccounts
+    }
+  });
+  function getProviderByMode(mode) {
+    if (mode === 'supabase') return providerSupabase;
+    return providerGist;
+  }
+
+  const sync = OrderTrackerSync.create({
+    state,
+    constants: {
+      CACHE_DB_NAME,
+      CACHE_STORE,
+      CACHE_VERSION,
+      SYNC_DEBOUNCE_MS
+    },
+    helpers: {
+      nowIso,
+      normalizeOrderList,
+      cloneOrder,
+      ordersEqual,
+      getOrderUpdatedAt,
+      mergeOrdersById,
+      mergeOrdersLastWriteWins,
+      uniqueAccounts,
+      listOrderAccounts,
+      groupOrdersByAccountSlot,
+      toAccountSlot
     },
     ui: {
       setSync,
@@ -187,13 +265,12 @@ const OrderTracker = (function () {
     markOrderAccountsDirty,
     resetTrackerState,
     hydrateCache,
-    verifyToken,
-    createGist,
     renderLocalOrders,
     queueSync,
     cancelPendingSync,
     syncNow,
-    commitLocalOrders
+    commitLocalOrders,
+    setRemoteProvider
   } = sync;
   function promptAddAccount(initialValue = '', title = '添加新账号') {
     return new Promise(resolve => {
@@ -278,6 +355,7 @@ const OrderTracker = (function () {
     helpers: {
       $,
       uid,
+      nowIso,
       todayStr,
       addDays,
       computeWarning,
@@ -322,14 +400,16 @@ const OrderTracker = (function () {
       renderTable
     },
     sync: {
-      verifyToken,
-      createGist,
+      setRemoteProvider,
       hydrateCache,
       syncNow,
       resetTrackerState,
       renderLocalOrders,
       queueSync,
       cancelPendingSync
+    },
+    providers: {
+      getProviderByMode
     }
   });
   const { init, onEnter } = sessionTools;
@@ -338,6 +418,7 @@ const OrderTracker = (function () {
   /* ---------- 渲染表格 ---------- */
   function renderTable() {
     const result = OrderTableView.render({
+      summaryContainer: $('#ot-summary-container'),
       toolbar: $('#ot-table-toolbar-container'),
       footerToolbar: $('#ot-table-footer-toolbar-container'),
       wrap: $('#ot-table-container'),
@@ -386,6 +467,111 @@ const OrderTracker = (function () {
     }
   }
 
+  function copyText(text) {
+    if (!text) return Promise.reject(new Error('没有可复制的内容'));
+
+    function legacyCopy() {
+      return new Promise((resolve, reject) => {
+        const input = document.createElement('textarea');
+        input.value = text;
+        input.setAttribute('readonly', 'readonly');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.focus();
+        input.select();
+        try {
+          const ok = document.execCommand('copy');
+          document.body.removeChild(input);
+          if (!ok) throw new Error('浏览器未允许复制');
+          resolve();
+        } catch (error) {
+          document.body.removeChild(input);
+          reject(error);
+        }
+      });
+    }
+
+    if (navigator.clipboard?.writeText) {
+      return navigator.clipboard.writeText(text).catch(() => legacyCopy());
+    }
+
+    return legacyCopy();
+  }
+
+  function getEmbeddedSupabaseSchema() {
+    return String(window.ORDER_TRACKER_SUPABASE_SCHEMA || '').trim();
+  }
+
+  function getSupabaseSchemaSource() {
+    const embedded = getEmbeddedSupabaseSchema();
+    if (embedded) return embedded;
+
+    const schemaUrl = $('#ot-copy-supabase-schema')?.dataset.schemaUrl || '';
+    throw new Error(schemaUrl
+      ? `页面内置 schema 未加载，请刷新页面后重试；如仍失败，可手动打开 ${schemaUrl}`
+      : '页面内置 schema 未加载，请刷新页面后重试');
+  }
+
+  function getSupabaseProjectRef() {
+    const raw = $('#ot-supabase-url')?.value.trim();
+    if (!raw) return '';
+    if (!/^https?:\/\//i.test(raw)) {
+      return raw.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    }
+    try {
+      const url = new URL(raw);
+      const host = String(url.hostname || '').trim().toLowerCase();
+      if (!host.endsWith('.supabase.co')) return '';
+      return host.split('.')[0] || '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function openSupabaseUrl(url) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  function bindSupabaseSetupActions() {
+    const dashboardBtn = $('#ot-open-supabase-dashboard');
+    const sqlBtn = $('#ot-open-supabase-sql-editor');
+    const copyBtn = $('#ot-copy-supabase-schema');
+    if (!dashboardBtn || !sqlBtn || !copyBtn || dashboardBtn.dataset.bound === 'true') return;
+
+    dashboardBtn.addEventListener('click', () => {
+      openSupabaseUrl('https://supabase.com/dashboard');
+    });
+
+    sqlBtn.addEventListener('click', () => {
+      const projectRef = getSupabaseProjectRef();
+      const url = projectRef
+        ? `https://supabase.com/dashboard/project/${projectRef}/sql/new`
+        : 'https://supabase.com/dashboard/project/_/sql/new';
+      openSupabaseUrl(url);
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      const originalText = copyBtn.textContent;
+      copyBtn.disabled = true;
+      copyBtn.textContent = '复制中…';
+      try {
+        const sql = getSupabaseSchemaSource();
+        await copyText(sql);
+        toast('初始化 SQL 已复制，去 SQL Editor 里粘贴运行即可', 'ok');
+      } catch (error) {
+        toast('复制初始化 SQL 失败: ' + error.message, 'error');
+      } finally {
+        copyBtn.disabled = false;
+        copyBtn.textContent = originalText;
+      }
+    });
+
+    dashboardBtn.dataset.bound = 'true';
+  }
+
+  bindStorageHelpModal();
+  bindSupabaseSetupActions();
   init();
   return { onEnter };
 })();

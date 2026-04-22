@@ -650,46 +650,126 @@
     </div>
 
     <!-- ============================================================
-       VIEW 2 · 订单跟踪器（GitHub Gist 存储）
+       VIEW 2 · 订单跟踪器（本地优先 + 可选远端同步）
        ============================================================ -->
     <div id="view-orders" class="view">
 
-      <!-- (a) 首次进入 / 未配置 Token 时显示 -->
+      <!-- (a) 首次进入 / 未配置远端时显示 -->
       <section class="card ot-setup" id="ot-setup">
-        <h2>连接你的 GitHub</h2>
-        <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-          订单会优先保存在当前浏览器本地数据库（IndexedDB），打开更快；同时后台同步到你自己 GitHub 账号下的私有 Gist，
-          别人看不到，也方便跨设备同步。首次使用需要生成一个仅带 <code>gist</code> 权限的 Token。
+        <h2 id="ot-setup-title">选择订单存储方式</h2>
+        <p class="ot-setup-intro">
+          订单始终会先保存在当前浏览器本地数据库（IndexedDB），页面更快打开，也支持离线继续操作。为了避免数据丢失并支持跨设备恢复，必须选择一个云端存储。
         </p>
-        <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-          本地缓存不需要单独安装软件；如果你清理浏览器数据或更换浏览器，本地缓存会消失，但 Gist 里的云端备份还在。
-        </p>
-        <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-          如果你以后要在新浏览器或新设备连回原来的旧数据，请把 <code>Token</code> 和 <code>Gist ID</code> 一起保存好；
-          私有 Gist 需要两者同时具备，才能重新连接到同一份数据。
-        </p>
-        <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-          订单会按账号拆分同步到 Gist。通常各自只操作自己的账号时，互相不会影响；同账号下如果改的是不同订单，会自动合并；如果两边同时改了同一条订单，同步时会让你选保留本地还是云端。
-        </p>
-        <ol>
-          <li>打开 <a href="https://github.com/settings/tokens/new?description=TK%20Toolbox%20Order%20Tracker&scopes=gist"
-              target="_blank">GitHub Token 生成页</a>（已预填权限）</li>
-          <li>确认只勾选 <code>gist</code>，有效期按需选（建议 90 天及以上）</li>
-          <li>点底部 <code>Generate token</code>，复制 <code>ghp_</code> 开头的 Token 粘贴到下方</li>
-          <li>首次会自动创建私有 Gist；如果你已经有数据 Gist，把它的 ID 填到下方，并把 Token 和 Gist ID 一起保存好</li>
-        </ol>
-        <div class="row" style="margin-top:6px">
-          <div class="field full" style="grid-column:1/-1">
-            <label for="ot-token">Personal Access Token</label>
-            <input id="ot-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+
+        <div class="ot-storage-modes" id="ot-storage-modes">
+          <label class="ot-storage-mode active">
+            <input type="radio" name="ot-storage-mode" value="gist" checked>
+            <span class="ot-storage-mode-title">GitHub Gist</span>
+            <span class="ot-storage-mode-copy">低门槛接入，适合轻量同步</span>
+          </label>
+          <label class="ot-storage-mode">
+            <input type="radio" name="ot-storage-mode" value="supabase">
+            <span class="ot-storage-mode-title">Supabase</span>
+            <span class="ot-storage-mode-copy">需要自行配置，适合数据较多、长期使用</span>
+          </label>
+        </div>
+
+        <div id="ot-gist-copy" class="ot-setup-copy-block">
+          <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
+            Gist 模式会在本地缓存之外，把订单同步到你自己 GitHub 账号下的私有 Gist，别人看不到，也方便跨设备同步。首次使用需要生成一个仅带 <code>gist</code> 权限的 Token。
+          </p>
+          <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
+            如果你以后要在新浏览器或新设备连回原来的旧数据，请把 <code>Token</code> 和 <code>Gist ID</code> 一起保存好；私有 Gist 需要两者同时具备，才能重新连接到同一份数据。
+          </p>
+          <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
+            订单会按账号拆分同步到 Gist。通常各自只操作自己的账号时，互相不会影响；同账号下如果改的是不同订单，会自动合并；如果两边同时改了同一条订单，同步时会让你选保留本地还是云端。
+          </p>
+          <ol>
+            <li>打开 <a
+                href="https://github.com/settings/tokens/new?description=TK%20Toolbox%20Order%20Tracker&scopes=gist"
+                target="_blank">GitHub Token 生成页</a>（已预填权限）</li>
+            <li>确认只勾选 <code>gist</code>，有效期按需选（建议 90 天及以上）</li>
+            <li>点底部 <code>Generate token</code>，复制 <code>ghp_</code> 开头的 Token 粘贴到下方</li>
+            <li>首次会自动创建私有 Gist；如果你已经有数据 Gist，把它的 ID 填到下方，并把 Token 和 Gist ID 一起保存好</li>
+          </ol>
+        </div>
+
+        <div id="ot-supabase-copy" class="ot-setup-copy-block" style="display:none">
+          <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
+            Supabase 模式下，订单数据保存在你自己的 Supabase 数据库中。你只需要准备好自己的 Project ID 和 Publishable key。
+          </p>
+          <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
+            连接后订单依然是本地优先：先写入当前浏览器，再在后台同步到你自己的 Supabase。换设备时，只要填同一个项目的 Project ID 和 key 即可恢复数据。
+          </p>
+          <div class="ot-setup-guide" aria-label="Supabase 三步接入">
+            <div class="ot-setup-guide-title">Supabase 三步接入</div>
+            <ol class="ot-setup-guide-list">
+              <li>
+                <strong>新建项目并开启 API</strong>
+                <span>先打开 <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer">Supabase
+                    Dashboard</a> 新建项目；创建项目时建议勾上 <code>Enable Data API</code> 和 <code>Enable automatic RLS</code>，也可以结合
+                  <a href="https://supabase.com/docs/guides/api" target="_blank" rel="noreferrer">Data API 官方说明</a>
+                  一起看。</span>
+              </li>
+              <li>
+                <strong>去 SQL Editor 执行内置 schema</strong>
+                <span>把仓库里的 Supabase schema 跑一遍，表结构、RLS 和 policy 会一次建好。</span>
+              </li>
+              <li>
+                <strong>复制 URL 和 key 回来连接</strong>
+                <span><code>Project ID</code> 在 <code>General → Project ID</code> 页面复制；<code>Publishable key</code> 在
+                  <code>API Keys</code> 页面复制，填到下方即可，页面会自动组装成连接用的 URL。</span>
+              </li>
+            </ol>
+            <div class="ot-setup-guide-actions">
+              <button id="ot-open-supabase-dashboard" type="button" class="btn sm">打开 Supabase Dashboard</button>
+              <button id="ot-open-supabase-sql-editor" type="button" class="btn sm">打开 SQL Editor</button>
+              <button id="ot-copy-supabase-schema" type="button" class="btn sm"
+                data-schema-url="docs/supabase/order-tracker-schema.sql">复制初始化 SQL</button>
+            </div>
+            <div class="ot-setup-guide-note">
+              团队成员可以共用同一个 Supabase 项目，只要使用同一套 <code>Project ID + key</code> 即可；但当前方案没有成员级权限隔离，也没有操作审计，拿到这套配置的人都能读写全部订单。
+            </div>
           </div>
         </div>
-        <div class="row" style="margin-top:12px">
-          <div class="field full" style="grid-column:1/-1">
-            <label for="ot-gistid">已有 Gist ID（需配合 Token 使用；不填会自动创建新的）</label>
-            <input id="ot-gistid" type="text" placeholder="例如 a1b2c3d4e5f6…" autocomplete="off">
+
+        <div id="ot-gist-fields">
+          <div class="row" style="margin-top:6px">
+            <div class="field full" style="grid-column:1/-1">
+              <label for="ot-token">Personal Access Token</label>
+              <input id="ot-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <div class="field full" style="grid-column:1/-1">
+              <label for="ot-gistid">已有 Gist ID（需配合 Token 使用；不填会自动创建新的）</label>
+              <input id="ot-gistid" type="text" placeholder="例如 a1b2c3d4e5f6…" autocomplete="off">
+            </div>
           </div>
         </div>
+
+        <div id="ot-supabase-fields" style="display:none">
+          <div class="row" style="margin-top:6px">
+            <div class="field full" style="grid-column:1/-1">
+              <label for="ot-supabase-url">Supabase Project ID</label>
+              <input id="ot-supabase-url" type="text" placeholder="hgrsq......" autocomplete="off">
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px">
+            <div class="field full" style="grid-column:1/-1">
+              <label for="ot-supabase-anon-key">Supabase Publishable key</label>
+              <input id="ot-supabase-anon-key" type="password" placeholder="sb_publishable_xxxxxxxxxxxxxxxxxxxx"
+                autocomplete="off">
+            </div>
+          </div>
+          <div class="ot-setup-guide-note" style="margin-top:14px">
+            如果你之前一直在用 GitHub Gist，可以直接把 Gist 云端数据迁移到当前填写的 Supabase 项目；没有数据时，也可以直接连接。
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="ot-migrate-from-gist" type="button" class="btn">从 GitHub Gist 迁移</button>
+          </div>
+        </div>
+
         <div style="display:flex;gap:8px;margin-top:18px">
           <button id="ot-connect" class="btn primary">连接并开始使用</button>
         </div>
@@ -697,68 +777,46 @@
 
       <!-- (b) 配置完成后显示主面板 -->
       <section class="card" id="ot-main" style="display:none">
-        <div class="ot-bar">
-          <div class="left">
-            <span id="ot-user">—</span>
-            <span style="opacity:.5">·</span>
-            <span class="sync" id="ot-sync">就绪</span>
-          </div>
-          <div class="right">
-            <button id="ot-add" class="btn primary">+ 新增订单</button>
-            <button id="ot-refresh" class="btn sm">↻ 刷新</button>
-            <button id="ot-export" class="btn sm">导出 CSV</button>
-            <button id="ot-copy-gist" class="btn sm">复制 Gist ID</button>
-            <button id="ot-logout" class="btn sm danger">退出</button>
-          </div>
-        </div>
-
-        <div class="ot-storage-note">
-          <div class="title">数据存储说明</div>
-          <div class="text">当前模式为本地优先：订单先写入当前浏览器本地数据库（IndexedDB），页面会更快打开；有改动时会在后台自动同步到你自己的 GitHub 私有 Gist，用于跨设备同步和备份。请及时保存好
-            Token 和 Gist ID，之后换浏览器或设备时，需要这两项才能连回原来的数据。</div>
-          <div class="text">云端会按账号分文件同步。各自只操作自己的账号时，互相不会影响；同账号下如果改的是不同订单，会自动合并；如果两边同时改了同一条订单，同步时会让你选保留本地还是云端。</div>
-        </div>
-
-        <!-- 公式说明 -->
-        <div class="ot-formula">
-          <div class="title">◇ 自动计算公式</div>
-          <div style="display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center">
-            <div class="f-row" style="margin:0;width:100%">
-              <span class="k">最晚到仓</span>
-              <span class="op">=</span>
-              <span>下单时间 + 6 天</span>
+        <div id="ot-header-status-row" class="ot-header-row ot-header-status-row">
+          <div class="ot-bar">
+            <div class="left">
+              <span id="ot-user">—</span>
+              <span style="opacity:.5">·</span>
+              <span class="sync" id="ot-sync">就绪</span>
+              <button id="ot-storage-help-btn" type="button" class="calc-help-icon ot-storage-help-btn"
+                aria-controls="ot-storage-help-modal" aria-haspopup="dialog" aria-label="数据存储说明" title="数据存储说明">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M6.5 4.5h8a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2h-9a2 2 0 0 0-2 2v-11a3 3 0 0 1 2-3Z" />
+                  <path d="M8.5 8.25h6.5M8.5 11.25h6.5M8.5 14.25h4.5" />
+                </svg>
+              </button>
             </div>
-            <div class="f-row" style="margin:0;width:100%">
-              <span class="k" style="padding-top:2px">订单预警</span>
-              <span class="op">=</span>
-              <div style="display:flex;flex-direction:column;gap:8px;flex:1">
-                <div class="f-rules-grid">
-                  <span class="rule"><span class="cond">订单取消</span><span class="arrow">→</span><span
-                      class="result">取消订单</span></span>
-                  <span class="rule"><span class="cond">已入仓</span><span class="arrow">→</span><span
-                      class="result">入仓完成</span></span>
-                  <span class="rule"><span class="cond">已完成</span><span class="arrow">→</span><span
-                      class="result">订单完成</span></span>
-                  <span class="rule"><span class="cond">已送达</span><span class="arrow">→</span><span
-                      class="result">订单送达</span></span>
-                </div>
-                <div class="f-rules-grid">
-                  <span class="rule"><span class="cond">今天 ≥ 最晚到仓</span><span class="arrow">→</span><span
-                      class="result">已超期</span></span>
-                  <span class="rule"><span class="cond">最晚到仓 − 今天 ≤ 2天</span><span class="arrow">→</span><span
-                      class="result">延误风险</span></span>
-                  <span class="rule"><span class="cond">最晚到仓 − 今天 > 2天</span><span class="arrow">→</span><span
-                      class="result">剩 N 天</span></span>
-                </div>
-              </div>
+            <div class="right">
+              <button id="ot-refresh" class="btn sm">↻ 刷新</button>
+              <button id="ot-export" class="btn sm">导出 CSV</button>
+              <button id="ot-copy-gist" class="btn sm">复制 Gist ID</button>
+              <button id="ot-logout" class="btn sm danger">退出</button>
             </div>
           </div>
         </div>
 
-        <!-- 账号标签栏 -->
-        <div class="ot-acc-tabs" id="ot-acc-tabs"></div>
-
-        <div id="ot-table-toolbar-container"></div>
+        <div id="ot-header-summary-row" class="ot-header-row ot-header-summary-row">
+          <div id="ot-summary-container"></div>
+        </div>
+        <div id="ot-header-accounts-row" class="ot-header-row ot-header-accounts-row">
+          <div class="ot-acc-tabs ot-acc-shell" id="ot-acc-tabs">
+            <div class="ot-acc-tabs-all" id="ot-acc-tabs-all"></div>
+            <div class="ot-acc-tabs-scroll" id="ot-acc-tabs-scroll">
+              <button class="tab-add" id="ot-tab-add" title="添加账号">+</button>
+            </div>
+            <div class="ot-acc-actions" id="ot-acc-actions">
+              <button id="ot-add" class="btn primary">+ 新增订单</button>
+            </div>
+          </div>
+        </div>
+        <div id="ot-header-controls-row" class="ot-header-row ot-header-controls-row">
+          <div id="ot-table-toolbar-container"></div>
+        </div>
         <div class="ot-table-wrap">
           <div id="ot-table-container"></div>
         </div>
@@ -768,7 +826,8 @@
     </div>
 
     <footer>
-      本地参数保存在浏览器（localStorage），订单缓存保存在浏览器本地数据库（IndexedDB），订单云端备份保存在你自己的 GitHub Gist · TK 电商工具箱 © <span id="yr"></span>
+      本地参数保存在浏览器（localStorage），订单缓存保存在浏览器本地数据库（IndexedDB），可选同步到你自己的 GitHub Gist 或 Supabase · TK 电商工具箱 © <span
+        id="yr"></span>
     </footer>
   </div>
 
@@ -902,7 +961,7 @@
     <div class="modal" style="max-width:420px">
       <h3 id="ot-logout-title">确认退出</h3>
       <div class="modal-copy">
-        退出后需要重新填写 Token 和 Gist ID 才能连回原来的数据。当前浏览器里的本地缓存不会删除，云端数据也仍保存在你自己的 GitHub Gist 里。
+        退出后需要重新选择存储方式并重新连接。当前浏览器里的本地缓存不会删除；如果你用了 Gist 或 Supabase，云端数据仍然保存在你自己的远端存储里。
       </div>
       <div class="actions">
         <button type="button" id="ot-logout-cancel" class="btn">取消</button>
@@ -931,6 +990,65 @@
     </div>
   </div>
 
+  <div id="ot-migrate-gist-modal" class="modal-mask" role="dialog" aria-modal="true"
+    aria-labelledby="ot-migrate-gist-title">
+    <div class="modal" style="max-width:480px">
+      <h3 id="ot-migrate-gist-title">从 GitHub Gist 迁移</h3>
+      <div class="modal-copy">
+        如果 Gist 里已有云端数据，会迁移到当前填写的 Supabase 项目；如果没有数据，就直接连接 Supabase。迁移读取的是 GitHub Gist 里已经同步到云端的数据，不包含其他浏览器里尚未同步的本地改动。目标 Supabase 请先执行初始化 SQL；如需迁移数据，目标库应保持为空。
+      </div>
+      <div class="row" style="margin-top:16px">
+        <div class="field full" style="grid-column:1/-1">
+          <label for="ot-migrate-gist-token">GitHub Personal Access Token</label>
+          <input id="ot-migrate-gist-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field full" style="grid-column:1/-1">
+          <label for="ot-migrate-gist-id">Gist ID</label>
+          <input id="ot-migrate-gist-id" type="text" placeholder="例如 a1b2c3d4e5f6…" autocomplete="off">
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" id="ot-migrate-gist-cancel" class="btn">取消</button>
+        <button type="button" id="ot-migrate-gist-confirm" class="btn primary">继续</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ot-storage-help-modal" class="modal-mask" role="dialog" aria-modal="true"
+    aria-labelledby="ot-storage-help-title">
+    <div class="modal" style="max-width:560px">
+      <h3 id="ot-storage-help-title">数据存储说明</h3>
+      <div class="calc-help-copy">
+        <div class="calc-help-item">
+          <div class="k">本地优先</div>
+          <div class="v">订单会先写入当前浏览器本地数据库（IndexedDB），页面打开更快，也支持离线继续操作；随后再同步到你自己的 Gist 或 Supabase。</div>
+        </div>
+        <div class="calc-help-item">
+          <div class="k">可选远端</div>
+          <div class="v">Gist 模式会同步到你自己的 GitHub 私有 Gist；Supabase 模式会同步到你自己的 Supabase 项目。工具本身不会把订单存到我的数据库里。</div>
+        </div>
+        <div class="calc-help-item">
+          <div class="k">恢复方式</div>
+          <div class="v">如果你使用 Gist，请保存好 Token 和 Gist ID；如果你使用 Supabase，请记住自己的 Project ID 和 Publishable
+            key。换浏览器或换设备后，用同一套远端配置即可恢复。</div>
+        </div>
+        <div class="calc-help-item">
+          <div class="k">团队共用</div>
+          <div class="v">同一个 Supabase 项目可以给团队成员共用，但当前方案没有成员级权限隔离；知道这套 URL 和 key 的成员都能读写全部订单。</div>
+        </div>
+        <div class="calc-help-item">
+          <div class="k">迁移方式</div>
+          <div class="v">如果你之前一直在用 Gist，可以在 Supabase 配置区里点“从 GitHub Gist 迁移”；系统会直接读取 Gist 云端数据，有数据就写入空的 Supabase 项目，没有数据就直接连接当前 Supabase。</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="ot-storage-help-close" type="button" class="btn primary">知道了</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <!-- JS 模块（defer 保证顺序加载：路由 → 利润计算器 → 订单跟踪器） -->
@@ -940,6 +1058,10 @@
   <script src="js/calc/legacy.js" defer></script>
   <script src="js/calc/pricing.js" defer></script>
   <script src="js/calc/index.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="js/orders/provider-gist.js" defer></script>
+  <script src="js/orders/provider-supabase.js" defer></script>
+  <script src="js/orders/supabase-schema.js" defer></script>
   <script src="js/orders/table.js" defer></script>
   <script src="js/orders/sync.js" defer></script>
   <script src="js/orders/export.js" defer></script>

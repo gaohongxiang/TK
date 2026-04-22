@@ -34,27 +34,30 @@ const OrderTrackerTabs = (function () {
     function renderAccTabs() {
       const container = typeof getContainer === 'function' ? getContainer() : null;
       if (!container) return;
+      const allContainer = container.querySelector('#ot-acc-tabs-all');
+      const scrollContainer = container.querySelector('#ot-acc-tabs-scroll');
+      if (!allContainer || !scrollContainer) return;
       const accounts = getUniqueAccounts();
 
-      let html = '';
+      if (state.activeAccount !== '__all__' && (!state.activeAccount || !accounts.includes(state.activeAccount))) {
+        state.activeAccount = '__all__';
+      }
+
+      const countMap = {};
+      (state.orders || []).forEach(order => {
+        const account = normalizeAccountName(order['账号']);
+        if (account) countMap[account] = (countMap[account] || 0) + 1;
+      });
+
+      const allActive = state.activeAccount === '__all__';
+      allContainer.innerHTML = `<span class="tab${allActive ? ' active' : ''}" data-tab-acc="__all__">
+        全部<span class="tab-count">(${state.orders.length})</span>
+      </span>`;
+
       if (!accounts.length) {
-        html = '<span style="color:var(--muted);font-size:12.5px">暂无账号，点击右侧 + 号即可添加</span>';
+        scrollContainer.innerHTML = '<div class="ot-acc-tabs-scroll-inner"><span class="ot-acc-empty">暂无账号，点右侧账号区末尾的 + 可添加</span><button class="tab-add" id="ot-tab-add" title="添加账号">+</button></div>';
       } else {
-        if (state.activeAccount !== '__all__' && (!state.activeAccount || !accounts.includes(state.activeAccount))) {
-          state.activeAccount = '__all__';
-        }
-
-        const countMap = {};
-        (state.orders || []).forEach(order => {
-          const account = normalizeAccountName(order['账号']);
-          if (account) countMap[account] = (countMap[account] || 0) + 1;
-        });
-
-        const allActive = state.activeAccount === '__all__';
-        html = `<span class="tab${allActive ? ' active' : ''}" data-tab-acc="__all__">
-          全部<span class="tab-count">(${state.orders.length})</span>
-        </span>`;
-        html += accounts.map(account => {
+        scrollContainer.innerHTML = `<div class="ot-acc-tabs-scroll-inner">${accounts.map(account => {
           const isActive = account === state.activeAccount;
           const count = countMap[account] || 0;
           return `<span class="tab${isActive ? ' active' : ''}" data-tab-acc="${escapeHtml(account)}">
@@ -64,11 +67,8 @@ const OrderTrackerTabs = (function () {
               <span class="t-btn danger tab-del" data-tab-del="${escapeHtml(account)}" title="删除">×</span>
             </div>
           </span>`;
-        }).join('');
+        }).join('')}<button class="tab-add" id="ot-tab-add" title="添加账号">+</button></div>`;
       }
-
-      html += '<button class="tab-add" id="ot-tab-add" title="添加账号" style="vertical-align:middle;margin-left:8px">+</button>';
-      container.innerHTML = html;
 
       async function triggerRename(oldName) {
         const newName = await promptAddAccount(oldName, '重命名账号');
@@ -138,21 +138,21 @@ const OrderTrackerTabs = (function () {
         });
       });
 
-      const addBtn = container.querySelector('#ot-tab-add');
-      if (addBtn) {
-        addBtn.addEventListener('click', async () => {
-          const name = await promptAddAccount();
-          if (!name) return;
-          if (addAccount(name)) {
-            markAccountsDirty();
-            void commitLocalOrders('账号已添加，等待同步…');
-          }
-          state.activeAccount = name;
-          resetTablePage();
-          renderAccTabs();
-          renderTable();
-        });
-      }
+      const nextAddBtn = container.querySelector('#ot-tab-add');
+      if (!nextAddBtn) return;
+
+      nextAddBtn.onclick = async () => {
+        const name = await promptAddAccount();
+        if (!name) return;
+        if (addAccount(name)) {
+          markAccountsDirty();
+          void commitLocalOrders('账号已添加，等待同步…');
+        }
+        state.activeAccount = name;
+        resetTablePage();
+        renderAccTabs();
+        renderTable();
+      };
     }
 
     return {

@@ -4,27 +4,22 @@
 const OrderTrackerSync = (function () {
   function create({ state, constants, helpers, ui }) {
     const {
-      GIST_FILENAME,
-      META_FILENAME,
       CACHE_DB_NAME,
       CACHE_STORE,
       CACHE_VERSION,
-      REMOTE_DATA_VERSION,
       SYNC_DEBOUNCE_MS
     } = constants;
     const {
       nowIso,
       normalizeOrderList,
       cloneOrder,
+      ordersEqual,
+      getOrderUpdatedAt,
       mergeOrdersById,
       uniqueAccounts,
       listOrderAccounts,
       groupOrdersByAccountSlot,
-      flattenOrdersByAccountSlot,
-      toAccountSlot,
-      fromAccountSlot,
-      getAccountFileName,
-      parseAccountSlotFromFileName
+      toAccountSlot
     } = helpers;
     const {
       setSync,
@@ -41,6 +36,25 @@ const OrderTrackerSync = (function () {
 
     function latestIso(values) {
       return (values || []).filter(Boolean).sort().slice(-1)[0] || '';
+    }
+
+    function normalizeAccounts(accounts) {
+      return uniqueAccounts(accounts || []).sort();
+    }
+
+    function sameAccountSet(left, right) {
+      const a = normalizeAccounts(left);
+      const b = normalizeAccounts(right);
+      if (a.length !== b.length) return false;
+      return a.every((value, index) => value === b[index]);
+    }
+
+    function sameOrdersSnapshot(left, right) {
+      const leftList = normalizeOrderList(left);
+      const rightList = normalizeOrderList(right);
+      if (leftList.length !== rightList.length) return false;
+      const rightMap = new Map(rightList.map(order => [String(order?.id || ''), order]));
+      return leftList.every(order => ordersEqual(order, rightMap.get(String(order?.id || '')) || null));
     }
 
     function computeDirtyState() {
@@ -61,13 +75,14 @@ const OrderTrackerSync = (function () {
         state.accountsLastSyncedAt,
         ...Object.values(state.accountLastSyncedAt || {})
       ]);
-      state.localRevision = state.accountsRevision + Object.values(state.accountLocalRevisions || {}).reduce((sum, value) => sum + (value || 0), 0);
+      state.localRevision = (state.accountsRevision || 0)
+        + Object.values(state.accountLocalRevisions || {}).reduce((sum, value) => sum + (value || 0), 0);
     }
 
     function markAccountsDirty() {
       state.accountsDirty = true;
       state.accountsLocalUpdatedAt = nowIso();
-      state.accountsRevision += 1;
+      state.accountsRevision = (state.accountsRevision || 0) + 1;
       refreshDirtyState();
     }
 
@@ -93,38 +108,9 @@ const OrderTrackerSync = (function () {
       return Object.keys(state.dirtyAccounts || {}).filter(slot => state.dirtyAccounts[slot]);
     }
 
-    function buildMetaPayload(updatedAt = state.accountsLocalUpdatedAt || nowIso(), orders = state.orders, accounts = state.accounts) {
-      return {
-        version: REMOTE_DATA_VERSION,
-        updatedAt,
-        accounts: uniqueAccounts([...(accounts || []), ...listOrderAccounts(orders)])
-      };
-    }
-
-    function normalizeMetaPayload(data, fallbackUpdatedAt = '') {
-      return {
-        version: typeof data?.version === 'number' ? data.version : REMOTE_DATA_VERSION,
-        updatedAt: (typeof data?.updatedAt === 'string' && data.updatedAt) ? data.updatedAt : fallbackUpdatedAt,
-        accounts: uniqueAccounts(data?.accounts)
-      };
-    }
-
-    function normalizeAccountPayload(data, account, fallbackUpdatedAt = '') {
-      return {
-        version: typeof data?.version === 'number' ? data.version : REMOTE_DATA_VERSION,
-        account: String(typeof data?.account === 'string' ? data.account : account || '').trim(),
-        updatedAt: (typeof data?.updatedAt === 'string' && data.updatedAt) ? data.updatedAt : fallbackUpdatedAt,
-        orders: normalizeOrderList(data?.orders)
-      };
-    }
-
-    function buildAccountPayload(account, orders, updatedAt) {
-      return {
-        version: REMOTE_DATA_VERSION,
-        account: String(account || '').trim(),
-        updatedAt: updatedAt || nowIso(),
-        orders: normalizeOrderList(orders)
-      };
+    function setRemoteProvider(provider) {
+      state.remoteProvider = provider || null;
+      if (provider?.key) state.storageMode = provider.key;
     }
 
     function resetTrackerState({ preserveAccounts = true } = {}) {
@@ -134,6 +120,7 @@ const OrderTrackerSync = (function () {
       state.sortOrder = 'asc';
       state.currentPage = 1;
       state.baseOrders = null;
+      state.baseAccounts = preserveAccounts ? uniqueAccounts(state.accounts || []) : [];
       state.dirty = false;
       state.dirtyAccounts = {};
       state.accountRemoteUpdatedAt = {};
@@ -149,11 +136,14 @@ const OrderTrackerSync = (function () {
       state.lastRemoteUpdatedAt = '';
       state.lastSyncedAt = '';
       state.localRevision = 0;
+      state.remoteCursor = '';
       if (!preserveAccounts) state.accounts = [];
     }
 
-    function getCacheKey(gistId = state.gistId) {
-      return gistId ? `gist:${gistId}` : '';
+    function getCacheKey() {
+      const provider = state.remoteProvider;
+      if (provider && typeof provider.getCacheKey === 'function') return provider.getCacheKey();
+      return `orders:${state.storageMode || 'gist'}`;
     }
 
     async function openCacheDb() {
@@ -169,22 +159,21 @@ const OrderTrackerSync = (function () {
           }
         };
         req.onsuccess = () => resolve(req.result);
-      }).catch(err => {
+      }).catch(error => {
         dbPromise = null;
-        throw err;
+        throw error;
       });
       return dbPromise;
     }
 
-    async function readCacheRecord(gistId = state.gistId) {
-      const key = getCacheKey(gistId);
-      if (!key) return null;
+    async function readCacheRecord(cacheKey = getCacheKey()) {
+      if (!cacheKey) return null;
       const db = await openCacheDb();
       if (!db) return null;
-      return await new Promise((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         const tx = db.transaction(CACHE_STORE, 'readonly');
         const store = tx.objectStore(CACHE_STORE);
-        const req = store.get(key);
+        const req = store.get(cacheKey);
         req.onerror = () => reject(req.error || new Error('读取本地缓存失败'));
         req.onsuccess = () => resolve(req.result || null);
       });
@@ -197,11 +186,12 @@ const OrderTrackerSync = (function () {
       if (!db) return false;
       const record = {
         key,
-        gistId: state.gistId,
-        version: REMOTE_DATA_VERSION,
+        storageMode: state.storageMode || 'gist',
+        version: 3,
         orders: state.orders,
         baseOrders: state.baseOrders,
         accounts: state.accounts,
+        baseAccounts: state.baseAccounts,
         dirty: !!state.dirty,
         dirtyAccounts: state.dirtyAccounts,
         accountRemoteUpdatedAt: state.accountRemoteUpdatedAt,
@@ -216,6 +206,7 @@ const OrderTrackerSync = (function () {
         localUpdatedAt: state.localUpdatedAt || '',
         lastRemoteUpdatedAt: state.lastRemoteUpdatedAt || '',
         lastSyncedAt: state.lastSyncedAt || '',
+        remoteCursor: state.remoteCursor || '',
         cachedAt: nowIso()
       };
       await new Promise((resolve, reject) => {
@@ -233,6 +224,9 @@ const OrderTrackerSync = (function () {
         ? normalizeOrderList(record.baseOrders)
         : (record?.dirty ? null : normalizeOrderList(record?.orders));
       state.accounts = uniqueAccounts(record?.accounts || state.accounts);
+      state.baseAccounts = Array.isArray(record?.baseAccounts)
+        ? uniqueAccounts(record.baseAccounts)
+        : uniqueAccounts(record?.accounts || []);
       state.dirtyAccounts = record?.dirtyAccounts || {};
       state.accountRemoteUpdatedAt = record?.accountRemoteUpdatedAt || {};
       state.accountLastSyncedAt = record?.accountLastSyncedAt || {};
@@ -243,11 +237,7 @@ const OrderTrackerSync = (function () {
       state.accountsLastRemoteUpdatedAt = record?.accountsLastRemoteUpdatedAt || record?.lastRemoteUpdatedAt || '';
       state.accountsLastSyncedAt = record?.accountsLastSyncedAt || record?.lastSyncedAt || '';
       state.accountsRevision = record?.accountsRevision || 0;
-      if (!record?.accountRemoteUpdatedAt && record?.lastRemoteUpdatedAt) {
-        Object.keys(groupOrdersByAccountSlot(state.orders)).forEach(slot => {
-          state.accountRemoteUpdatedAt[slot] = record.lastRemoteUpdatedAt;
-        });
-      }
+      state.remoteCursor = record?.remoteCursor || '';
       if (!record?.dirtyAccounts && record?.dirty) {
         Object.keys(groupOrdersByAccountSlot(state.orders)).forEach(slot => {
           state.dirtyAccounts[slot] = true;
@@ -262,203 +252,201 @@ const OrderTrackerSync = (function () {
       try {
         await writeCacheRecord();
         return true;
-      } catch (e) {
+      } catch (error) {
         setSync('本地缓存写入失败', 'error');
-        toast('本地缓存写入失败: ' + e.message, 'error');
+        toast('本地缓存写入失败: ' + error.message, 'error');
         return false;
       }
     }
 
-    async function hydrateCache(gistId = state.gistId) {
+    async function hydrateCache(cacheKey = getCacheKey()) {
       try {
-        const record = await readCacheRecord(gistId);
+        const record = await readCacheRecord(cacheKey);
         if (!record) return false;
         applyCacheRecord(record);
         return true;
-      } catch (e) {
+      } catch (error) {
         setSync('本地缓存读取失败', 'error');
-        toast('本地缓存读取失败: ' + e.message, 'error');
+        toast('本地缓存读取失败: ' + error.message, 'error');
         return false;
       }
     }
 
-    async function gh(method, path, body) {
-      const resp = await fetch('https://api.github.com' + path, {
-        method,
-        headers: {
-          'Authorization': 'token ' + state.token,
-          'Accept': 'application/vnd.github+json',
-          'Content-Type': 'application/json'
-        },
-        body: body ? JSON.stringify(body) : undefined
-      });
-      if (!resp.ok) {
-        const txt = await resp.text();
-        throw new Error(`GitHub API ${resp.status}: ${txt.slice(0, 200)}`);
-      }
-      return resp.json();
+    function renderLocalOrders(statusText, statusClass = 'local') {
+      renderAccTabs();
+      renderTable();
+      setSync(statusText, statusClass);
     }
 
-    async function verifyToken() {
-      return await gh('GET', '/user');
+    function queueSync(delay = SYNC_DEBOUNCE_MS) {
+      const provider = state.remoteProvider;
+      if (!provider) return;
+      if (typeof provider.isConnected === 'function' && !provider.isConnected()) return;
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => {
+        syncTimer = null;
+        void syncNow();
+      }, delay);
     }
 
-    async function createGist() {
-      const gist = await gh('POST', '/gists', {
-        description: 'TK Toolbox · Order Tracker Data (private)',
-        public: false,
-        files: { [META_FILENAME]: { content: JSON.stringify(buildMetaPayload(nowIso()), null, 2) } }
-      });
-      return gist.id;
+    function cancelPendingSync() {
+      if (syncTimer) {
+        clearTimeout(syncTimer);
+        syncTimer = null;
+      }
+      syncQueued = false;
     }
 
-    async function readGistFileJson(file) {
-      let content = file?.content || '';
-      if (file?.truncated && file?.raw_url) {
-        const response = await fetch(file.raw_url);
-        content = await response.text();
-      }
-      return JSON.parse(content || '{}');
+    async function commitLocalOrders(statusText = '已保存到本地，等待同步…') {
+      renderLocalOrders(statusText, 'local');
+      await persistCache();
+      queueSync();
     }
 
-    function normalizeLegacySnapshot(data, gistUpdatedAt = '') {
-      return {
-        version: typeof data?.version === 'number' ? data.version : REMOTE_DATA_VERSION,
-        updatedAt: (typeof data?.updatedAt === 'string' && data.updatedAt) ? data.updatedAt : gistUpdatedAt,
-        orders: normalizeOrderList(data?.orders)
-      };
+    function getLocalDeletionTimestamp(baseOrder) {
+      const slot = toAccountSlot(baseOrder?.['账号']);
+      return state.accountLocalUpdatedAt[slot] || state.localUpdatedAt || nowIso();
     }
 
-    async function fetchGistSnapshot() {
-      const gist = await gh('GET', '/gists/' + state.gistId);
-      const files = gist.files || {};
-      const grouped = {};
-      const accountRemoteUpdatedAt = {};
-      const metaFile = files[META_FILENAME] || null;
-      const legacyFile = files[GIST_FILENAME] || null;
-      const fallbackUpdatedAt = gist.updated_at || '';
+    function mergeSupabaseOrders({ baseOrders = [], localOrders = [], remoteOrders = [], changedOrders = [] }) {
+      const baseMap = new Map(normalizeOrderList(baseOrders).map(order => [String(order?.id || ''), order]));
+      const localMap = new Map(normalizeOrderList(localOrders).map(order => [String(order?.id || ''), order]));
+      const remoteMap = new Map(normalizeOrderList(remoteOrders).map(order => [String(order?.id || ''), order]));
+      const changedMap = new Map(normalizeOrderList(changedOrders).map(order => [String(order?.id || ''), order]));
+      const ids = [...new Set([
+        ...baseMap.keys(),
+        ...localMap.keys(),
+        ...remoteMap.keys()
+      ])];
 
-      let meta = normalizeMetaPayload(null, fallbackUpdatedAt);
-      let hasMeta = false;
-      if (metaFile) {
-        meta = normalizeMetaPayload(await readGistFileJson(metaFile), fallbackUpdatedAt);
-        hasMeta = true;
-      }
+      const merged = [];
+      const deletedAtById = {};
 
-      for (const [filename, file] of Object.entries(files)) {
-        const slot = parseAccountSlotFromFileName(filename);
-        if (!slot) continue;
-        const payload = normalizeAccountPayload(await readGistFileJson(file), fromAccountSlot(slot), fallbackUpdatedAt);
-        grouped[slot] = payload.orders;
-        accountRemoteUpdatedAt[slot] = payload.updatedAt;
-      }
+      ids.forEach(id => {
+        const base = baseMap.get(id) || null;
+        const local = localMap.get(id) || null;
+        const remote = remoteMap.get(id) || null;
+        const changedRemote = changedMap.get(id) || null;
+        const localChanged = !ordersEqual(local, base);
+        const remoteChanged = !!changedRemote || !ordersEqual(remote, base);
+        const localTs = local ? getOrderUpdatedAt(local) : getLocalDeletionTimestamp(base);
+        const remoteTs = remote
+          ? getOrderUpdatedAt(remote)
+          : (changedRemote?.deletedAt || changedRemote?.updatedAt || '');
+        let resolved = local || remote || base || null;
+        let resolvedDeletedAt = '';
 
-      Object.keys(grouped).forEach(slot => {
-        const orders = grouped[slot] || [];
-        const account = fromAccountSlot(slot);
-        const shouldKeep = orders.length > 0
-          || slot === constants.UNASSIGNED_ACCOUNT_SLOT
-          || meta.accounts.includes(account);
-        if (!shouldKeep) {
-          delete grouped[slot];
-          delete accountRemoteUpdatedAt[slot];
-        }
-      });
-
-      const declaredSlots = meta.accounts.map(toAccountSlot);
-      const allSlots = [...new Set([...declaredSlots, ...Object.keys(grouped)])];
-      if (hasMeta || allSlots.length) {
-        return {
-          format: 'split',
-          hasMeta,
-          hasLegacy: !!legacyFile,
-          metaUpdatedAt: meta.updatedAt || fallbackUpdatedAt,
-          accounts: uniqueAccounts([...meta.accounts, ...Object.keys(grouped).map(fromAccountSlot)]),
-          grouped,
-          accountRemoteUpdatedAt,
-          orders: flattenOrdersByAccountSlot(grouped, allSlots),
-          updatedAt: latestIso([meta.updatedAt, ...Object.values(accountRemoteUpdatedAt)])
-        };
-      }
-
-      if (legacyFile) {
-        const legacy = normalizeLegacySnapshot(await readGistFileJson(legacyFile), fallbackUpdatedAt);
-        const legacyGrouped = groupOrdersByAccountSlot(legacy.orders);
-        Object.keys(legacyGrouped).forEach(slot => {
-          accountRemoteUpdatedAt[slot] = legacy.updatedAt || fallbackUpdatedAt;
-        });
-        return {
-          format: 'legacy',
-          hasMeta: false,
-          hasLegacy: true,
-          metaUpdatedAt: '',
-          accounts: listOrderAccounts(legacy.orders),
-          grouped: legacyGrouped,
-          accountRemoteUpdatedAt,
-          orders: legacy.orders,
-          updatedAt: legacy.updatedAt || fallbackUpdatedAt
-        };
-      }
-
-      return {
-        format: 'split',
-        hasMeta: false,
-        hasLegacy: false,
-        metaUpdatedAt: '',
-        accounts: [],
-        grouped: {},
-        accountRemoteUpdatedAt: {},
-        orders: [],
-        updatedAt: fallbackUpdatedAt
-      };
-    }
-
-    async function pushFilesToGist(files) {
-      await gh('PATCH', '/gists/' + state.gistId, { files });
-    }
-
-    function buildSplitFilesPayload({ grouped, slots, includeMeta = false, metaUpdatedAt = '', remoteGrouped = {}, removeLegacyFile = false }) {
-      const files = {};
-      const accountPayloads = {};
-      const deletedSlots = [];
-      let metaPayload = null;
-
-      if (includeMeta) {
-        metaPayload = buildMetaPayload(
-          metaUpdatedAt || state.accountsLocalUpdatedAt || nowIso(),
-          flattenOrdersByAccountSlot(grouped),
-          state.accounts
-        );
-        files[META_FILENAME] = { content: JSON.stringify(metaPayload, null, 2) };
-      }
-
-      (slots || []).forEach(slot => {
-        const account = fromAccountSlot(slot);
-        const orders = normalizeOrderList(grouped[slot] || []);
-        const filename = getAccountFileName(account);
-        if (!orders.length) {
-          if (remoteGrouped[slot]) {
-            files[filename] = null;
-            deletedSlots.push(slot);
+        if (!base) {
+          if (local && remote) {
+            resolved = Date.parse(getOrderUpdatedAt(local) || 0) >= Date.parse(getOrderUpdatedAt(remote) || 0)
+              ? local
+              : remote;
+          } else {
+            resolved = local || remote || null;
           }
-          return;
+        } else if (localChanged && remoteChanged) {
+          if (Date.parse(localTs || 0) >= Date.parse(remoteTs || 0)) {
+            resolved = local;
+            if (!local) resolvedDeletedAt = localTs;
+          } else {
+            resolved = remote;
+            if (!remote) resolvedDeletedAt = remoteTs;
+          }
+        } else if (localChanged) {
+          resolved = local;
+          if (!local) resolvedDeletedAt = localTs;
+        } else if (remoteChanged) {
+          resolved = remote;
+          if (!remote) resolvedDeletedAt = remoteTs;
+        } else {
+          resolved = local || remote || base;
         }
-        const payload = buildAccountPayload(account, orders, state.accountLocalUpdatedAt[slot] || nowIso());
-        accountPayloads[slot] = payload;
-        files[filename] = { content: JSON.stringify(payload, null, 2) };
+
+        if (resolved) {
+          merged.push(cloneOrder(resolved));
+        } else {
+          deletedAtById[id] = resolvedDeletedAt || localTs || remoteTs || nowIso();
+        }
       });
 
-      if (removeLegacyFile) {
-        files[GIST_FILENAME] = null;
+      return {
+        orders: normalizeOrderList(merged),
+        deletedAtById
+      };
+    }
+
+    function mergeAccountNames({
+      baseAccounts = [],
+      localAccounts = [],
+      remoteAccounts = [],
+      remoteUpdatedAt = '',
+      orderAccounts = []
+    }) {
+      const base = normalizeAccounts(baseAccounts);
+      const local = normalizeAccounts(localAccounts);
+      const remote = normalizeAccounts(remoteAccounts);
+      const localChanged = !sameAccountSet(base, local);
+      const remoteChanged = !sameAccountSet(base, remote);
+      let picked = local;
+
+      if (!localChanged && remoteChanged) {
+        picked = remote;
+      } else if (localChanged && !remoteChanged) {
+        picked = local;
+      } else if (localChanged && remoteChanged && !sameAccountSet(local, remote)) {
+        picked = Date.parse(state.accountsLocalUpdatedAt || 0) >= Date.parse(remoteUpdatedAt || 0)
+          ? local
+          : remote;
+      } else if (!local.length && remote.length) {
+        picked = remote;
       }
 
-      return { files, metaPayload, accountPayloads, deletedSlots };
+      return uniqueAccounts([...(picked || []), ...(orderAccounts || [])]);
+    }
+
+    function buildSupabaseChangeSet({
+      mergedOrders = [],
+      remoteOrders = [],
+      deletedAtById = {},
+      mergedAccounts = [],
+      remoteAccounts = []
+    }) {
+      const remoteMap = new Map(normalizeOrderList(remoteOrders).map(order => [String(order?.id || ''), order]));
+      const mergedMap = new Map(normalizeOrderList(mergedOrders).map(order => [String(order?.id || ''), order]));
+      const ids = [...new Set([...remoteMap.keys(), ...mergedMap.keys()])];
+      const upserts = [];
+      const deletions = [];
+
+      ids.forEach(id => {
+        const remote = remoteMap.get(id) || null;
+        const merged = mergedMap.get(id) || null;
+        if (merged) {
+          if (!ordersEqual(merged, remote)) upserts.push(cloneOrder(merged));
+        } else if (remote) {
+          deletions.push({
+            id,
+            accountName: remote['账号'] || '',
+            deletedAt: deletedAtById[id] || nowIso()
+          });
+        }
+      });
+
+      const remoteAccountSet = new Set(uniqueAccounts(remoteAccounts));
+      const mergedAccountSet = new Set(uniqueAccounts(mergedAccounts));
+
+      return {
+        upserts,
+        deletions,
+        accountUpserts: [...mergedAccountSet].filter(name => !remoteAccountSet.has(name)),
+        accountDeletions: [...remoteAccountSet].filter(name => !mergedAccountSet.has(name))
+      };
     }
 
     function applyRemoteSnapshot(snapshot) {
       state.orders = normalizeOrderList(snapshot.orders);
       state.baseOrders = normalizeOrderList(snapshot.orders);
-      state.accounts = uniqueAccounts(snapshot.accounts || []);
+      state.accounts = uniqueAccounts([...(snapshot.accounts || []), ...listOrderAccounts(snapshot.orders)]);
+      state.baseAccounts = uniqueAccounts(state.accounts);
       saveAccounts();
       state.accountRemoteUpdatedAt = { ...(snapshot.accountRemoteUpdatedAt || {}) };
       state.accountLastSyncedAt = Object.fromEntries(Object.keys(state.accountRemoteUpdatedAt).map(slot => [slot, nowIso()]));
@@ -468,28 +456,32 @@ const OrderTrackerSync = (function () {
       state.accountsDirty = false;
       state.accountsLocalUpdatedAt = '';
       state.accountsRevision = 0;
-      state.accountsLastRemoteUpdatedAt = snapshot.metaUpdatedAt || '';
+      state.accountsLastRemoteUpdatedAt = snapshot.accountsUpdatedAt || snapshot.metaUpdatedAt || snapshot.updatedAt || '';
       state.accountsLastSyncedAt = nowIso();
+      state.remoteCursor = snapshot.remoteCursor || snapshot.updatedAt || state.remoteCursor || '';
       refreshDirtyState();
     }
 
-    function finalizeSuccessfulSync({ metaPayload = null, accountPayloads = {}, deletedSlots = [], syncedAccountsRevision = 0, syncedAccountRevisions = {}, mergedOrders = null, nextAccountRemoteUpdatedAt = null }) {
+    function finalizeGistSync({
+      metaPayload = null,
+      accountPayloads = {},
+      deletedSlots = [],
+      syncedAccountsRevision = 0,
+      syncedAccountRevisions = {},
+      mergedOrders = [],
+      nextAccountRemoteUpdatedAt = {}
+    }) {
       const syncedAt = nowIso();
+      state.orders = normalizeOrderList(mergedOrders);
+      state.baseOrders = normalizeOrderList(mergedOrders);
+      state.accounts = uniqueAccounts([...(metaPayload?.accounts || state.accounts), ...listOrderAccounts(state.orders)]);
+      state.baseAccounts = uniqueAccounts(state.accounts);
+      saveAccounts();
 
-      if (Array.isArray(mergedOrders)) {
-        state.orders = normalizeOrderList(mergedOrders);
-        state.baseOrders = normalizeOrderList(mergedOrders);
-        state.accounts = uniqueAccounts([...(metaPayload?.accounts || state.accounts), ...listOrderAccounts(state.orders)]);
-        saveAccounts();
-      }
-      if (nextAccountRemoteUpdatedAt && typeof nextAccountRemoteUpdatedAt === 'object') {
-        state.accountRemoteUpdatedAt = { ...nextAccountRemoteUpdatedAt };
-        state.accountLastSyncedAt = Object.fromEntries(Object.keys(state.accountRemoteUpdatedAt).map(slot => [slot, syncedAt]));
-      }
+      state.accountRemoteUpdatedAt = { ...nextAccountRemoteUpdatedAt };
+      state.accountLastSyncedAt = Object.fromEntries(Object.keys(state.accountRemoteUpdatedAt).map(slot => [slot, syncedAt]));
 
       if (metaPayload) {
-        state.accounts = uniqueAccounts([...(metaPayload.accounts || []), ...listOrderAccounts(state.orders)]);
-        saveAccounts();
         state.accountsLastRemoteUpdatedAt = metaPayload.updatedAt;
         state.accountsLastSyncedAt = syncedAt;
         if (state.accountsDirty && state.accountsRevision === syncedAccountsRevision) {
@@ -514,6 +506,57 @@ const OrderTrackerSync = (function () {
         }
       });
 
+      state.remoteCursor = latestIso([
+        state.remoteCursor,
+        metaPayload?.updatedAt,
+        ...Object.values(state.accountRemoteUpdatedAt || {})
+      ]);
+      refreshDirtyState();
+    }
+
+    function finalizeSupabaseSync({
+      mergedOrders = [],
+      mergedAccounts = [],
+      remote = {},
+      pushResult = {},
+      syncedAccountsRevision = 0,
+      syncedAccountRevisions = {},
+      touchedSlots = []
+    }) {
+      const syncedAt = nowIso();
+      state.orders = normalizeOrderList(mergedOrders);
+      state.baseOrders = normalizeOrderList(mergedOrders);
+      state.accounts = uniqueAccounts([...(mergedAccounts || []), ...listOrderAccounts(mergedOrders)]);
+      state.baseAccounts = uniqueAccounts(state.accounts);
+      saveAccounts();
+
+      state.accountRemoteUpdatedAt = {};
+      state.accountLastSyncedAt = {};
+      state.accountsLastRemoteUpdatedAt = latestIso([
+        remote.accountsUpdatedAt,
+        remote.updatedAt,
+        pushResult.updatedAt
+      ]);
+      state.accountsLastSyncedAt = syncedAt;
+      state.remoteCursor = pushResult.remoteCursor || remote.remoteCursor || state.remoteCursor || '';
+
+      if (state.accountsDirty && state.accountsRevision === syncedAccountsRevision) {
+        state.accountsDirty = false;
+        state.accountsLocalUpdatedAt = '';
+      } else if (state.accountsDirty) {
+        syncQueued = true;
+      }
+
+      touchedSlots.forEach(slot => {
+        state.accountLastSyncedAt[slot] = syncedAt;
+        if ((state.accountLocalRevisions[slot] || 0) === (syncedAccountRevisions[slot] || 0)) {
+          clearAccountDirtyState(slot);
+          delete state.accountLocalUpdatedAt[slot];
+        } else if (state.dirtyAccounts[slot]) {
+          syncQueued = true;
+        }
+      });
+
       refreshDirtyState();
     }
 
@@ -524,37 +567,213 @@ const OrderTrackerSync = (function () {
       renderTable();
     }
 
-    function renderLocalOrders(statusText, statusClass = 'local') {
-      renderAccTabs();
-      renderTable();
-      setSync(statusText, statusClass);
-    }
+    async function syncGist(provider, { forcePull = false } = {}) {
+      const dirtySlots = getDirtyAccountSlots();
+      if (state.dirty) {
+        setSync('正在同步到 Gist…', 'saving');
+        const remote = await provider.pullSnapshot();
+        const localOrders = normalizeOrderList(state.orders);
+        const migratingLegacy = remote.format === 'legacy';
+        const hasMergeBase = Array.isArray(state.baseOrders);
+        let mergedOrders = localOrders;
+        let conflictCount = 0;
 
-    function queueSync(delay = SYNC_DEBOUNCE_MS) {
-      if (!state.token || !state.gistId) return;
-      clearTimeout(syncTimer);
-      syncTimer = setTimeout(() => {
-        syncTimer = null;
-        void syncNow();
-      }, delay);
-    }
+        if (!migratingLegacy && state.accountsDirty && state.accountsLastRemoteUpdatedAt && remote.metaUpdatedAt !== state.accountsLastRemoteUpdatedAt) {
+          setSync('账号列表有更新，请先刷新', 'error');
+          toast('检测到另一端已修改账号列表，请先点刷新。', 'error');
+          return false;
+        }
 
-    function cancelPendingSync() {
-      if (syncTimer) {
-        clearTimeout(syncTimer);
-        syncTimer = null;
+        if (hasMergeBase) {
+          const mergeResult = mergeOrdersById({
+            baseOrders: state.baseOrders,
+            localOrders,
+            remoteOrders: remote.orders
+          });
+          mergedOrders = mergeResult.orders;
+          conflictCount = mergeResult.conflictCount;
+        } else {
+          for (const slot of dirtySlots) {
+            const knownRemoteUpdatedAt = state.accountRemoteUpdatedAt[slot] || '';
+            const remoteUpdatedAt = remote.accountRemoteUpdatedAt[slot] || '';
+            if (knownRemoteUpdatedAt && remoteUpdatedAt !== knownRemoteUpdatedAt) {
+              setSync('云端有更新，请先刷新', 'error');
+              toast(`检测到账号「${slot === '__unassigned__' ? '未关联' : slot}」在另一端已被修改，请先点刷新。`, 'error');
+              return false;
+            }
+            if (!knownRemoteUpdatedAt && remoteUpdatedAt && !migratingLegacy) {
+              setSync('云端有更新，请先刷新', 'error');
+              toast(`检测到账号「${slot === '__unassigned__' ? '未关联' : slot}」在另一端已有新数据，请先点刷新。`, 'error');
+              return false;
+            }
+          }
+        }
+
+        const mergedGrouped = groupOrdersByAccountSlot(mergedOrders);
+        const slotsToPush = migratingLegacy
+          ? [...new Set([...Object.keys(mergedGrouped), ...Object.keys(remote.grouped || {})])]
+          : [...new Set(dirtySlots)];
+        const syncedAccountsRevision = state.accountsRevision;
+        const syncedAccountRevisions = Object.fromEntries(slotsToPush.map(slot => [slot, state.accountLocalRevisions[slot] || 0]));
+        const pushResult = await provider.pushChanges({
+          grouped: mergedGrouped,
+          slots: slotsToPush,
+          includeMeta: migratingLegacy || state.accountsDirty || !remote.hasMeta,
+          metaUpdatedAt: state.accountsLocalUpdatedAt || nowIso(),
+          remoteGrouped: remote.grouped || {},
+          removeLegacyFile: !!remote.hasLegacy,
+          accounts: state.accounts,
+          accountLocalUpdatedAt: state.accountLocalUpdatedAt
+        });
+        const nextAccountRemoteUpdatedAt = { ...(remote.accountRemoteUpdatedAt || {}) };
+        slotsToPush.forEach(slot => {
+          if (pushResult.accountPayloads[slot]) nextAccountRemoteUpdatedAt[slot] = pushResult.accountPayloads[slot].updatedAt;
+          else delete nextAccountRemoteUpdatedAt[slot];
+        });
+
+        finalizeGistSync({
+          metaPayload: pushResult.metaPayload,
+          accountPayloads: pushResult.accountPayloads,
+          deletedSlots: Object.keys(pushResult.files || {}).length
+            ? pushResult.deletedSlots
+            : [...new Set([...(pushResult.deletedSlots || []), ...slotsToPush])],
+          syncedAccountsRevision,
+          syncedAccountRevisions,
+          mergedOrders,
+          nextAccountRemoteUpdatedAt
+        });
+        await persistCache();
+        renderAccTabs();
+        renderTable();
+        if (conflictCount > 0) toast(`已处理 ${conflictCount} 条同订单冲突`, 'ok');
+        setSync(state.dirty ? '本地已更新，继续等待同步…' : `已同步 · ${state.orders.length} 条`, state.dirty ? 'saving' : 'saved');
+        return !state.dirty;
       }
-      syncQueued = false;
+
+      setSync(forcePull ? '正在刷新云端数据…' : '正在检查云端更新…', 'saving');
+      const remote = await provider.pullSnapshot();
+      const remoteUpdatedAt = remote.updatedAt || remote.metaUpdatedAt || '';
+      const shouldApplyRemote = forcePull
+        || !state.lastRemoteUpdatedAt
+        || remoteUpdatedAt !== state.lastRemoteUpdatedAt;
+
+      if (shouldApplyRemote) {
+        await applyAndRenderRemoteSnapshot(remote);
+        if (remote.format === 'legacy') {
+          setSync('正在升级为按账号分文件…', 'saving');
+          const grouped = groupOrdersByAccountSlot(state.orders);
+          const slotsToPush = Object.keys(grouped);
+          const pushResult = await provider.pushChanges({
+            grouped,
+            slots: slotsToPush,
+            includeMeta: true,
+            metaUpdatedAt: nowIso(),
+            remoteGrouped: remote.grouped || {},
+            removeLegacyFile: !!remote.hasLegacy,
+            accounts: state.accounts,
+            accountLocalUpdatedAt: state.accountLocalUpdatedAt
+          });
+          const nextAccountRemoteUpdatedAt = { ...(remote.accountRemoteUpdatedAt || {}) };
+          slotsToPush.forEach(slot => {
+            if (pushResult.accountPayloads[slot]) nextAccountRemoteUpdatedAt[slot] = pushResult.accountPayloads[slot].updatedAt;
+            else delete nextAccountRemoteUpdatedAt[slot];
+          });
+          finalizeGistSync({
+            metaPayload: pushResult.metaPayload,
+            accountPayloads: pushResult.accountPayloads,
+            deletedSlots: pushResult.deletedSlots,
+            syncedAccountsRevision: 0,
+            syncedAccountRevisions: {},
+            mergedOrders: state.orders,
+            nextAccountRemoteUpdatedAt
+          });
+          await persistCache();
+        } else if (remote.hasLegacy) {
+          setSync('正在清理旧版文件…', 'saving');
+          await provider.pushChanges({
+            grouped: groupOrdersByAccountSlot(state.orders),
+            slots: [],
+            removeLegacyFile: true,
+            accounts: state.accounts,
+            accountLocalUpdatedAt: state.accountLocalUpdatedAt
+          });
+        }
+      }
+
+      setSync(`已同步 · ${state.orders.length} 条`, 'saved');
+      return true;
     }
 
-    async function commitLocalOrders(statusText = '已保存到本地，等待同步…') {
-      renderLocalOrders(statusText, 'local');
-      await persistCache();
-      queueSync();
+    async function syncSupabase(provider, { forcePull = false } = {}) {
+      if (state.dirty) {
+        setSync('正在同步到 Supabase…', 'saving');
+        const remote = await provider.pullSnapshot({ cursor: state.remoteCursor || '' });
+        const mergeResult = mergeSupabaseOrders({
+          baseOrders: Array.isArray(state.baseOrders) ? state.baseOrders : [],
+          localOrders: state.orders,
+          remoteOrders: remote.orders,
+          changedOrders: remote.changedOrders
+        });
+        const mergedOrders = mergeResult.orders;
+        const mergedAccounts = mergeAccountNames({
+          baseAccounts: Array.isArray(state.baseAccounts) ? state.baseAccounts : [],
+          localAccounts: state.accounts,
+          remoteAccounts: remote.accounts,
+          remoteUpdatedAt: remote.accountsUpdatedAt,
+          orderAccounts: listOrderAccounts(mergedOrders)
+        });
+        const changeSet = buildSupabaseChangeSet({
+          mergedOrders,
+          remoteOrders: remote.orders,
+          deletedAtById: mergeResult.deletedAtById,
+          mergedAccounts,
+          remoteAccounts: remote.accounts
+        });
+        const dirtySlots = getDirtyAccountSlots();
+        const touchedSlots = dirtySlots.length ? dirtySlots : Object.keys(state.accountLocalRevisions || {});
+        const syncedAccountsRevision = state.accountsRevision;
+        const syncedAccountRevisions = Object.fromEntries(
+          touchedSlots.map(slot => [slot, state.accountLocalRevisions[slot] || 0])
+        );
+        const pushResult = await provider.pushChanges({
+          ...changeSet,
+          clientId: state.clientId || ''
+        });
+
+        finalizeSupabaseSync({
+          mergedOrders,
+          mergedAccounts,
+          remote,
+          pushResult,
+          syncedAccountsRevision,
+          syncedAccountRevisions,
+          touchedSlots
+        });
+        await persistCache();
+        renderAccTabs();
+        renderTable();
+        setSync(state.dirty ? '本地已更新，继续等待同步…' : `已同步 · ${state.orders.length} 条`, state.dirty ? 'saving' : 'saved');
+        return !state.dirty;
+      }
+
+      setSync(forcePull ? '正在刷新云端数据…' : '正在检查云端更新…', 'saving');
+      const remote = await provider.pullSnapshot({ cursor: forcePull ? '' : (state.remoteCursor || '') });
+      const shouldApplyRemote = forcePull
+        || !Array.isArray(state.baseOrders)
+        || !sameOrdersSnapshot(state.baseOrders, remote.orders)
+        || !sameAccountSet(state.baseAccounts || [], remote.accounts)
+        || remote.remoteCursor !== (state.remoteCursor || '');
+
+      if (shouldApplyRemote) await applyAndRenderRemoteSnapshot(remote);
+
+      setSync(`已同步 · ${state.orders.length} 条`, 'saved');
+      return true;
     }
 
     async function syncNow({ forcePull = false } = {}) {
-      if (!state.token || !state.gistId) return false;
+      const provider = state.remoteProvider;
+      if (!provider) return false;
+      if (typeof provider.isConnected === 'function' && !provider.isConnected()) return false;
       if (syncInFlight) {
         syncQueued = true;
         return false;
@@ -566,152 +785,11 @@ const OrderTrackerSync = (function () {
 
       syncInFlight = true;
       try {
-        const dirtySlots = getDirtyAccountSlots();
-        if (state.dirty) {
-          setSync('正在同步到 Gist…', 'saving');
-          const remote = await fetchGistSnapshot();
-          const localOrders = normalizeOrderList(state.orders);
-          const migratingLegacy = remote.format === 'legacy';
-          const hasMergeBase = Array.isArray(state.baseOrders);
-          let mergedOrders = localOrders;
-          let conflictCount = 0;
-
-          if (!migratingLegacy && state.accountsDirty && state.accountsLastRemoteUpdatedAt && remote.metaUpdatedAt !== state.accountsLastRemoteUpdatedAt) {
-            setSync('账号列表有更新，请先刷新', 'error');
-            toast('检测到另一端已修改账号列表，请先点刷新。', 'error');
-            return false;
-          }
-
-          if (hasMergeBase) {
-            const mergeResult = mergeOrdersById({
-              baseOrders: state.baseOrders,
-              localOrders,
-              remoteOrders: remote.orders
-            });
-            mergedOrders = mergeResult.orders;
-            conflictCount = mergeResult.conflictCount;
-          } else {
-            for (const slot of dirtySlots) {
-              const knownRemoteUpdatedAt = state.accountRemoteUpdatedAt[slot] || '';
-              const remoteUpdatedAt = remote.accountRemoteUpdatedAt[slot] || '';
-              if (knownRemoteUpdatedAt && remoteUpdatedAt !== knownRemoteUpdatedAt) {
-                setSync('云端有更新，请先刷新', 'error');
-                toast(`检测到账号「${fromAccountSlot(slot) || '未关联'}」在另一端已被修改，请先点刷新。`, 'error');
-                return false;
-              }
-              if (!knownRemoteUpdatedAt && remoteUpdatedAt && !migratingLegacy) {
-                setSync('云端有更新，请先刷新', 'error');
-                toast(`检测到账号「${fromAccountSlot(slot) || '未关联'}」在另一端已有新数据，请先点刷新。`, 'error');
-                return false;
-              }
-            }
-          }
-
-          const mergedGrouped = groupOrdersByAccountSlot(mergedOrders);
-          const slotsToPush = migratingLegacy
-            ? [...new Set([...Object.keys(mergedGrouped), ...Object.keys(remote.grouped || {})])]
-            : [...new Set(dirtySlots)];
-          const syncedAccountsRevision = state.accountsRevision;
-          const syncedAccountRevisions = Object.fromEntries(slotsToPush.map(slot => [slot, state.accountLocalRevisions[slot] || 0]));
-          const { files, metaPayload, accountPayloads, deletedSlots } = buildSplitFilesPayload({
-            grouped: mergedGrouped,
-            slots: slotsToPush,
-            includeMeta: migratingLegacy || state.accountsDirty || !remote.hasMeta,
-            metaUpdatedAt: state.accountsLocalUpdatedAt || nowIso(),
-            remoteGrouped: remote.grouped || {},
-            removeLegacyFile: !!remote.hasLegacy
-          });
-          const nextAccountRemoteUpdatedAt = { ...(remote.accountRemoteUpdatedAt || {}) };
-          slotsToPush.forEach(slot => {
-            if (accountPayloads[slot]) nextAccountRemoteUpdatedAt[slot] = accountPayloads[slot].updatedAt;
-            else delete nextAccountRemoteUpdatedAt[slot];
-          });
-
-          if (!Object.keys(files).length) {
-            finalizeSuccessfulSync({
-              metaPayload,
-              accountPayloads,
-              deletedSlots: [...new Set([...(deletedSlots || []), ...slotsToPush])],
-              syncedAccountsRevision,
-              syncedAccountRevisions,
-              mergedOrders,
-              nextAccountRemoteUpdatedAt
-            });
-            refreshDirtyState();
-            await persistCache();
-            renderAccTabs();
-            renderTable();
-            if (conflictCount > 0) toast(`已处理 ${conflictCount} 条同订单冲突`, 'ok');
-            setSync(`已同步 · ${state.orders.length} 条`, 'saved');
-            return true;
-          }
-
-          await pushFilesToGist(files);
-          finalizeSuccessfulSync({
-            metaPayload,
-            accountPayloads,
-            deletedSlots,
-            syncedAccountsRevision,
-            syncedAccountRevisions,
-            mergedOrders,
-            nextAccountRemoteUpdatedAt
-          });
-          await persistCache();
-          renderAccTabs();
-          renderTable();
-          if (conflictCount > 0) toast(`已处理 ${conflictCount} 条同订单冲突`, 'ok');
-          setSync(state.dirty ? '本地已更新，继续等待同步…' : `已同步 · ${state.orders.length} 条`, state.dirty ? 'saving' : 'saved');
-          return !state.dirty;
-        }
-
-        setSync(forcePull ? '正在刷新云端数据…' : '正在检查云端更新…', 'saving');
-        const remote = await fetchGistSnapshot();
-        const remoteUpdatedAt = remote.updatedAt || remote.metaUpdatedAt || '';
-        const shouldApplyRemote = forcePull
-          || !state.lastRemoteUpdatedAt
-          || remoteUpdatedAt !== state.lastRemoteUpdatedAt;
-
-        if (shouldApplyRemote) {
-          await applyAndRenderRemoteSnapshot(remote);
-          if (remote.format === 'legacy') {
-            setSync('正在升级为按账号分文件…', 'saving');
-            const grouped = groupOrdersByAccountSlot(state.orders);
-            const slotsToPush = Object.keys(grouped);
-            const { files, metaPayload, accountPayloads, deletedSlots } = buildSplitFilesPayload({
-              grouped,
-              slots: slotsToPush,
-              includeMeta: true,
-              metaUpdatedAt: nowIso(),
-              remoteGrouped: remote.grouped || {},
-              removeLegacyFile: !!remote.hasLegacy
-            });
-            const nextAccountRemoteUpdatedAt = { ...(remote.accountRemoteUpdatedAt || {}) };
-            slotsToPush.forEach(slot => {
-              if (accountPayloads[slot]) nextAccountRemoteUpdatedAt[slot] = accountPayloads[slot].updatedAt;
-              else delete nextAccountRemoteUpdatedAt[slot];
-            });
-            await pushFilesToGist(files);
-            finalizeSuccessfulSync({
-              metaPayload,
-              accountPayloads,
-              deletedSlots,
-              syncedAccountsRevision: 0,
-              syncedAccountRevisions: {},
-              mergedOrders: state.orders,
-              nextAccountRemoteUpdatedAt
-            });
-            await persistCache();
-          } else if (remote.hasLegacy) {
-            setSync('正在清理旧版文件…', 'saving');
-            await pushFilesToGist({ [GIST_FILENAME]: null });
-          }
-        }
-
-        setSync(`已同步 · ${state.orders.length} 条`, 'saved');
-        return true;
-      } catch (e) {
+        if (provider.key === 'supabase') return await syncSupabase(provider, { forcePull });
+        return await syncGist(provider, { forcePull });
+      } catch (error) {
         setSync(state.dirty ? '同步失败，已保留本地缓存' : '加载失败', 'error');
-        toast((state.dirty ? '同步失败' : '加载失败') + ': ' + e.message, 'error');
+        toast((state.dirty ? '同步失败' : '加载失败') + ': ' + error.message, 'error');
         return false;
       } finally {
         syncInFlight = false;
@@ -728,15 +806,16 @@ const OrderTrackerSync = (function () {
       resetTrackerState,
       persistCache,
       hydrateCache,
-      verifyToken,
-      createGist,
       renderLocalOrders,
       queueSync,
       cancelPendingSync,
       syncNow,
-      commitLocalOrders
+      commitLocalOrders,
+      setRemoteProvider
     };
   }
 
-  return { create };
+  return {
+    create
+  };
 })();

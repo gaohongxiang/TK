@@ -1,0 +1,298 @@
+<style>
+  .layout-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin-top: 18px;
+  }
+
+  .layout-card {
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 18px;
+    background: rgba(255,255,255,.03);
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  .layout-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px 10px;
+  }
+
+  .layout-head h3 {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .layout-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: .04em;
+    background: rgba(110, 168, 255, .16);
+    color: #b8d2ff;
+  }
+
+  .wire {
+    padding: 0 16px 16px;
+  }
+
+  .wire-frame {
+    border-radius: 16px;
+    background: rgba(9, 13, 23, .85);
+    border: 1px solid rgba(255,255,255,.06);
+    padding: 12px;
+    min-height: 374px;
+  }
+
+  .wire-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .wire-box {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.04);
+    color: rgba(255,255,255,.74);
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 10px 12px;
+    box-sizing: border-box;
+  }
+
+  .wire-header {
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  .wire-status {
+    width: 38%;
+  }
+
+  .wire-actions {
+    width: calc(62% - 10px);
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .wire-pill {
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08);
+    font-size: 10px;
+  }
+
+  .wire-pill.primary {
+    background: rgba(110, 168, 255, .18);
+    border-color: rgba(110, 168, 255, .3);
+    color: #dbe9ff;
+  }
+
+  .wire-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+  }
+
+  .wire-tab {
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    font-size: 10px;
+  }
+
+  .wire-tab.active {
+    background: rgba(110, 168, 255, .18);
+    border-color: rgba(110, 168, 255, .32);
+    color: #d8e7ff;
+  }
+
+  .wire-tab-spacer {
+    flex: 1;
+  }
+
+  .wire-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .wire-stat {
+    min-height: 86px;
+  }
+
+  .wire-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .wire-search {
+    min-width: 180px;
+    flex: 1 1 180px;
+  }
+
+  .wire-table {
+    min-height: 118px;
+    width: 100%;
+  }
+
+  .layout-copy {
+    padding: 0 16px 16px;
+    color: rgba(255,255,255,.72);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .layout-copy strong {
+    color: #fff;
+  }
+
+  .layout-note {
+    margin-top: 10px;
+    color: rgba(255,255,255,.52);
+    font-size: 12px;
+  }
+
+  @media (max-width: 980px) {
+    .layout-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<h2>B 方案细化：新增订单放哪一行</h2>
+<p class="subtitle">只比较主按钮位置。我的推荐是右边这个：放到账号标签这一行，离当前列表更近。</p>
+
+<div class="layout-grid">
+  <div class="layout-card option" data-choice="b1" onclick="toggleSelect(this)">
+    <div class="layout-head">
+      <h3>B1. 放在顶部工具栏</h3>
+      <span class="layout-badge" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.72)">现有习惯</span>
+    </div>
+    <div class="wire">
+      <div class="wire-frame">
+        <div class="wire-row wire-header">
+          <div class="wire-box wire-status">Supabase / 已同步 / 存储说明</div>
+          <div class="wire-actions">
+            <div class="wire-pill primary">+ 新增订单</div>
+            <div class="wire-pill">刷新</div>
+            <div class="wire-pill">导出</div>
+            <div class="wire-pill">退出</div>
+          </div>
+        </div>
+        <div class="wire-row">
+          <div class="wire-summary">
+            <div class="wire-box wire-stat">当前筛选采购总额</div>
+            <div class="wire-box wire-stat">全部订单采购总额</div>
+          </div>
+        </div>
+        <div class="wire-row">
+          <div class="wire-box" style="width:100%">
+            <div class="wire-tabs">
+              <span class="wire-tab active">全部</span>
+              <span class="wire-tab">NOMA</span>
+              <span class="wire-tab">账号 3</span>
+              <span class="wire-tab">+</span>
+            </div>
+          </div>
+        </div>
+        <div class="wire-row">
+          <div class="wire-box" style="width:100%">
+            <div class="wire-controls">
+              <div class="wire-box wire-search">搜索订单号 / 产品 / 快递</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div class="wire-pill">每页 50</div>
+                <div class="wire-pill">上一页</div>
+                <div class="wire-pill">1 / 2</div>
+                <div class="wire-pill">下一页</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="wire-row">
+          <div class="wire-box wire-table">表格区域</div>
+        </div>
+      </div>
+    </div>
+    <div class="layout-copy">
+      <strong>优点：</strong> 一进页面就能看到主按钮，符合常见后台布局。
+      <div class="layout-note">问题是它和“刷新 / 导出 / 退出”这些辅助动作挤在一起，主次会混。</div>
+    </div>
+  </div>
+
+  <div class="layout-card option" data-choice="b2" onclick="toggleSelect(this)">
+    <div class="layout-head">
+      <h3>B2. 放在账号标签行</h3>
+      <span class="layout-badge">推荐</span>
+    </div>
+    <div class="wire">
+      <div class="wire-frame">
+        <div class="wire-row wire-header">
+          <div class="wire-box wire-status">Supabase / 已同步 / 存储说明</div>
+          <div class="wire-actions">
+            <div class="wire-pill">刷新</div>
+            <div class="wire-pill">导出</div>
+            <div class="wire-pill">退出</div>
+          </div>
+        </div>
+        <div class="wire-row">
+          <div class="wire-summary">
+            <div class="wire-box wire-stat">当前筛选采购总额</div>
+            <div class="wire-box wire-stat">全部订单采购总额</div>
+          </div>
+        </div>
+        <div class="wire-row">
+          <div class="wire-box" style="width:100%">
+            <div class="wire-tabs">
+              <span class="wire-tab active">全部</span>
+              <span class="wire-tab">NOMA</span>
+              <span class="wire-tab">账号 3</span>
+              <span class="wire-tab">+</span>
+              <span class="wire-tab-spacer"></span>
+              <span class="wire-pill primary">+ 新增订单</span>
+            </div>
+          </div>
+        </div>
+        <div class="wire-row">
+          <div class="wire-box" style="width:100%">
+            <div class="wire-controls">
+              <div class="wire-box wire-search">搜索订单号 / 产品 / 快递</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div class="wire-pill">每页 50</div>
+                <div class="wire-pill">上一页</div>
+                <div class="wire-pill">1 / 2</div>
+                <div class="wire-pill">下一页</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="wire-row">
+          <div class="wire-box wire-table">表格区域</div>
+        </div>
+      </div>
+    </div>
+    <div class="layout-copy">
+      <strong>优点：</strong> “当前看哪组账号，就往这组里加单”的关系最明确，按钮也离列表更近。
+      <div class="layout-note">顶部工具栏只保留系统动作，层级会更干净。</div>
+    </div>
+  </div>
+</div>

@@ -53,6 +53,10 @@ const OrderTrackerShared = (function () {
       return order ? normalizeOrderRecord({ ...order }) : null;
     }
 
+    function getOrderUpdatedAt(order) {
+      return String(order?.updatedAt || order?.updated_at || '').trim();
+    }
+
     function serializeOrder(order) {
       if (!order) return '';
       const normalized = normalizeOrderRecord({ ...order });
@@ -162,6 +166,69 @@ const OrderTrackerShared = (function () {
       return {
         orders: normalizeOrderList(merged),
         conflictCount
+      };
+    }
+
+    function mergeOrdersLastWriteWins({
+      baseOrders = [],
+      localOrders = [],
+      remoteOrders = [],
+      remoteCursor = ''
+    }) {
+      const baseMap = mapOrdersById(baseOrders);
+      const localMap = mapOrdersById(localOrders);
+      const remoteMap = mapOrdersById(remoteOrders);
+      const orderedIds = [];
+      const seen = new Set();
+      const pushId = id => {
+        const key = String(id || '');
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        orderedIds.push(key);
+      };
+
+      normalizeOrderList(localOrders).forEach(order => pushId(order.id));
+      normalizeOrderList(remoteOrders).forEach(order => pushId(order.id));
+      normalizeOrderList(baseOrders).forEach(order => pushId(order.id));
+
+      const merged = [];
+      orderedIds.forEach(id => {
+        const base = baseMap.get(id) || null;
+        const local = localMap.get(id) || null;
+        const remote = remoteMap.get(id) || null;
+        const localChanged = !ordersEqual(local, base);
+        const remoteChanged = !ordersEqual(remote, base);
+        let resolved = local || remote || base || null;
+
+        if (!base) {
+          if (local && remote) {
+            resolved = Date.parse(getOrderUpdatedAt(local) || 0) >= Date.parse(getOrderUpdatedAt(remote) || 0)
+              ? local
+              : remote;
+          } else {
+            resolved = local || remote || null;
+          }
+        } else if (localChanged && remoteChanged) {
+          if (ordersEqual(local, remote)) resolved = local || remote;
+          else {
+            resolved = Date.parse(getOrderUpdatedAt(local) || 0) >= Date.parse(getOrderUpdatedAt(remote) || 0)
+              ? local
+              : remote;
+          }
+        } else if (localChanged) {
+          resolved = local;
+        } else if (remoteChanged) {
+          resolved = remote;
+        } else {
+          resolved = local || remote || base;
+        }
+
+        if (resolved) merged.push(cloneOrder(resolved));
+      });
+
+      return {
+        orders: normalizeOrderList(merged),
+        remoteCursor
       };
     }
 
@@ -317,7 +384,10 @@ const OrderTrackerShared = (function () {
       normalizeOrderRecord,
       normalizeOrderList,
       cloneOrder,
+      getOrderUpdatedAt,
+      ordersEqual,
       mergeOrdersById,
+      mergeOrdersLastWriteWins,
       normalizeAccountName,
       toAccountSlot,
       fromAccountSlot,

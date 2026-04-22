@@ -1,0 +1,258 @@
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+    gap: 22px;
+    align-items: start;
+    margin-top: 18px;
+  }
+
+  .panel {
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 22px;
+    background: rgba(255,255,255,.03);
+    overflow: hidden;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 18px 12px;
+  }
+
+  .panel-head h3 {
+    margin: 0;
+    font-size: 17px;
+  }
+
+  .panel-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(110, 168, 255, .16);
+    color: #b8d2ff;
+    font-size: 11px;
+    letter-spacing: .05em;
+  }
+
+  .mock {
+    padding: 0 18px 18px;
+  }
+
+  .screen {
+    border-radius: 18px;
+    background: rgba(9, 13, 23, .9);
+    border: 1px solid rgba(255,255,255,.06);
+    padding: 14px;
+  }
+
+  .row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .box {
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.04);
+    border-radius: 14px;
+    color: rgba(255,255,255,.76);
+    padding: 10px 12px;
+    font-size: 11px;
+    line-height: 1.45;
+    box-sizing: border-box;
+  }
+
+  .status {
+    width: 38%;
+  }
+
+  .tools {
+    width: calc(62% - 10px);
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(255,255,255,.06);
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+
+  .pill.primary {
+    background: rgba(110, 168, 255, .18);
+    border-color: rgba(110, 168, 255, .32);
+    color: #dbe9ff;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+
+  .stat {
+    min-height: 90px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+  }
+
+  .tab {
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    font-size: 10px;
+  }
+
+  .tab.active {
+    background: rgba(110, 168, 255, .18);
+    border-color: rgba(110, 168, 255, .32);
+    color: #d8e7ff;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .sticky {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,.08);
+    background: rgba(18, 24, 39, .96);
+    box-shadow: 0 12px 28px rgba(0,0,0,.22);
+    padding: 10px 12px;
+  }
+
+  .sticky-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .search {
+    min-width: 220px;
+    flex: 1 1 220px;
+  }
+
+  .pager {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .table {
+    min-height: 126px;
+    width: 100%;
+  }
+
+  .notes {
+    padding: 16px 18px 18px;
+    color: rgba(255,255,255,.74);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .notes strong {
+    color: #fff;
+  }
+
+  .notes p {
+    margin: 0 0 10px;
+  }
+
+  @media (max-width: 1020px) {
+    .hero {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<h2>订单页顶部最终方向</h2>
+<p class="subtitle">按你刚确认的方向收敛：B2 结构，新增订单放账号标签行，搜索和分页用整条吸顶控制带。</p>
+
+<div class="hero">
+  <div class="panel">
+    <div class="panel-head">
+      <h3>整体排布</h3>
+      <span class="panel-badge">当前推荐</span>
+    </div>
+    <div class="mock">
+      <div class="screen">
+        <div class="row">
+          <div class="box status">Supabase / 已同步 / 存储说明</div>
+          <div class="tools">
+            <div class="pill">刷新</div>
+            <div class="pill">导出</div>
+            <div class="pill">退出</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="stats">
+            <div class="box stat">当前筛选采购总额</div>
+            <div class="box stat">全部订单采购总额</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="box" style="width:100%">
+            <div class="tabs">
+              <span class="tab active">全部</span>
+              <span class="tab">NOMA</span>
+              <span class="tab">账号 3</span>
+              <span class="tab">+</span>
+              <span class="spacer"></span>
+              <span class="pill primary">+ 新增订单</span>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="sticky">
+            <div class="sticky-controls">
+              <div class="box search">搜索订单号 / 产品 / 快递</div>
+              <div class="pager">
+                <div class="pill">每页 50</div>
+                <div class="pill">上一页</div>
+                <div class="pill">1 / 2</div>
+                <div class="pill">下一页</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="box table">表格区域</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>为什么更像正规网站</h3>
+      <span class="panel-badge" style="background:rgba(255,255,255,.08);color:rgba(255,255,255,.72)">后台风格</span>
+    </div>
+    <div class="notes">
+      <p><strong>1. 主次动作分离。</strong> 顶部工具栏只留全局动作，主动作“新增订单”回到列表语境里，不再和刷新、导出抢层级。</p>
+      <p><strong>2. 统计与控制分层。</strong> 金额卡片负责概览，吸顶控制带只负责查找和翻页，职责清楚。</p>
+      <p><strong>3. 贴近数据后台习惯。</strong> 滚动时留下搜索和分页，比整个头部都吸住更克制，也更专业。</p>
+      <p><strong>4. 操作路径更短。</strong> 选账号 -> 点新增订单 -> 回到当前列表，这条链路最自然。</p>
+      <p><strong>5. 视觉上更稳。</strong> 不是加更多设计元素，而是让每一行只做一件事。</p>
+    </div>
+  </div>
+</div>

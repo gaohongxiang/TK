@@ -7,6 +7,7 @@ const OrderTrackerCrud = (function () {
     const {
       $,
       uid,
+      nowIso,
       todayStr,
       addDays,
       computeWarning,
@@ -18,6 +19,9 @@ const OrderTrackerCrud = (function () {
       getOrderFormCourierFields,
       showDatePicker
     } = helpers;
+    const getNowIso = typeof nowIso === 'function'
+      ? nowIso
+      : () => new Date().toISOString();
     const {
       getUniqueAccounts,
       promptAddAccount,
@@ -25,7 +29,6 @@ const OrderTrackerCrud = (function () {
       markAccountsDirty,
       markOrderAccountsDirty,
       commitLocalOrders,
-      resetTablePage,
       toast
     } = ui;
 
@@ -136,14 +139,13 @@ const OrderTrackerCrud = (function () {
         const index = (state.orders || []).findIndex(order => order.id === state.editingId);
         if (index >= 0) {
           const previous = state.orders[index];
-          state.orders[index] = normalizeOrderRecord({ ...previous, ...payload });
+          state.orders[index] = normalizeOrderRecord({ ...previous, ...payload, updatedAt: getNowIso() });
           markOrderAccountsDirty([previous['账号'], state.orders[index]['账号']]);
         }
       } else {
-        const created = normalizeOrderRecord({ id: uid(), ...payload });
+        const created = normalizeOrderRecord({ id: uid(), ...payload, updatedAt: getNowIso() });
         state.orders.unshift(created);
         markOrderAccountsDirty([created['账号']]);
-        resetTablePage();
       }
 
       closeModal();

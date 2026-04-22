@@ -977,9 +977,39 @@ details[open] summary {
   height: 30px;
 }
 
+.ot-refresh-inline {
+  width: 30px;
+  height: 30px;
+  background: transparent;
+}
+
 .ot-storage-help-btn svg {
   width: 15px;
   height: 15px;
+}
+
+.ot-refresh-inline svg {
+  width: 15px;
+  height: 15px;
+}
+
+.ot-refresh-inline.is-spinning {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+}
+
+.ot-refresh-inline.is-spinning svg {
+  animation: ot-refresh-spin .85s linear infinite;
+}
+
+@keyframes ot-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .ot-bar .right {
@@ -1315,7 +1345,7 @@ details[open] summary {
   position: relative;
   display: inline-flex;
   align-items: center;
-  width: 260px;
+  width: 320px;
   height: 32px;
   margin-right: 4px;
   border-radius: 999px;

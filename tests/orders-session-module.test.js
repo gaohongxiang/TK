@@ -58,6 +58,12 @@ assert.match(
 
 assert.match(
   source,
+  /classList\.add\('is-spinning'\)[\s\S]*syncNow[\s\S]*classList\.remove\('is-spinning'\)/,
+  '订单会话模块需要在手动刷新时给刷新按钮加上转圈状态'
+);
+
+assert.match(
+  source,
   /async function onEnter\(/,
   '订单会话模块需要包含进入模块时的恢复逻辑'
 );

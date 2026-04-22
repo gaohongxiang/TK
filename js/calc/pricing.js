@@ -203,12 +203,9 @@ const CalcPricing = (function () {
     function rerenderAll({ derive = true, autoFillShipping = false } = {}) {
       const quote = computePricingNewShipping();
       if (autoFillShipping) applyCalculatedShippingCostNew(quote);
-      renderPricingNewShipping(quote);
       if (derive) state.origPriceNew = deriveOrigPrice('pricingNew');
-      if (els.origPriceNew) setInputValue(els.origPriceNew, state.origPriceNew ? Math.round(state.origPriceNew) : '');
-      if (els.totalCostNew) setInputValue(els.totalCostNew, computeTotalCostNew().toFixed(2));
-      if (els.totalCostReview) setInputValue(els.totalCostReview, computeTotalCostNew().toFixed(2));
-      renderAnchorOptions('pricingNew');
+      syncInputsFromState();
+      renderPricingNewShipping(quote);
       renderTable('pricingNew');
       renderSalePrice();
       renderShippingCalc();

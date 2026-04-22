@@ -457,8 +457,23 @@ const OrderTrackerSession = (function () {
         return;
       }
 
-      const ok = await syncNow({ forcePull: !state.dirty || state.storageMode === 'supabase' });
-      if (ok) toast('已刷新', 'ok');
+      const refreshBtn = $('#ot-refresh');
+      if (refreshBtn) {
+        refreshBtn.disabled = true;
+        refreshBtn.classList.add('is-spinning');
+        refreshBtn.setAttribute('aria-busy', 'true');
+      }
+
+      try {
+        const ok = await syncNow({ forcePull: !state.dirty || state.storageMode === 'supabase' });
+        if (ok) toast('已刷新', 'ok');
+      } finally {
+        if (refreshBtn) {
+          refreshBtn.disabled = false;
+          refreshBtn.classList.remove('is-spinning');
+          refreshBtn.setAttribute('aria-busy', 'false');
+        }
+      }
     }
 
     function copyGist() {

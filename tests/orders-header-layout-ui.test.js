@@ -46,6 +46,24 @@ assert.doesNotMatch(
 );
 
 assert.match(
+  statusRowSlice,
+  /id="ot-sync"[\s\S]*id="ot-refresh"[\s\S]*id="ot-storage-help-btn"/,
+  '刷新按钮需要紧跟在同步状态后面，并放在存储说明图标前面'
+);
+
+assert.match(
+  statusRowSlice,
+  /id="ot-refresh"[^>]*aria-label="刷新订单数据"[^>]*>[\s\S]*<svg/,
+  '刷新按钮需要收成图标按钮并保留无障碍名称'
+);
+
+assert.match(
+  statusRowSlice,
+  /id="ot-refresh"[\s\S]*A7 7[\s\S]*A7 7/,
+  '刷新图标需要使用断开的双弧线样式，避免头尾连成一圈'
+);
+
+assert.match(
   tabsSource,
   /#ot-acc-tabs-all/,
   '账号标签渲染需要写入固定的全部标签容器'
@@ -95,6 +113,24 @@ assert.match(
 
 assert.match(
   cssSource,
+  /\.ot-refresh-inline/,
+  '样式表需要定义顶部内联刷新图标按钮'
+);
+
+assert.match(
+  cssSource,
+  /\.ot-refresh-inline\s*\{[\s\S]*background:\s*transparent;/,
+  '刷新图标按钮需要去掉灰底'
+);
+
+assert.match(
+  cssSource,
+  /\.ot-refresh-inline\.is-spinning[\s\S]*ot-refresh-spin/,
+  '刷新图标按钮在刷新时需要持续转圈'
+);
+
+assert.match(
+  cssSource,
   /\.ot-sticky-controls/,
   '样式表需要定义表格控制带吸顶样式'
 );
@@ -113,7 +149,7 @@ assert.match(
 
 assert.match(
   cssSource,
-  /\.ot-table-search[\s\S]*width: 260px/,
+  /\.ot-table-search[\s\S]*width: 320px/,
   '搜索框需要加长到更适合桌面端输入的宽度'
 );
 

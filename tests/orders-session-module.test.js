@@ -28,8 +28,8 @@ assert.match(
 
 assert.match(
   source,
-  /mode === 'supabase'/,
-  '订单会话模块需要按存储模式切换到 Supabase 分支'
+  /mode === 'firestore'/,
+  '订单会话模块需要按存储模式切换到 Firestore 分支'
 );
 
 assert.doesNotMatch(
@@ -38,22 +38,16 @@ assert.doesNotMatch(
   '订单会话模块不应再保留仅本地模式分支'
 );
 
-assert.doesNotMatch(
+assert.match(
   source,
-  /provider\.signIn/,
-  '订单会话模块不应再触发 Supabase 邮箱登录'
+  /请粘贴完整的 firebaseConfig/,
+  '订单会话模块需要校验 firebaseConfig'
 );
 
 assert.match(
   source,
-  /\.supabase\.co/,
-  '订单会话模块需要把输入的 Supabase Project ID 组装成 Project URL'
-);
-
-assert.match(
-  source,
-  /provider\.init/,
-  '订单会话模块需要通过 provider.init 初始化远端连接'
+  /provider\.parseConfigInput/,
+  '订单会话模块需要通过 provider 解析 firebaseConfig'
 );
 
 assert.match(
@@ -92,6 +86,8 @@ const sessionTools = sandbox.OrderTrackerSession.create({
   },
   providers: {
     getProviderByMode: () => ({
+      parseConfigInput: () => ({ projectId: 'demo-project' }),
+      normalizeConfigText: value => value,
       init: async () => {},
       isConnected: () => false
     })

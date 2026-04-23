@@ -1,5 +1,5 @@
 /* ============================================================
- * 模块 2：订单跟踪器（IndexedDB 本地优先 + 可选 Gist / Supabase）
+ * 模块 2：订单跟踪器（GitHub Gist / Firebase Firestore）
  * ============================================================ */
 const OrderTracker = (function () {
   const LS_KEY = 'tk.orders.cfg.v1';
@@ -17,12 +17,12 @@ const OrderTracker = (function () {
   const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 
   const state = {
-    storageMode: 'gist',
+    storageMode: 'firestore',
     remoteProvider: null,
     token: '',
     gistId: '',
-    supabaseUrl: '',
-    supabaseAnonKey: '',
+    firestoreConfigText: '',
+    firestoreProjectId: '',
     user: '',
     clientId: '',
     orders: [],
@@ -122,11 +122,11 @@ const OrderTracker = (function () {
   function saveCfg() {
     state.clientId = state.clientId || uid();
     localStorage.setItem(LS_KEY, JSON.stringify({
-      mode: state.storageMode || 'gist',
+      mode: state.storageMode || 'firestore',
       token: state.token,
       gistId: state.gistId,
-      supabaseUrl: state.supabaseUrl,
-      supabaseAnonKey: state.supabaseAnonKey,
+      firestoreConfigText: state.firestoreConfigText,
+      firestoreProjectId: state.firestoreProjectId,
       user: state.user,
       clientId: state.clientId
     }));
@@ -136,11 +136,11 @@ const OrderTracker = (function () {
       const raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
       if (!raw) return null;
       return {
-        mode: raw.mode === 'supabase' ? 'supabase' : 'gist',
+        mode: raw.mode === 'gist' ? 'gist' : 'firestore',
         token: raw.token || '',
         gistId: raw.gistId || '',
-        supabaseUrl: raw.supabaseUrl || raw.url || '',
-        supabaseAnonKey: raw.supabaseAnonKey || raw.anonKey || '',
+        firestoreConfigText: raw.firestoreConfigText || raw.firebaseConfig || '',
+        firestoreProjectId: raw.firestoreProjectId || raw.projectId || '',
         user: raw.user || '',
         clientId: raw.clientId || uid()
       };
@@ -218,7 +218,7 @@ const OrderTracker = (function () {
       parseAccountSlotFromFileName
     }
   });
-  const providerSupabase = OrderTrackerProviderSupabase.create({
+  const providerFirestore = OrderTrackerProviderFirestore.create({
     state,
     helpers: {
       nowIso,
@@ -227,7 +227,7 @@ const OrderTracker = (function () {
     }
   });
   function getProviderByMode(mode) {
-    if (mode === 'supabase') return providerSupabase;
+    if (mode === 'firestore') return providerFirestore;
     return providerGist;
   }
 
@@ -499,56 +499,31 @@ const OrderTracker = (function () {
     return legacyCopy();
   }
 
-  function getEmbeddedSupabaseSchema() {
-    return String(window.ORDER_TRACKER_SUPABASE_SCHEMA || '').trim();
+  function getEmbeddedFirestoreRules() {
+    return String(window.ORDER_TRACKER_FIRESTORE_RULES || '').trim();
   }
 
-  function getSupabaseSchemaSource() {
-    const embedded = getEmbeddedSupabaseSchema();
+  function getFirestoreRulesSource() {
+    const embedded = getEmbeddedFirestoreRules();
     if (embedded) return embedded;
 
-    const schemaUrl = $('#ot-copy-supabase-schema')?.dataset.schemaUrl || '';
-    throw new Error(schemaUrl
-      ? `页面内置 schema 未加载，请刷新页面后重试；如仍失败，可手动打开 ${schemaUrl}`
-      : '页面内置 schema 未加载，请刷新页面后重试');
+    const rulesUrl = $('#ot-copy-firestore-rules')?.dataset.rulesUrl || '';
+    throw new Error(rulesUrl
+      ? `页面内置 Firestore 规则未加载，请刷新页面后重试；如仍失败，可手动打开 ${rulesUrl}`
+      : '页面内置 Firestore 规则未加载，请刷新页面后重试');
   }
 
-  function getSupabaseProjectRef() {
-    const raw = $('#ot-supabase-url')?.value.trim();
-    if (!raw) return '';
-    if (!/^https?:\/\//i.test(raw)) {
-      return raw.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    }
-    try {
-      const url = new URL(raw);
-      const host = String(url.hostname || '').trim().toLowerCase();
-      if (!host.endsWith('.supabase.co')) return '';
-      return host.split('.')[0] || '';
-    } catch (error) {
-      return '';
-    }
-  }
-
-  function openSupabaseUrl(url) {
+  function openExternalUrl(url) {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  function bindSupabaseSetupActions() {
-    const dashboardBtn = $('#ot-open-supabase-dashboard');
-    const sqlBtn = $('#ot-open-supabase-sql-editor');
-    const copyBtn = $('#ot-copy-supabase-schema');
-    if (!dashboardBtn || !sqlBtn || !copyBtn || dashboardBtn.dataset.bound === 'true') return;
+  function bindFirestoreSetupActions() {
+    const consoleBtn = $('#ot-open-firebase-console');
+    const copyBtn = $('#ot-copy-firestore-rules');
+    if (!consoleBtn || !copyBtn || consoleBtn.dataset.bound === 'true') return;
 
-    dashboardBtn.addEventListener('click', () => {
-      openSupabaseUrl('https://supabase.com/dashboard');
-    });
-
-    sqlBtn.addEventListener('click', () => {
-      const projectRef = getSupabaseProjectRef();
-      const url = projectRef
-        ? `https://supabase.com/dashboard/project/${projectRef}/sql/new`
-        : 'https://supabase.com/dashboard/project/_/sql/new';
-      openSupabaseUrl(url);
+    consoleBtn.addEventListener('click', () => {
+      openExternalUrl('https://console.firebase.google.com/');
     });
 
     copyBtn.addEventListener('click', async () => {
@@ -556,22 +531,22 @@ const OrderTracker = (function () {
       copyBtn.disabled = true;
       copyBtn.textContent = '复制中…';
       try {
-        const sql = getSupabaseSchemaSource();
-        await copyText(sql);
-        toast('初始化 SQL 已复制，去 SQL Editor 里粘贴运行即可', 'ok');
+        const rules = getFirestoreRulesSource();
+        await copyText(rules);
+        toast('Firestore 规则已复制，去 Rules 页面里粘贴发布即可', 'ok');
       } catch (error) {
-        toast('复制初始化 SQL 失败: ' + error.message, 'error');
+        toast('复制 Firestore 规则失败: ' + error.message, 'error');
       } finally {
         copyBtn.disabled = false;
         copyBtn.textContent = originalText;
       }
     });
 
-    dashboardBtn.dataset.bound = 'true';
+    consoleBtn.dataset.bound = 'true';
   }
 
   bindStorageHelpModal();
-  bindSupabaseSetupActions();
+  bindFirestoreSetupActions();
   init();
   return { onEnter };
 })();

@@ -14,6 +14,17 @@ const OrderTableView = (function () {
     return String(value || '').trim().toLowerCase();
   }
 
+  function parseOrderSortTime(order) {
+    const createdAt = String(order?.createdAt || order?.created_at || order?.updatedAt || order?.updated_at || '').trim();
+    const timestamp = Date.parse(createdAt || 0);
+    return Number.isFinite(timestamp) ? timestamp : 0;
+  }
+
+  function parseOrderSeq(order) {
+    const parsed = Number.parseInt(String(order?.seq ?? '').trim(), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }
+
   function parsePurchaseAmount(value) {
     const normalized = String(value ?? '').replace(/,/g, '').trim();
     if (!normalized) return 0;
@@ -64,11 +75,23 @@ const OrderTableView = (function () {
         ].join(' '));
         return haystack.includes(query);
       });
-    const allIds = list.map(order => order?.id);
     const sorted = [...filtered].sort((a, b) => {
-      const ia = allIds.indexOf(a?.id);
-      const ib = allIds.indexOf(b?.id);
-      return sortOrder === 'asc' ? ib - ia : ia - ib;
+      const sa = parseOrderSeq(a);
+      const sb = parseOrderSeq(b);
+      if (sa !== null || sb !== null) {
+        if (sa === null) return 1;
+        if (sb === null) return -1;
+        if (sa !== sb) return sortOrder === 'asc' ? sa - sb : sb - sa;
+      }
+      const ta = parseOrderSortTime(a);
+      const tb = parseOrderSortTime(b);
+      if (ta !== tb) return sortOrder === 'asc' ? ta - tb : tb - ta;
+      const ida = String(a?.id || '');
+      const idb = String(b?.id || '');
+      if (ida === idb) return 0;
+      return sortOrder === 'asc'
+        ? ida.localeCompare(idb)
+        : idb.localeCompare(ida);
     });
     return { isAll, sorted };
   }

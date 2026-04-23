@@ -69,6 +69,30 @@ const accountOnlyResult = sandbox.OrderTableView.deriveDisplayedOrders({
 assert.equal(accountOnlyResult.sorted.length, 1, '账号筛选应只保留目标账号');
 assert.equal(accountOnlyResult.sorted[0].id, '2', '账号筛选结果不正确');
 
+const stableSortResult = sandbox.OrderTableView.deriveDisplayedOrders({
+  orders: [
+    { id: 'newer', createdAt: '2026-04-22T10:00:00.000Z', '账号': 'A' },
+    { id: 'older', createdAt: '2026-04-20T10:00:00.000Z', '账号': 'A' }
+  ],
+  activeAccount: '__all__',
+  searchQuery: '',
+  sortOrder: 'asc'
+});
+
+assert.equal(stableSortResult.sorted[0].id, 'older', '表格排序应优先按持久化创建时间，而不是当前数组顺序');
+
+const seqPriorityResult = sandbox.OrderTableView.deriveDisplayedOrders({
+  orders: [
+    { id: 'late-created', seq: 9, createdAt: '2026-04-23T10:00:00.000Z', '账号': 'A' },
+    { id: 'early-created', seq: 2, createdAt: '2026-04-20T10:00:00.000Z', '账号': 'A' }
+  ],
+  activeAccount: '__all__',
+  searchQuery: '',
+  sortOrder: 'asc'
+});
+
+assert.equal(seqPriorityResult.sorted[0].id, 'early-created', '有 seq 时应优先按录入编号排序');
+
 assert.match(
   ordersSource,
   /OrderTableView\.render\(/,

@@ -4,6 +4,27 @@
 const OrderTrackerProviderSupabase = (function () {
   function create({ state, helpers }) {
     const { nowIso, normalizeOrderList, uniqueAccounts } = helpers;
+    const ORDER_SELECT_COLUMNS = [
+      'id',
+      'seq',
+      'created_at',
+      'updated_at',
+      'deleted_at',
+      'account_name',
+      'ordered_at',
+      'purchase_date',
+      'latest_warehouse_at',
+      'warning_text',
+      'order_no',
+      'product_name',
+      'quantity',
+      'purchase_price',
+      'weight_text',
+      'size_text',
+      'order_status',
+      'courier_company',
+      'tracking_no'
+    ].join(', ');
     let client = null;
 
     function latestIso(values) {
@@ -49,22 +70,145 @@ const OrderTrackerProviderSupabase = (function () {
       return 'Supabase';
     }
 
+    function parseSeq(value) {
+      const parsed = Number.parseInt(String(value ?? '').trim(), 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    function toNullableText(value) {
+      const text = String(value ?? '').trim();
+      return text ? text : null;
+    }
+
+    function toNullableDate(value) {
+      const text = String(value ?? '').trim();
+      return text ? text : null;
+    }
+
+    function toNullableInteger(value) {
+      const text = String(value ?? '').trim();
+      if (!text) return null;
+      const parsed = Number.parseInt(text, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function toNullableDecimal(value) {
+      const text = String(value ?? '').replace(/,/g, '').trim();
+      if (!text) return null;
+      const parsed = Number.parseFloat(text);
+      return Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : null;
+    }
+
+    function toIsoTimestamp(value, fallback = '') {
+      const text = String(value ?? '').trim();
+      if (text) {
+        const parsed = Date.parse(text);
+        if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+      }
+      if (fallback) return fallback;
+      return nowIso();
+    }
+
+    function getOrderCreatedAt(order) {
+      const direct = String(order?.createdAt || order?.created_at || '').trim();
+      if (direct) return toIsoTimestamp(direct);
+      const updated = String(order?.updatedAt || order?.updated_at || '').trim();
+      if (updated) return toIsoTimestamp(updated);
+      return nowIso();
+    }
+
     function normalizePulledOrder(row) {
-      const payload = row?.payload && typeof row.payload === 'object' ? { ...row.payload } : {};
+      const seq = parseSeq(row?.seq);
       return {
-        id: String(row?.id || payload.id || '').trim(),
-        ...payload,
-        '账号': typeof row?.account_name === 'string' ? row.account_name : (payload['账号'] || ''),
-        updatedAt: row?.updated_at || payload.updatedAt || '',
-        deletedAt: row?.deleted_at || payload.deletedAt || ''
+        id: String(row?.id || '').trim(),
+        ...(seq !== null ? { seq } : {}),
+        createdAt: row?.created_at || '',
+        updatedAt: row?.updated_at || '',
+        deletedAt: row?.deleted_at || '',
+        '账号': typeof row?.account_name === 'string' ? row.account_name : '',
+        '下单时间': row?.ordered_at || '',
+        '采购日期': row?.purchase_date || '',
+        '最晚到仓时间': row?.latest_warehouse_at || '',
+        '订单预警': row?.warning_text || '',
+        '订单号': row?.order_no || '',
+        '产品名称': row?.product_name || '',
+        '数量': row?.quantity == null ? '' : String(row.quantity),
+        '采购价格': row?.purchase_price == null ? '' : String(row.purchase_price),
+        '重量': row?.weight_text || '',
+        '尺寸': row?.size_text || '',
+        '订单状态': row?.order_status || '',
+        '快递公司': row?.courier_company || '',
+        '快递单号': row?.tracking_no || ''
       };
     }
 
-    function stripOrderMeta(order) {
-      const next = { ...(order || {}) };
-      delete next.updatedAt;
-      delete next.deletedAt;
-      return next;
+    function buildOrderRow(order) {
+      const seq = parseSeq(order?.seq);
+      const createdAt = getOrderCreatedAt(order);
+      const updatedAt = toIsoTimestamp(order?.updatedAt || order?.updated_at, createdAt);
+      return {
+        id: String(order?.id || '').trim(),
+        seq,
+        created_at: createdAt,
+        updated_at: updatedAt,
+        deleted_at: null,
+        account_name: toNullableText(order?.['账号']),
+        ordered_at: toNullableDate(order?.['下单时间']),
+        purchase_date: toNullableDate(order?.['采购日期']),
+        latest_warehouse_at: toNullableDate(order?.['最晚到仓时间']),
+        warning_text: toNullableText(order?.['订单预警']),
+        order_no: toNullableText(order?.['订单号']),
+        product_name: toNullableText(order?.['产品名称']),
+        quantity: toNullableInteger(order?.['数量']),
+        purchase_price: toNullableDecimal(order?.['采购价格']),
+        weight_text: toNullableText(order?.['重量']),
+        size_text: toNullableText(order?.['尺寸']),
+        order_status: toNullableText(order?.['订单状态']),
+        courier_company: toNullableText(order?.['快递公司']),
+        tracking_no: toNullableText(order?.['快递单号'])
+      };
+    }
+
+    function sortOrdersForSeqAssignment(left, right) {
+      const leftCreatedAt = Date.parse(getOrderCreatedAt(left) || 0);
+      const rightCreatedAt = Date.parse(getOrderCreatedAt(right) || 0);
+      if (leftCreatedAt !== rightCreatedAt) return leftCreatedAt - rightCreatedAt;
+
+      const leftUpdatedAt = Date.parse(String(left?.updatedAt || left?.updated_at || '').trim() || 0);
+      const rightUpdatedAt = Date.parse(String(right?.updatedAt || right?.updated_at || '').trim() || 0);
+      if (leftUpdatedAt !== rightUpdatedAt) return leftUpdatedAt - rightUpdatedAt;
+
+      return String(left?.id || '').localeCompare(String(right?.id || ''));
+    }
+
+    async function fetchMaxSeq(currentClient) {
+      let query = currentClient.from('orders').select('seq').order('seq', { ascending: false });
+      if (typeof query.limit === 'function') query = query.limit(1);
+      const result = await query;
+      if (result.error) throw result.error;
+      const first = Array.isArray(result.data) && result.data.length ? result.data[0] : null;
+      return parseSeq(first?.seq) || 0;
+    }
+
+    async function assignOrderSeqs(currentClient, orders = []) {
+      const normalized = normalizeOrderList(orders).map(order => ({ ...order }));
+      if (!normalized.length) return normalized;
+
+      const remoteMaxSeq = await fetchMaxSeq(currentClient);
+      let nextSeq = Math.max(
+        remoteMaxSeq,
+        ...normalized.map(order => parseSeq(order?.seq) || 0)
+      );
+
+      normalized
+        .filter(order => parseSeq(order?.seq) === null)
+        .sort(sortOrdersForSeqAssignment)
+        .forEach(order => {
+          nextSeq += 1;
+          order.seq = nextSeq;
+        });
+
+      return normalized;
     }
 
     async function requireClient() {
@@ -108,8 +252,8 @@ const OrderTrackerProviderSupabase = (function () {
 
       let changedOrdersQuery = currentClient
         .from('orders')
-        .select('id, account_name, payload, updated_at, deleted_at')
-        .order('updated_at', { ascending: true });
+        .select(ORDER_SELECT_COLUMNS)
+        .order('updated_at', { ascending: false });
       if (cursor) {
         changedOrdersQuery = changedOrdersQuery.gt('updated_at', cursor);
       }
@@ -127,9 +271,9 @@ const OrderTrackerProviderSupabase = (function () {
         changedAccountsQuery,
         currentClient
           .from('orders')
-          .select('id, account_name, payload, updated_at, deleted_at')
+          .select(ORDER_SELECT_COLUMNS)
           .is('deleted_at', null)
-          .order('updated_at', { ascending: true }),
+          .order('seq', { ascending: true }),
         currentClient
           .from('order_accounts')
           .select('name, updated_at, deleted_at')
@@ -176,25 +320,8 @@ const OrderTrackerProviderSupabase = (function () {
       clientId = ''
     } = {}) {
       const currentClient = await requireClient();
-
-      const orderRows = normalizeOrderList(upserts).map(order => ({
-        id: String(order.id),
-        account_name: String(order['账号'] || '').trim() || null,
-        payload: stripOrderMeta(order),
-        updated_at: order.updatedAt || nowIso(),
-        deleted_at: null
-      }));
-
-      const deletedOrderRows = deletions.map(item => {
-        const deletedAt = item?.deletedAt || item?.updatedAt || nowIso();
-        return {
-          id: String(item.id),
-          account_name: String(item.accountName || '').trim() || null,
-          payload: {},
-          updated_at: deletedAt,
-          deleted_at: deletedAt
-        };
-      });
+      const assignedOrders = await assignOrderSeqs(currentClient, upserts);
+      const orderRows = assignedOrders.map(buildOrderRow);
 
       const accountRows = uniqueAccounts(accountUpserts).map(name => ({
         name,
@@ -215,22 +342,44 @@ const OrderTrackerProviderSupabase = (function () {
         const { error } = await currentClient.from('orders').upsert(orderRows, { onConflict: 'id' });
         if (error) throw error;
       }
-      if (deletedOrderRows.length) {
-        const { error } = await currentClient.from('orders').upsert(deletedOrderRows, { onConflict: 'id' });
-        if (error) throw error;
+
+      if (deletions.length) {
+        const results = await Promise.all(deletions.map(item => {
+          const deletedAt = item?.deletedAt || item?.updatedAt || nowIso();
+          return currentClient
+            .from('orders')
+            .update({
+              deleted_at: deletedAt,
+              updated_at: deletedAt
+            })
+            .eq('id', String(item?.id || ''));
+        }));
+        const failed = results.find(result => result?.error);
+        if (failed?.error) throw failed.error;
       }
+
       if (accountRows.length) {
         const { error } = await currentClient.from('order_accounts').upsert(accountRows, { onConflict: 'name' });
         if (error) throw error;
       }
+
       if (deletedAccountRows.length) {
-        const { error } = await currentClient.from('order_accounts').upsert(deletedAccountRows, { onConflict: 'name' });
-        if (error) throw error;
+        const results = await Promise.all(deletedAccountRows.map(row => (
+          currentClient
+            .from('order_accounts')
+            .update({
+              updated_at: row.updated_at,
+              deleted_at: row.deleted_at
+            })
+            .eq('name', row.name)
+        )));
+        const failed = results.find(result => result?.error);
+        if (failed?.error) throw failed.error;
       }
 
       const updatedAt = latestIso([
         ...orderRows.map(row => row.updated_at),
-        ...deletedOrderRows.map(row => row.updated_at),
+        ...deletions.map(item => item?.deletedAt || item?.updatedAt || ''),
         ...accountRows.map(row => row.updated_at),
         ...deletedAccountRows.map(row => row.updated_at),
         nowIso()
@@ -239,13 +388,15 @@ const OrderTrackerProviderSupabase = (function () {
       const { error: syncError } = await currentClient.from('sync_state').upsert({
         scope: 'orders',
         updated_at: updatedAt,
-        last_client_id: clientId || null
+        last_client_id: clientId || null,
+        schema_version: 2
       }, { onConflict: 'scope' });
       if (syncError) throw syncError;
 
       return {
         updatedAt,
-        remoteCursor: updatedAt
+        remoteCursor: updatedAt,
+        assignedOrders: normalizeOrderList(assignedOrders)
       };
     }
 

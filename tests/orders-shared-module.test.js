@@ -62,6 +62,12 @@ assert.equal(
 );
 
 assert.equal(
+  sharedTools.normalizeOrderRecord({ id: 'm8zj7r2a1b2c3d' }).createdAt,
+  new Date(parseInt('m8zj7r2a', 36)).toISOString(),
+  '共享 helper 模块应能从旧 uid 中补出稳定的创建时间'
+);
+
+assert.equal(
   sharedTools.detectCourierCompany('SF123456'),
   '顺丰快递',
   '共享 helper 模块应能识别快递公司'

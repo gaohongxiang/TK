@@ -17,160 +17,136 @@ assert.match(
   '订单连接页需要明确提示必须选择一个云端存储'
 );
 
-assert.doesNotMatch(
+assert.match(
   indexSource,
-  /value="local"/,
-  '订单连接页不应再提供仅本地模式'
+  /value="gist"/,
+  '订单连接页需要保留 Gist 模式'
 );
 
 assert.match(
   indexSource,
-  /id="ot-supabase-url"/,
-  '订单连接页需要提供 Supabase Project ID 输入框'
+  /value="firestore"/,
+  '订单连接页需要提供 Firestore 模式'
 );
 
 assert.match(
   indexSource,
-  /id="ot-supabase-anon-key"/,
-  '订单连接页需要提供 Supabase publishable key 输入框'
+  /value="firestore" checked/,
+  '订单连接页默认应选中 Firestore 模式'
 );
 
 assert.match(
   indexSource,
-  /Supabase 三步接入/,
-  '订单连接页需要提供 Supabase 三步接入引导'
+  /Firebase Firestore/,
+  '订单连接页需要把长期模式切到 Firebase Firestore'
 );
 
 assert.match(
   indexSource,
-  /数据保存在你自己的 Supabase 数据库中/,
-  'Supabase 说明需要明确数据保存在用户自己的数据库中'
+  /id="ot-firestore-config"/,
+  '订单连接页需要提供 firebaseConfig 输入框'
 );
 
 assert.match(
   indexSource,
-  /只需要准备好自己的 Project ID 和 Publishable key/,
-  'Supabase 说明应明确只需要 Project ID 和 Publishable key'
+  /apiKey[\s\S]*authDomain[\s\S]*projectId[\s\S]*appId/s,
+  'firebaseConfig 输入框需要提示常见配置字段'
 );
 
 assert.match(
   indexSource,
-  /需要自行配置，适合数据较多、长期使用/,
-  'Supabase 模式卡片应按现有风格说明需要自行配置，适合数据较多、长期使用'
+  /Firestore 三步接入/,
+  '订单连接页需要提供 Firestore 三步接入引导'
 );
 
 assert.match(
   indexSource,
-  /General → Project ID/,
-  'Supabase 引导里需要说明 Project ID 在 General 页面获取'
+  /添加应用时选 <code>网页<\/code>/,
+  'Firestore 引导里需要明确应用平台选择网页'
 );
 
 assert.match(
   indexSource,
-  /placeholder="hgrsq......"/,
-  'Supabase Project ID 输入框应提示 project ref 格式'
+  /不用勾 Hosting/,
+  'Firestore 引导里需要明确不必启用 Firebase Hosting'
 );
 
 assert.match(
   indexSource,
-  /API Keys/,
-  'Supabase 引导里需要说明 Publishable key 在 API Keys 页面获取'
+  /区域级/,
+  'Firestore 引导里需要明确数据库位置建议选区域级'
 );
 
 assert.match(
   indexSource,
-  /placeholder="sb_publishable_/,
-  'Supabase key 输入框占位提示应为 sb_publishable_'
-);
-
-assert.doesNotMatch(
-  indexSource,
-  /publishable \/ anon key/,
-  '页面文案不应再混写 anon key'
+  /模式选 <code>生产模式<\/code>/,
+  'Firestore 引导里需要明确数据库模式建议选生产模式'
 );
 
 assert.match(
   indexSource,
-  /https:\/\/supabase\.com\/dashboard/,
-  'Supabase 引导里需要提供新建项目入口链接'
+  /数据保存在你自己的 Firebase 项目里/,
+  'Firestore 说明需要明确数据保存在用户自己的 Firebase 项目里'
 );
 
 assert.match(
   indexSource,
-  /https:\/\/supabase\.com\/docs\/guides\/api/,
-  'Supabase 引导里需要提供 Data API 说明链接'
+  /使用 Firestore 自带的离线缓存/,
+  'Firestore 说明需要明确本地缓存走 Firestore 自带离线缓存'
 );
 
 assert.match(
   indexSource,
-  /id="ot-open-supabase-dashboard"/,
-  'Supabase 引导里需要提供打开 Dashboard 按钮'
+  /https:\/\/console\.firebase\.google\.com\//,
+  'Firestore 引导里需要提供 Firebase Console 链接'
 );
 
 assert.match(
   indexSource,
-  /id="ot-open-supabase-sql-editor"/,
-  'Supabase 引导里需要提供打开 SQL Editor 按钮'
+  /id="ot-open-firebase-console"/,
+  'Firestore 引导里需要提供打开 Firebase Console 按钮'
 );
 
 assert.match(
   indexSource,
-  /id="ot-copy-supabase-schema"/,
-  'Supabase 引导里需要提供复制初始化 SQL 按钮'
+  /id="ot-copy-firestore-rules"/,
+  'Firestore 引导里需要提供复制 Firestore 规则按钮'
 );
 
 assert.match(
   indexSource,
-  /data-schema-url="docs\/supabase\/order-tracker-schema\.sql"/,
-  '复制初始化 SQL 按钮需要指向内置 schema 文件'
+  /data-rules-url="docs\/firebase\/order-tracker-firestore\.rules"/,
+  '复制 Firestore 规则按钮需要指向文档里的规则文件'
 );
 
 assert.match(
   indexSource,
-  /<script src="js\/orders\/supabase-schema\.js" defer><\/script>/,
-  '页面需要预加载内置 Supabase schema 文本，避免复制动作依赖运行时拉文件'
+  /<script src="js\/orders\/firestore-rules\.js" defer><\/script>/,
+  '页面需要预加载内置 Firestore 规则文本'
 );
 
 assert.match(
   ordersIndexSource,
-  /ORDER_TRACKER_SUPABASE_SCHEMA/,
-  '复制初始化 SQL 逻辑需要优先使用内置 schema 文本'
-);
-
-assert.doesNotMatch(
-  ordersIndexSource,
-  /fetch\(new URL\(schemaUrl, location\.href\)\.href/,
-  '复制初始化 SQL 不应依赖运行时 fetch schema 文件'
+  /ORDER_TRACKER_FIRESTORE_RULES/,
+  '复制 Firestore 规则逻辑需要优先使用内置规则文本'
 );
 
 assert.match(
   indexSource,
-  /SQL Editor/,
-  'Supabase 引导里需要提示去 SQL Editor 执行 schema'
+  /<script src="https:\/\/www\.gstatic\.com\/firebasejs\/12\.6\.0\/firebase-app-compat\.js" defer><\/script>/,
+  '页面需要加载 Firebase app compat 脚本'
 );
 
 assert.match(
   indexSource,
-  /团队成员可以共用同一个 Supabase 项目/,
-  'Supabase 引导里需要说明团队可共用同一个项目'
+  /<script src="https:\/\/www\.gstatic\.com\/firebasejs\/12\.6\.0\/firebase-firestore-compat\.js" defer><\/script>/,
+  '页面需要加载 Firestore compat 脚本'
 );
 
 assert.match(
   indexSource,
-  /没有成员级权限隔离/,
-  'Supabase 引导里需要说明当前方案没有成员级权限隔离'
-);
-
-assert.doesNotMatch(
-  indexSource,
-  /id="ot-supabase-email"/,
-  '订单连接页不应再要求填写 Supabase 邮箱'
-);
-
-assert.match(
-  indexSource,
-  /@supabase\/supabase-js@2/,
-  '页面需要加载 Supabase 浏览器客户端'
+  /同一个 Firebase 项目可以给团队成员共用/,
+  'Firestore 引导里需要说明团队可共用同一个 Firebase 项目'
 );
 
 console.log('orders storage mode ui contract ok');

@@ -26,7 +26,7 @@ const OrderTrackerSession = (function () {
     const { getProviderByMode } = providers;
 
     function getSelectedStorageMode() {
-      return document.querySelector('input[name="ot-storage-mode"]:checked')?.value || state.storageMode || 'gist';
+      return document.querySelector('input[name="ot-storage-mode"]:checked')?.value || state.storageMode || 'firestore';
     }
 
     function setModeProvider(mode) {
@@ -43,76 +43,57 @@ const OrderTrackerSession = (function () {
       });
 
       const gistCopy = $('#ot-gist-copy');
-      const supabaseCopy = $('#ot-supabase-copy');
+      const firestoreCopy = $('#ot-firestore-copy');
       const gistFields = $('#ot-gist-fields');
-      const supabaseFields = $('#ot-supabase-fields');
+      const firestoreFields = $('#ot-firestore-fields');
       const button = $('#ot-connect');
 
       if (gistCopy) gistCopy.style.display = mode === 'gist' ? 'block' : 'none';
-      if (supabaseCopy) supabaseCopy.style.display = mode === 'supabase' ? 'block' : 'none';
+      if (firestoreCopy) firestoreCopy.style.display = mode === 'firestore' ? 'block' : 'none';
       if (gistFields) gistFields.style.display = mode === 'gist' ? 'block' : 'none';
-      if (supabaseFields) supabaseFields.style.display = mode === 'supabase' ? 'block' : 'none';
+      if (firestoreFields) firestoreFields.style.display = mode === 'firestore' ? 'block' : 'none';
 
       if (button) {
         button.textContent = '连接并开始使用';
       }
     }
 
-    function normalizeSupabaseProjectId(value = '') {
-      const raw = String(value || '').trim();
-      if (!raw) return '';
-      if (/^https?:\/\//i.test(raw)) {
-        try {
-          const host = String(new URL(raw).hostname || '').trim().toLowerCase();
-          if (!host.endsWith('.supabase.co')) return '';
-          return host.split('.')[0] || '';
-        } catch (error) {
-          return '';
-        }
+    function readFirestoreTarget() {
+      const configText = $('#ot-firestore-config')?.value.trim() || '';
+      const provider = typeof getProviderByMode === 'function' ? getProviderByMode('firestore') : null;
+      if (!provider?.parseConfigInput) {
+        throw new Error('当前 Firestore 接入能力不可用');
       }
-
-      const normalized = raw.toLowerCase().replace(/[^a-z0-9-]/g, '');
-      return normalized || '';
-    }
-
-    function buildSupabaseProjectUrl(value = '') {
-      const projectId = normalizeSupabaseProjectId(value);
-      if (!projectId) return '';
-      return `https://${projectId}.supabase.co`;
-    }
-
-    function readSupabaseTarget() {
-      const projectId = $('#ot-supabase-url')?.value.trim() || '';
-      const anonKey = $('#ot-supabase-anon-key')?.value.trim() || '';
-      const url = buildSupabaseProjectUrl(projectId);
-      if (!url || !anonKey) {
-        throw new Error('请填写 Project ID 和 Publishable key');
+      const parsed = provider.parseConfigInput(configText);
+      if (!parsed?.projectId) {
+        throw new Error('请粘贴完整的 firebaseConfig');
       }
-      return { projectId, anonKey, url };
+      return {
+        configText: provider.normalizeConfigText(parsed),
+        projectId: parsed.projectId
+      };
     }
 
     function populateSetupForm() {
-      const mode = state.storageMode || 'gist';
+      const mode = state.storageMode || 'firestore';
       const radio = document.querySelector(`input[name="ot-storage-mode"][value="${mode}"]`);
       if (radio) radio.checked = true;
       const tokenInput = $('#ot-token');
       const gistInput = $('#ot-gistid');
-      const supabaseUrlInput = $('#ot-supabase-url');
-      const supabaseKeyInput = $('#ot-supabase-anon-key');
+      const firestoreConfigInput = $('#ot-firestore-config');
 
       if (tokenInput) tokenInput.value = state.token || '';
       if (gistInput) gistInput.value = state.gistId || '';
-      if (supabaseUrlInput) supabaseUrlInput.value = normalizeSupabaseProjectId(state.supabaseUrl) || '';
-      if (supabaseKeyInput) supabaseKeyInput.value = state.supabaseAnonKey || '';
+      if (firestoreConfigInput) firestoreConfigInput.value = state.firestoreConfigText || '';
       syncStorageModeFields(mode);
     }
 
     function applyConfig(cfg) {
-      state.storageMode = cfg?.mode === 'supabase' ? 'supabase' : 'gist';
+      state.storageMode = cfg?.mode === 'gist' ? 'gist' : 'firestore';
       state.token = cfg?.token || '';
       state.gistId = cfg?.gistId || '';
-      state.supabaseUrl = cfg?.supabaseUrl || '';
-      state.supabaseAnonKey = cfg?.supabaseAnonKey || '';
+      state.firestoreConfigText = cfg?.firestoreConfigText || '';
+      state.firestoreProjectId = cfg?.firestoreProjectId || '';
       state.user = cfg?.user || '';
       state.clientId = cfg?.clientId || state.clientId || '';
     }
@@ -192,22 +173,21 @@ const OrderTrackerSession = (function () {
       toast(`已连接: ${user.login}，请保存好 Token 和 Gist ID`, 'ok');
     }
 
-    async function completeSupabaseConnection(provider, {
+    async function completeFirestoreConnection(provider, {
       forcePull,
-      successMessage = '已连接到你自己的 Supabase 项目'
+      successMessage = '已连接到你自己的 Firestore 项目'
     } = {}) {
       if (!provider?.isConnected?.()) {
         await provider.init({
-          url: state.supabaseUrl,
-          anonKey: state.supabaseAnonKey,
+          configText: state.firestoreConfigText,
           user: ''
         });
       }
       saveCfg();
       showMain();
       const hasCache = await restoreCache({
-        cachedPrefix: '本地缓存已恢复',
-        emptyText: '正在准备 Supabase 同步…'
+        cachedPrefix: 'Firestore 本地缓存已恢复',
+        emptyText: '正在准备 Firestore 同步…'
       });
       state.loaded = true;
       const ok = await syncNow({
@@ -216,18 +196,18 @@ const OrderTrackerSession = (function () {
       if (ok) toast(successMessage, 'ok');
     }
 
-    async function connectSupabase(provider) {
+    async function connectFirestore(provider) {
       let target;
       try {
-        target = readSupabaseTarget();
+        target = readFirestoreTarget();
       } catch (error) {
         toast(error.message, 'error');
         return;
       }
 
-      state.supabaseUrl = target.url;
-      state.supabaseAnonKey = target.anonKey;
-      await completeSupabaseConnection(provider);
+      state.firestoreConfigText = target.configText;
+      state.firestoreProjectId = target.projectId;
+      await completeFirestoreConnection(provider);
     }
 
     function promptGistMigration() {
@@ -272,10 +252,10 @@ const OrderTrackerSession = (function () {
       });
     }
 
-    async function connectOrMigrateSupabase() {
+    async function connectOrMigrateFirestore() {
       let target;
       try {
-        target = readSupabaseTarget();
+        target = readFirestoreTarget();
       } catch (error) {
         toast(error.message, 'error');
         return;
@@ -285,8 +265,8 @@ const OrderTrackerSession = (function () {
       if (!source) return;
 
       const gistProvider = typeof getProviderByMode === 'function' ? getProviderByMode('gist') : null;
-      const supabaseProvider = typeof getProviderByMode === 'function' ? getProviderByMode('supabase') : null;
-      if (!gistProvider || !supabaseProvider) {
+      const firestoreProvider = typeof getProviderByMode === 'function' ? getProviderByMode('firestore') : null;
+      if (!gistProvider || !firestoreProvider) {
         toast('当前迁移能力不可用', 'error');
         return;
       }
@@ -298,11 +278,11 @@ const OrderTrackerSession = (function () {
 
       if (migrateBtn) {
         migrateBtn.disabled = true;
-        migrateBtn.textContent = '处理中…';
+        migrateBtn.textContent = '迁移中…';
       }
       if (connectBtn) {
         connectBtn.disabled = true;
-        connectBtn.textContent = '处理中…';
+        connectBtn.textContent = '迁移中…';
       }
 
       try {
@@ -315,26 +295,23 @@ const OrderTrackerSession = (function () {
         const sourceSnapshot = await gistProvider.pullSnapshot();
         const hasSourceData = !!(sourceSnapshot.orders.length || sourceSnapshot.accounts.length);
 
-        state.token = source.token;
-        state.gistId = source.gistId;
-        state.supabaseUrl = target.url;
-        state.supabaseAnonKey = target.anonKey;
+        state.firestoreConfigText = target.configText;
+        state.firestoreProjectId = target.projectId;
 
-        await supabaseProvider.init({
-          url: target.url,
-          anonKey: target.anonKey,
+        await firestoreProvider.init({
+          configText: target.configText,
           user: ''
         });
 
         if (hasSourceData) {
-          setSync('正在检查 Supabase 目标库…', 'saving');
-          const targetSnapshot = await supabaseProvider.pullSnapshot({ cursor: '' });
+          setSync('正在检查 Firestore 目标库…', 'saving');
+          const targetSnapshot = await firestoreProvider.pullSnapshot({ cursor: '' });
           if (targetSnapshot.orders.length || targetSnapshot.accounts.length) {
-            throw new Error('目标 Supabase 已有数据，请换一个空库再迁移');
+            throw new Error('目标 Firestore 已有数据，请换一个空库再迁移');
           }
 
-          setSync('正在从 Gist 迁移到 Supabase…', 'saving');
-          await supabaseProvider.pushChanges({
+          setSync('正在从 Gist 迁移到 Firestore…', 'saving');
+          await firestoreProvider.pushChanges({
             upserts: sourceSnapshot.orders,
             deletions: [],
             accountUpserts: sourceSnapshot.accounts,
@@ -343,12 +320,12 @@ const OrderTrackerSession = (function () {
           });
         }
 
-        setModeProvider('supabase');
-        await completeSupabaseConnection(supabaseProvider, {
+        setModeProvider('firestore');
+        await completeFirestoreConnection(firestoreProvider, {
           forcePull: true,
           successMessage: hasSourceData
-            ? '已从 Gist 迁移到 Supabase，并已切换为 Supabase 存储'
-            : 'Gist 暂无云端数据，已直接连接到你自己的 Supabase 项目'
+            ? '已从 Gist 迁移到 Firestore，并已切换为 Firestore 存储'
+            : 'Gist 暂无云端数据，已直接连接到你自己的 Firestore 项目'
         });
       } catch (error) {
         setSync('迁移失败', 'error');
@@ -381,8 +358,8 @@ const OrderTrackerSession = (function () {
       }
 
       try {
-        if (mode === 'supabase') {
-          await connectSupabase(provider);
+        if (mode === 'firestore') {
+          await connectFirestore(provider);
         } else {
           await connectGist(provider);
         }
@@ -430,19 +407,19 @@ const OrderTrackerSession = (function () {
       if (!confirmed) return;
 
       try {
-        if (state.storageMode === 'supabase' && state.remoteProvider?.signOut) {
+        if (state.storageMode === 'firestore' && state.remoteProvider?.signOut) {
           await state.remoteProvider.signOut();
         }
       } catch (error) {
-        toast('退出 Supabase 会话失败: ' + error.message, 'error');
+        toast('退出 Firestore 会话失败: ' + error.message, 'error');
       }
 
       localStorage.removeItem(LS_KEY);
-      state.storageMode = 'gist';
+      state.storageMode = 'firestore';
       state.token = '';
       state.gistId = '';
-      state.supabaseUrl = '';
-      state.supabaseAnonKey = '';
+      state.firestoreConfigText = '';
+      state.firestoreProjectId = '';
       state.user = '';
       state.loaded = false;
       cancelPendingSync();
@@ -465,7 +442,7 @@ const OrderTrackerSession = (function () {
       }
 
       try {
-        const ok = await syncNow({ forcePull: !state.dirty || state.storageMode === 'supabase' });
+        const ok = await syncNow({ forcePull: !state.dirty || state.storageMode === 'firestore' });
         if (ok) toast('已刷新', 'ok');
       } finally {
         if (refreshBtn) {
@@ -498,7 +475,7 @@ const OrderTrackerSession = (function () {
       if (refreshBtn) refreshBtn.onclick = refresh;
       if (exportBtn) exportBtn.onclick = exportOrdersCsv;
       if (copyBtn) copyBtn.onclick = copyGist;
-      if (migrateBtn) migrateBtn.onclick = connectOrMigrateSupabase;
+      if (migrateBtn) migrateBtn.onclick = connectOrMigrateFirestore;
       if (logoutBtn) logoutBtn.onclick = logout;
 
       document.querySelectorAll('input[name="ot-storage-mode"]').forEach(input => {
@@ -531,19 +508,18 @@ const OrderTrackerSession = (function () {
         return;
       }
 
-      const provider = setModeProvider(state.storageMode || 'gist');
+      const provider = setModeProvider(state.storageMode || 'firestore');
       try {
-        if (state.storageMode === 'supabase' && state.supabaseUrl && state.supabaseAnonKey) {
+        if (state.storageMode === 'firestore' && state.firestoreConfigText) {
           await provider.init({
-            url: state.supabaseUrl,
-            anonKey: state.supabaseAnonKey,
+            configText: state.firestoreConfigText,
             user: state.user
           });
           saveCfg();
           showMain();
           const hasCache = await restoreCache({
-            cachedPrefix: '本地缓存已就绪',
-            emptyText: '本地暂无缓存，正在读取 Supabase…'
+            cachedPrefix: 'Firestore 本地缓存已就绪',
+            emptyText: '正在读取 Firestore 本地缓存…'
           });
           state.loaded = true;
           if (hasCache) void syncNow({ forcePull: !state.dirty });

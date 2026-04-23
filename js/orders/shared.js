@@ -20,6 +20,26 @@ const OrderTrackerShared = (function () {
       return new Date().toISOString();
     }
 
+    function parseLegacyUidTimestamp(id) {
+      const raw = String(id || '').trim().toLowerCase();
+      if (!/^[0-9a-z]{7,}$/.test(raw)) return '';
+      const prefix = raw.slice(0, -6);
+      if (!prefix) return '';
+      const parsed = parseInt(prefix, 36);
+      if (!Number.isFinite(parsed)) return '';
+      if (parsed < Date.parse('2020-01-01T00:00:00.000Z')) return '';
+      if (parsed > Date.parse('2100-01-01T00:00:00.000Z')) return '';
+      return new Date(parsed).toISOString();
+    }
+
+    function getOrderCreatedAt(order) {
+      const direct = String(order?.createdAt || order?.created_at || '').trim();
+      if (direct) return direct;
+      const fromId = parseLegacyUidTimestamp(order?.id);
+      if (fromId) return fromId;
+      return String(order?.updatedAt || order?.updated_at || '').trim();
+    }
+
     function showDatePicker(input) {
       if (!input || input.readOnly || input.disabled || typeof input.showPicker !== 'function') return;
       try {
@@ -37,10 +57,21 @@ const OrderTrackerShared = (function () {
       return String(value || '').trim();
     }
 
+    function normalizeOrderSeq(value) {
+      const parsed = Number.parseInt(String(value ?? '').trim(), 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
     function normalizeOrderRecord(order) {
       const next = { ...order };
       const mergedStatus = normalizeStatusValue(next['入仓状态']) || normalizeStatusValue(next['订单状态']);
       next['订单状态'] = mergedStatus;
+      const seq = normalizeOrderSeq(next.seq);
+      if (seq !== null) next.seq = seq;
+      else delete next.seq;
+      const createdAt = getOrderCreatedAt(next);
+      if (createdAt) next.createdAt = createdAt;
+      delete next.created_at;
       delete next['入仓状态'];
       return next;
     }
@@ -384,6 +415,8 @@ const OrderTrackerShared = (function () {
       normalizeOrderRecord,
       normalizeOrderList,
       cloneOrder,
+      normalizeOrderSeq,
+      getOrderCreatedAt,
       getOrderUpdatedAt,
       ordersEqual,
       mergeOrdersById,

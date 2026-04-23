@@ -650,7 +650,7 @@
     </div>
 
     <!-- ============================================================
-       VIEW 2 · 订单跟踪器（本地优先 + 可选远端同步）
+       VIEW 2 · 订单跟踪器（Gist / Firestore）
        ============================================================ -->
     <div id="view-orders" class="view">
 
@@ -658,18 +658,19 @@
       <section class="card ot-setup" id="ot-setup">
         <h2 id="ot-setup-title">选择订单存储方式</h2>
         <p class="ot-setup-intro">
-          订单始终会先保存在当前浏览器本地数据库（IndexedDB），页面更快打开，也支持离线继续操作。为了避免数据丢失并支持跨设备恢复，必须选择一个云端存储。
+          为了避免数据丢失并支持跨设备恢复，必须选择一个云端存储。Gist 模式会同步到你自己的 GitHub 私有 Gist；Firestore 模式会同步到你自己的 Firebase 项目，并使用 Firestore
+          自带的离线缓存。
         </p>
 
         <div class="ot-storage-modes" id="ot-storage-modes">
-          <label class="ot-storage-mode active">
-            <input type="radio" name="ot-storage-mode" value="gist" checked>
+          <label class="ot-storage-mode">
+            <input type="radio" name="ot-storage-mode" value="gist">
             <span class="ot-storage-mode-title">GitHub Gist</span>
             <span class="ot-storage-mode-copy">低门槛接入，适合轻量同步</span>
           </label>
-          <label class="ot-storage-mode">
-            <input type="radio" name="ot-storage-mode" value="supabase">
-            <span class="ot-storage-mode-title">Supabase</span>
+          <label class="ot-storage-mode active">
+            <input type="radio" name="ot-storage-mode" value="firestore" checked>
+            <span class="ot-storage-mode-title">Firebase Firestore</span>
             <span class="ot-storage-mode-copy">需要自行配置，适合数据较多、长期使用</span>
           </label>
         </div>
@@ -694,41 +695,38 @@
           </ol>
         </div>
 
-        <div id="ot-supabase-copy" class="ot-setup-copy-block" style="display:none">
+        <div id="ot-firestore-copy" class="ot-setup-copy-block" style="display:none">
           <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-            Supabase 模式下，订单数据保存在你自己的 Supabase 数据库中。你只需要准备好自己的 Project ID 和 Publishable key。
+            Firestore 模式下，订单数据保存在你自己的 Firebase 项目里。你只需要准备好自己项目的 <code>firebaseConfig</code>。
           </p>
           <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-            连接后订单依然是本地优先：先写入当前浏览器，再在后台同步到你自己的 Supabase。换设备时，只要填同一个项目的 Project ID 和 key 即可恢复数据。
+            连接后会直接使用 Firestore 自带的离线缓存，换设备时只要填同一个项目的 <code>firebaseConfig</code> 即可恢复数据。
           </p>
-          <div class="ot-setup-guide" aria-label="Supabase 三步接入">
-            <div class="ot-setup-guide-title">Supabase 三步接入</div>
+          <div class="ot-setup-guide" aria-label="Firestore 三步接入">
+            <div class="ot-setup-guide-title">Firestore 三步接入</div>
             <ol class="ot-setup-guide-list">
               <li>
-                <strong>新建项目并开启 API</strong>
-                <span>先打开 <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer">Supabase
-                    Dashboard</a> 新建项目；创建项目时建议勾上 <code>Enable Data API</code> 和 <code>Enable automatic RLS</code>，也可以结合
-                  <a href="https://supabase.com/docs/guides/api" target="_blank" rel="noreferrer">Data API 官方说明</a>
-                  一起看。</span>
+                <strong>新建项目，添加网页应用</strong>
+                <span>打开 <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">Firebase
+                    Console</a> 新建项目，添加应用时选 <code>网页</code>，不用勾 Hosting。</span>
               </li>
               <li>
-                <strong>去 SQL Editor 执行内置 schema</strong>
-                <span>把仓库里的 Supabase schema 跑一遍，表结构、RLS 和 policy 会一次建好。</span>
+                <strong>创建 Firestore 数据库并发布规则</strong>
+                <span>进入刚刚创建的项目，在左侧边栏中选择 <code>数据库与存储</code> ,选择 <code>Firestore</code> 按钮创建数据库；位置建议选
+                  <code>区域级 - HongKong</code>，模式选 <code>生产模式</code>。建好后到 <code>Rules</code> 页面，粘贴下方按钮复制出来的规则并发布。</span>
               </li>
               <li>
-                <strong>复制 URL 和 key 回来连接</strong>
-                <span><code>Project ID</code> 在 <code>General → Project ID</code> 页面复制；<code>Publishable key</code> 在
-                  <code>API Keys</code> 页面复制，填到下方即可，页面会自动组装成连接用的 URL。</span>
+                <strong>粘贴 firebaseConfig 回来连接</strong>
+                <span>把控制台生成的整段 <code>firebaseConfig</code> 粘到下方；有旧 Gist 数据就点迁移，没有就直接连接。</span>
               </li>
             </ol>
             <div class="ot-setup-guide-actions">
-              <button id="ot-open-supabase-dashboard" type="button" class="btn sm">打开 Supabase Dashboard</button>
-              <button id="ot-open-supabase-sql-editor" type="button" class="btn sm">打开 SQL Editor</button>
-              <button id="ot-copy-supabase-schema" type="button" class="btn sm"
-                data-schema-url="docs/supabase/order-tracker-schema.sql">复制初始化 SQL</button>
+              <button id="ot-open-firebase-console" type="button" class="btn sm">打开 Firebase Console</button>
+              <button id="ot-copy-firestore-rules" type="button" class="btn sm"
+                data-rules-url="docs/firebase/order-tracker-firestore.rules">复制 Firestore 规则</button>
             </div>
             <div class="ot-setup-guide-note">
-              团队成员可以共用同一个 Supabase 项目，只要使用同一套 <code>Project ID + key</code> 即可；但当前方案没有成员级权限隔离，也没有操作审计，拿到这套配置的人都能读写全部订单。
+              团队成员可以共用同一个 Firebase 项目，只要使用同一套 <code>firebaseConfig</code> 即可；当前方案不做成员级权限隔离，更适合彼此信任的小团队或自用场景。
             </div>
           </div>
         </div>
@@ -748,22 +746,20 @@
           </div>
         </div>
 
-        <div id="ot-supabase-fields" style="display:none">
+        <div id="ot-firestore-fields" style="display:none">
           <div class="row" style="margin-top:6px">
             <div class="field full" style="grid-column:1/-1">
-              <label for="ot-supabase-url">Supabase Project ID</label>
-              <input id="ot-supabase-url" type="text" placeholder="hgrsq......" autocomplete="off">
-            </div>
-          </div>
-          <div class="row" style="margin-top:12px">
-            <div class="field full" style="grid-column:1/-1">
-              <label for="ot-supabase-anon-key">Supabase Publishable key</label>
-              <input id="ot-supabase-anon-key" type="password" placeholder="sb_publishable_xxxxxxxxxxxxxxxxxxxx"
-                autocomplete="off">
+              <label for="ot-firestore-config">Firebase config</label>
+              <textarea id="ot-firestore-config" rows="8" placeholder='{
+  "apiKey": "AIza...",
+  "authDomain": "your-project.firebaseapp.com",
+  "projectId": "your-project-id",
+  "appId": "1:1234567890:web:abcdef"
+}' autocomplete="off"></textarea>
             </div>
           </div>
           <div class="ot-setup-guide-note" style="margin-top:14px">
-            如果你之前一直在用 GitHub Gist，可以直接把 Gist 云端数据迁移到当前填写的 Supabase 项目；没有数据时，也可以直接连接。
+            如果你之前一直在用 GitHub Gist，可以直接把 Gist 云端数据迁移到当前填写的 Firestore 项目；没有数据时，也可以直接连接。
           </div>
           <div style="display:flex;gap:8px;margin-top:12px">
             <button id="ot-migrate-from-gist" type="button" class="btn">从 GitHub Gist 迁移</button>
@@ -836,8 +832,8 @@
     </div>
 
     <footer>
-      本地参数保存在浏览器（localStorage），订单缓存保存在浏览器本地数据库（IndexedDB），可选同步到你自己的 GitHub Gist 或 Supabase · TK 电商工具箱 © <span
-        id="yr"></span>
+      本地参数保存在浏览器（localStorage），订单可选同步到你自己的 GitHub Gist 或 Firebase Firestore；Firestore 模式同时使用 Firestore 自带的离线缓存 · TK
+      电商工具箱 © <span id="yr"></span>
     </footer>
   </div>
 
@@ -971,7 +967,7 @@
     <div class="modal" style="max-width:420px">
       <h3 id="ot-logout-title">确认退出</h3>
       <div class="modal-copy">
-        退出后需要重新选择存储方式并重新连接。当前浏览器里的本地缓存不会删除；如果你用了 Gist 或 Supabase，云端数据仍然保存在你自己的远端存储里。
+        退出后需要重新选择存储方式并重新连接。当前浏览器里的本地缓存不会删除；如果你用了 Gist 或 Firestore，云端数据仍然保存在你自己的远端存储里。
       </div>
       <div class="actions">
         <button type="button" id="ot-logout-cancel" class="btn">取消</button>
@@ -1005,7 +1001,8 @@
     <div class="modal" style="max-width:480px">
       <h3 id="ot-migrate-gist-title">从 GitHub Gist 迁移</h3>
       <div class="modal-copy">
-        如果 Gist 里已有云端数据，会迁移到当前填写的 Supabase 项目；如果没有数据，就直接连接 Supabase。迁移读取的是 GitHub Gist 里已经同步到云端的数据，不包含其他浏览器里尚未同步的本地改动。目标 Supabase 请先执行初始化 SQL；如需迁移数据，目标库应保持为空。
+        如果 Gist 里已有云端数据，会迁移到当前填写的 Firestore 项目；如果没有数据，就直接连接 Firestore。迁移读取的是 GitHub Gist
+        里已经同步到云端的数据，不包含其他浏览器里尚未同步的本地改动。目标 Firestore 如需迁移数据，应保持为空。
       </div>
       <div class="row" style="margin-top:16px">
         <div class="field full" style="grid-column:1/-1">
@@ -1033,24 +1030,27 @@
       <div class="calc-help-copy">
         <div class="calc-help-item">
           <div class="k">本地优先</div>
-          <div class="v">订单会先写入当前浏览器本地数据库（IndexedDB），页面打开更快，也支持离线继续操作；随后再同步到你自己的 Gist 或 Supabase。</div>
+          <div class="v">Gist 模式下，订单会先写入当前浏览器本地数据库（IndexedDB），随后再同步到你自己的 GitHub Gist；Firestore 模式下，则直接使用 Firestore
+            自带的离线缓存与云端同步。</div>
         </div>
         <div class="calc-help-item">
           <div class="k">可选远端</div>
-          <div class="v">Gist 模式会同步到你自己的 GitHub 私有 Gist；Supabase 模式会同步到你自己的 Supabase 项目。工具本身不会把订单存到我的数据库里。</div>
+          <div class="v">Gist 模式会同步到你自己的 GitHub 私有 Gist；Firestore 模式会同步到你自己的 Firebase Firestore。工具本身不会把订单存到我的数据库里。</div>
         </div>
         <div class="calc-help-item">
           <div class="k">恢复方式</div>
-          <div class="v">如果你使用 Gist，请保存好 Token 和 Gist ID；如果你使用 Supabase，请记住自己的 Project ID 和 Publishable
-            key。换浏览器或换设备后，用同一套远端配置即可恢复。</div>
+          <div class="v">如果你使用 Gist，请保存好 Token 和 Gist ID；如果你使用 Firestore，请保存好自己的
+            <code>firebaseConfig</code>。换浏览器或换设备后，用同一套远端配置即可恢复。
+          </div>
         </div>
         <div class="calc-help-item">
           <div class="k">团队共用</div>
-          <div class="v">同一个 Supabase 项目可以给团队成员共用，但当前方案没有成员级权限隔离；知道这套 URL 和 key 的成员都能读写全部订单。</div>
+          <div class="v">同一个 Firebase 项目可以给团队成员共用，但当前方案没有成员级权限隔离；拿到这套 <code>firebaseConfig</code> 的成员都能读写全部订单。</div>
         </div>
         <div class="calc-help-item">
           <div class="k">迁移方式</div>
-          <div class="v">如果你之前一直在用 Gist，可以在 Supabase 配置区里点“从 GitHub Gist 迁移”；系统会直接读取 Gist 云端数据，有数据就写入空的 Supabase 项目，没有数据就直接连接当前 Supabase。</div>
+          <div class="v">如果你之前一直在用 Gist，可以在 Firestore 配置区里点“从 GitHub Gist 迁移”；系统会直接读取 Gist 云端数据，有数据就写入空的 Firestore
+            项目，没有数据就直接连接当前 Firestore。</div>
         </div>
       </div>
       <div class="actions">
@@ -1068,10 +1068,11 @@
   <script src="js/calc/legacy.js" defer></script>
   <script src="js/calc/pricing.js" defer></script>
   <script src="js/calc/index.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore-compat.js" defer></script>
   <script src="js/orders/provider-gist.js" defer></script>
-  <script src="js/orders/provider-supabase.js" defer></script>
-  <script src="js/orders/supabase-schema.js" defer></script>
+  <script src="js/orders/provider-firestore.js" defer></script>
+  <script src="js/orders/firestore-rules.js" defer></script>
   <script src="js/orders/table.js" defer></script>
   <script src="js/orders/sync.js" defer></script>
   <script src="js/orders/export.js" defer></script>

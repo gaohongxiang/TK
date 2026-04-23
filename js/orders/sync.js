@@ -113,6 +113,11 @@ const OrderTrackerSync = (function () {
       if (provider?.key) state.storageMode = provider.key;
     }
 
+    function usesProviderManagedCache() {
+      const provider = state.remoteProvider;
+      return !!(provider && typeof provider.usesBuiltInLocalCache === 'function' && provider.usesBuiltInLocalCache());
+    }
+
     function resetTrackerState({ preserveAccounts = true } = {}) {
       state.orders = [];
       state.editingId = null;
@@ -141,9 +146,10 @@ const OrderTrackerSync = (function () {
     }
 
     function getCacheKey() {
+      if (usesProviderManagedCache()) return '';
       const provider = state.remoteProvider;
       if (provider && typeof provider.getCacheKey === 'function') return provider.getCacheKey();
-      return `orders:${state.storageMode || 'gist'}`;
+      return `orders:${state.storageMode || 'firestore'}`;
     }
 
     async function openCacheDb() {
@@ -180,13 +186,14 @@ const OrderTrackerSync = (function () {
     }
 
     async function writeCacheRecord() {
+      if (usesProviderManagedCache()) return false;
       const key = getCacheKey();
       if (!key) return false;
       const db = await openCacheDb();
       if (!db) return false;
       const record = {
         key,
-        storageMode: state.storageMode || 'gist',
+        storageMode: state.storageMode || 'firestore',
         version: 3,
         orders: state.orders,
         baseOrders: state.baseOrders,
@@ -249,6 +256,7 @@ const OrderTrackerSync = (function () {
     }
 
     async function persistCache() {
+      if (usesProviderManagedCache()) return true;
       try {
         await writeCacheRecord();
         return true;
@@ -260,6 +268,7 @@ const OrderTrackerSync = (function () {
     }
 
     async function hydrateCache(cacheKey = getCacheKey()) {
+      if (usesProviderManagedCache()) return false;
       try {
         const record = await readCacheRecord(cacheKey);
         if (!record) return false;
@@ -308,7 +317,7 @@ const OrderTrackerSync = (function () {
       return state.accountLocalUpdatedAt[slot] || state.localUpdatedAt || nowIso();
     }
 
-    function mergeSupabaseOrders({ baseOrders = [], localOrders = [], remoteOrders = [], changedOrders = [] }) {
+    function mergeFirestoreOrders({ baseOrders = [], localOrders = [], remoteOrders = [], changedOrders = [] }) {
       const baseMap = new Map(normalizeOrderList(baseOrders).map(order => [String(order?.id || ''), order]));
       const localMap = new Map(normalizeOrderList(localOrders).map(order => [String(order?.id || ''), order]));
       const remoteMap = new Map(normalizeOrderList(remoteOrders).map(order => [String(order?.id || ''), order]));
@@ -404,7 +413,7 @@ const OrderTrackerSync = (function () {
       return uniqueAccounts([...(picked || []), ...(orderAccounts || [])]);
     }
 
-    function buildSupabaseChangeSet({
+    function buildFirestoreChangeSet({
       mergedOrders = [],
       remoteOrders = [],
       deletedAtById = {},
@@ -440,6 +449,16 @@ const OrderTrackerSync = (function () {
         accountUpserts: [...mergedAccountSet].filter(name => !remoteAccountSet.has(name)),
         accountDeletions: [...remoteAccountSet].filter(name => !mergedAccountSet.has(name))
       };
+    }
+
+    function applyAssignedOrderFields(orders = [], assignedOrders = []) {
+      const assignedMap = new Map(normalizeOrderList(assignedOrders).map(order => [String(order?.id || ''), order]));
+      return normalizeOrderList(orders).map(order => {
+        const assigned = assignedMap.get(String(order?.id || ''));
+        return assigned
+          ? cloneOrder({ ...order, ...assigned })
+          : cloneOrder(order);
+      });
     }
 
     function applyRemoteSnapshot(snapshot) {
@@ -514,7 +533,7 @@ const OrderTrackerSync = (function () {
       refreshDirtyState();
     }
 
-    function finalizeSupabaseSync({
+    function finalizeFirestoreSync({
       mergedOrders = [],
       mergedAccounts = [],
       remote = {},
@@ -704,11 +723,11 @@ const OrderTrackerSync = (function () {
       return true;
     }
 
-    async function syncSupabase(provider, { forcePull = false } = {}) {
+    async function syncFirestore(provider, { forcePull = false } = {}) {
       if (state.dirty) {
-        setSync('正在同步到 Supabase…', 'saving');
+        setSync('正在同步到 Firestore…', 'saving');
         const remote = await provider.pullSnapshot({ cursor: state.remoteCursor || '' });
-        const mergeResult = mergeSupabaseOrders({
+        const mergeResult = mergeFirestoreOrders({
           baseOrders: Array.isArray(state.baseOrders) ? state.baseOrders : [],
           localOrders: state.orders,
           remoteOrders: remote.orders,
@@ -722,7 +741,7 @@ const OrderTrackerSync = (function () {
           remoteUpdatedAt: remote.accountsUpdatedAt,
           orderAccounts: listOrderAccounts(mergedOrders)
         });
-        const changeSet = buildSupabaseChangeSet({
+        const changeSet = buildFirestoreChangeSet({
           mergedOrders,
           remoteOrders: remote.orders,
           deletedAtById: mergeResult.deletedAtById,
@@ -739,9 +758,10 @@ const OrderTrackerSync = (function () {
           ...changeSet,
           clientId: state.clientId || ''
         });
+        const mergedOrdersWithAssigned = applyAssignedOrderFields(mergedOrders, pushResult.assignedOrders || []);
 
-        finalizeSupabaseSync({
-          mergedOrders,
+        finalizeFirestoreSync({
+          mergedOrders: mergedOrdersWithAssigned,
           mergedAccounts,
           remote,
           pushResult,
@@ -785,7 +805,7 @@ const OrderTrackerSync = (function () {
 
       syncInFlight = true;
       try {
-        if (provider.key === 'supabase') return await syncSupabase(provider, { forcePull });
+        if (provider.key === 'firestore') return await syncFirestore(provider, { forcePull });
         return await syncGist(provider, { forcePull });
       } catch (error) {
         setSync(state.dirty ? '同步失败，已保留本地缓存' : '加载失败', 'error');

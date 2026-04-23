@@ -73,12 +73,47 @@ const OrderTrackerCrud = (function () {
       }
     }
 
+    function maybeAutoSetInTransitFromTracking() {
+      const form = $('#ot-form');
+      if (!form || state.editingId) return '';
+      const trackingField = form.querySelector('[name="快递单号"]');
+      const statusField = form.querySelector('[name="订单状态"]');
+      if (!trackingField || !statusField) return '';
+
+      const tracking = String(trackingField.value || '').trim();
+      const currentStatus = normalizeStatusValue(statusField.value);
+      const autoStatus = normalizeStatusValue(statusField.dataset.autoTrackingStatus || '');
+
+      if (!tracking) {
+        if (autoStatus && currentStatus === autoStatus) {
+          statusField.value = '';
+          statusField.dataset.autoTrackingStatus = '';
+          recomputeAuto();
+        }
+        return '';
+      }
+
+      const canAutoPromote = !currentStatus
+        || currentStatus === '未采购'
+        || currentStatus === '已采购'
+        || currentStatus === autoStatus;
+
+      if (!canAutoPromote) return currentStatus;
+
+      statusField.value = '在途';
+      statusField.dataset.autoTrackingStatus = '在途';
+      recomputeAuto();
+      return '在途';
+    }
+
     function openModal(editId = null) {
       const form = $('#ot-form');
       const modal = $('#ot-modal');
       if (!form || !modal) return;
       form.reset();
       state.editingId = editId;
+      const orderStatusField = form.querySelector('[name="订单状态"]');
+      if (orderStatusField) orderStatusField.dataset.autoTrackingStatus = '';
 
       if (editId) {
         const found = (state.orders || []).find(order => order.id === editId);
@@ -130,6 +165,12 @@ const OrderTrackerCrud = (function () {
       if (!payload['快递公司'] && payload['快递单号']) {
         payload['快递公司'] = detectCourierCompany(payload['快递单号']);
       }
+      if (!state.editingId && payload['快递单号']) {
+        const currentStatus = normalizeStatusValue(payload['订单状态']);
+        if (!currentStatus || currentStatus === '未采购' || currentStatus === '已采购') {
+          payload['订单状态'] = '在途';
+        }
+      }
       payload['最晚到仓时间'] = payload['下单时间'] ? addDays(payload['下单时间'], 6) : '';
       payload['订单预警'] = computeWarning(payload).text;
 
@@ -143,7 +184,8 @@ const OrderTrackerCrud = (function () {
           markOrderAccountsDirty([previous['账号'], state.orders[index]['账号']]);
         }
       } else {
-        const created = normalizeOrderRecord({ id: uid(), ...payload, updatedAt: getNowIso() });
+        const createdAt = getNowIso();
+        const created = normalizeOrderRecord({ id: uid(), ...payload, createdAt, updatedAt: createdAt });
         state.orders.unshift(created);
         markOrderAccountsDirty([created['账号']]);
       }
@@ -174,12 +216,26 @@ const OrderTrackerCrud = (function () {
       const orderDate = form.querySelector('[name="下单时间"]');
       const orderStatus = form.querySelector('[name="订单状态"]');
       if (orderDate) orderDate.addEventListener('change', recomputeAuto);
-      if (orderStatus) orderStatus.addEventListener('change', recomputeAuto);
+      if (orderStatus) {
+        orderStatus.addEventListener('change', () => {
+          const autoStatus = normalizeStatusValue(orderStatus.dataset.autoTrackingStatus || '');
+          if (autoStatus && normalizeStatusValue(orderStatus.value) !== autoStatus) {
+            orderStatus.dataset.autoTrackingStatus = '';
+          }
+          recomputeAuto();
+        });
+      }
 
       const courierFields = getOrderFormCourierFields();
       if (courierFields.tracking && courierFields.company) {
-        courierFields.tracking.addEventListener('input', () => maybeAutoDetectCourierFromForm());
-        courierFields.tracking.addEventListener('blur', () => maybeAutoDetectCourierFromForm());
+        courierFields.tracking.addEventListener('input', () => {
+          maybeAutoDetectCourierFromForm();
+          maybeAutoSetInTransitFromTracking();
+        });
+        courierFields.tracking.addEventListener('blur', () => {
+          maybeAutoDetectCourierFromForm();
+          maybeAutoSetInTransitFromTracking();
+        });
         courierFields.company.addEventListener('change', () => {
           if (courierFields.company.value !== (courierFields.company.dataset.autoDetectedCourier || '')) {
             courierFields.company.dataset.autoDetectedCourier = '';

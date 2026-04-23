@@ -115,6 +115,15 @@ const OrderTableView = (function () {
     })}`;
   }
 
+  function formatCompactCurrencyAmount(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return '-';
+    return `¥${amount.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  }
+
   function formatSummaryMetric(metric) {
     if (!metric || !metric.count) return '-';
     return formatCurrencyAmount(metric.total);
@@ -202,16 +211,20 @@ const OrderTableView = (function () {
       if (typeof computeOrderSaleCny === 'function') return computeOrderSaleCny(order, exchangeRate);
       return computeOrderSaleCnyAmount(order, exchangeRate);
     };
-    const resolveProfit = order => {
-      if (typeof computeOrderEstimatedProfit === 'function') return computeOrderEstimatedProfit(order, exchangeRate);
-      return computeOrderProfitAmount(order, exchangeRate);
-    };
     const filteredSale = sumResolvedMoneyAmount(sorted, resolveSale);
     const allSale = sumResolvedMoneyAmount(list, resolveSale);
     const filteredShipping = sumMoneyAmount(sorted, '预估运费');
     const allShipping = sumMoneyAmount(list, '预估运费');
-    const filteredProfit = sumResolvedMoneyAmount(sorted, resolveProfit);
-    const allProfit = sumResolvedMoneyAmount(list, resolveProfit);
+    const filteredExpenseCount = (filteredPurchase.count || 0) + (filteredShipping.count || 0);
+    const allExpenseCount = (allPurchase.count || 0) + (allShipping.count || 0);
+    const filteredProfit = {
+      total: roundMoney(filteredSale.total - (filteredPurchase.total + filteredShipping.total)) ?? 0,
+      count: Math.max(filteredSale.count || 0, filteredExpenseCount)
+    };
+    const allProfit = {
+      total: roundMoney(allSale.total - (allPurchase.total + allShipping.total)) ?? 0,
+      count: Math.max(allSale.count || 0, allExpenseCount)
+    };
     return {
       filteredCount: sorted.length,
       allCount: list.length,
@@ -338,13 +351,13 @@ const OrderTableView = (function () {
       { label: '预估总利润', value: formatSummaryMetric(summary.filteredProfitMetric), tone: getSummaryTone(summary.filteredProfitMetric, 'profit') },
       { label: '总销售额', value: formatSummaryMetric(summary.filteredSaleMetric), tone: getSummaryTone(summary.filteredSaleMetric, 'income') },
       { ...filteredExpenseMetric, tone: getSummaryTone(filteredExpenseMetric, 'expense') },
-      `总采购额 ${formatSummaryMetric(summary.filteredPurchaseMetric)} + 预估总海外运费 ${formatSummaryMetric(summary.filteredShippingMetric)}`,
+      `总采购额 ${summary.filteredPurchaseMetric?.count ? formatCompactCurrencyAmount(summary.filteredPurchaseMetric.total) : '-'} + 预估总海外运费 ${summary.filteredShippingMetric?.count ? formatCompactCurrencyAmount(summary.filteredShippingMetric.total) : '-'}`,
       `受账号标签和搜索影响 · 共 ${summary.filteredCount} 条`)}
         ${buildCard('全部订单',
         { label: '预估总利润', value: formatSummaryMetric(summary.allProfitMetric), tone: getSummaryTone(summary.allProfitMetric, 'profit') },
         { label: '总销售额', value: formatSummaryMetric(summary.allSaleMetric), tone: getSummaryTone(summary.allSaleMetric, 'income') },
         { ...allExpenseMetric, tone: getSummaryTone(allExpenseMetric, 'expense') },
-        `总采购额 ${formatSummaryMetric(summary.allPurchaseMetric)} + 预估总海外运费 ${formatSummaryMetric(summary.allShippingMetric)}`,
+        `总采购额 ${summary.allPurchaseMetric?.count ? formatCompactCurrencyAmount(summary.allPurchaseMetric.total) : '-'} + 预估总海外运费 ${summary.allShippingMetric?.count ? formatCompactCurrencyAmount(summary.allShippingMetric.total) : '-'}`,
         `不受账号、搜索、分页影响 · 共 ${summary.allCount} 条`)}
         </div>
       </div>`;

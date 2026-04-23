@@ -163,4 +163,25 @@ assert.equal(
   '售价为 0 时应按未录入处理，汇总利润应显示为 -'
 );
 
+const expenseOnlySummary = sandbox.OrderTableView.derivePurchaseSummary({
+  orders: [
+    { id: 'expense-only', '账号': 'A', '售价': '', '采购价格': '10', '预估运费': '2' }
+  ],
+  activeAccount: '__all__',
+  searchQuery: '',
+  exchangeRate: 20
+});
+
+assert.equal(
+  expenseOnlySummary.allProfitTotal,
+  -12,
+  '摘要区总利润应按总收入减总支出计算'
+);
+
+assert.equal(
+  sandbox.OrderTableView.formatSummaryMetric(expenseOnlySummary.allProfitMetric),
+  '¥ -12.00',
+  '只有支出时，总利润应反映为负数'
+);
+
 console.log('orders summary ui contract ok');

@@ -31,6 +31,18 @@ assert.match(
 );
 
 assert.match(
+  source,
+  /采购价格[\s\S]*售价\(日元\)[\s\S]*预估运费\(人民币\)[\s\S]*预估利润\(人民币\)/,
+  'CSV 导出需要明确标注售价为日元、利润和运费为人民币'
+);
+
+assert.match(
+  source,
+  /computeOrderEstimatedProfit/,
+  'CSV 导出需要按当前汇率重新计算人民币预估利润，不能直接信任旧存量字段'
+);
+
+assert.match(
   indexSource,
   /OrderTrackerExport\.create\(/,
   'js/orders/index.js 需要通过 OrderTrackerExport.create 接入导出模块'

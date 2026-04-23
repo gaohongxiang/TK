@@ -54,6 +54,18 @@ assert.match(
   'Firestore provider 需要为缺失 seq 的订单补录入顺序号'
 );
 
+assert.match(
+  source,
+  /salePrice[\s\S]*estimatedShippingFee[\s\S]*estimatedProfit/,
+  'Firestore provider 需要按字段映射售价、预估运费、预估利润'
+);
+
+assert.match(
+  source,
+  /query\.get\(\{ source: 'server' \}\)[\s\S]*return query\.get\(\)/,
+  'Firestore provider 拉取数据时需要优先读取服务器，再回退到本地缓存'
+);
+
 const sandbox = {
   window: {
     firebase: {

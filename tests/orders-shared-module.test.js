@@ -4,6 +4,7 @@ const assert = require('assert');
 const vm = require('vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'shared.js'), 'utf8');
+const globalSettingsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'global-settings.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'index.js'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
@@ -31,9 +32,15 @@ assert.match(
   '共享 helper 模块需要包含快递识别逻辑'
 );
 
-const sandbox = {};
+const sandbox = {
+  window: {
+    __tkGlobalSettingsStore: {
+      getExchangeRate: () => 20
+    }
+  }
+};
 vm.createContext(sandbox);
-vm.runInContext(`${source}\nthis.OrderTrackerShared = OrderTrackerShared;`, sandbox);
+vm.runInContext(`${globalSettingsSource}\n${source}\nthis.OrderTrackerShared = OrderTrackerShared;`, sandbox);
 
 const sharedTools = sandbox.OrderTrackerShared.create({
   state: {
@@ -73,6 +80,36 @@ assert.equal(
   '共享 helper 模块应能识别快递公司'
 );
 
+assert.equal(
+  sharedTools.getPricingExchangeRate(),
+  20,
+  '共享 helper 模块应优先读取利润计算器的日元汇率'
+);
+
+assert.equal(
+  sharedTools.computeOrderSaleCny({ '售价': '600' }, 20),
+  30,
+  '共享 helper 模块应能把订单日元售价折算成人民币'
+);
+
+assert.equal(
+  sharedTools.computeOrderSaleCny({ '售价': '0' }, 20),
+  null,
+  '共享 helper 模块应把 0 日元售价视为未录入，而不是有效销售额'
+);
+
+assert.equal(
+  sharedTools.computeOrderEstimatedProfit({ '售价': '600', '采购价格': '19.8', '预估运费': '6.5' }, 20),
+  3.7,
+  '共享 helper 模块应能按统一汇率计算订单人民币利润'
+);
+
+assert.equal(
+  sharedTools.computeOrderEstimatedProfit({ '售价': '0', '采购价格': '19.8', '预估运费': '6.5' }, 20),
+  null,
+  '共享 helper 模块应把 0 日元售价视为未录入，不应产出 0 利润'
+);
+
 assert.match(
   indexSource,
   /OrderTrackerShared\.create\(/,
@@ -81,8 +118,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
-  'index.html 需要在 index.js 前先加载 shared.js'
+  /<script src="js\/global-settings\.js" defer><\/script>[\s\S]*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
+  'index.html 需要在订单模块前先加载全局设置模块，并在 index.js 前先加载 shared.js'
 );
 
 console.log('orders shared module contract ok');

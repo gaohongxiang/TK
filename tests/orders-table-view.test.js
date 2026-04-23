@@ -59,6 +59,45 @@ assert.equal(result.isAll, true, '全部账号模式下 isAll 应为 true');
 assert.equal(result.sorted.length, 1, '搜索应只命中一条记录');
 assert.equal(result.sorted[0].id, '1', '应命中包含关键词的订单');
 
+const dateSearchResult = sandbox.OrderTableView.deriveDisplayedOrders({
+  orders: [
+    { id: 'dated-1', '账号': 'A', '下单时间': '2026-04-23', '订单号': 'AA-1' },
+    { id: 'dated-2', '账号': 'A', '下单时间': '2026-04-10', '订单号': 'AA-2' }
+  ],
+  activeAccount: '__all__',
+  searchQuery: '2026-04-23',
+  sortOrder: 'asc'
+});
+
+assert.equal(dateSearchResult.sorted.length, 1, '搜索应支持按下单时间匹配');
+assert.equal(dateSearchResult.sorted[0].id, 'dated-1', '下单时间搜索应命中对应订单');
+
+const dateSearchShouldIgnoreOtherDateFields = sandbox.OrderTableView.deriveDisplayedOrders({
+  orders: [
+    {
+      id: 'order-date-match',
+      '账号': 'A',
+      '下单时间': '2026-04-01',
+      '采购日期': '2026-04-23',
+      '最晚到仓时间': '2026-04-29',
+      '订单号': 'AA-1'
+    },
+    {
+      id: 'purchase-date-only',
+      '账号': 'A',
+      '下单时间': '2026-04-02',
+      '采购日期': '2026-04-23',
+      '最晚到仓时间': '2026-04-23',
+      '订单号': 'AA-2'
+    }
+  ],
+  activeAccount: '__all__',
+  searchQuery: '2026-04-23',
+  sortOrder: 'asc'
+});
+
+assert.equal(dateSearchShouldIgnoreOtherDateFields.sorted.length, 0, '日期型搜索不应匹配采购日期和最晚到仓时间');
+
 const accountOnlyResult = sandbox.OrderTableView.deriveDisplayedOrders({
   orders,
   activeAccount: 'B',
@@ -94,6 +133,18 @@ const seqPriorityResult = sandbox.OrderTableView.deriveDisplayedOrders({
 assert.equal(seqPriorityResult.sorted[0].id, 'early-created', '有 seq 时应优先按录入编号排序');
 
 assert.match(
+  source,
+  /<th>售价\(円\)<\/th>[\s\S]*<th>采购价\(¥\)<\/th>[\s\S]*<th>预估运费\(¥\)<\/th>[\s\S]*<th>预估利润\(¥\)<\/th>/,
+  '表格需要把售价放在采购价前面，并用符号标注金额列'
+);
+
+assert.match(
+  source,
+  /escapeHtml\(formatTableMoneyValue\(resolvedProfit\) \|\| '-'\)/,
+  '单条订单没有预估利润时应显示为 -'
+);
+
+assert.match(
   ordersSource,
   /OrderTableView\.render\(/,
   'js/orders/index.js 需要把表格渲染委托给 OrderTableView.render'
@@ -103,6 +154,12 @@ assert.match(
   indexSource,
   /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
   'index.html 需要按 table.js -> sync.js -> export.js -> tabs.js -> crud.js -> session.js -> shared.js -> index.js 的顺序加载订单模块'
+);
+
+assert.match(
+  source,
+  /搜索下单时间 \/ 订单号 \/ 产品 \/ 快递/,
+  '搜索提示文案需要明确包含下单时间'
 );
 
 console.log('orders table view contract ok');

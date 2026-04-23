@@ -10,6 +10,8 @@ const OrderTrackerExport = (function () {
       toAccountSlot,
       todayStr,
       computeWarning,
+      getPricingExchangeRate,
+      computeOrderEstimatedProfit,
       escapeHtml
     } = helpers;
     const { toast } = ui;
@@ -144,9 +146,13 @@ const OrderTrackerExport = (function () {
         return;
       }
 
-      const headers = ['账号', '下单时间', '采购日期', '最晚到仓时间', '订单预警', '订单号', '产品名称', '数量', '采购价格', '重量', '尺寸', '订单状态', '快递公司', '快递单号'];
+      const exchangeRate = typeof getPricingExchangeRate === 'function' ? getPricingExchangeRate() : null;
+      const headers = ['账号', '下单时间', '采购日期', '最晚到仓时间', '订单预警', '订单号', '产品名称', '数量', '采购价格', '售价(日元)', '预估运费(人民币)', '预估利润(人民币)', '重量', '尺寸', '订单状态', '快递公司', '快递单号'];
       const rows = rowsSource.map(order => {
         const warning = computeWarning(order).text;
+        const estimatedProfit = typeof computeOrderEstimatedProfit === 'function'
+          ? computeOrderEstimatedProfit(order, exchangeRate)
+          : order['预估利润'];
         return [
           order['账号'] || '',
           order['下单时间'] || '',
@@ -157,6 +163,9 @@ const OrderTrackerExport = (function () {
           order['产品名称'] || '',
           order['数量'] || '',
           order['采购价格'] || '',
+          order['售价'] || '',
+          order['预估运费'] || '',
+          estimatedProfit ?? '',
           order['重量'] || '',
           order['尺寸'] || '',
           order['订单状态'] || '',

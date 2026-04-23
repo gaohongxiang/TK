@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
+const globalSettingsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'global-settings.js'), 'utf8');
 const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shared.js'), 'utf8');
 const shippingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shipping.js'), 'utf8');
 const legacySource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'legacy.js'), 'utf8');
@@ -9,6 +10,7 @@ const pricingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', '
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'index.js'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
+assert.match(globalSettingsSource, /const TKGlobalSettings = \(function \(\) \{/, '需要独立的全局设置模块');
 assert.match(sharedSource, /const CalcShared = \(function \(\) \{/, '需要新的 calc shared 模块');
 assert.match(shippingSource, /const CalcShipping = \(function \(\) \{/, '需要新的 calc shipping 模块');
 assert.match(legacySource, /const CalcLegacyPricing = \(function \(\) \{/, '需要新的 calc legacy 模块');
@@ -20,8 +22,8 @@ assert.match(indexSource, /CalcPricing\.create\(/, 'js/calc/index.js 需要接�
 assert.doesNotMatch(htmlSource, /<script src="js\/calc\.js" defer><\/script>/, 'index.html 不应再直接加载旧的 js/calc.js');
 assert.match(
   htmlSource,
-  /<script src="js\/app\.js" defer><\/script>\s*<script src="js\/calc\/shared\.js" defer><\/script>\s*<script src="js\/calc\/shipping\.js" defer><\/script>\s*<script src="js\/calc\/legacy\.js" defer><\/script>\s*<script src="js\/calc\/pricing\.js" defer><\/script>\s*<script src="js\/calc\/index\.js" defer><\/script>/,
-  'index.html 需要按 shared -> shipping -> legacy -> pricing -> index 的顺序加载利润计算器模块'
+  /<script src="js\/app\.js" defer><\/script>\s*<script src="js\/global-settings\.js" defer><\/script>\s*<script src="js\/calc\/shared\.js" defer><\/script>\s*<script src="js\/calc\/shipping\.js" defer><\/script>\s*<script src="js\/calc\/legacy\.js" defer><\/script>\s*<script src="js\/calc\/pricing\.js" defer><\/script>\s*<script src="js\/calc\/index\.js" defer><\/script>/,
+  'index.html 需要先加载全局设置模块，再按 shared -> shipping -> legacy -> pricing -> index 的顺序加载利润计算器模块'
 );
 
 console.log('calc module split contract ok');

@@ -48,6 +48,9 @@
   const SIZE_LIMITS = [60, 50, 40];
   const CUSTOMER_SHIPPING_JPY = 350;
   const LS_KEY = 'tk.profit.v1';
+  const globalSettings = typeof window !== 'undefined'
+    ? (window.__tkGlobalSettingsStore || (typeof TKGlobalSettings !== 'undefined' ? TKGlobalSettings.create() : null))
+    : null;
 
   const shared = CalcShared.create({
     storageKey: LS_KEY,
@@ -55,6 +58,14 @@
   });
   const { $ } = shared;
   const state = shared.load();
+  const globalRate = typeof globalSettings?.getExchangeRate === 'function'
+    ? globalSettings.getExchangeRate()
+    : null;
+  if (globalRate !== null) {
+    state.rateNew = globalRate;
+  } else if (typeof globalSettings?.setExchangeRate === 'function' && state.rateNew > 0) {
+    globalSettings.setExchangeRate(state.rateNew);
+  }
 
   const els = {
     calcTabs: Array.from(document.querySelectorAll('[data-calc-tab]')),
@@ -137,6 +148,11 @@
 
   legacy.bindLegacyPricing();
   pricing.bindPricing();
+  if (els.rateNew && typeof globalSettings?.setExchangeRate === 'function') {
+    els.rateNew.addEventListener('input', () => {
+      globalSettings.setExchangeRate(shared.toNumber(els.rateNew.value) || null);
+    });
+  }
   legacy.syncInputsFromState();
   pricing.syncInputsFromState();
   legacy.rerenderLegacyPricing({ derive: false });

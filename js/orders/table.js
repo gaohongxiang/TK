@@ -14,6 +14,15 @@ const OrderTableView = (function () {
     return String(value || '').trim().toLowerCase();
   }
 
+  function isDateSearchQuery(value) {
+    const normalized = normalizeSearchValue(value);
+    if (!normalized) return false;
+    if (!/^[\d\s./-]+$/.test(normalized)) return false;
+    const compact = normalized.replace(/\s+/g, '');
+    return /^\d{4}[-/.]\d{1,2}([-/.\d]{0,3})?$/.test(compact)
+      || /^\d{1,2}[-/.]\d{1,2}$/.test(compact);
+  }
+
   function parseOrderSortTime(order) {
     const createdAt = String(order?.createdAt || order?.created_at || order?.updatedAt || order?.updated_at || '').trim();
     const timestamp = Date.parse(createdAt || 0);
@@ -25,25 +34,99 @@ const OrderTableView = (function () {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
 
-  function parsePurchaseAmount(value) {
+  function parseMoneyAmount(value) {
     const normalized = String(value ?? '').replace(/,/g, '').trim();
-    if (!normalized) return 0;
+    if (!normalized) return { amount: 0, hasValue: false };
     const amount = Number.parseFloat(normalized);
-    return Number.isFinite(amount) ? amount : 0;
+    return {
+      amount: Number.isFinite(amount) ? amount : 0,
+      hasValue: Number.isFinite(amount)
+    };
   }
 
-  function sumPurchaseAmount(orders = []) {
-    return (Array.isArray(orders) ? orders : []).reduce((sum, order) => (
-      sum + parsePurchaseAmount(order?.['采购价格'])
-    ), 0);
+  function parseExchangeRateValue(value) {
+    const parsed = parseMoneyAmount(value);
+    return parsed.hasValue && parsed.amount > 0 ? parsed.amount : null;
+  }
+
+  function roundMoney(value) {
+    return Number.isFinite(value) ? Number(value.toFixed(2)) : null;
+  }
+
+  function sumMoneyAmount(orders = [], fieldName = '') {
+    return (Array.isArray(orders) ? orders : []).reduce((acc, order) => {
+      const parsed = parseMoneyAmount(order?.[fieldName]);
+      return {
+        total: acc.total + parsed.amount,
+        count: acc.count + (parsed.hasValue ? 1 : 0)
+      };
+    }, { total: 0, count: 0 });
+  }
+
+  function sumResolvedMoneyAmount(orders = [], resolver = () => null) {
+    return (Array.isArray(orders) ? orders : []).reduce((acc, order) => {
+      const resolved = resolver(order);
+      const amount = normalizeResolvedAmount(resolved);
+      return {
+        total: acc.total + (amount === null ? 0 : amount),
+        count: acc.count + (amount === null ? 0 : 1)
+      };
+    }, { total: 0, count: 0 });
+  }
+
+  function normalizeResolvedAmount(value) {
+    if (value === null || typeof value === 'undefined') return null;
+    if (typeof value === 'string' && !value.trim()) return null;
+    const amount = Number(value);
+    return Number.isFinite(amount) ? roundMoney(amount) : null;
+  }
+
+  function computeOrderSaleCnyAmount(order, exchangeRate = null) {
+    const sale = parseMoneyAmount(order?.['售价']);
+    const rate = parseExchangeRateValue(exchangeRate);
+    if (!sale.hasValue || sale.amount <= 0 || rate === null) return null;
+    return roundMoney(sale.amount / rate);
+  }
+
+  function computeOrderProfitAmount(order, exchangeRate = null) {
+    const saleCny = computeOrderSaleCnyAmount(order, exchangeRate);
+    const purchase = parseMoneyAmount(order?.['采购价格']);
+    const shipping = parseMoneyAmount(order?.['预估运费']);
+    if (saleCny === null || !purchase.hasValue || !shipping.hasValue) return null;
+    return roundMoney(saleCny - purchase.amount - shipping.amount);
+  }
+
+  function formatTableMoneyValue(value) {
+    if (!Number.isFinite(value)) return '';
+    return value.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  function formatTableCellValue(value) {
+    const text = String(value ?? '').trim();
+    return text || '-';
   }
 
   function formatCurrencyAmount(value) {
-    const amount = Number.isFinite(Number(value)) ? Number(value) : 0;
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return '-';
     return `¥ ${amount.toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })}`;
+  }
+
+  function formatSummaryMetric(metric) {
+    if (!metric || !metric.count) return '-';
+    return formatCurrencyAmount(metric.total);
+  }
+
+  function getSummaryTone(metric, kind = 'neutral') {
+    if (kind === 'income') return 'income';
+    if (kind === 'expense') return 'expense';
+    if (!metric || !metric.count) return 'neutral';
+    if (metric.total > 0) return 'profit-positive';
+    if (metric.total < 0) return 'profit-negative';
+    return 'neutral';
   }
 
   function deriveDisplayedOrders({ orders = [], activeAccount = '__all__', searchQuery = '', sortOrder = 'asc' } = {}) {
@@ -55,24 +138,30 @@ const OrderTableView = (function () {
         ? list.filter(order => String(order?.['账号'] || '').trim() === activeAccount)
         : list;
     const query = normalizeSearchValue(searchQuery);
+    const dateOnlySearch = isDateSearchQuery(query);
     const filtered = !query
       ? accountFiltered
       : accountFiltered.filter(order => {
-        const haystack = normalizeSearchValue([
-          order?.['账号'],
-          order?.['下单时间'],
-          order?.['采购日期'],
-          order?.['最晚到仓时间'],
-          order?.['订单号'],
-          order?.['产品名称'],
-          order?.['数量'],
-          order?.['采购价格'],
-          order?.['重量'],
-          order?.['尺寸'],
-          order?.['订单状态'],
-          order?.['快递公司'],
-          order?.['快递单号']
-        ].join(' '));
+        const haystack = normalizeSearchValue(dateOnlySearch
+          ? [order?.['下单时间']].join(' ')
+          : [
+            order?.['账号'],
+            order?.['下单时间'],
+            order?.['采购日期'],
+            order?.['最晚到仓时间'],
+            order?.['订单号'],
+            order?.['产品名称'],
+            order?.['数量'],
+            order?.['采购价格'],
+            order?.['售价'],
+            order?.['预估运费'],
+            order?.['预估利润'],
+            order?.['重量'],
+            order?.['尺寸'],
+            order?.['订单状态'],
+            order?.['快递公司'],
+            order?.['快递单号']
+          ].join(' '));
         return haystack.includes(query);
       });
     const sorted = [...filtered].sort((a, b) => {
@@ -96,14 +185,52 @@ const OrderTableView = (function () {
     return { isAll, sorted };
   }
 
-  function derivePurchaseSummary({ orders = [], activeAccount = '__all__', searchQuery = '', sortOrder = 'asc' } = {}) {
+  function derivePurchaseSummary({
+    orders = [],
+    activeAccount = '__all__',
+    searchQuery = '',
+    sortOrder = 'asc',
+    exchangeRate = null,
+    computeOrderSaleCny,
+    computeOrderEstimatedProfit
+  } = {}) {
     const list = Array.isArray(orders) ? orders : [];
     const { sorted } = deriveDisplayedOrders({ orders: list, activeAccount, searchQuery, sortOrder });
+    const filteredPurchase = sumMoneyAmount(sorted, '采购价格');
+    const allPurchase = sumMoneyAmount(list, '采购价格');
+    const resolveSale = order => {
+      if (typeof computeOrderSaleCny === 'function') return computeOrderSaleCny(order, exchangeRate);
+      return computeOrderSaleCnyAmount(order, exchangeRate);
+    };
+    const resolveProfit = order => {
+      if (typeof computeOrderEstimatedProfit === 'function') return computeOrderEstimatedProfit(order, exchangeRate);
+      return computeOrderProfitAmount(order, exchangeRate);
+    };
+    const filteredSale = sumResolvedMoneyAmount(sorted, resolveSale);
+    const allSale = sumResolvedMoneyAmount(list, resolveSale);
+    const filteredShipping = sumMoneyAmount(sorted, '预估运费');
+    const allShipping = sumMoneyAmount(list, '预估运费');
+    const filteredProfit = sumResolvedMoneyAmount(sorted, resolveProfit);
+    const allProfit = sumResolvedMoneyAmount(list, resolveProfit);
     return {
       filteredCount: sorted.length,
       allCount: list.length,
-      filteredTotal: sumPurchaseAmount(sorted),
-      allTotal: sumPurchaseAmount(list)
+      filteredTotal: filteredPurchase.total,
+      allTotal: allPurchase.total,
+      filteredSaleTotal: filteredSale.total,
+      allSaleTotal: allSale.total,
+      filteredShippingTotal: filteredShipping.total,
+      allShippingTotal: allShipping.total,
+      filteredProfitTotal: filteredProfit.total,
+      allProfitTotal: allProfit.total,
+      filteredPurchaseMetric: filteredPurchase,
+      allPurchaseMetric: allPurchase,
+      filteredSaleMetric: filteredSale,
+      allSaleMetric: allSale,
+      filteredShippingMetric: filteredShipping,
+      allShippingMetric: allShipping,
+      filteredProfitMetric: filteredProfit,
+      allProfitMetric: allProfit
     };
   }
 
@@ -163,17 +290,62 @@ const OrderTableView = (function () {
   }
 
   function buildSummaryMarkup(summary) {
+    function buildCard(title, profitMetric, incomeMetric, expenseMetric, expenseDetail, metaText) {
+      return `
+        <section class="ot-summary-section">
+          <div class="ot-summary-head">
+            <div class="ot-summary-label">${escapeHtml(title)}</div>
+            <div class="ot-summary-meta-inline">${escapeHtml(metaText)}</div>
+          </div>
+          <div class="ot-summary-hero is-${escapeHtml(profitMetric.tone || 'neutral')}">
+            <span class="ot-summary-hero-label">${escapeHtml(profitMetric.label)}</span>
+            <strong class="ot-summary-hero-value">${escapeHtml(profitMetric.value)}</strong>
+          </div>
+          <div class="ot-summary-ledger">
+            <div class="ot-summary-ledger-item is-income">
+              <span class="ot-summary-ledger-label">收入</span>
+              <strong class="ot-summary-ledger-value">${escapeHtml(incomeMetric.value)}</strong>
+              <span class="ot-summary-ledger-note">${escapeHtml(incomeMetric.label)}</span>
+            </div>
+            <div class="ot-summary-ledger-item is-expense">
+              <span class="ot-summary-ledger-label">支出</span>
+              <strong class="ot-summary-ledger-value">${escapeHtml(expenseMetric.value)}</strong>
+              <span class="ot-summary-ledger-note">${escapeHtml(expenseDetail)}</span>
+            </div>
+          </div>
+        </section>`;
+    }
+
+    const filteredExpenseTotal = summary.filteredTotal + summary.filteredShippingTotal;
+    const allExpenseTotal = summary.allTotal + summary.allShippingTotal;
+    const filteredExpenseMetric = {
+      value: formatSummaryMetric({
+        total: filteredExpenseTotal,
+        count: (summary.filteredPurchaseMetric?.count || 0) + (summary.filteredShippingMetric?.count || 0)
+      })
+    };
+    const allExpenseMetric = {
+      value: formatSummaryMetric({
+        total: allExpenseTotal,
+        count: (summary.allPurchaseMetric?.count || 0) + (summary.allShippingMetric?.count || 0)
+      })
+    };
+
     return `
-      <div class="ot-summary-grid">
-        <div class="ot-summary-card">
-          <div class="ot-summary-label">当前筛选采购总额</div>
-          <div class="ot-summary-value">${escapeHtml(formatCurrencyAmount(summary.filteredTotal))}</div>
-          <div class="ot-summary-meta">受账号标签和搜索影响 · 共 ${escapeHtml(summary.filteredCount)} 条</div>
-        </div>
-        <div class="ot-summary-card">
-          <div class="ot-summary-label">全部订单采购总额</div>
-          <div class="ot-summary-value">${escapeHtml(formatCurrencyAmount(summary.allTotal))}</div>
-          <div class="ot-summary-meta">不受账号、搜索、分页影响 · 共 ${escapeHtml(summary.allCount)} 条</div>
+      <div class="ot-summary-surface">
+        <div class="ot-summary-grid">
+        ${buildCard('当前筛选',
+      { label: '预估总利润', value: formatSummaryMetric(summary.filteredProfitMetric), tone: getSummaryTone(summary.filteredProfitMetric, 'profit') },
+      { label: '总销售额', value: formatSummaryMetric(summary.filteredSaleMetric), tone: getSummaryTone(summary.filteredSaleMetric, 'income') },
+      { ...filteredExpenseMetric, tone: getSummaryTone(filteredExpenseMetric, 'expense') },
+      `总采购额 ${formatSummaryMetric(summary.filteredPurchaseMetric)} + 预估总海外运费 ${formatSummaryMetric(summary.filteredShippingMetric)}`,
+      `受账号标签和搜索影响 · 共 ${summary.filteredCount} 条`)}
+        ${buildCard('全部订单',
+        { label: '预估总利润', value: formatSummaryMetric(summary.allProfitMetric), tone: getSummaryTone(summary.allProfitMetric, 'profit') },
+        { label: '总销售额', value: formatSummaryMetric(summary.allSaleMetric), tone: getSummaryTone(summary.allSaleMetric, 'income') },
+        { ...allExpenseMetric, tone: getSummaryTone(allExpenseMetric, 'expense') },
+        `总采购额 ${formatSummaryMetric(summary.allPurchaseMetric)} + 预估总海外运费 ${formatSummaryMetric(summary.allShippingMetric)}`,
+        `不受账号、搜索、分页影响 · 共 ${summary.allCount} 条`)}
         </div>
       </div>`;
   }
@@ -189,7 +361,7 @@ const OrderTableView = (function () {
             </svg>
           </span>
           <input id="ot-table-search-input" type="text" placeholder=" " value="${escapeHtml(searchQuery)}" autocomplete="off">
-          <span class="ot-table-search-hint">搜索订单号 / 产品 / 快递</span>
+          <span class="ot-table-search-hint">搜索下单时间 / 订单号 / 产品 / 快递</span>
         </label>
       </div>` : '';
 
@@ -279,27 +451,30 @@ const OrderTableView = (function () {
         <th>下单时间</th>
         <th>采购日期</th>
         <th>${buildHelpBubbleMarkup({
-          id: 'warehouse',
-          label: '最晚到仓',
-          lines: ['最晚到仓 = 下单时间 + 6 天']
-        })}</th>
+      id: 'warehouse',
+      label: '最晚到仓',
+      lines: ['最晚到仓 = 下单时间 + 6 天']
+    })}</th>
         <th>${buildHelpBubbleMarkup({
-          id: 'warning',
-          label: '订单预警',
-          lines: [
-            '订单取消 → 取消订单',
-            '已入仓 → 入仓完成',
-            '已完成 → 订单完成',
-            '已送达 → 订单送达',
-            '今天 ≥ 最晚到仓 → 已超期',
-            '最晚到仓 - 今天 ≤ 2 天 → 延误风险',
-            '最晚到仓 - 今天 > 2 天 → 剩 N 天'
-          ]
-        })}</th>
+      id: 'warning',
+      label: '订单预警',
+      lines: [
+        '订单取消 → 取消订单',
+        '已入仓 → 入仓完成',
+        '已完成 → 订单完成',
+        '已送达 → 订单送达',
+        '今天 ≥ 最晚到仓 → 已超期',
+        '最晚到仓 - 今天 ≤ 2 天 → 延误风险',
+        '最晚到仓 - 今天 > 2 天 → 剩 N 天'
+      ]
+    })}</th>
         <th>订单号</th>
         <th>产品名称</th>
         <th>数量</th>
-        <th>采购价(元)</th>
+        <th>售价(円)</th>
+        <th>采购价(¥)</th>
+        <th>预估运费(¥)</th>
+        <th>预估利润(¥)</th>
         <th>重量</th>
         <th>尺寸</th>
         <th>订单状态</th>
@@ -338,11 +513,23 @@ const OrderTableView = (function () {
     if (typeof onToolbarBind === 'function') onToolbarBind(1);
   }
 
-  function renderRows({ paged, startIndex, total, sortOrder, isAll, computeWarning }) {
+  function renderRows({
+    paged,
+    startIndex,
+    total,
+    sortOrder,
+    isAll,
+    computeWarning,
+    exchangeRate = null,
+    computeOrderEstimatedProfit
+  }) {
     return paged.map((order, index) => {
       const absoluteIndex = startIndex + index;
       const seqNum = sortOrder === 'asc' ? absoluteIndex + 1 : total - absoluteIndex;
       const warn = typeof computeWarning === 'function' ? computeWarning(order) : { cls: '', text: '' };
+      const resolvedProfit = typeof computeOrderEstimatedProfit === 'function'
+        ? computeOrderEstimatedProfit(order, exchangeRate)
+        : computeOrderProfitAmount(order, exchangeRate);
       return `
         <tr>
           <td style="color:var(--muted)">${seqNum}</td>
@@ -353,13 +540,16 @@ const OrderTableView = (function () {
           <td><span class="chip ${escapeHtml(warn.cls || '')}">${escapeHtml(warn.text || '')}</span></td>
           <td>${escapeHtml(order?.['订单号'])}</td>
           <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(order?.['产品名称'])}">${escapeHtml(order?.['产品名称'])}</td>
-          <td>${escapeHtml(order?.['数量'])}</td>
-          <td>${escapeHtml(order?.['采购价格'])}</td>
-          <td>${escapeHtml(order?.['重量'])}</td>
-          <td>${escapeHtml(order?.['尺寸'])}</td>
-          <td>${escapeHtml(order?.['订单状态'])}</td>
-          <td>${escapeHtml(order?.['快递公司'])}</td>
-          <td>${escapeHtml(order?.['快递单号'])}</td>
+          <td>${escapeHtml(formatTableCellValue(order?.['数量']))}</td>
+          <td>${escapeHtml(formatTableCellValue(order?.['售价']))}</td>
+          <td>${escapeHtml(formatTableCellValue(order?.['采购价格']))}</td>
+          <td>${escapeHtml(formatTableCellValue(order?.['预估运费']))}</td>
+          <td>${escapeHtml(formatTableMoneyValue(resolvedProfit) || '-')}</td>
+          <td>${escapeHtml(formatTableCellValue(order?.['重量']))}</td>
+          <td>${escapeHtml(formatTableCellValue(order?.['尺寸']))}</td>
+          <td>${escapeHtml(formatTableCellValue(order?.['订单状态']))}</td>
+          <td>${escapeHtml(formatTableCellValue(order?.['快递公司']))}</td>
+          <td>${escapeHtml(formatTableCellValue(order?.['快递单号']))}</td>
           <td>
             <button class="btn sm" data-edit="${escapeHtml(order?.id)}">编辑</button>
             <button class="btn sm danger" data-del="${escapeHtml(order?.id)}">删除</button>
@@ -398,6 +588,9 @@ const OrderTableView = (function () {
     currentPage = 1,
     sortOrder = 'asc',
     pageSizeOptions = [],
+    exchangeRate = null,
+    computeOrderSaleCny,
+    computeOrderEstimatedProfit,
     computeWarning,
     getSearchComposing,
     onSearchCompositionStart,
@@ -412,7 +605,15 @@ const OrderTableView = (function () {
     closeOpenHelp();
     const searchInputState = captureSearchInputState();
     const { isAll, sorted } = deriveDisplayedOrders({ orders, activeAccount, searchQuery, sortOrder });
-    const summary = derivePurchaseSummary({ orders, activeAccount, searchQuery, sortOrder });
+    const summary = derivePurchaseSummary({
+      orders,
+      activeAccount,
+      searchQuery,
+      sortOrder,
+      exchangeRate,
+      computeOrderSaleCny,
+      computeOrderEstimatedProfit
+    });
     const hasQuery = !!normalizeSearchValue(searchQuery);
     const pageState = clampPage(currentPage, pageSize, sorted.length);
 
@@ -457,7 +658,9 @@ const OrderTableView = (function () {
       total: sorted.length,
       sortOrder,
       isAll,
-      computeWarning
+      computeWarning,
+      exchangeRate,
+      computeOrderEstimatedProfit
     });
     const sortIcon = sortOrder === 'asc' ? '↑' : '↓';
     const sortTitle = sortOrder === 'asc' ? '当前正序（最早在上），点击切换' : '当前倒序（最新在上），点击切换';
@@ -538,6 +741,8 @@ const OrderTableView = (function () {
     deriveDisplayedOrders,
     derivePurchaseSummary,
     formatCurrencyAmount,
+    formatSummaryMetric,
+    getSummaryTone,
     render
   };
 })();

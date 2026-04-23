@@ -11,6 +11,8 @@ const OrderTrackerCrud = (function () {
       todayStr,
       addDays,
       computeWarning,
+      getPricingExchangeRate,
+      computeOrderEstimatedProfit,
       normalizeOrderRecord,
       escapeHtml,
       normalizeStatusValue,
@@ -66,11 +68,61 @@ const OrderTrackerCrud = (function () {
       const ordered = form.querySelector('[name="下单时间"]')?.value || '';
       const warehouseField = form.querySelector('[name="最晚到仓时间"]');
       const warningField = form.querySelector('[name="订单预警"]');
+      const estimatedProfitField = form.querySelector('[name="预估利润"]');
       if (warehouseField) warehouseField.value = ordered ? addDays(ordered, 6) : '';
       if (warningField) {
         const temp = Object.fromEntries(new FormData(form).entries());
         warningField.value = computeWarning(temp).text;
       }
+      if (estimatedProfitField) {
+        estimatedProfitField.value = computeEstimatedProfitFromForm(form);
+      }
+    }
+
+    function formatMoneyValue(value) {
+      if (!Number.isFinite(value)) return '';
+      return value.toFixed(2).replace(/\.?0+$/, '');
+    }
+
+    function parseMoneyValue(value) {
+      const raw = String(value ?? '').replace(/,/g, '').trim();
+      if (!raw) return null;
+      const parsed = Number.parseFloat(raw);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function resolveExchangeRate() {
+      const sharedRate = typeof getPricingExchangeRate === 'function'
+        ? parseMoneyValue(getPricingExchangeRate())
+        : null;
+      return sharedRate !== null && sharedRate > 0 ? sharedRate : null;
+    }
+
+    function computeEstimatedProfitValue({ salePrice = '', purchasePrice = '', estimatedShippingFee = '' } = {}) {
+      const exchangeRate = resolveExchangeRate();
+      const sharedProfit = typeof computeOrderEstimatedProfit === 'function'
+        ? computeOrderEstimatedProfit({
+          '售价': salePrice,
+          '采购价格': purchasePrice,
+          '预估运费': estimatedShippingFee
+        }, exchangeRate)
+        : null;
+      if (sharedProfit !== null) return formatMoneyValue(sharedProfit);
+
+      const sale = parseMoneyValue(salePrice);
+      const purchase = parseMoneyValue(purchasePrice);
+      const shipping = parseMoneyValue(estimatedShippingFee);
+      if (exchangeRate === null || sale === null || purchase === null || shipping === null) return '';
+      return formatMoneyValue((sale / exchangeRate) - (purchase + shipping));
+    }
+
+    function computeEstimatedProfitFromForm(form) {
+      if (!form) return '';
+      return computeEstimatedProfitValue({
+        salePrice: form.querySelector('[name="售价"]')?.value || '',
+        purchasePrice: form.querySelector('[name="采购价格"]')?.value || '',
+        estimatedShippingFee: form.querySelector('[name="预估运费"]')?.value || ''
+      });
     }
 
     function maybeAutoSetInTransitFromTracking() {
@@ -172,6 +224,11 @@ const OrderTrackerCrud = (function () {
           payload['订单状态'] = '在途';
         }
       }
+      payload['预估利润'] = computeEstimatedProfitValue({
+        salePrice: payload['售价'],
+        purchasePrice: payload['采购价格'],
+        estimatedShippingFee: payload['预估运费']
+      });
       payload['最晚到仓时间'] = payload['下单时间'] ? addDays(payload['下单时间'], 6) : '';
       payload['订单预警'] = computeWarning(payload).text;
 
@@ -216,7 +273,15 @@ const OrderTrackerCrud = (function () {
 
       const orderDate = form.querySelector('[name="下单时间"]');
       const orderStatus = form.querySelector('[name="订单状态"]');
+      const purchasePrice = form.querySelector('[name="采购价格"]');
+      const salePrice = form.querySelector('[name="售价"]');
+      const estimatedShippingFee = form.querySelector('[name="预估运费"]');
       if (orderDate) orderDate.addEventListener('change', recomputeAuto);
+      [purchasePrice, salePrice, estimatedShippingFee].forEach(field => {
+        if (!field) return;
+        field.addEventListener('input', recomputeAuto);
+        field.addEventListener('change', recomputeAuto);
+      });
       if (orderStatus) {
         orderStatus.addEventListener('change', () => {
           const autoStatus = normalizeStatusValue(orderStatus.dataset.autoTrackingStatus || '');

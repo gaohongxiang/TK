@@ -80,6 +80,10 @@ const OrderTracker = (function () {
     uid,
     nowIso,
     showDatePicker,
+    parseOrderMoneyValue,
+    getPricingExchangeRate,
+    computeOrderSaleCny,
+    computeOrderEstimatedProfit,
     escapeHtml,
     normalizeStatusValue,
     normalizeOrderRecord,
@@ -340,6 +344,8 @@ const OrderTracker = (function () {
       toAccountSlot,
       todayStr,
       computeWarning,
+      getPricingExchangeRate,
+      computeOrderEstimatedProfit,
       escapeHtml
     },
     ui: {
@@ -359,6 +365,8 @@ const OrderTracker = (function () {
       todayStr,
       addDays,
       computeWarning,
+      getPricingExchangeRate,
+      computeOrderEstimatedProfit,
       normalizeOrderRecord,
       escapeHtml,
       normalizeStatusValue,
@@ -429,6 +437,9 @@ const OrderTracker = (function () {
       currentPage: state.currentPage,
       sortOrder: state.sortOrder,
       pageSizeOptions: PAGE_SIZE_OPTIONS,
+      exchangeRate: getPricingExchangeRate(),
+      computeOrderSaleCny,
+      computeOrderEstimatedProfit,
       computeWarning,
       getSearchComposing: () => state.searchComposing,
       onSearchCompositionStart: () => {

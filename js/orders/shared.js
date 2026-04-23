@@ -47,6 +47,44 @@ const OrderTrackerShared = (function () {
       } catch (error) {}
     }
 
+    function roundMoney(value) {
+      return Number.isFinite(value) ? Number(value.toFixed(2)) : null;
+    }
+
+    function parseOrderMoneyValue(value) {
+      const raw = String(value ?? '').replace(/,/g, '').trim();
+      if (!raw) return null;
+      const parsed = Number.parseFloat(raw);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function parseExchangeRateValue(value) {
+      const parsed = parseOrderMoneyValue(value);
+      return parsed && parsed > 0 ? parsed : null;
+    }
+
+    function getPricingExchangeRate() {
+      const globalStore = typeof window !== 'undefined' ? window.__tkGlobalSettingsStore : null;
+      return typeof globalStore?.getExchangeRate === 'function'
+        ? parseExchangeRateValue(globalStore.getExchangeRate())
+        : null;
+    }
+
+    function computeOrderSaleCny(order, exchangeRate = getPricingExchangeRate()) {
+      const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
+      const rate = parseExchangeRateValue(exchangeRate);
+      if (saleJpy === null || saleJpy <= 0 || rate === null) return null;
+      return roundMoney(saleJpy / rate);
+    }
+
+    function computeOrderEstimatedProfit(order, exchangeRate = getPricingExchangeRate()) {
+      const saleCny = computeOrderSaleCny(order, exchangeRate);
+      const purchase = parseOrderMoneyValue(order?.['采购价格'] ?? order?.purchasePrice);
+      const shipping = parseOrderMoneyValue(order?.['预估运费'] ?? order?.estimatedShippingFee);
+      if (saleCny === null || purchase === null || shipping === null) return null;
+      return roundMoney(saleCny - purchase - shipping);
+    }
+
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, char => (
         { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]
@@ -410,6 +448,10 @@ const OrderTrackerShared = (function () {
       uid,
       nowIso,
       showDatePicker,
+      parseOrderMoneyValue,
+      getPricingExchangeRate,
+      computeOrderSaleCny,
+      computeOrderEstimatedProfit,
       escapeHtml,
       normalizeStatusValue,
       normalizeOrderRecord,

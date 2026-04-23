@@ -764,7 +764,7 @@
           <button id="ot-connect" class="btn primary">连接并开始使用</button>
         </div>
         <div id="ot-firestore-migration-entry" class="ot-setup-secondary-action" style="display:none">
-        <div class="ot-setup-secondary-copy">已有 GitHub Gist 数据？迁移读取的是已经同步到云端的数据，不影响直接连接。</div>
+        <div class="ot-setup-secondary-copy">已有 GitHub Gist 数据？迁移源始终是 Gist 云端，不会读取当前 Firestore 里的数据；如果你后来只在 Firestore 里新增过订单，迁到新库时不会自动带过去。</div>
           <button id="ot-migrate-from-gist" type="button" class="btn sm">从 GitHub Gist 迁移</button>
         </div>
       </section>
@@ -890,15 +890,29 @@
         </div>
         <div class="row" style="margin-top:12px">
           <div class="field">
+            <label>售价（日元）</label>
+            <input type="number" name="售价" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label>预估运费（元）</label>
+            <input type="number" name="预估运费" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field">
+            <label>预估利润（人民币） <span class="kbd">自动</span></label>
+            <input type="number" name="预估利润" step="0.01" readonly>
+          </div>
+          <div class="field">
             <label>重量(g)</label>
             <input type="text" name="重量" placeholder="例如 500">
           </div>
+        </div>
+        <div class="row" style="margin-top:12px">
           <div class="field">
             <label>尺寸(cm)</label>
             <input type="text" name="尺寸" placeholder="例如 20×15×10">
           </div>
-        </div>
-        <div class="row" style="margin-top:12px">
           <div class="field">
             <label>订单状态</label>
             <select name="订单状态">
@@ -912,6 +926,8 @@
               <option>订单取消</option>
             </select>
           </div>
+        </div>
+        <div class="row" style="margin-top:12px">
           <div class="field">
             <label>快递公司</label>
             <select name="快递公司">
@@ -927,9 +943,7 @@
               <option>安能物流</option>
             </select>
           </div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <div class="field full" style="grid-column:1/-1">
+          <div class="field">
             <label>快递单号</label>
             <input type="text" name="快递单号">
           </div>
@@ -999,7 +1013,7 @@
     <div class="modal" style="max-width:480px">
       <h3 id="ot-migrate-gist-title">从 GitHub Gist 迁移</h3>
       <div class="modal-copy">
-        如果 Gist 里已有云端数据，会迁移到当前填写的 Firestore 项目；如果没有数据，就直接连接 Firestore。迁移读取的是 GitHub Gist 里已经同步到云端的数据，不包含其他浏览器里尚未同步的本地改动。目标 Firestore 如需迁移数据，应保持为空。
+        如果 Gist 里已有云端数据，会迁移到当前填写的 Firestore 项目；如果没有数据，就直接连接 Firestore。迁移读取的是 GitHub Gist 里已经同步到云端的数据，不包含其他浏览器里尚未同步的本地改动，也不会读取你当前已连接 Firestore 里的订单。目标 Firestore 如需迁移数据，应保持为空。
       </div>
       <div class="row" style="margin-top:16px">
         <div class="field full" style="grid-column:1/-1">
@@ -1060,6 +1074,7 @@
 
   <!-- JS 模块（defer 保证顺序加载：路由 → 利润计算器 → 订单跟踪器） -->
   <script src="js/app.js" defer></script>
+  <script src="js/global-settings.js" defer></script>
   <script src="js/calc/shared.js" defer></script>
   <script src="js/calc/shipping.js" defer></script>
   <script src="js/calc/legacy.js" defer></script>

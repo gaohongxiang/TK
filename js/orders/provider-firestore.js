@@ -164,6 +164,9 @@ const OrderTrackerProviderFirestore = (function () {
         '产品名称': data?.productName || '',
         '数量': data?.quantity == null ? '' : String(data.quantity),
         '采购价格': data?.purchasePrice == null ? '' : String(data.purchasePrice),
+        '售价': data?.salePrice == null ? '' : String(data.salePrice),
+        '预估运费': data?.estimatedShippingFee == null ? '' : String(data.estimatedShippingFee),
+        '预估利润': data?.estimatedProfit == null ? '' : String(data.estimatedProfit),
         '重量': data?.weightText || '',
         '尺寸': data?.sizeText || '',
         '订单状态': data?.orderStatus || '',
@@ -191,6 +194,9 @@ const OrderTrackerProviderFirestore = (function () {
         productName: toNullableText(order?.['产品名称']),
         quantity: toNullableInteger(order?.['数量']),
         purchasePrice: toNullableDecimal(order?.['采购价格']),
+        salePrice: toNullableDecimal(order?.['售价']),
+        estimatedShippingFee: toNullableDecimal(order?.['预估运费']),
+        estimatedProfit: toNullableDecimal(order?.['预估利润']),
         weightText: toNullableText(order?.['重量']),
         sizeText: toNullableText(order?.['尺寸']),
         orderStatus: toNullableText(order?.['订单状态']),
@@ -233,8 +239,26 @@ const OrderTrackerProviderFirestore = (function () {
       return db;
     }
 
+    async function getQuerySnapshot(query) {
+      if (!query || typeof query.get !== 'function') throw new Error('Firestore 查询不可用');
+      try {
+        return await query.get({ source: 'server' });
+      } catch (error) {
+        return query.get();
+      }
+    }
+
+    async function getDocSnapshot(docRef) {
+      if (!docRef || typeof docRef.get !== 'function') throw new Error('Firestore 文档不可用');
+      try {
+        return await docRef.get({ source: 'server' });
+      } catch (error) {
+        return docRef.get();
+      }
+    }
+
     async function fetchOrderDocs(currentDb) {
-      const snapshot = await currentDb.collection('orders').get();
+      const snapshot = await getQuerySnapshot(currentDb.collection('orders'));
       return snapshot.docs.map(doc => normalizePulledOrder(doc.data() || {}));
     }
 
@@ -315,9 +339,9 @@ const OrderTrackerProviderFirestore = (function () {
     async function pullSnapshot({ cursor = '' } = {}) {
       const currentDb = await requireDb();
       const [ordersSnap, accountsSnap, syncStateSnap] = await Promise.all([
-        currentDb.collection('orders').get(),
-        currentDb.collection('order_accounts').get(),
-        syncStateRef(currentDb).get()
+        getQuerySnapshot(currentDb.collection('orders')),
+        getQuerySnapshot(currentDb.collection('order_accounts')),
+        getDocSnapshot(syncStateRef(currentDb))
       ]);
 
       const allOrderRecords = ordersSnap.docs.map(doc => normalizePulledOrder(doc.data() || {}));

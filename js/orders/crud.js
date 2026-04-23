@@ -145,6 +145,7 @@ const OrderTrackerCrud = (function () {
       }
 
       maybeAutoDetectCourierFromForm();
+      maybeAutoSetInTransitFromTracking();
       recomputeAuto();
       modal.classList.add('show');
     }
@@ -227,7 +228,7 @@ const OrderTrackerCrud = (function () {
       }
 
       const courierFields = getOrderFormCourierFields();
-      if (courierFields.tracking && courierFields.company) {
+      if (courierFields.tracking) {
         courierFields.tracking.addEventListener('input', () => {
           maybeAutoDetectCourierFromForm();
           maybeAutoSetInTransitFromTracking();
@@ -236,6 +237,13 @@ const OrderTrackerCrud = (function () {
           maybeAutoDetectCourierFromForm();
           maybeAutoSetInTransitFromTracking();
         });
+        courierFields.tracking.addEventListener('change', () => {
+          maybeAutoDetectCourierFromForm();
+          maybeAutoSetInTransitFromTracking();
+        });
+      }
+
+      if (courierFields.company) {
         courierFields.company.addEventListener('change', () => {
           if (courierFields.company.value !== (courierFields.company.dataset.autoDetectedCourier || '')) {
             courierFields.company.dataset.autoDetectedCourier = '';

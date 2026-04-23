@@ -758,16 +758,14 @@
 }' autocomplete="off"></textarea>
             </div>
           </div>
-          <div class="ot-setup-guide-note" style="margin-top:14px">
-            如果你之前一直在用 GitHub Gist，可以直接把 Gist 云端数据迁移到当前填写的 Firestore 项目；没有数据时，也可以直接连接。
-          </div>
-          <div style="display:flex;gap:8px;margin-top:12px">
-            <button id="ot-migrate-from-gist" type="button" class="btn">从 GitHub Gist 迁移</button>
-          </div>
         </div>
 
-        <div style="display:flex;gap:8px;margin-top:18px">
+        <div class="ot-setup-primary-actions">
           <button id="ot-connect" class="btn primary">连接并开始使用</button>
+        </div>
+        <div id="ot-firestore-migration-entry" class="ot-setup-secondary-action" style="display:none">
+        <div class="ot-setup-secondary-copy">已有 GitHub Gist 数据？迁移读取的是已经同步到云端的数据，不影响直接连接。</div>
+          <button id="ot-migrate-from-gist" type="button" class="btn sm">从 GitHub Gist 迁移</button>
         </div>
       </section>
 
@@ -1001,8 +999,7 @@
     <div class="modal" style="max-width:480px">
       <h3 id="ot-migrate-gist-title">从 GitHub Gist 迁移</h3>
       <div class="modal-copy">
-        如果 Gist 里已有云端数据，会迁移到当前填写的 Firestore 项目；如果没有数据，就直接连接 Firestore。迁移读取的是 GitHub Gist
-        里已经同步到云端的数据，不包含其他浏览器里尚未同步的本地改动。目标 Firestore 如需迁移数据，应保持为空。
+        如果 Gist 里已有云端数据，会迁移到当前填写的 Firestore 项目；如果没有数据，就直接连接 Firestore。迁移读取的是 GitHub Gist 里已经同步到云端的数据，不包含其他浏览器里尚未同步的本地改动。目标 Firestore 如需迁移数据，应保持为空。
       </div>
       <div class="row" style="margin-top:16px">
         <div class="field full" style="grid-column:1/-1">

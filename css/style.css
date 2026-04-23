@@ -815,7 +815,7 @@ details[open] summary {
 
 /* —— Order tracker styles —— */
 .ot-setup {
-  max-width: 640px;
+  max-width: 880px;
   margin: 0 auto
 }
 
@@ -946,6 +946,32 @@ details[open] summary {
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 12px
+}
+
+.ot-setup-primary-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.ot-setup-primary-actions .btn.primary {
+  min-width: 176px;
+}
+
+.ot-setup-secondary-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.ot-setup-secondary-copy {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.65;
 }
 
 .ot-header-row {
@@ -1501,6 +1527,11 @@ details[open] summary {
 
   .ot-table-search {
     width: 100%;
+  }
+
+  .ot-setup-secondary-action {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

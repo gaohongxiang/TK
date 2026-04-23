@@ -46,12 +46,14 @@ const OrderTrackerSession = (function () {
       const firestoreCopy = $('#ot-firestore-copy');
       const gistFields = $('#ot-gist-fields');
       const firestoreFields = $('#ot-firestore-fields');
+      const firestoreMigrationEntry = $('#ot-firestore-migration-entry');
       const button = $('#ot-connect');
 
       if (gistCopy) gistCopy.style.display = mode === 'gist' ? 'block' : 'none';
       if (firestoreCopy) firestoreCopy.style.display = mode === 'firestore' ? 'block' : 'none';
       if (gistFields) gistFields.style.display = mode === 'gist' ? 'block' : 'none';
       if (firestoreFields) firestoreFields.style.display = mode === 'firestore' ? 'block' : 'none';
+      if (firestoreMigrationEntry) firestoreMigrationEntry.style.display = mode === 'firestore' ? 'flex' : 'none';
 
       if (button) {
         button.textContent = '连接并开始使用';

@@ -51,6 +51,10 @@ const TKGlobalSettings = (function () {
 
     let state = loadState();
 
+    function readLegacyProfitState() {
+      return readJson(legacyProfitStorageKey) || {};
+    }
+
     function getExchangeRate() {
       return parseExchangeRate(state.exchangeRate);
     }
@@ -65,10 +69,23 @@ const TKGlobalSettings = (function () {
       return { ...state };
     }
 
+    function getPricingContext() {
+      const legacy = readLegacyProfitState();
+      const rate = getExchangeRate();
+      const shippingMultiplierRaw = Number(legacy?.shippingMultiplierNew || 1.1);
+      const labelFeeRaw = Number(legacy?.labelFeeNew || 1.2);
+      return {
+        rate,
+        shippingMultiplier: Number.isFinite(shippingMultiplierRaw) && shippingMultiplierRaw >= 1 ? shippingMultiplierRaw : 1.1,
+        labelFee: Number.isFinite(labelFeeRaw) && labelFeeRaw >= 0 ? labelFeeRaw : 1.2
+      };
+    }
+
     return {
       getExchangeRate,
       setExchangeRate,
-      getState
+      getState,
+      getPricingContext
     };
   }
 

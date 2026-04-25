@@ -132,16 +132,34 @@ const seqPriorityResult = sandbox.OrderTableView.deriveDisplayedOrders({
 
 assert.equal(seqPriorityResult.sorted[0].id, 'early-created', '有 seq 时应优先按录入编号排序');
 
-assert.match(
-  source,
-  /<th>售价\(円\)<\/th>[\s\S]*<th>采购价\(¥\)<\/th>[\s\S]*<th>预估运费\(¥\)<\/th>[\s\S]*<th>预估利润\(¥\)<\/th>/,
-  '表格需要把售价放在采购价前面，并用符号标注金额列'
+assert.equal(
+  sandbox.OrderTableView.getProfitCellToneClass(12.5),
+  'profit-positive',
+  '正利润应使用绿色样式'
+);
+
+assert.equal(
+  sandbox.OrderTableView.getProfitCellToneClass(-3.2),
+  'profit-negative',
+  '负利润应使用红色样式'
+);
+
+assert.equal(
+  sandbox.OrderTableView.getProfitCellToneClass(null),
+  'neutral',
+  '无利润数据应保持中性色'
 );
 
 assert.match(
   source,
-  /escapeHtml\(formatTableMoneyValue\(resolvedProfit\) \|\| '-'\)/,
-  '单条订单没有预估利润时应显示为 -'
+  /<th>总售价\(円\)<\/th>[\s\S]*<th>总采购额\(¥\)<\/th>[\s\S]*<th>预估总海外运费\(¥\)<\/th>[\s\S]*<th>预估总利润\(¥\)<\/th>/,
+  '表格需要按订单总额口径展示金额列，并保持售价在采购额前面'
+);
+
+assert.match(
+  source,
+  /ot-profit-value[\s\S]*getProfitCellToneClass\(resolvedProfit\)/,
+  '预估利润列需要按正负利润套用颜色样式'
 );
 
 assert.match(
@@ -152,8 +170,8 @@ assert.match(
 
 assert.match(
   indexSource,
-  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
-  'index.html 需要按 table.js -> sync.js -> export.js -> tabs.js -> crud.js -> session.js -> shared.js -> index.js 的顺序加载订单模块'
+  /<script src="js\/table-controls\.js" defer><\/script>[\s\S]*<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
+  'index.html 需要先加载 table-controls.js，再按 table.js -> sync.js -> export.js -> tabs.js -> crud.js -> session.js -> shared.js -> index.js 的顺序加载订单模块'
 );
 
 assert.match(

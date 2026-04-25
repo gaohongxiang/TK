@@ -139,6 +139,88 @@ const OrderTrackerProviderFirestore = (function () {
       return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
+    function normalizeOrderItems(items = []) {
+      if (!Array.isArray(items)) return [];
+      return items.map(item => ({
+        lineId: String(item?.lineId || '').trim() || nowIso(),
+        productTkId: String(item?.productTkId || '').trim(),
+        productSkuId: String(item?.productSkuId || '').trim(),
+        productSkuName: String(item?.productSkuName || '').trim(),
+        productName: String(item?.productName || '').trim(),
+        quantity: toNullableInteger(item?.quantity) || 1,
+        unitPurchasePrice: toNullableDecimal(item?.unitPurchasePrice),
+        unitSalePrice: toNullableDecimal(item?.unitSalePrice),
+        unitWeightG: toNullableDecimal(item?.unitWeightG),
+        unitSizeText: toNullableText(item?.unitSizeText)
+      }));
+    }
+
+    function getOrderItemSummaryParts(item = {}) {
+      const rawProductName = String(item?.productName || '').trim();
+      const skuName = String(item?.productSkuName || '').trim();
+      const quantity = toNullableInteger(item?.quantity) || 1;
+      let productName = rawProductName;
+      if (productName && skuName) {
+        [` - ${skuName}`, ` / ${skuName}`].forEach(suffix => {
+          if (productName.endsWith(suffix)) {
+            productName = productName.slice(0, -suffix.length).trim();
+          }
+        });
+      }
+      return {
+        productName,
+        skuName,
+        quantity
+      };
+    }
+
+    function deriveOrderItemTotals(items = []) {
+      return normalizeOrderItems(items).reduce((acc, item) => ({
+        quantity: acc.quantity + (item.quantity || 0),
+        purchase: acc.purchase + ((item.unitPurchasePrice || 0) * (item.quantity || 0)),
+        sale: acc.sale + ((item.unitSalePrice || 0) * (item.quantity || 0)),
+        weight: acc.weight + ((item.unitWeightG || 0) * (item.quantity || 0))
+      }), {
+        quantity: 0,
+        purchase: 0,
+        sale: 0,
+        weight: 0
+      });
+    }
+
+    function buildOrderItemsSummary(items = []) {
+      const groups = [];
+      normalizeOrderItems(items).forEach(item => {
+        const meta = getOrderItemSummaryParts(item);
+        const key = meta.productName || meta.skuName;
+        if (!key) return;
+        let group = groups.find(entry => entry.key === key);
+        if (!group) {
+          group = {
+            key,
+            productName: meta.productName || key,
+            entries: []
+          };
+          groups.push(group);
+        }
+        group.entries.push({
+          skuName: meta.skuName,
+          quantity: meta.quantity
+        });
+      });
+      return groups.map(group => {
+        const hasSku = group.entries.some(entry => entry.skuName);
+        if (!hasSku) {
+          const totalQty = group.entries.reduce((sum, entry) => sum + entry.quantity, 0);
+          return totalQty > 1 ? `${group.productName} ×${totalQty}` : group.productName;
+        }
+        const entryText = group.entries.map(entry => (
+          `${entry.skuName}${entry.quantity > 1 ? ` ×${entry.quantity}` : ''}`
+        )).join('，');
+        return `${group.productName}（${entryText}）`;
+      }).join(' / ');
+    }
+
     function getOrderCreatedAt(order) {
       const direct = String(order?.createdAt || order?.created_at || '').trim();
       if (direct) return toIsoString(direct, nowIso());
@@ -149,9 +231,20 @@ const OrderTrackerProviderFirestore = (function () {
 
     function normalizePulledOrder(data) {
       const seq = parseSeq(data?.seq);
+      const items = normalizeOrderItems(data?.items);
+      const totals = deriveOrderItemTotals(items);
+      const totalQuantity = items.length ? totals.quantity : (data?.quantity ?? '');
+      const totalPurchase = (data?.purchasePrice ?? '') !== '' && data?.purchasePrice != null
+        ? data?.purchasePrice
+        : (items.length ? totals.purchase : data?.purchasePrice);
+      const totalSale = (data?.salePrice ?? '') !== '' && data?.salePrice != null
+        ? data?.salePrice
+        : (items.length ? totals.sale : data?.salePrice);
+      const productSummary = items.length ? buildOrderItemsSummary(items) : (data?.productName || '');
       return {
         id: String(data?.id || '').trim(),
         ...(seq !== null ? { seq } : {}),
+        ...(items.length ? { items } : {}),
         createdAt: toIsoString(data?.createdAt || data?.created_at || ''),
         updatedAt: toIsoString(data?.updatedAt || data?.updated_at || ''),
         deletedAt: toIsoString(data?.deletedAt || data?.deleted_at || ''),
@@ -161,10 +254,13 @@ const OrderTrackerProviderFirestore = (function () {
         '最晚到仓时间': data?.latestWarehouseAt || '',
         '订单预警': data?.warningText || '',
         '订单号': data?.orderNo || '',
-        '产品名称': data?.productName || '',
-        '数量': data?.quantity == null ? '' : String(data.quantity),
-        '采购价格': data?.purchasePrice == null ? '' : String(data.purchasePrice),
-        '售价': data?.salePrice == null ? '' : String(data.salePrice),
+        '商品TK ID': data?.productTkId || '',
+        '商品SKU ID': data?.productSkuId || '',
+        '商品SKU名称': data?.productSkuName || '',
+        '产品名称': productSummary,
+        '数量': totalQuantity == null || totalQuantity === '' ? '' : String(totalQuantity),
+        '采购价格': totalPurchase == null || totalPurchase === '' ? '' : String(totalPurchase),
+        '售价': totalSale == null || totalSale === '' ? '' : String(totalSale),
         '预估运费': data?.estimatedShippingFee == null ? '' : String(data.estimatedShippingFee),
         '预估利润': data?.estimatedProfit == null ? '' : String(data.estimatedProfit),
         '重量': data?.weightText || '',
@@ -179,6 +275,14 @@ const OrderTrackerProviderFirestore = (function () {
       const seq = parseSeq(order?.seq);
       const createdAt = getOrderCreatedAt(order);
       const updatedAt = toIsoString(order?.updatedAt || order?.updated_at, createdAt || nowIso()) || nowIso();
+      const items = normalizeOrderItems(order?.items);
+      const totals = deriveOrderItemTotals(items);
+      const productSummary = items.length ? buildOrderItemsSummary(items) : toNullableText(order?.['产品名称']);
+      const onlyItem = items.length === 1 ? items[0] : null;
+      const topLevelWeight = toNullableText(order?.['重量']);
+      const topLevelSize = toNullableText(order?.['尺寸']);
+      const topLevelPurchase = toNullableDecimal(order?.['采购价格']);
+      const topLevelSale = toNullableDecimal(order?.['售价']);
       return {
         id: String(order?.id || '').trim(),
         ...(seq !== null ? { seq } : {}),
@@ -191,17 +295,32 @@ const OrderTrackerProviderFirestore = (function () {
         latestWarehouseAt: toNullableText(order?.['最晚到仓时间']),
         warningText: toNullableText(order?.['订单预警']),
         orderNo: toNullableText(order?.['订单号']),
-        productName: toNullableText(order?.['产品名称']),
-        quantity: toNullableInteger(order?.['数量']),
-        purchasePrice: toNullableDecimal(order?.['采购价格']),
-        salePrice: toNullableDecimal(order?.['售价']),
+        productTkId: toNullableText(onlyItem?.productTkId || order?.['商品TK ID']),
+        productSkuId: toNullableText(onlyItem?.productSkuId || order?.['商品SKU ID']),
+        productSkuName: toNullableText(onlyItem?.productSkuName || order?.['商品SKU名称']),
+        productName: productSummary,
+        quantity: items.length ? totals.quantity : toNullableInteger(order?.['数量']),
+        purchasePrice: topLevelPurchase ?? (items.length ? Number(totals.purchase.toFixed(2)) : null),
+        salePrice: topLevelSale ?? (items.length ? Number(totals.sale.toFixed(2)) : null),
         estimatedShippingFee: toNullableDecimal(order?.['预估运费']),
         estimatedProfit: toNullableDecimal(order?.['预估利润']),
-        weightText: toNullableText(order?.['重量']),
-        sizeText: toNullableText(order?.['尺寸']),
+        weightText: topLevelWeight || (items.length && totals.weight ? Number(totals.weight.toFixed(2)).toString() : null),
+        sizeText: topLevelSize || toNullableText(onlyItem?.unitSizeText || ''),
         orderStatus: toNullableText(order?.['订单状态']),
         courierCompany: toNullableText(order?.['快递公司']),
-        trackingNo: toNullableText(order?.['快递单号'])
+        trackingNo: toNullableText(order?.['快递单号']),
+        items: items.length ? items.map(item => ({
+          lineId: item.lineId,
+          productTkId: toNullableText(item.productTkId),
+          productSkuId: toNullableText(item.productSkuId),
+          productSkuName: toNullableText(item.productSkuName),
+          productName: toNullableText(item.productName),
+          quantity: toNullableInteger(item.quantity),
+          unitPurchasePrice: toNullableDecimal(item.unitPurchasePrice),
+          unitSalePrice: toNullableDecimal(item.unitSalePrice),
+          unitWeightG: toNullableDecimal(item.unitWeightG),
+          unitSizeText: toNullableText(item.unitSizeText)
+        })) : null
       };
     }
 
@@ -306,16 +425,25 @@ const OrderTrackerProviderFirestore = (function () {
       const appName = `tk-orders-${next.projectId}`;
       app = window.firebase.apps.find(item => item.name === appName) || window.firebase.initializeApp(next.config, appName);
       db = app.firestore();
-      if (typeof db.settings === 'function') {
-        db.settings({ ignoreUndefinedProperties: true });
-      }
-
-      if (typeof db.enablePersistence === 'function') {
-        try {
-          await db.enablePersistence({ synchronizeTabs: true });
-        } catch (error) {
-          // 多标签页或浏览器限制下允许继续工作，直接退回无持久化会话。
+      if (!app.__tkOrdersFirestoreConfigured) {
+        if (typeof db.settings === 'function') {
+          try {
+            db.settings({ ignoreUndefinedProperties: true });
+          } catch (error) {
+            const message = String(error?.message || '');
+            if (!/settings can no longer be changed|already been started/i.test(message)) throw error;
+          }
         }
+
+        if (typeof db.enablePersistence === 'function') {
+          try {
+            await db.enablePersistence({ synchronizeTabs: true });
+          } catch (error) {
+            // 多标签页或浏览器限制下允许继续工作，直接退回无持久化会话。
+          }
+        }
+
+        app.__tkOrdersFirestoreConfigured = true;
       }
 
       state.firestoreConfigText = next.configText;

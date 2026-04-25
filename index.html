@@ -5,43 +5,61 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>TK 电商工具箱</title>
-  <meta name="description" content="TikTok Shop 日本跨境店工具箱：利润计算器 + 订单跟踪器。" />
+  <meta name="description" content="TikTok Shop 日本跨境店工具箱：利润计算器 + 商品管理 + 订单管理。" />
+  <link rel="icon" type="image/png" sizes="500x500" href="logo.png" />
+  <link rel="apple-touch-icon" href="logo.png" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 
 <body>
   <div class="wrap">
 
-    <header>
-      <div>
-        <h1>TK 电商工具箱 <span id="module-title" style="opacity:.4">/ 利润计算器</span></h1>
-        <div class="sub" id="module-sub">TikTok Shop 日本跨境店 · 定价旧 / 定价新 / 利润复盘</div>
+    <header class="app-header">
+      <div class="app-brand">
+        <h1>
+          <img src="logo.png" alt="TK 电商工具箱 Logo" class="app-logo" />
+          <span>TK 电商工具箱</span>
+        </h1>
       </div>
-      <nav class="modules" aria-label="模块导航">
-        <a href="#calc" data-view="calc" class="active">利润计算器</a>
-        <a href="#orders" data-view="orders">订单跟踪器</a>
-        <a href="#" title="后续模块">更多 ·</a>
-      </nav>
+      <div class="app-header-side">
+        <nav class="modules" aria-label="模块导航">
+          <a href="#calc" data-view="calc" class="active">利润计算器</a>
+          <a href="#products" data-view="products">商品管理</a>
+          <a href="#orders" data-view="orders">订单管理</a>
+        </nav>
+        <a href="docs/user-guide.html" target="_blank" rel="noopener" class="app-doc-link">使用文档</a>
+      </div>
     </header>
 
     <!-- ============================================================
        VIEW 1 · 利润计算器
        ============================================================ -->
     <div id="view-calc" class="view active">
-      <div class="calc-toolbar">
-        <div class="calc-tabbar">
-          <div class="calc-tabs" role="tablist" aria-label="利润计算模式">
-            <button type="button" class="calc-tab" data-calc-tab="pricing">定价旧</button>
-            <button type="button" class="calc-tab active" data-calc-tab="pricingNew">定价新</button>
-            <button type="button" class="calc-tab" data-calc-tab="review">利润复盘</button>
+      <div class="module-hero page-hero page-hero-calc">
+        <div class="module-hero-copy">
+          <div class="module-hero-title-row">
+            <h2>利润计算器</h2>
+            <div class="module-kicker">定价 / 汇率 / 海外运费</div>
           </div>
-          <button id="calc-help-btn" type="button" class="calc-help-icon" aria-controls="calc-help-modal"
-            aria-haspopup="dialog" aria-label="模式说明" title="模式说明">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6.5 4.5h8a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2h-9a2 2 0 0 0-2 2v-11a3 3 0 0 1 2-3Z" />
-              <path d="M8.5 8.25h6.5M8.5 11.25h6.5M8.5 14.25h4.5" />
-            </svg>
-          </button>
+          <p>根据各项参数统一测算售价、利润，以及确定售价复盘实际利润</p>
+        </div>
+      </div>
+      <div class="calc-toolbar">
+        <div class="calc-subnav">
+          <div class="calc-tabbar">
+            <div class="calc-tabs" role="tablist" aria-label="利润计算模式">
+              <button type="button" class="calc-tab" data-calc-tab="pricing">定价旧</button>
+              <button type="button" class="calc-tab active" data-calc-tab="pricingNew">定价新</button>
+              <button type="button" class="calc-tab" data-calc-tab="review">利润复盘</button>
+            </div>
+            <button id="calc-help-btn" type="button" class="calc-help-icon" aria-controls="calc-help-modal"
+              aria-haspopup="dialog" aria-label="模式说明" title="模式说明">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6.5 4.5h8a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2h-9a2 2 0 0 0-2 2v-11a3 3 0 0 1 2-3Z" />
+                <path d="M8.5 8.25h6.5M8.5 11.25h6.5M8.5 14.25h4.5" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -650,122 +668,25 @@
     </div>
 
     <!-- ============================================================
-       VIEW 2 · 订单跟踪器（Gist / Firestore）
+       VIEW 2 · 订单管理
        ============================================================ -->
     <div id="view-orders" class="view">
-
-      <!-- (a) 首次进入 / 未配置远端时显示 -->
+      <div class="module-hero page-hero page-hero-orders">
+        <div class="module-hero-copy">
+          <div class="module-hero-title-row">
+            <h2>订单管理</h2>
+            <div class="module-kicker">采购 / 物流 / 入仓进度</div>
+          </div>
+          <p>集中管理采购、物流和入仓进度，并汇总销售额、支出与预估利润。</p>
+        </div>
+      </div>
       <section class="card ot-setup" id="ot-setup">
-        <h2 id="ot-setup-title">选择订单存储方式</h2>
-        <p class="ot-setup-intro">
-          为了避免数据丢失并支持跨设备恢复，必须选择一个云端存储。Gist 模式会同步到你自己的 GitHub 私有 Gist；Firestore 模式会同步到你自己的 Firebase 项目，并使用 Firestore
-          自带的离线缓存。
-        </p>
-
-        <div class="ot-storage-modes" id="ot-storage-modes">
-          <label class="ot-storage-mode">
-            <input type="radio" name="ot-storage-mode" value="gist">
-            <span class="ot-storage-mode-title">GitHub Gist</span>
-            <span class="ot-storage-mode-copy">低门槛接入，适合轻量同步</span>
-          </label>
-          <label class="ot-storage-mode active">
-            <input type="radio" name="ot-storage-mode" value="firestore" checked>
-            <span class="ot-storage-mode-title">Firebase Firestore</span>
-            <span class="ot-storage-mode-copy">需要自行配置，适合数据较多、长期使用</span>
-          </label>
-        </div>
-
-        <div id="ot-gist-copy" class="ot-setup-copy-block">
-          <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-            Gist 模式会在本地缓存之外，把订单同步到你自己 GitHub 账号下的私有 Gist，别人看不到，也方便跨设备同步。首次使用需要生成一个仅带 <code>gist</code> 权限的 Token。
-          </p>
-          <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-            如果你以后要在新浏览器或新设备连回原来的旧数据，请把 <code>Token</code> 和 <code>Gist ID</code> 一起保存好；私有 Gist 需要两者同时具备，才能重新连接到同一份数据。
-          </p>
-          <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-            订单会按账号拆分同步到 Gist。通常各自只操作自己的账号时，互相不会影响；同账号下如果改的是不同订单，会自动合并；如果两边同时改了同一条订单，同步时会让你选保留本地还是云端。
-          </p>
-          <ol>
-            <li>打开 <a
-                href="https://github.com/settings/tokens/new?description=TK%20Toolbox%20Order%20Tracker&scopes=gist"
-                target="_blank">GitHub Token 生成页</a>（已预填权限）</li>
-            <li>确认只勾选 <code>gist</code>，有效期按需选（建议 90 天及以上）</li>
-            <li>点底部 <code>Generate token</code>，复制 <code>ghp_</code> 开头的 Token 粘贴到下方</li>
-            <li>首次会自动创建私有 Gist；如果你已经有数据 Gist，把它的 ID 填到下方，并把 Token 和 Gist ID 一起保存好</li>
-          </ol>
-        </div>
-
-        <div id="ot-firestore-copy" class="ot-setup-copy-block" style="display:none">
-          <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-            Firestore 模式下，订单数据保存在你自己的 Firebase 项目里。你只需要准备好自己项目的 <code>firebaseConfig</code>。
-          </p>
-          <p style="color:var(--muted);margin:0 0 14px;line-height:1.7">
-            连接后会直接使用 Firestore 自带的离线缓存，换设备时只要填同一个项目的 <code>firebaseConfig</code> 即可恢复数据。
-          </p>
-          <div class="ot-setup-guide" aria-label="Firestore 三步接入">
-            <div class="ot-setup-guide-title">Firestore 三步接入</div>
-            <ol class="ot-setup-guide-list">
-              <li>
-                <strong>新建项目，添加网页应用</strong>
-                <span>打开 <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">Firebase
-                    Console</a> 新建项目，添加应用时选 <code>网页</code>，不用勾 Hosting。</span>
-              </li>
-              <li>
-                <strong>创建 Firestore 数据库并发布规则</strong>
-                <span>进入刚刚创建的项目，在左侧边栏中选择 <code>数据库与存储</code> ,选择 <code>Firestore</code> 按钮创建数据库；位置建议选
-                  <code>区域级 - HongKong</code>，模式选 <code>生产模式</code>。建好后到 <code>Rules</code> 页面，粘贴下方按钮复制出来的规则并发布。</span>
-              </li>
-              <li>
-                <strong>粘贴 firebaseConfig 回来连接</strong>
-                <span>把控制台生成的整段 <code>firebaseConfig</code> 粘到下方；有旧 Gist 数据就点迁移，没有就直接连接。</span>
-              </li>
-            </ol>
-            <div class="ot-setup-guide-actions">
-              <button id="ot-open-firebase-console" type="button" class="btn sm">打开 Firebase Console</button>
-              <button id="ot-copy-firestore-rules" type="button" class="btn sm"
-                data-rules-url="docs/firebase/order-tracker-firestore.rules">复制 Firestore 规则</button>
-            </div>
-            <div class="ot-setup-guide-note">
-              团队成员可以共用同一个 Firebase 项目，只要使用同一套 <code>firebaseConfig</code> 即可；当前方案不做成员级权限隔离，更适合彼此信任的小团队或自用场景。
-            </div>
+        <div class="ot-empty">
+          <div style="font-size:15px;margin-bottom:6px">尚未连接 Firebase 数据源</div>
+          <div style="font-size:12.5px;margin-bottom:14px">
+            订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。
           </div>
-        </div>
-
-        <div id="ot-gist-fields">
-          <div class="row" style="margin-top:6px">
-            <div class="field full" style="grid-column:1/-1">
-              <label for="ot-token">Personal Access Token</label>
-              <input id="ot-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
-            </div>
-          </div>
-          <div class="row" style="margin-top:12px">
-            <div class="field full" style="grid-column:1/-1">
-              <label for="ot-gistid">已有 Gist ID（需配合 Token 使用；不填会自动创建新的）</label>
-              <input id="ot-gistid" type="text" placeholder="例如 a1b2c3d4e5f6…" autocomplete="off">
-            </div>
-          </div>
-        </div>
-
-        <div id="ot-firestore-fields" style="display:none">
-          <div class="row" style="margin-top:6px">
-            <div class="field full" style="grid-column:1/-1">
-              <label for="ot-firestore-config">Firebase config</label>
-              <textarea id="ot-firestore-config" rows="8" placeholder='{
-  "apiKey": "AIza...",
-  "authDomain": "your-project.firebaseapp.com",
-  "projectId": "your-project-id",
-  "appId": "1:1234567890:web:abcdef"
-}' autocomplete="off"></textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="ot-setup-primary-actions">
-          <button id="ot-connect" class="btn primary">连接并开始使用</button>
-        </div>
-        <div id="ot-firestore-migration-entry" class="ot-setup-secondary-action" style="display:none">
-        <div class="ot-setup-secondary-copy">已有 GitHub Gist 数据？迁移源始终是 Gist 云端，不会读取当前 Firestore 里的数据；如果你后来只在 Firestore 里新增过订单，迁到新库时不会自动带过去。</div>
-          <button id="ot-migrate-from-gist" type="button" class="btn sm">从 GitHub Gist 迁移</button>
+          <button id="ot-open-connection" class="btn primary">连接 Firebase</button>
         </div>
       </section>
 
@@ -774,9 +695,8 @@
         <div id="ot-header-status-row" class="ot-header-row ot-header-status-row">
           <div class="ot-bar">
             <div class="left">
-              <span id="ot-user">—</span>
-              <span style="opacity:.5">·</span>
-              <span class="sync" id="ot-sync">就绪</span>
+              <span class="workspace-chip workspace-chip-connection" id="ot-user">未连接</span>
+              <span class="sync workspace-chip workspace-chip-sync" id="ot-sync">就绪</span>
               <button id="ot-refresh" type="button" class="calc-help-icon ot-refresh-inline" aria-label="刷新订单数据"
                 title="刷新订单数据">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -798,8 +718,6 @@
             </div>
             <div class="right">
               <button id="ot-export" class="btn sm">导出 CSV</button>
-              <button id="ot-copy-gist" class="btn sm">复制 Gist ID</button>
-              <button id="ot-logout" class="btn sm danger">退出</button>
             </div>
           </div>
         </div>
@@ -829,26 +747,90 @@
 
     </div>
 
+    <!-- ============================================================
+       VIEW 3 · 商品管理
+       ============================================================ -->
+    <div id="view-products" class="view">
+      <div class="module-hero page-hero page-hero-products">
+        <div class="module-hero-copy">
+          <div class="module-hero-title-row">
+            <h2>商品管理</h2>
+            <div class="module-kicker">商品资料 / 预估运费 / 采购链接</div>
+          </div>
+          <p>沉淀商品资料、预估运费和采购链接，录一次基础资料，后续订单直接复用。</p>
+        </div>
+      </div>
+      <section class="card ot-setup" id="pl-disconnected">
+        <div class="ot-empty">
+          <div style="font-size:15px;margin-bottom:6px">尚未连接 Firebase 数据源</div>
+          <div style="font-size:12.5px;margin-bottom:14px">
+            商品管理和订单管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。
+          </div>
+          <button id="pl-open-connection" class="btn primary">连接 Firebase</button>
+        </div>
+      </section>
+
+      <section class="card" id="pl-main" style="display:none">
+        <div class="ot-header-row">
+          <div class="ot-bar">
+            <div class="left">
+              <span class="workspace-chip workspace-chip-connection" id="pl-user">未连接</span>
+              <span class="sync workspace-chip workspace-chip-sync" id="pl-sync">未连接</span>
+              <button id="pl-refresh" type="button" class="calc-help-icon ot-refresh-inline" aria-label="刷新商品管理数据"
+                title="刷新商品管理数据">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M18.5 8.5A7 7 0 0 0 7.2 6.2" />
+                  <path d="M18.5 8.5V4.8" />
+                  <path d="M18.5 8.5H14.8" />
+                  <path d="M5.5 15.5A7 7 0 0 0 16.8 17.8" />
+                  <path d="M5.5 15.5v3.7" />
+                  <path d="M5.5 15.5h3.7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="ot-header-row ot-header-accounts-row">
+          <div class="ot-acc-tabs ot-acc-shell" id="pl-acc-tabs">
+            <div class="ot-acc-tabs-all" id="pl-acc-tabs-all"></div>
+            <div class="ot-acc-tabs-scroll" id="pl-acc-tabs-scroll"></div>
+            <div class="ot-acc-actions" id="pl-acc-actions">
+              <button id="pl-add" class="btn primary">+ 新增商品</button>
+            </div>
+          </div>
+        </div>
+        <div id="pl-toolbar"></div>
+        <div class="ot-table-wrap">
+          <div id="pl-table-container"></div>
+        </div>
+        <div id="pl-table-footer-toolbar-container"></div>
+      </section>
+    </div>
+
     <footer>
-      本地参数保存在浏览器（localStorage），订单可选同步到你自己的 GitHub Gist 或 Firebase Firestore；Firestore 模式同时使用 Firestore 自带的离线缓存 · TK
-      电商工具箱 © <span id="yr"></span>
+      本地参数保存在浏览器（localStorage），订单与商品资料同步到你自己的 Firebase Firestore，并使用 Firestore 自带的离线缓存 · TK 电商工具箱 © <span
+        id="yr"></span>
     </footer>
   </div>
 
-  <!-- =============== 订单跟踪器 · 新增/编辑 弹窗 =============== -->
+  <!-- =============== 订单管理 · 新增/编辑 弹窗 =============== -->
   <div id="ot-modal" class="modal-mask">
-    <div class="modal">
+    <div class="modal modal-order">
       <h3 id="ot-modal-title">新增订单</h3>
       <form id="ot-form" autocomplete="off">
         <div class="row">
-          <div class="field full" style="grid-column:1/-1">
-            <label>账号</label>
+          <div class="field">
+            <label>账号 *</label>
             <select name="账号" id="ot-acc-select" required>
               <!-- 动态填充 -->
             </select>
           </div>
+          <div class="field">
+            <label>订单号 *</label>
+            <input type="text" name="订单号" required>
+          </div>
         </div>
-        <div class="row" style="margin-top:12px">
+        <div class="row triple">
           <div class="field">
             <label>下单时间 *</label>
             <input type="date" name="下单时间" required>
@@ -857,77 +839,61 @@
             <label>采购日期</label>
             <input type="date" name="采购日期">
           </div>
-        </div>
-        <div class="row" style="margin-top:12px">
           <div class="field">
-            <label>最晚到仓时间 <span class="kbd">自动 = 下单时间+6天</span></label>
+            <label>最晚到仓时间 <span class="kbd">自动</span></label>
             <input type="date" name="最晚到仓时间" readonly>
           </div>
+        </div>
+
+        <section class="ot-item-block">
+          <div class="ot-item-block-head">
+            <div>
+              <h4>订单明细</h4>
+              <div class="ot-item-block-copy">一个订单可以包含多个 SKU；同一 SKU 直接通过数量表示多件。</div>
+            </div>
+            <button type="button" class="btn" id="ot-add-item-btn">+ 添加明细</button>
+          </div>
+          <div class="ot-item-list" id="ot-item-list"></div>
+          <input type="hidden" name="商品TK ID" id="ot-product-select">
+          <input type="hidden" name="商品SKU ID" id="ot-sku-select">
+          <input type="hidden" name="商品SKU名称" id="ot-sku-name">
+          <input type="hidden" name="产品名称" id="ot-product-name-hidden">
+          <input type="hidden" name="数量" id="ot-total-quantity-hidden">
+        </section>
+
+        <div class="row triple">
           <div class="field">
-            <label>订单预警 <span class="kbd">自动</span></label>
-            <input type="text" name="订单预警" readonly>
+            <label>总件数</label>
+            <input type="text" id="ot-total-quantity" readonly>
+          </div>
+          <div class="field">
+            <label>总重量(g) <span class="ot-inline-hint" id="ot-weight-hint"></span></label>
+            <input type="text" name="重量" placeholder="例如 500">
+          </div>
+          <div class="field">
+            <label>总尺寸(cm) <span class="ot-inline-hint">多个订单明细时请自行调整尺寸</span></label>
+            <input type="text" name="尺寸" placeholder="例如 20×15×10">
           </div>
         </div>
-        <div class="row" style="margin-top:12px">
+        <div class="row quad">
           <div class="field">
-            <label>订单号</label>
-            <input type="text" name="订单号">
+            <label>总售价（日元）</label>
+            <input type="number" id="ot-total-sale" name="售价" min="0" step="0.01" placeholder="请输入订单总售价">
           </div>
           <div class="field">
-            <label>产品名称</label>
-            <input type="text" name="产品名称">
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <div class="field">
-            <label>数量</label>
-            <input type="number" name="数量" min="0" step="1">
+            <label>总采购额（元）</label>
+            <input type="number" id="ot-total-purchase" name="采购价格" min="0" step="0.01" placeholder="请输入订单总采购额">
           </div>
           <div class="field">
-            <label>采购价格（元）</label>
-            <input type="number" name="采购价格" min="0" step="0.01">
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <div class="field">
-            <label>售价（日元）</label>
-            <input type="number" name="售价" min="0" step="0.01">
-          </div>
-          <div class="field">
-            <label>预估运费（元）</label>
+            <label>预估总海外运费（元）</label>
             <input type="number" name="预估运费" min="0" step="0.01">
           </div>
-        </div>
-        <div class="row" style="margin-top:12px">
           <div class="field">
             <label>预估利润（人民币） <span class="kbd">自动</span></label>
             <input type="number" name="预估利润" step="0.01" readonly>
           </div>
-          <div class="field">
-            <label>重量(g)</label>
-            <input type="text" name="重量" placeholder="例如 500">
-          </div>
         </div>
-        <div class="row" style="margin-top:12px">
-          <div class="field">
-            <label>尺寸(cm)</label>
-            <input type="text" name="尺寸" placeholder="例如 20×15×10">
-          </div>
-          <div class="field">
-            <label>订单状态</label>
-            <select name="订单状态">
-              <option value="">- 请选择 -</option>
-              <option>未采购</option>
-              <option>已采购</option>
-              <option>在途</option>
-              <option>已入仓</option>
-              <option>已送达</option>
-              <option>已完成</option>
-              <option>订单取消</option>
-            </select>
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px">
+        <div class="row quad">
           <div class="field">
             <label>快递公司</label>
             <select name="快递公司">
@@ -947,6 +913,23 @@
             <label>快递单号</label>
             <input type="text" name="快递单号">
           </div>
+          <div class="field">
+            <label>订单状态</label>
+            <select name="订单状态">
+              <option value="">- 请选择 -</option>
+              <option>未采购</option>
+              <option>已采购</option>
+              <option>在途</option>
+              <option>已入仓</option>
+              <option>已送达</option>
+              <option>已完成</option>
+              <option>订单取消</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>订单预警 <span class="kbd">自动</span></label>
+            <input type="text" name="订单预警" readonly>
+          </div>
         </div>
         <div class="actions">
           <button type="button" id="ot-cancel" class="btn">取消</button>
@@ -956,7 +939,7 @@
     </div>
   </div>
 
-  <!-- =============== 订单跟踪器 · 新增账号短弹窗 =============== -->
+  <!-- =============== 订单管理 · 新增账号短弹窗 =============== -->
   <div id="ot-add-acc-modal" class="modal-mask">
     <div class="modal" style="max-width:400px">
       <h3>添加新账号</h3>
@@ -975,16 +958,108 @@
     </div>
   </div>
 
-  <div id="ot-logout-modal" class="modal-mask" role="dialog" aria-modal="true" aria-labelledby="ot-logout-title">
-    <div class="modal" style="max-width:420px">
-      <h3 id="ot-logout-title">确认退出</h3>
-      <div class="modal-copy">
-        退出后需要重新选择存储方式并重新连接。当前浏览器里的本地缓存不会删除；如果你用了 Gist 或 Firestore，云端数据仍然保存在你自己的远端存储里。
-      </div>
-      <div class="actions">
-        <button type="button" id="ot-logout-cancel" class="btn">取消</button>
-        <button type="button" id="ot-logout-confirm" class="btn danger">退出</button>
-      </div>
+  <div id="pl-modal" class="modal-mask">
+    <div class="modal">
+      <h3 id="pl-modal-title">新增商品</h3>
+      <form id="pl-form" autocomplete="off">
+        <div class="row">
+          <div class="field">
+            <label>账号 *</label>
+            <select name="accountName" id="pl-account-select" required>
+              <option value="">- 请选择 -</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>TK ID *</label>
+            <input type="text" name="tkId" required>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field full" style="grid-column:1/-1">
+            <label>商品名称</label>
+            <input type="text" name="name">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field">
+            <label>1688 链接</label>
+            <input type="url" name="link1688" placeholder="https://detail.1688.com/...">
+          </div>
+          <div class="field">
+            <label>图片 URL</label>
+            <input type="url" name="imageUrl" placeholder="https://...">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div class="field full" style="grid-column:1/-1">
+            <label>货物类型</label>
+            <select name="cargoType">
+              <option value="general">普货</option>
+              <option value="special">特货</option>
+            </select>
+          </div>
+        </div>
+        <div class="pl-sku-panel">
+          <div class="pl-sku-header">
+            <div>
+              <div class="pl-sku-title">SKU规格</div>
+              <div class="pl-sku-copy">先生成 SKU，再根据实际情况统一设置或按分组调整物流参数。</div>
+            </div>
+          </div>
+          <div class="pl-sku-actions">
+            <button type="button" class="btn sm" id="pl-add-sku">+ 新增单个SKU</button>
+            <button type="button" class="btn sm" id="pl-open-sku-batch">+ 新增多个SKU</button>
+          </div>
+          <div class="pl-sku-batch-tools" id="pl-sku-batch-tools">
+            <div class="pl-sku-batch-block">
+              <div class="pl-sku-batch-title">批量生成多个 SKU</div>
+              <div class="pl-sku-batch-copy">按颜色、尺寸等规格值自动组合生成，已有 SKU 不会重复追加。</div>
+              <div class="row pl-sku-batch-row">
+                <div class="field">
+                  <label>规格维度 1</label>
+                  <input type="text" id="pl-batch-axis-a" placeholder="例如 白、黑、蓝">
+                </div>
+                <div class="field">
+                  <label>规格维度 2</label>
+                  <input type="text" id="pl-batch-axis-b" placeholder="例如 S、M、L">
+                </div>
+              </div>
+              <div class="pl-sku-batch-actions">
+                <button type="button" class="btn sm accent-soft" id="pl-generate-skus">生成多个 SKU</button>
+              </div>
+            </div>
+          </div>
+          <div class="pl-sku-parameter-panel">
+            <div class="pl-sku-batch-title">参数调整</div>
+            <div class="pl-sku-batch-copy">留空匹配关键词就应用到全部 SKU；填写关键词则只更新命中的 SKU。</div>
+            <div class="pl-sku-setup-block pl-sku-setup-block-single">
+              <div class="pl-sku-setup-surface">
+                <div class="row pl-sku-batch-row">
+                  <div class="field full" style="grid-column:1/-1">
+                    <label>匹配关键词（可选）</label>
+                    <input type="text" id="pl-batch-match" placeholder="例如 S 或 白 / S；留空则应用到全部 SKU">
+                  </div>
+                </div>
+                <div class="row pl-sku-batch-row" style="margin-top:10px">
+                  <div class="field">
+                    <label>重量(g)</label>
+                    <input type="number" min="0" step="1" id="pl-batch-weight" placeholder="例如 320">
+                  </div>
+                  <div class="field">
+                    <label>尺寸(cm)</label>
+                    <input type="text" id="pl-batch-size" placeholder="例如 20×15×10">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pl-sku-list" id="pl-sku-list"></div>
+        </div>
+        <div class="actions">
+          <button type="button" id="pl-cancel" class="btn">取消</button>
+          <button type="submit" class="btn primary">保存</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -1008,28 +1083,52 @@
     </div>
   </div>
 
-  <div id="ot-migrate-gist-modal" class="modal-mask" role="dialog" aria-modal="true"
-    aria-labelledby="ot-migrate-gist-title">
-    <div class="modal" style="max-width:480px">
-      <h3 id="ot-migrate-gist-title">从 GitHub Gist 迁移</h3>
+  <div id="app-firestore-modal" class="modal-mask" role="dialog" aria-modal="true"
+    aria-labelledby="app-firestore-title">
+    <div class="modal" style="max-width:560px">
+      <h3 id="app-firestore-title">连接 Firebase Firestore</h3>
       <div class="modal-copy">
-        如果 Gist 里已有云端数据，会迁移到当前填写的 Firestore 项目；如果没有数据，就直接连接 Firestore。迁移读取的是 GitHub Gist 里已经同步到云端的数据，不包含其他浏览器里尚未同步的本地改动，也不会读取你当前已连接 Firestore 里的订单。目标 Firestore 如需迁移数据，应保持为空。
+        订单管理和商品管理共用同一个 Firestore 项目。添加应用时选 <code>网页</code>，不用勾 Hosting；创建数据库时选 <code>区域级</code> 和
+        <code>生产模式</code>。如果这个项目之前只发布过旧规则，请重新复制并发布最新 Firestore 规则，把
+        <code>orders</code>、<code>order_accounts</code>、<code>sync_state</code> 和 <code>products</code> 一并放行。
       </div>
-      <div class="row" style="margin-top:16px">
+      <div class="row" style="margin-top:14px">
         <div class="field full" style="grid-column:1/-1">
-          <label for="ot-migrate-gist-token">GitHub Personal Access Token</label>
-          <input id="ot-migrate-gist-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+          <label for="app-firestore-config">Firebase config</label>
+          <textarea id="app-firestore-config" rows="8" placeholder='{
+  "apiKey": "AIza...",
+  "authDomain": "your-project.firebaseapp.com",
+  "projectId": "your-project-id",
+  "appId": "1:1234567890:web:abcdef"
+}' autocomplete="off"></textarea>
         </div>
       </div>
-      <div class="row" style="margin-top:12px">
-        <div class="field full" style="grid-column:1/-1">
-          <label for="ot-migrate-gist-id">Gist ID</label>
-          <input id="ot-migrate-gist-id" type="text" placeholder="例如 a1b2c3d4e5f6…" autocomplete="off">
-        </div>
+      <div class="ot-setup-guide-actions" style="margin-top:10px">
+        <button id="app-open-firebase-console" type="button" class="btn sm">打开 Firebase Console</button>
+        <button id="app-copy-firestore-rules" type="button" class="btn sm"
+          data-rules-url="docs/firebase/order-tracker-firestore.rules">复制 Firestore 规则</button>
       </div>
       <div class="actions">
-        <button type="button" id="ot-migrate-gist-cancel" class="btn">取消</button>
-        <button type="button" id="ot-migrate-gist-confirm" class="btn primary">继续</button>
+        <button type="button" id="app-close-firestore-modal" class="btn">取消</button>
+        <button type="button" id="app-clear-firestore-config" class="btn danger">断开连接</button>
+        <button type="button" id="app-save-firestore-config" class="btn primary">连接并开始使用</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-firestore-rules-modal" class="modal-mask" role="dialog" aria-modal="true"
+    aria-labelledby="app-firestore-rules-title">
+    <div class="modal" style="max-width:520px">
+      <h3 id="app-firestore-rules-title">需要更新 Firestore 规则</h3>
+      <div class="modal-copy" id="app-firestore-rules-copy">
+        当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则。
+      </div>
+      <div class="ot-setup-guide-actions" style="margin-top:10px">
+        <button id="app-rules-open-firebase-console" type="button" class="btn sm">打开 Firebase Console</button>
+        <button id="app-rules-copy-firestore-rules" type="button" class="btn sm">复制 Firestore 规则</button>
+      </div>
+      <div class="actions">
+        <button type="button" id="app-close-firestore-rules-modal" class="btn primary">我知道了</button>
       </div>
     </div>
   </div>
@@ -1041,27 +1140,20 @@
       <div class="calc-help-copy">
         <div class="calc-help-item">
           <div class="k">本地优先</div>
-          <div class="v">Gist 模式下，订单会先写入当前浏览器本地数据库（IndexedDB），随后再同步到你自己的 GitHub Gist；Firestore 模式下，则直接使用 Firestore
-            自带的离线缓存与云端同步。</div>
+          <div class="v">订单管理和商品管理都会先使用 Firestore 自带的离线缓存，再同步到你自己的 Firebase Firestore 项目。</div>
         </div>
         <div class="calc-help-item">
           <div class="k">可选远端</div>
-          <div class="v">Gist 模式会同步到你自己的 GitHub 私有 Gist；Firestore 模式会同步到你自己的 Firebase Firestore。工具本身不会把订单存到我的数据库里。</div>
+          <div class="v">当前只支持 Firebase Firestore。工具本身不会把订单或商品资料存到我的数据库里。</div>
         </div>
         <div class="calc-help-item">
           <div class="k">恢复方式</div>
-          <div class="v">如果你使用 Gist，请保存好 Token 和 Gist ID；如果你使用 Firestore，请保存好自己的
-            <code>firebaseConfig</code>。换浏览器或换设备后，用同一套远端配置即可恢复。
+          <div class="v">请保存好自己的 <code>firebaseConfig</code>。换浏览器或换设备后，用同一套远端配置即可恢复。
           </div>
         </div>
         <div class="calc-help-item">
           <div class="k">团队共用</div>
           <div class="v">同一个 Firebase 项目可以给团队成员共用，但当前方案没有成员级权限隔离；拿到这套 <code>firebaseConfig</code> 的成员都能读写全部订单。</div>
-        </div>
-        <div class="calc-help-item">
-          <div class="k">迁移方式</div>
-          <div class="v">如果你之前一直在用 Gist，可以在 Firestore 配置区里点“从 GitHub Gist 迁移”；系统会直接读取 Gist 云端数据，有数据就写入空的 Firestore
-            项目，没有数据就直接连接当前 Firestore。</div>
         </div>
       </div>
       <div class="actions">
@@ -1072,9 +1164,13 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- JS 模块（defer 保证顺序加载：路由 → 利润计算器 → 订单跟踪器） -->
+  <!-- JS 模块（defer 保证顺序加载：路由 → 利润计算器 → 商品管理 / 订单管理） -->
   <script src="js/app.js" defer></script>
   <script src="js/global-settings.js" defer></script>
+  <script src="js/table-controls.js" defer></script>
+  <script src="js/searchable-select.js" defer></script>
+  <script src="js/shipping-core.js" defer></script>
+  <script src="js/firestore-connection.js" defer></script>
   <script src="js/calc/shared.js" defer></script>
   <script src="js/calc/shipping.js" defer></script>
   <script src="js/calc/legacy.js" defer></script>
@@ -1082,7 +1178,6 @@
   <script src="js/calc/index.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore-compat.js" defer></script>
-  <script src="js/orders/provider-gist.js" defer></script>
   <script src="js/orders/provider-firestore.js" defer></script>
   <script src="js/orders/firestore-rules.js" defer></script>
   <script src="js/orders/table.js" defer></script>
@@ -1093,6 +1188,10 @@
   <script src="js/orders/session.js" defer></script>
   <script src="js/orders/shared.js" defer></script>
   <script src="js/orders/index.js" defer></script>
+  <script src="js/products/provider-firestore.js" defer></script>
+  <script src="js/products/table.js" defer></script>
+  <script src="js/products/crud.js" defer></script>
+  <script src="js/products/index.js" defer></script>
 </body>
 
 </html>

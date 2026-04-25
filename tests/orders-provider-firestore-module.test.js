@@ -62,6 +62,36 @@ assert.match(
 
 assert.match(
   source,
+  /'商品TK ID': data\?\.productTkId \|\| ''[\s\S]*productTkId: toNullableText\(onlyItem\?\.productTkId \|\| order\?\.\['商品TK ID'\]\)/,
+  'Firestore provider 需要映射订单关联商品 TK ID'
+);
+
+assert.match(
+  source,
+  /'商品SKU ID': data\?\.productSkuId \|\| ''[\s\S]*'商品SKU名称': data\?\.productSkuName \|\| ''[\s\S]*productSkuId: toNullableText\(onlyItem\?\.productSkuId \|\| order\?\.\['商品SKU ID'\]\)[\s\S]*productSkuName: toNullableText\(onlyItem\?\.productSkuName \|\| order\?\.\['商品SKU名称'\]\)/,
+  'Firestore provider 需要映射订单关联 SKU 字段'
+);
+
+assert.match(
+  source,
+  /function normalizeOrderItems\(/,
+  'Firestore provider 需要支持订单明细 items 结构'
+);
+
+assert.match(
+  source,
+  /deriveOrderItemTotals[\s\S]*buildOrderItemsSummary/,
+  'Firestore provider 需要从 items 推导订单级汇总字段'
+);
+
+assert.match(
+  source,
+  /items: items\.length \? items\.map\(item => \(\{/,
+  'Firestore provider 写回 Firestore 时需要保存订单明细 items'
+);
+
+assert.match(
+  source,
   /query\.get\(\{ source: 'server' \}\)[\s\S]*return query\.get\(\)/,
   'Firestore provider 拉取数据时需要优先读取服务器，再回退到本地缓存'
 );
@@ -131,4 +161,19 @@ assert.match(
   'index.html 需要在订单模块中加载 Firestore provider'
 );
 
-console.log('orders firestore provider contract ok');
+const configText = `const firebaseConfig = {
+  apiKey: "AIza",
+  authDomain: "demo.firebaseapp.com",
+  projectId: "demo",
+  appId: "1:web:demo"
+};`;
+
+provider.init({ configText })
+  .then(() => provider.init({ configText }))
+  .then(() => {
+    console.log('orders firestore provider contract ok');
+  })
+  .catch(error => {
+    console.error(error);
+    process.exit(1);
+  });

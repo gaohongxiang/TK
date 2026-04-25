@@ -3,6 +3,7 @@
  * ============================================================ */
 const OrderTableView = (function () {
   let helpDismissBound = false;
+  const tableControls = typeof TKTableControls !== 'undefined' ? TKTableControls : null;
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => (
@@ -138,6 +139,13 @@ const OrderTableView = (function () {
     return 'neutral';
   }
 
+  function getProfitCellToneClass(value) {
+    if (!Number.isFinite(Number(value))) return 'neutral';
+    if (Number(value) > 0) return 'profit-positive';
+    if (Number(value) < 0) return 'profit-negative';
+    return 'neutral';
+  }
+
   function deriveDisplayedOrders({ orders = [], activeAccount = '__all__', searchQuery = '', sortOrder = 'asc' } = {}) {
     const list = Array.isArray(orders) ? orders : [];
     const isAll = activeAccount === '__all__';
@@ -248,6 +256,7 @@ const OrderTableView = (function () {
   }
 
   function clampPage(currentPage, pageSize, totalItems) {
+    if (tableControls?.clampPage) return tableControls.clampPage(currentPage, pageSize, totalItems);
     const safePageSize = Math.max(1, Number(pageSize) || 50);
     const totalPages = Math.max(1, Math.ceil((totalItems || 0) / safePageSize));
     const nextCurrentPage = Math.min(Math.max(1, Number(currentPage) || 1), totalPages);
@@ -364,79 +373,35 @@ const OrderTableView = (function () {
   }
 
   function buildTableToolbarMarkup({ pageSize, currentPage, totalPages, searchQuery, pageSizeOptions, includeSearch = false, disabled = false }) {
-    const searchMarkup = includeSearch ? `
-      <div class="ot-table-toolbar-left">
-        <label class="ot-table-search">
-          <span class="ot-table-search-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="6"></circle>
-              <path d="M16 16L20 20"></path>
-            </svg>
-          </span>
-          <input id="ot-table-search-input" type="text" placeholder=" " value="${escapeHtml(searchQuery)}" autocomplete="off">
-          <span class="ot-table-search-hint">搜索下单时间 / 订单号 / 产品 / 快递</span>
-        </label>
-      </div>` : '';
-
-    const paginationMarkup = `
-      <div class="ot-table-pagination">
-        <label class="ot-page-size">
-          <span>每页</span>
-          <span class="ot-page-size-control">
-            <select id="${includeSearch ? 'ot-page-size' : 'ot-page-size-bottom'}">
-              ${(pageSizeOptions || []).map(size => `<option value="${size}" ${size === pageSize ? 'selected' : ''}>${size}</option>`).join('')}
-            </select>
-          </span>
-        </label>
-        <button class="btn sm" id="${includeSearch ? 'ot-page-prev' : 'ot-page-prev-bottom'}" ${disabled || currentPage <= 1 ? 'disabled' : ''}>上一页</button>
-        <span class="ot-page-indicator">${currentPage} / ${totalPages}</span>
-        <button class="btn sm" id="${includeSearch ? 'ot-page-next' : 'ot-page-next-bottom'}" ${disabled || currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
-      </div>`;
-
-    return `
-      <div class="ot-table-toolbar${includeSearch ? ' ot-sticky-controls' : ' ot-table-toolbar-bottom'}">
-        <div class="ot-sticky-controls-inner">
-          ${searchMarkup}
-          <div class="ot-table-toolbar-right">
-            ${paginationMarkup}
-          </div>
-        </div>
-      </div>`;
+    if (tableControls?.buildTableToolbarMarkup) {
+      return tableControls.buildTableToolbarMarkup({
+        prefix: 'ot',
+        pageSize,
+        currentPage,
+        totalPages,
+        searchQuery,
+        searchHint: '搜索下单时间 / 订单号 / 产品 / 快递',
+        pageSizeOptions,
+        includeSearch,
+        disabled
+      });
+    }
+    return '';
   }
 
   function bindTableToolbar(container, { totalPages, includeSearch = false, getSearchComposing, onSearchCompositionStart, onSearchCompositionEnd, onSearchChange, onPageSizeChange, onPageChange } = {}) {
-    if (!container) return;
-    const searchInput = includeSearch ? container.querySelector('#ot-table-search-input') : null;
-    if (searchInput) {
-      searchInput.addEventListener('compositionstart', () => {
-        if (typeof onSearchCompositionStart === 'function') onSearchCompositionStart();
-      });
-      searchInput.addEventListener('compositionend', () => {
-        if (typeof onSearchCompositionEnd === 'function') onSearchCompositionEnd(searchInput.value);
-      });
-      searchInput.addEventListener('input', event => {
-        if (event.isComposing || (typeof getSearchComposing === 'function' && getSearchComposing())) return;
-        if (typeof onSearchChange === 'function') onSearchChange(searchInput.value);
-      });
-    }
-    const pageSizeSelect = container.querySelector(includeSearch ? '#ot-page-size' : '#ot-page-size-bottom');
-    if (pageSizeSelect) {
-      pageSizeSelect.addEventListener('change', () => {
-        if (typeof onPageSizeChange === 'function') onPageSizeChange(pageSizeSelect.value);
-      });
-    }
-    const prevBtn = container.querySelector(includeSearch ? '#ot-page-prev' : '#ot-page-prev-bottom');
-    if (prevBtn) {
-      prevBtn.addEventListener('click', () => {
-        if (typeof onPageChange === 'function') onPageChange(-1, totalPages);
-      });
-    }
-    const nextBtn = container.querySelector(includeSearch ? '#ot-page-next' : '#ot-page-next-bottom');
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        if (typeof onPageChange === 'function') onPageChange(1, totalPages);
-      });
-    }
+    if (!tableControls?.bindTableToolbar) return;
+    tableControls.bindTableToolbar(container, {
+      prefix: 'ot',
+      totalPages,
+      includeSearch,
+      getSearchComposing,
+      onSearchCompositionStart,
+      onSearchCompositionEnd,
+      onSearchChange,
+      onPageSizeChange,
+      onPageChange
+    });
   }
 
   function buildHelpBubbleMarkup({ id, label, lines }) {
@@ -484,12 +449,12 @@ const OrderTableView = (function () {
         <th>订单号</th>
         <th>产品名称</th>
         <th>数量</th>
-        <th>售价(円)</th>
-        <th>采购价(¥)</th>
-        <th>预估运费(¥)</th>
-        <th>预估利润(¥)</th>
-        <th>重量</th>
-        <th>尺寸</th>
+        <th>总售价(円)</th>
+        <th>总采购额(¥)</th>
+        <th>预估总海外运费(¥)</th>
+        <th>预估总利润(¥)</th>
+        <th>总重量</th>
+        <th>总尺寸</th>
         <th>订单状态</th>
         <th>快递公司</th>
         <th>快递单号</th>
@@ -557,7 +522,7 @@ const OrderTableView = (function () {
           <td>${escapeHtml(formatTableCellValue(order?.['售价']))}</td>
           <td>${escapeHtml(formatTableCellValue(order?.['采购价格']))}</td>
           <td>${escapeHtml(formatTableCellValue(order?.['预估运费']))}</td>
-          <td>${escapeHtml(formatTableMoneyValue(resolvedProfit) || '-')}</td>
+          <td><span class="ot-profit-value is-${escapeHtml(getProfitCellToneClass(resolvedProfit))}">${escapeHtml(formatTableMoneyValue(resolvedProfit) || '-')}</span></td>
           <td>${escapeHtml(formatTableCellValue(order?.['重量']))}</td>
           <td>${escapeHtml(formatTableCellValue(order?.['尺寸']))}</td>
           <td>${escapeHtml(formatTableCellValue(order?.['订单状态']))}</td>
@@ -756,6 +721,7 @@ const OrderTableView = (function () {
     formatCurrencyAmount,
     formatSummaryMetric,
     getSummaryTone,
+    getProfitCellToneClass,
     render
   };
 })();

@@ -110,6 +110,65 @@ assert.equal(
   '共享 helper 模块应把 0 日元售价视为未录入，不应产出 0 利润'
 );
 
+const normalizedMultiItemOrder = sharedTools.normalizeOrderRecord({
+  items: [
+    {
+      lineId: 'a',
+      productTkId: 'TK-1',
+      productSkuId: 'SKU-1',
+      productSkuName: '白色 / S',
+      productName: '马克杯',
+      quantity: '2',
+      unitPurchasePrice: '10',
+      unitSalePrice: '300',
+      unitWeightG: '120',
+      unitSizeText: '10×10×10'
+    },
+    {
+      lineId: 'b',
+      productTkId: 'TK-1',
+      productSkuId: 'SKU-2',
+      productSkuName: '黑色 / M',
+      productName: '马克杯',
+      quantity: '3',
+      unitPurchasePrice: '12',
+      unitSalePrice: '320',
+      unitWeightG: '140',
+      unitSizeText: '12×10×10'
+    }
+  ]
+});
+
+assert.equal(
+  normalizedMultiItemOrder['数量'],
+  '5',
+  '共享 helper 模块应能从多条订单明细汇总总件数'
+);
+
+assert.equal(
+  normalizedMultiItemOrder['采购价格'],
+  '56',
+  '共享 helper 模块应能从多条订单明细汇总总采购额'
+);
+
+assert.equal(
+  normalizedMultiItemOrder['售价'],
+  '1560',
+  '共享 helper 模块应能从多条订单明细汇总总售价'
+);
+
+assert.equal(
+  normalizedMultiItemOrder['重量'],
+  '660',
+  '共享 helper 模块应默认按各 SKU 单件重量 × 数量汇总订单总重量'
+);
+
+assert.equal(
+  normalizedMultiItemOrder['商品TK ID'],
+  '',
+  '多条订单明细时不应把某一个商品 TK ID 冒充成整单商品'
+);
+
 assert.match(
   indexSource,
   /OrderTrackerShared\.create\(/,

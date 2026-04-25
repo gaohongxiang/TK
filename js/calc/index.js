@@ -2,6 +2,7 @@
  * 模块 1：利润计算器
  * ============================================================ */
 (function () {
+  const shippingCore = typeof TKShippingCore !== 'undefined' ? TKShippingCore : null;
   const DEFAULTS = {
     fee: 7, rate: 23.5, shipping: 17,
     discounts: [0.35, 0.38, 0.40, 0.42, 0.45, 0.48, 0.50],
@@ -15,38 +16,13 @@
     shipCargoType: 'general', shipActualWeight: 500,
     shipLength: 20, shipWidth: 15, shipHeight: 10
   };
-  const SHIPPING_RULES = {
-    general: {
-      label: '普货',
-      bands: [
-        { max: 0.5, range: '0 - 0.5 kg', parcel: 545, perKg: 340 },
-        { max: 1, range: '0.5 - 1 kg', parcel: 560, perKg: 340 },
-        { max: 2, range: '1 - 2 kg', parcel: 590, perKg: 340 },
-        { max: 5, range: '2 - 5 kg', parcel: 590, perKg: 405 },
-        { max: 10, range: '5 - 10 kg', parcel: 590, perKg: 415 },
-        { max: 20, range: '10 - 20 kg', parcel: 590, perKg: 425 },
-        { max: 30, range: '20 - 30 kg', parcel: 590, perKg: 435 }
-      ]
-    },
-    special: {
-      label: '特货',
-      bands: [
-        { max: 0.5, range: '0 - 0.5 kg', parcel: 555, perKg: 400 },
-        { max: 1, range: '0.5 - 1 kg', parcel: 580, perKg: 420 },
-        { max: 2, range: '1 - 2 kg', parcel: 610, perKg: 420 },
-        { max: 5, range: '2 - 5 kg', parcel: 610, perKg: 510 },
-        { max: 10, range: '5 - 10 kg', parcel: 610, perKg: 525 },
-        { max: 20, range: '10 - 20 kg', parcel: 610, perKg: 535 },
-        { max: 30, range: '20 - 30 kg', parcel: 610, perKg: 545 }
-      ]
-    }
-  };
-  const MIN_BILLABLE_WEIGHT_KG = 0.05;
-  const MAX_WEIGHT_KG = 30;
-  const VOLUME_DIVISOR = 8000;
-  const VOLUME_TRIGGER_MULTIPLIER = 1.5;
-  const SIZE_LIMITS = [60, 50, 40];
-  const CUSTOMER_SHIPPING_JPY = 350;
+  const SHIPPING_RULES = shippingCore?.SHIPPING_RULES || {};
+  const MIN_BILLABLE_WEIGHT_KG = shippingCore?.DEFAULT_CONSTANTS?.MIN_BILLABLE_WEIGHT_KG ?? 0.05;
+  const MAX_WEIGHT_KG = shippingCore?.DEFAULT_CONSTANTS?.MAX_WEIGHT_KG ?? 30;
+  const VOLUME_DIVISOR = shippingCore?.DEFAULT_CONSTANTS?.VOLUME_DIVISOR ?? 8000;
+  const VOLUME_TRIGGER_MULTIPLIER = shippingCore?.DEFAULT_CONSTANTS?.VOLUME_TRIGGER_MULTIPLIER ?? 1.5;
+  const SIZE_LIMITS = shippingCore?.DEFAULT_CONSTANTS?.SIZE_LIMITS ?? [60, 50, 40];
+  const CUSTOMER_SHIPPING_JPY = shippingCore?.DEFAULT_CONSTANTS?.CUSTOMER_SHIPPING_JPY ?? 350;
   const LS_KEY = 'tk.profit.v1';
   const globalSettings = typeof window !== 'undefined'
     ? (window.__tkGlobalSettingsStore || (typeof TKGlobalSettings !== 'undefined' ? TKGlobalSettings.create() : null))

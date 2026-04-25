@@ -4,8 +4,9 @@
 document.getElementById('yr').textContent = new Date().getFullYear();
 
 const MODULES = {
-  calc: { title: '/ 利润计算器', sub: 'TikTok Shop 日本跨境店 · 定价 / 利润复盘' },
-  orders: { title: '/ 订单跟踪器', sub: 'TikTok Shop 日本跨境店 · 采购 / 物流 / 入仓 进度追踪' }
+  calc: {},
+  orders: {},
+  products: {}
 };
 
 function switchView(key) {
@@ -15,11 +16,15 @@ function switchView(key) {
   document.querySelectorAll('nav.modules a[data-view]').forEach(a => {
     a.classList.toggle('active', a.dataset.view === key);
   });
-  document.getElementById('module-title').textContent = MODULES[key].title;
-  document.getElementById('module-sub').textContent = MODULES[key].sub;
   if (key === 'orders' && typeof OrderTracker !== 'undefined') OrderTracker.onEnter();
+  if (key === 'products' && typeof ProductLibrary !== 'undefined') ProductLibrary.onEnter();
 }
-window.addEventListener('hashchange', () => {
-  const key = (location.hash || '#calc').slice(1);
-  switchView(key);
+
+document.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('hashchange', () => {
+    const key = (location.hash || '#calc').slice(1);
+    switchView(key);
+  });
+
+  switchView((location.hash || '#calc').slice(1));
 });

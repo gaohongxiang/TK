@@ -3,6 +3,7 @@ const path = require('path');
 const assert = require('assert');
 const vm = require('vm');
 
+const shippingCoreSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'shipping-core.js'), 'utf8');
 const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shared.js'), 'utf8');
 const shippingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shipping.js'), 'utf8');
 
@@ -17,7 +18,7 @@ const sandbox = {
   console
 };
 vm.createContext(sandbox);
-vm.runInContext(`${sharedSource}\n${shippingSource}\nthis.CalcShared = CalcShared; this.CalcShipping = CalcShipping;`, sandbox);
+vm.runInContext(`${shippingCoreSource}\n${sharedSource}\n${shippingSource}\nthis.TKShippingCore = TKShippingCore; this.CalcShared = CalcShared; this.CalcShipping = CalcShipping;`, sandbox);
 
 const shared = sandbox.CalcShared.create({
   storageKey: 'tk.profit.v1',

@@ -12,5 +12,9 @@ service cloud.firestore {
     match /sync_state/{scope} {
       allow read, write: if true;
     }
+
+    match /products/{productId} {
+      allow read, write: if true;
+    }
   }
 }`;

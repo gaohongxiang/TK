@@ -58,6 +58,11 @@ const OrderTrackerShared = (function () {
       return Number.isFinite(parsed) ? parsed : null;
     }
 
+    function formatOrderSummaryNumber(value) {
+      if (!Number.isFinite(value)) return '';
+      return Number(value.toFixed(2)).toString();
+    }
+
     function parseExchangeRateValue(value) {
       const parsed = parseOrderMoneyValue(value);
       return parsed && parsed > 0 ? parsed : null;
@@ -100,6 +105,108 @@ const OrderTrackerShared = (function () {
       return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
+    function normalizeOrderItem(item = {}) {
+      const quantity = Number.parseInt(String(item?.quantity ?? item?.['数量'] ?? '').trim(), 10);
+      return {
+        lineId: String(item?.lineId || '').trim() || uid(),
+        productTkId: String(item?.productTkId || item?.['商品TK ID'] || '').trim(),
+        productSkuId: String(item?.productSkuId || item?.['商品SKU ID'] || '').trim(),
+        productSkuName: String(item?.productSkuName || item?.['商品SKU名称'] || '').trim(),
+        productName: String(item?.productName || item?.['产品名称'] || '').trim(),
+        quantity: Number.isFinite(quantity) && quantity > 0 ? String(quantity) : '1',
+        unitPurchasePrice: String(item?.unitPurchasePrice ?? item?.['单件采购价'] ?? item?.['采购价格'] ?? '').trim(),
+        unitSalePrice: String(item?.unitSalePrice ?? item?.['单件售价'] ?? item?.['售价'] ?? '').trim(),
+        unitWeightG: String(item?.unitWeightG ?? item?.['单件重量'] ?? item?.['重量'] ?? '').trim(),
+        unitSizeText: String(item?.unitSizeText ?? item?.['单件尺寸'] ?? item?.['尺寸'] ?? '').trim()
+      };
+    }
+
+    function normalizeOrderItems(items = []) {
+      return Array.isArray(items)
+        ? items.map(normalizeOrderItem).filter(item => (
+          item.productTkId
+          || item.productSkuId
+          || item.productName
+          || item.unitPurchasePrice
+          || item.unitSalePrice
+          || item.unitWeightG
+          || item.unitSizeText
+        ))
+        : [];
+    }
+
+    function getOrderItemSummaryParts(item = {}) {
+      const rawProductName = String(item?.productName || '').trim();
+      const skuName = String(item?.productSkuName || '').trim();
+      const quantity = Number.parseInt(String(item?.quantity || '').trim(), 10);
+      let productName = rawProductName;
+      if (productName && skuName) {
+        [` - ${skuName}`, ` / ${skuName}`].forEach(suffix => {
+          if (productName.endsWith(suffix)) {
+            productName = productName.slice(0, -suffix.length).trim();
+          }
+        });
+      }
+      return {
+        productName,
+        skuName,
+        quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1
+      };
+    }
+
+    function buildOrderItemsSummary(items = []) {
+      const groups = [];
+      normalizeOrderItems(items).forEach(item => {
+        const meta = getOrderItemSummaryParts(item);
+        const key = meta.productName || meta.skuName;
+        if (!key) return;
+        let group = groups.find(entry => entry.key === key);
+        if (!group) {
+          group = {
+            key,
+            productName: meta.productName || key,
+            entries: []
+          };
+          groups.push(group);
+        }
+        group.entries.push({
+          skuName: meta.skuName,
+          quantity: meta.quantity
+        });
+      });
+      return groups.map(group => {
+        const hasSku = group.entries.some(entry => entry.skuName);
+        if (!hasSku) {
+          const totalQty = group.entries.reduce((sum, entry) => sum + entry.quantity, 0);
+          return totalQty > 1 ? `${group.productName} ×${totalQty}` : group.productName;
+        }
+        const entryText = group.entries.map(entry => (
+          `${entry.skuName}${entry.quantity > 1 ? ` ×${entry.quantity}` : ''}`
+        )).join('，');
+        return `${group.productName}（${entryText}）`;
+      }).join(' / ');
+    }
+
+    function deriveOrderItemTotals(items = []) {
+      return normalizeOrderItems(items).reduce((acc, item) => {
+        const quantity = Number.parseInt(String(item.quantity || '').trim(), 10) || 0;
+        const unitPurchasePrice = parseOrderMoneyValue(item.unitPurchasePrice) || 0;
+        const unitSalePrice = parseOrderMoneyValue(item.unitSalePrice) || 0;
+        const unitWeightG = parseOrderMoneyValue(item.unitWeightG) || 0;
+        return {
+          quantity: acc.quantity + quantity,
+          purchase: acc.purchase + (unitPurchasePrice * quantity),
+          sale: acc.sale + (unitSalePrice * quantity),
+          weight: acc.weight + (unitWeightG * quantity)
+        };
+      }, {
+        quantity: 0,
+        purchase: 0,
+        sale: 0,
+        weight: 0
+      });
+    }
+
     function normalizeOrderRecord(order) {
       const next = { ...order };
       const mergedStatus = normalizeStatusValue(next['入仓状态']) || normalizeStatusValue(next['订单状态']);
@@ -111,6 +218,30 @@ const OrderTrackerShared = (function () {
       if (createdAt) next.createdAt = createdAt;
       delete next.created_at;
       delete next['入仓状态'];
+      const items = normalizeOrderItems(next.items);
+      if (items.length) {
+        const totals = deriveOrderItemTotals(items);
+        const summary = buildOrderItemsSummary(items);
+        const onlyItem = items.length === 1 ? items[0] : null;
+        const topLevelPurchase = String(next['采购价格'] || '').trim();
+        const topLevelSale = String(next['售价'] || '').trim();
+        next.items = items;
+        next['产品名称'] = summary || String(next['产品名称'] || '').trim();
+        next['数量'] = totals.quantity ? String(totals.quantity) : '';
+        next['采购价格'] = topLevelPurchase || (totals.purchase ? formatOrderSummaryNumber(totals.purchase) : '');
+        next['售价'] = topLevelSale || (totals.sale ? formatOrderSummaryNumber(totals.sale) : '');
+        if (!String(next['重量'] || '').trim()) {
+          next['重量'] = totals.weight ? formatOrderSummaryNumber(totals.weight) : '';
+        }
+        if (!String(next['尺寸'] || '').trim() && onlyItem?.unitSizeText) {
+          next['尺寸'] = onlyItem.unitSizeText;
+        }
+        next['商品TK ID'] = onlyItem?.productTkId || '';
+        next['商品SKU ID'] = onlyItem?.productSkuId || '';
+        next['商品SKU名称'] = onlyItem?.productSkuName || '';
+      } else {
+        delete next.items;
+      }
       return next;
     }
 

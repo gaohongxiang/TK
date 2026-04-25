@@ -27,6 +27,36 @@ assert.match(
 
 assert.match(
   source,
+  /function updateProductSelect\(/,
+  '订单 CRUD 模块需要包含商品选择下拉渲染逻辑'
+);
+
+assert.match(
+  source,
+  /function updateSkuSelect\(/,
+  '订单 CRUD 模块需要包含 SKU 选择下拉渲染逻辑'
+);
+
+assert.match(
+  source,
+  /function applyOrderSnapshot\(/,
+  '订单 CRUD 模块需要在选择商品或 SKU 后自动带出快照字段'
+);
+
+assert.match(
+  source,
+  /function syncOrderSpecFromQuantity\(/,
+  '订单 CRUD 模块需要根据数量联动重量和尺寸提示'
+);
+
+assert.match(
+  source,
+  /function renderOrderItems\(/,
+  '订单 CRUD 模块需要支持多条订单明细行渲染'
+);
+
+assert.match(
+  source,
   /async function deleteOrder\(/,
   '订单 CRUD 模块需要包含删除逻辑'
 );
@@ -84,9 +114,51 @@ assert.match(
 );
 
 assert.match(
+  indexSource,
+  /ProductLibraryProviderFirestore[\s\S]*loadProductsForModal/,
+  '订单模块需要复用商品库 Firestore provider 拉取商品资料'
+);
+
+assert.match(
   htmlSource,
   /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
   'index.html 需要在 index.js 前先加载 crud.js、session.js、shared.js'
+);
+
+assert.match(
+  htmlSource,
+  /<section class="ot-item-block">[\s\S]*<h4>订单明细<\/h4>[\s\S]*id="ot-item-list"/,
+  '订单弹窗需要提供订单明细区域'
+);
+
+assert.match(
+  htmlSource,
+  /<input type="hidden" name="商品TK ID" id="ot-product-select">[\s\S]*<input type="hidden" name="商品SKU ID" id="ot-sku-select">/,
+  '订单弹窗需要保留聚合后的商品和 SKU 字段'
+);
+
+assert.match(
+  htmlSource,
+  /<button type="button" class="btn" id="ot-add-item-btn">.*添加明细.*<\/button>/,
+  '订单弹窗需要支持新增订单明细行'
+);
+
+assert.match(
+  htmlSource,
+  /<label>订单号 \*<\/label>[\s\S]*<input type="text" name="订单号" required>/,
+  '订单号需要是必填字段'
+);
+
+assert.match(
+  htmlSource,
+  /<label>总重量\(g\)[\s\S]*id="ot-weight-hint"[\s\S]*<\/label>[\s\S]*name="重量"/,
+  '订单弹窗需要展示多件重量自动折算提示'
+);
+
+assert.match(
+  htmlSource,
+  /<script src="js\/searchable-select\.js" defer><\/script>/,
+  '页面需要预先加载共用的可搜索下拉组件'
 );
 
 console.log('orders crud module contract ok');

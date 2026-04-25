@@ -4,113 +4,175 @@ const assert = require('assert');
 
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const ordersIndexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'index.js'), 'utf8');
+const connectionSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'firestore-connection.js'), 'utf8');
+const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
 
-assert.match(
+assert.doesNotMatch(
   indexSource,
-  /name="ot-storage-mode"/,
-  '订单连接页需要提供存储模式切换'
-);
-
-assert.match(
-  indexSource,
-  /必须选择一个云端存储/,
-  '订单连接页需要明确提示必须选择一个云端存储'
-);
-
-assert.match(
-  indexSource,
-  /value="gist"/,
-  '订单连接页需要保留 Gist 模式'
-);
-
-assert.match(
-  indexSource,
-  /value="firestore"/,
-  '订单连接页需要提供 Firestore 模式'
-);
-
-assert.match(
-  indexSource,
-  /value="firestore" checked/,
-  '订单连接页默认应选中 Firestore 模式'
+  /GitHub Gist|value="gist"|provider-gist|ot-migrate-from-gist|ot-copy-gist|ot-gistid|ot-token|name="ot-storage-mode"/,
+  '页面不应再保留 Gist 或存储模式切换入口'
 );
 
 assert.match(
   indexSource,
   /Firebase Firestore/,
-  '订单连接页需要把长期模式切到 Firebase Firestore'
+  '页面需要保留 Firebase Firestore 作为唯一云端数据源'
+);
+
+assert.match(
+  connectionSource,
+  /const TKFirestoreConnection = \(function \(\) \{/,
+  '需要独立的全局 Firestore 连接模块'
 );
 
 assert.match(
   indexSource,
-  /id="ot-firestore-config"/,
-  '订单连接页需要提供 firebaseConfig 输入框'
+  /id="app-firestore-modal"/,
+  '页面需要提供全局 Firestore 连接弹层'
+);
+
+assert.doesNotMatch(
+  indexSource,
+  /id="app-firestore-connection"|id="app-firestore-status"/,
+  '全局头部不应再保留 Firebase 数据源入口'
+);
+
+assert.match(
+  indexSource,
+  /id="app-firestore-config"/,
+  '全局 Firestore 连接弹层需要提供 firebaseConfig 输入框'
 );
 
 assert.match(
   indexSource,
   /apiKey[\s\S]*authDomain[\s\S]*projectId[\s\S]*appId/s,
-  'firebaseConfig 输入框需要提示常见配置字段'
+  '全局 Firestore 连接弹层需要提示常见配置字段'
 );
 
 assert.match(
   indexSource,
-  /Firestore 三步接入/,
-  '订单连接页需要提供 Firestore 三步接入引导'
+  /id="app-open-firebase-console"/,
+  '全局 Firestore 连接弹层需要提供打开 Firebase Console 按钮'
 );
 
 assert.match(
   indexSource,
-  /添加应用时选 <code>网页<\/code>/,
-  'Firestore 引导里需要明确应用平台选择网页'
+  /id="app-copy-firestore-rules"/,
+  '全局 Firestore 连接弹层需要提供复制 Firestore 规则按钮'
 );
 
 assert.match(
   indexSource,
-  /不用勾 Hosting/,
-  'Firestore 引导里需要明确不必启用 Firebase Hosting'
+  /id="ot-open-connection"/,
+  '订单模块未连接时需要提供打开全局连接弹层的按钮'
 );
 
 assert.match(
   indexSource,
-  /区域级/,
-  'Firestore 引导里需要明确数据库位置建议选区域级'
+  /id="pl-open-connection"/,
+  '商品库模块未连接时需要提供打开全局连接弹层的按钮'
 );
 
 assert.match(
   indexSource,
-  /模式选 <code>生产模式<\/code>/,
-  'Firestore 引导里需要明确数据库模式建议选生产模式'
+  /class="calc-toolbar"[\s\S]*class="calc-subnav"/,
+  '利润计算器需要将模式切换条放在独立的页内工具行里'
 );
 
 assert.match(
   indexSource,
-  /数据保存在你自己的 Firebase 项目里/,
-  'Firestore 说明需要明确数据保存在用户自己的 Firebase 项目里'
+  /class="module-hero page-hero page-hero-calc"/,
+  '利润计算器需要使用更明确的页头容器来承接标题层级'
 );
 
 assert.match(
   indexSource,
-  /使用 Firestore 自带的离线缓存/,
-  'Firestore 说明需要明确本地缓存走 Firestore 自带离线缓存'
+  /class="module-hero-title-row"[\s\S]*<h2>利润计算器<\/h2>[\s\S]*class="module-kicker"/,
+  '页面标题和小字说明需要放进同一行的标题区'
 );
 
 assert.match(
   indexSource,
-  /https:\/\/console\.firebase\.google\.com\//,
-  'Firestore 引导里需要提供 Firebase Console 链接'
+  /class="module-hero page-hero page-hero-calc"[\s\S]*根据各项参数统一测算售价、利润，以及确定售价复盘实际利润/,
+  '利润计算器说明需要保留在标题区域'
 );
 
 assert.match(
   indexSource,
-  /id="ot-open-firebase-console"/,
-  'Firestore 引导里需要提供打开 Firebase Console 按钮'
+  /class="calc-tabs"[\s\S]*利润复盘[\s\S]*id="calc-help-btn"/,
+  '利润计算器说明图标需要紧跟在利润复盘后面'
+);
+
+assert.match(
+  cssSource,
+  /\.app-header\s*\{[\s\S]*justify-content:\s*flex-start[\s\S]*flex-wrap:\s*nowrap/s,
+  '顶部头部需要保持单行布局，品牌在左导航在右'
+);
+
+assert.match(
+  cssSource,
+  /\.app-brand\s*\{[\s\S]*flex:\s*0 0 auto/s,
+  '品牌区需要固定在左侧，不再独占一整行'
+);
+
+assert.match(
+  cssSource,
+  /\.app-header-side\s*\{[\s\S]*margin-left:\s*56px[\s\S]*justify-content:\s*flex-start/s,
+  '顶部导航需要排在品牌右侧，并与品牌拉开明显距离'
+);
+
+assert.match(
+  cssSource,
+  /\.module-hero\s*\{[\s\S]*justify-content:\s*center[\s\S]*text-align:\s*center/s,
+  '页面标题区域需要整体居中'
+);
+
+assert.match(
+  cssSource,
+  /\.module-hero\s*\{[\s\S]*margin-bottom:\s*32px/s,
+  '页面标题区域和正文区域之间需要留出更明显的间距'
+);
+
+assert.match(
+  cssSource,
+  /\.calc-toolbar\s*\{[\s\S]*margin-bottom:\s*10px/s,
+  '利润计算器的定价框和正文区域之间需要更紧凑'
+);
+
+assert.doesNotMatch(
+  indexSource,
+  />更多 ·</,
+  '顶部导航不应再保留更多入口'
 );
 
 assert.match(
   indexSource,
-  /id="ot-copy-firestore-rules"/,
-  'Firestore 引导里需要提供复制 Firestore 规则按钮'
+  /<nav class="modules" aria-label="模块导航">/,
+  '顶部仍需保留统一模块导航'
+);
+
+assert.match(
+  indexSource,
+  /id="ot-user"/,
+  '订单卡片内需要保留自己的数据库连接状态展示'
+);
+
+assert.match(
+  indexSource,
+  /id="pl-user"/,
+  '商品库卡片内需要保留自己的数据库连接状态展示'
+);
+
+assert.match(
+  connectionSource,
+  /function open\(/,
+  '全局 Firestore 连接模块需要暴露打开弹层的方法'
+);
+
+assert.match(
+  connectionSource,
+  /tk-firestore-config-changed/,
+  '全局 Firestore 连接模块需要在配置变更后广播事件'
 );
 
 assert.match(
@@ -126,7 +188,7 @@ assert.match(
 );
 
 assert.match(
-  ordersIndexSource,
+  connectionSource,
   /ORDER_TRACKER_FIRESTORE_RULES/,
   '复制 Firestore 规则逻辑需要优先使用内置规则文本'
 );

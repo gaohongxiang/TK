@@ -118,6 +118,17 @@ const OrderTrackerSync = (function () {
       return !!(provider && typeof provider.usesBuiltInLocalCache === 'function' && provider.usesBuiltInLocalCache());
     }
 
+    function formatFirestoreError(error, fallback = '') {
+      const code = String(error?.code || '').trim();
+      const message = String(error?.message || '').trim();
+      if (code.includes('permission-denied') || /Missing or insufficient permissions/i.test(message)) {
+        const next = '当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则，确保 orders、order_accounts、sync_state 和 products 都已放行。';
+        window.TKFirestoreConnection?.notifyRulesUpdateNeeded?.(next);
+        return next;
+      }
+      return message || fallback;
+    }
+
     function resetTrackerState({ preserveAccounts = true } = {}) {
       state.orders = [];
       state.editingId = null;
@@ -806,10 +817,10 @@ const OrderTrackerSync = (function () {
       syncInFlight = true;
       try {
         if (provider.key === 'firestore') return await syncFirestore(provider, { forcePull });
-        return await syncGist(provider, { forcePull });
+        throw new Error('当前只支持 Firebase Firestore 同步');
       } catch (error) {
         setSync(state.dirty ? '同步失败，已保留本地缓存' : '加载失败', 'error');
-        toast((state.dirty ? '同步失败' : '加载失败') + ': ' + error.message, 'error');
+        toast((state.dirty ? '同步失败' : '加载失败') + ': ' + formatFirestoreError(error), 'error');
         return false;
       } finally {
         syncInFlight = false;

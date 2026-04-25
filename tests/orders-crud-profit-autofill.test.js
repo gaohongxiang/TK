@@ -96,6 +96,8 @@ const form = {
   entries() {
     return [
       ['账号', '账号A'],
+      ['订单号', 'ORDER-2'],
+      ['产品名称', '测试产品'],
       ['下单时间', fields.orderDate.value],
       ['采购日期', fields.purchaseDate.value],
       ['数量', fields.quantity.value],

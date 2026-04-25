@@ -22,32 +22,26 @@ assert.match(
 
 assert.match(
   source,
-  /async function connect\(/,
-  '订单会话模块需要包含连接逻辑'
-);
-
-assert.match(
-  source,
-  /mode === 'firestore'/,
-  '订单会话模块需要按存储模式切换到 Firestore 分支'
+  /window\.TKFirestoreConnection/,
+  '订单会话模块需要通过全局 Firestore 连接模块读取配置'
 );
 
 assert.doesNotMatch(
   source,
-  /mode === 'local'/,
-  '订单会话模块不应再保留仅本地模式分支'
+  /gist|storageMode|parseConfigInput\(|connectOrMigrateFirestore|ot-migrate-from-gist|input\[name="ot-storage-mode"\]/,
+  '订单会话模块不应再保留 Gist 迁移或存储模式切换逻辑'
 );
 
 assert.match(
   source,
-  /请粘贴完整的 firebaseConfig/,
-  '订单会话模块需要校验 firebaseConfig'
+  /tk-firestore-config-changed/,
+  '订单会话模块需要监听全局 Firestore 配置变化事件'
 );
 
 assert.match(
   source,
-  /provider\.parseConfigInput/,
-  '订单会话模块需要通过 provider 解析 firebaseConfig'
+  /#ot-open-connection/,
+  '订单会话模块需要绑定未连接状态下的打开连接按钮'
 );
 
 assert.match(
@@ -86,8 +80,6 @@ const sessionTools = sandbox.OrderTrackerSession.create({
   },
   providers: {
     getProviderByMode: () => ({
-      parseConfigInput: () => ({ projectId: 'demo-project' }),
-      normalizeConfigText: value => value,
       init: async () => {},
       isConnected: () => false
     })
@@ -110,6 +102,12 @@ assert.match(
   syncSource,
   /cancelPendingSync/,
   '同步模块需要提供取消待同步任务的接口'
+);
+
+assert.match(
+  syncSource,
+  /orders、order_accounts、sync_state 和 products[\s\S]*notifyRulesUpdateNeeded/,
+  '订单同步在 Firestore 权限不足时需要触发全局规则更新提示'
 );
 
 assert.match(

@@ -1,17 +1,14 @@
 /* ============================================================
- * 模块 2：订单跟踪器（GitHub Gist / Firebase Firestore）
+ * 模块 2：订单跟踪器（Firebase Firestore）
  * ============================================================ */
 const OrderTracker = (function () {
   const LS_KEY = 'tk.orders.cfg.v1';
   const LS_ACC_KEY = 'tk.orders.accounts.v1';
-  const GIST_FILENAME = 'tk-order-tracker.json';
-  const META_FILENAME = 'tk-order-tracker-meta.json';
   const ACCOUNT_FILE_PREFIX = 'tk-order-tracker__';
   const ACCOUNT_FILE_SUFFIX = '.json';
   const CACHE_DB_NAME = 'tk-toolbox-cache';
   const CACHE_STORE = 'order-tracker-sessions';
   const CACHE_VERSION = 1;
-  const REMOTE_DATA_VERSION = 2;
   const SYNC_DEBOUNCE_MS = 700;
   const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
   const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
@@ -19,13 +16,11 @@ const OrderTracker = (function () {
   const state = {
     storageMode: 'firestore',
     remoteProvider: null,
-    token: '',
-    gistId: '',
     firestoreConfigText: '',
     firestoreProjectId: '',
-    user: '',
     clientId: '',
     orders: [],
+    products: [],
     editingId: null,
     loaded: false,
     accounts: [],
@@ -126,12 +121,6 @@ const OrderTracker = (function () {
   function saveCfg() {
     state.clientId = state.clientId || uid();
     localStorage.setItem(LS_KEY, JSON.stringify({
-      mode: state.storageMode || 'firestore',
-      token: state.token,
-      gistId: state.gistId,
-      firestoreConfigText: state.firestoreConfigText,
-      firestoreProjectId: state.firestoreProjectId,
-      user: state.user,
       clientId: state.clientId
     }));
   }
@@ -140,20 +129,83 @@ const OrderTracker = (function () {
       const raw = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
       if (!raw) return null;
       return {
-        mode: raw.mode === 'gist' ? 'gist' : 'firestore',
-        token: raw.token || '',
-        gistId: raw.gistId || '',
-        firestoreConfigText: raw.firestoreConfigText || raw.firebaseConfig || '',
-        firestoreProjectId: raw.firestoreProjectId || raw.projectId || '',
-        user: raw.user || '',
         clientId: raw.clientId || uid()
       };
     } catch (e) {
       return null;
     }
   }
+  const productState = {
+    firestoreConfigText: '',
+    firestoreProjectId: '',
+    user: ''
+  };
+  let productProvider = null;
   function resetTablePage() {
     state.currentPage = 1;
+  }
+  function getProductProvider() {
+    if (productProvider) return productProvider;
+    if (typeof ProductLibraryProviderFirestore === 'undefined') return null;
+    productProvider = ProductLibraryProviderFirestore.create({
+      state: productState,
+      helpers: {
+        nowIso
+      }
+    });
+    return productProvider;
+  }
+  function formatProductAccessError(error, fallback = '商品资料加载失败') {
+    const message = String(error?.message || '').trim();
+    if (String(error?.code || '').includes('permission-denied') || /Missing or insufficient permissions/i.test(message)) {
+      const next = '当前 Firebase 项目的 Firestore 规则还没放行 products 集合。请重新复制并发布最新规则。';
+      window.TKFirestoreConnection?.notifyRulesUpdateNeeded?.(next);
+      return next;
+    }
+    return message || fallback;
+  }
+  function getGlobalFirestoreConfig() {
+    return window.TKFirestoreConnection?.getConfig?.() || null;
+  }
+  function getProductsForAccount(accountName = '') {
+    const normalized = normalizeAccountName(accountName);
+    return (state.products || [])
+      .filter(product => normalizeAccountName(product?.accountName) === normalized)
+      .sort((left, right) => String(left?.tkId || '').localeCompare(String(right?.tkId || '')));
+  }
+  function getProductByTkId(tkId = '') {
+    const normalized = String(tkId || '').trim();
+    if (!normalized) return null;
+    return (state.products || []).find(product => String(product?.tkId || '').trim() === normalized) || null;
+  }
+  function getPricingContext() {
+    return window.__tkGlobalSettingsStore?.getPricingContext?.() || {
+      rate: getPricingExchangeRate(),
+      shippingMultiplier: 1.1,
+      labelFee: 1.2
+    };
+  }
+  async function loadProductsForModal({ silent = false, force = false } = {}) {
+    const cfg = getGlobalFirestoreConfig();
+    const provider = getProductProvider();
+    if (!cfg?.configText || !provider) {
+      state.products = [];
+      return [];
+    }
+    const configChanged = productState.firestoreProjectId !== (cfg.projectId || '');
+    if (!force && !configChanged && Array.isArray(state.products) && state.products.length) {
+      return state.products;
+    }
+    try {
+      await provider.init({ configText: cfg.configText });
+      const result = await provider.pullProducts();
+      state.products = Array.isArray(result?.products) ? result.products : [];
+      return state.products;
+    } catch (error) {
+      state.products = [];
+      if (!silent) toast(formatProductAccessError(error), 'error');
+      return [];
+    }
   }
   function bindStorageHelpModal() {
     const trigger = $('#ot-storage-help-btn');
@@ -201,27 +253,6 @@ const OrderTracker = (function () {
     return existed;
   }
 
-  const providerGist = OrderTrackerProviderGist.create({
-    state,
-    constants: {
-      GIST_FILENAME,
-      META_FILENAME,
-      REMOTE_DATA_VERSION,
-      UNASSIGNED_ACCOUNT_SLOT
-    },
-    helpers: {
-      nowIso,
-      normalizeOrderList,
-      uniqueAccounts,
-      listOrderAccounts,
-      groupOrdersByAccountSlot,
-      flattenOrdersByAccountSlot,
-      toAccountSlot,
-      fromAccountSlot,
-      getAccountFileName,
-      parseAccountSlotFromFileName
-    }
-  });
   const providerFirestore = OrderTrackerProviderFirestore.create({
     state,
     helpers: {
@@ -232,7 +263,7 @@ const OrderTracker = (function () {
   });
   function getProviderByMode(mode) {
     if (mode === 'firestore') return providerFirestore;
-    return providerGist;
+    return null;
   }
 
   const sync = OrderTrackerSync.create({
@@ -365,15 +396,18 @@ const OrderTracker = (function () {
       todayStr,
       addDays,
       computeWarning,
+      getPricingContext,
       getPricingExchangeRate,
       computeOrderEstimatedProfit,
       normalizeOrderRecord,
       escapeHtml,
       normalizeStatusValue,
+      normalizeAccountName,
       detectCourierCompany,
       maybeAutoDetectCourierFromForm,
       getOrderFormCourierFields,
-      showDatePicker
+      showDatePicker,
+      shippingCore: typeof TKShippingCore !== 'undefined' ? TKShippingCore : null
     },
     ui: {
       getUniqueAccounts,
@@ -383,6 +417,9 @@ const OrderTracker = (function () {
       markOrderAccountsDirty,
       commitLocalOrders,
       resetTablePage,
+      getProductByTkId,
+      getProductsForAccount,
+      loadProductsForModal,
       toast
     }
   });
@@ -420,7 +457,26 @@ const OrderTracker = (function () {
       getProviderByMode
     }
   });
-  const { init, onEnter } = sessionTools;
+  const { init, onEnter: sessionOnEnter } = sessionTools;
+
+  function bindSharedConnectionListener() {
+    if (bindSharedConnectionListener.bound) return;
+    window.addEventListener('tk-firestore-config-changed', () => {
+      state.products = [];
+      productState.firestoreConfigText = '';
+      productState.firestoreProjectId = '';
+      productState.user = '';
+    });
+    bindSharedConnectionListener.bound = true;
+  }
+
+  async function onEnter() {
+    await sessionOnEnter();
+    bindSharedConnectionListener();
+    if (state.remoteProvider) {
+      void loadProductsForModal({ silent: true });
+    }
+  }
 
   /* ---------- 账号标签栏 ---------- */
   /* ---------- 渲染表格 ---------- */
@@ -478,86 +534,8 @@ const OrderTracker = (function () {
     }
   }
 
-  function copyText(text) {
-    if (!text) return Promise.reject(new Error('没有可复制的内容'));
-
-    function legacyCopy() {
-      return new Promise((resolve, reject) => {
-        const input = document.createElement('textarea');
-        input.value = text;
-        input.setAttribute('readonly', 'readonly');
-        input.style.position = 'fixed';
-        input.style.opacity = '0';
-        document.body.appendChild(input);
-        input.focus();
-        input.select();
-        try {
-          const ok = document.execCommand('copy');
-          document.body.removeChild(input);
-          if (!ok) throw new Error('浏览器未允许复制');
-          resolve();
-        } catch (error) {
-          document.body.removeChild(input);
-          reject(error);
-        }
-      });
-    }
-
-    if (navigator.clipboard?.writeText) {
-      return navigator.clipboard.writeText(text).catch(() => legacyCopy());
-    }
-
-    return legacyCopy();
-  }
-
-  function getEmbeddedFirestoreRules() {
-    return String(window.ORDER_TRACKER_FIRESTORE_RULES || '').trim();
-  }
-
-  function getFirestoreRulesSource() {
-    const embedded = getEmbeddedFirestoreRules();
-    if (embedded) return embedded;
-
-    const rulesUrl = $('#ot-copy-firestore-rules')?.dataset.rulesUrl || '';
-    throw new Error(rulesUrl
-      ? `页面内置 Firestore 规则未加载，请刷新页面后重试；如仍失败，可手动打开 ${rulesUrl}`
-      : '页面内置 Firestore 规则未加载，请刷新页面后重试');
-  }
-
-  function openExternalUrl(url) {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
-
-  function bindFirestoreSetupActions() {
-    const consoleBtn = $('#ot-open-firebase-console');
-    const copyBtn = $('#ot-copy-firestore-rules');
-    if (!consoleBtn || !copyBtn || consoleBtn.dataset.bound === 'true') return;
-
-    consoleBtn.addEventListener('click', () => {
-      openExternalUrl('https://console.firebase.google.com/');
-    });
-
-    copyBtn.addEventListener('click', async () => {
-      const originalText = copyBtn.textContent;
-      copyBtn.disabled = true;
-      copyBtn.textContent = '复制中…';
-      try {
-        const rules = getFirestoreRulesSource();
-        await copyText(rules);
-        toast('Firestore 规则已复制，去 Rules 页面里粘贴发布即可', 'ok');
-      } catch (error) {
-        toast('复制 Firestore 规则失败: ' + error.message, 'error');
-      } finally {
-        copyBtn.disabled = false;
-        copyBtn.textContent = originalText;
-      }
-    });
-
-    consoleBtn.dataset.bound = 'true';
-  }
-
   bindStorageHelpModal();
-  bindFirestoreSetupActions();
+  bindSharedConnectionListener();
   init();
   return { onEnter };
 })();

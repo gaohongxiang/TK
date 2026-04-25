@@ -10,6 +10,7 @@ const rulesSource = fs.readFileSync(path.join(__dirname, '..', 'docs', 'firebase
   assert.match(source, /match \/orders\/\{orderId\}/, `${label} 需要开放 orders 集合规则`);
   assert.match(source, /match \/order_accounts\/\{accountId\}/, `${label} 需要开放 order_accounts 集合规则`);
   assert.match(source, /match \/sync_state\/\{scope\}/, `${label} 需要开放 sync_state 集合规则`);
+  assert.match(source, /match \/products\/\{productId\}/, `${label} 需要开放 products 集合规则`);
   assert.match(source, /allow read, write: if true;/, `${label} 需要提供最省事的直连规则`);
 });
 

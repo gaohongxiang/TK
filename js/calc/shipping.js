@@ -21,6 +21,7 @@ const CalcShipping = (function () {
       SIZE_LIMITS,
       CUSTOMER_SHIPPING_JPY
     } = constants;
+    const shippingCore = typeof TKShippingCore !== 'undefined' ? TKShippingCore : null;
 
     function getShippingMultiplierNew() {
       return Math.max(1, state.shippingMultiplierNew || 1);
@@ -31,6 +32,7 @@ const CalcShipping = (function () {
     }
 
     function getShippingBand(type, weightKg) {
+      if (shippingCore?.getShippingBand) return shippingCore.getShippingBand(type, weightKg, SHIPPING_RULES);
       const rule = SHIPPING_RULES[type] || SHIPPING_RULES.general;
       return rule.bands.find(band => weightKg <= band.max) || null;
     }
@@ -44,88 +46,26 @@ const CalcShipping = (function () {
     }
 
     function computeShippingQuote({ cargoType, actualWeight, length, width, height, rate }) {
-      const type = SHIPPING_RULES[cargoType] ? cargoType : 'general';
-      const actualWeightG = Math.max(0, toNumber(actualWeight));
-      const dims = [
-        Math.max(0, toNumber(length)),
-        Math.max(0, toNumber(width)),
-        Math.max(0, toNumber(height))
-      ];
-      const hasAllDims = dims.every(value => value > 0);
-      const actualWeightKg = actualWeightG / 1000;
-      const volumeWeightKg = hasAllDims ? (dims[0] * dims[1] * dims[2]) / VOLUME_DIVISOR : null;
-      const useVolumeWeight = !!(
-        hasAllDims
-        && actualWeightKg > 0
-        && volumeWeightKg > actualWeightKg * VOLUME_TRIGGER_MULTIPLIER
-      );
-      const floorApplied = actualWeightKg > 0 && actualWeightKg < MIN_BILLABLE_WEIGHT_KG;
-
-      let chargeWeightKg = actualWeightKg > 0
-        ? (useVolumeWeight ? volumeWeightKg : actualWeightKg)
-        : null;
-      if (chargeWeightKg !== null) chargeWeightKg = Math.max(chargeWeightKg, MIN_BILLABLE_WEIGHT_KG);
-
-      const sortedDims = hasAllDims ? dims.slice().sort((a, b) => b - a) : [];
-      const sizeExceeded = hasAllDims && sortedDims.some((edge, index) => edge > SIZE_LIMITS[index]);
-      const actualWeightExceeded = actualWeightKg > MAX_WEIGHT_KG;
-      const chargeWeightExceeded = chargeWeightKg !== null && chargeWeightKg > MAX_WEIGHT_KG;
-      const hasError = actualWeightKg <= 0 || actualWeightExceeded || chargeWeightExceeded || sizeExceeded;
-      const band = chargeWeightKg !== null && !chargeWeightExceeded ? getShippingBand(type, chargeWeightKg) : null;
-      const grossJpyFee = !hasError && band ? band.parcel + band.perKg * chargeWeightKg : null;
-      const jpyFee = grossJpyFee !== null ? grossJpyFee - CUSTOMER_SHIPPING_JPY : null;
-      const cnyFee = jpyFee !== null && rate > 0 ? jpyFee / rate : null;
-
-      const alerts = [];
-      if (actualWeightKg <= 0) alerts.push({ type: 'error', text: '请输入实重后再计算运费。' });
-      if (actualWeightKg > 0 && actualWeightKg < MIN_BILLABLE_WEIGHT_KG) {
-        alerts.push({ type: 'warn', text: '实重低于 50g，系统已按 50g 起计。' });
-      }
-      if (!hasAllDims) {
-        alerts.push({ type: 'warn', text: '尺寸未填写完整，当前仅按实重预估，未校验体积重。' });
-      }
-      if (sizeExceeded) {
-        alerts.push({
-          type: 'error',
-          text: `尺寸限制为 60 × 50 × 40 cm。按边长排序后，你当前包裹为 ${sortedDims.map(n => n.toFixed(1).replace(/\.0$/, '')).join(' × ')} cm。`
+      if (shippingCore?.computeShippingQuote) {
+        return shippingCore.computeShippingQuote({
+          cargoType,
+          actualWeight,
+          length,
+          width,
+          height,
+          rate,
+          rules: SHIPPING_RULES,
+          constants: {
+            MIN_BILLABLE_WEIGHT_KG,
+            MAX_WEIGHT_KG,
+            VOLUME_DIVISOR,
+            VOLUME_TRIGGER_MULTIPLIER,
+            SIZE_LIMITS,
+            CUSTOMER_SHIPPING_JPY
+          }
         });
       }
-      if (actualWeightExceeded) alerts.push({ type: 'error', text: `单包裹实重不能超过 ${MAX_WEIGHT_KG} kg。` });
-      if (chargeWeightExceeded) alerts.push({ type: 'error', text: `计费重为 ${fmtWeight(chargeWeightKg)}，已超过 ${MAX_WEIGHT_KG} kg 上限。` });
-      if (jpyFee !== null && cnyFee === null) alerts.push({ type: 'warn', text: '汇率未填写或为 0，暂时无法折算人民币。' });
-
-      let chargeReason = '最低按 0.05 kg';
-      if (actualWeightKg <= 0) {
-        chargeReason = '输入实重和尺寸后显示计费依据';
-      } else if (!hasAllDims) {
-        chargeReason = floorApplied
-          ? '尺寸未填完整，暂按实重计费，且已按 0.05 kg 起计'
-          : '尺寸未填完整，暂按实重计费';
-      } else if (useVolumeWeight) {
-        chargeReason = buildReason([
-          `${fmtWeightValue(volumeWeightKg)} > ${fmtWeightValue(actualWeightKg)} × 1.5`,
-          '按体积重计费'
-        ]);
-      } else {
-        chargeReason = buildReason([
-          `${fmtWeightValue(volumeWeightKg)} <= ${fmtWeightValue(actualWeightKg)} × 1.5`,
-          '按实重计算'
-        ]);
-      }
-
-      return {
-        type,
-        actualWeightKg,
-        volumeWeightKg,
-        chargeWeightKg,
-        grossJpyFee,
-        chargeReason,
-        band,
-        jpyFee,
-        cnyFee,
-        alerts,
-        hasError
-      };
+      return null;
     }
 
     function computeShipping() {
@@ -151,6 +91,13 @@ const CalcShipping = (function () {
     }
 
     function getCalculatedShippingCostNew(quote = computePricingNewShipping()) {
+      if (shippingCore?.computeCalculatedShippingCost) {
+        return shippingCore.computeCalculatedShippingCost({
+          quote,
+          multiplier: getShippingMultiplierNew(),
+          labelFee: state.labelFeeNew || 0
+        });
+      }
       if (!quote || quote.cnyFee === null) return null;
       const multiplier = getShippingMultiplierNew();
       const labelFee = state.labelFeeNew || 0;

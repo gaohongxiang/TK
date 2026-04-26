@@ -47,6 +47,12 @@ assert.match(
   '商品库 SKU 编辑表格需要按新的紧凑行结构读取草稿，避免添加 SKU 时丢失已有行'
 );
 
+assert.match(
+  source,
+  /let eventsBound = false;[\s\S]*function bindEvents\(\) \{[\s\S]*if \(eventsBound\) return;[\s\S]*eventsBound = true;/,
+  '商品库 CRUD 事件绑定必须只执行一次，避免新增 SKU、批量生成和删除被重复触发'
+);
+
 assert.doesNotMatch(
   source,
   /\$\{skuUsesProductDefaults\(sku\) \? 'disabled' : ''\}/,

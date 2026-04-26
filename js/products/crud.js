@@ -164,6 +164,7 @@ const ProductLibraryCrud = (function () {
       weightG: '',
       sizeText: ''
     };
+    let eventsBound = false;
 
     function getProductDefaults(product = {}) {
       return product?.defaults && typeof product.defaults === 'object'
@@ -723,6 +724,8 @@ const ProductLibraryCrud = (function () {
     }
 
     function bindEvents() {
+      if (eventsBound) return;
+      eventsBound = true;
       const form = $('#pl-form');
       const cancelBtn = $('#pl-cancel');
       const modal = $('#pl-modal');

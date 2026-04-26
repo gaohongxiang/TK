@@ -255,6 +255,17 @@ const OrderTableView = (function () {
     };
   }
 
+  function buildCurrentFilterTitle(activeAccount = '__all__', searchQuery = '') {
+    const conditions = [];
+    const account = String(activeAccount || '').trim();
+    const query = String(searchQuery || '').trim();
+    if (account && account !== '__all__') conditions.push(`账号：${account}`);
+    if (query) conditions.push(`搜索：${query}`);
+    return conditions.length
+      ? `当前筛选 · ${conditions.join(' · ')}`
+      : '当前筛选';
+  }
+
   function clampPage(currentPage, pageSize, totalItems) {
     if (tableControls?.clampPage) return tableControls.clampPage(currentPage, pageSize, totalItems);
     const safePageSize = Math.max(1, Number(pageSize) || 50);
@@ -311,7 +322,7 @@ const OrderTableView = (function () {
     helpDismissBound = true;
   }
 
-  function buildSummaryMarkup(summary) {
+  function buildSummaryMarkup(summary, { activeAccount = '__all__', searchQuery = '' } = {}) {
     function buildCard(title, profitMetric, incomeMetric, expenseMetric, expenseDetail, metaText) {
       return `
         <section class="ot-summary-section">
@@ -356,7 +367,7 @@ const OrderTableView = (function () {
     return `
       <div class="ot-summary-surface">
         <div class="ot-summary-grid">
-        ${buildCard('当前筛选',
+        ${buildCard(buildCurrentFilterTitle(activeAccount, searchQuery),
       { label: '预估总利润', value: formatSummaryMetric(summary.filteredProfitMetric), tone: getSummaryTone(summary.filteredProfitMetric, 'profit') },
       { label: '总销售额', value: formatSummaryMetric(summary.filteredSaleMetric), tone: getSummaryTone(summary.filteredSaleMetric, 'income') },
       { ...filteredExpenseMetric, tone: getSummaryTone(filteredExpenseMetric, 'expense') },
@@ -596,7 +607,7 @@ const OrderTableView = (function () {
     const pageState = clampPage(currentPage, pageSize, sorted.length);
 
     if (summaryContainer) {
-      summaryContainer.innerHTML = buildSummaryMarkup(summary);
+      summaryContainer.innerHTML = buildSummaryMarkup(summary, { activeAccount, searchQuery });
     }
 
     const bindTopToolbar = totalPages => {
@@ -718,6 +729,7 @@ const OrderTableView = (function () {
   return {
     deriveDisplayedOrders,
     derivePurchaseSummary,
+    buildCurrentFilterTitle,
     formatCurrencyAmount,
     formatSummaryMetric,
     getSummaryTone,

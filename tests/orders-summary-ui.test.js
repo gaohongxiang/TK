@@ -32,6 +32,12 @@ assert.match(
 
 assert.match(
   source,
+  /function buildCurrentFilterTitle\(/,
+  '订单表格视图模块需要根据账号和搜索条件拼出当前筛选标题'
+);
+
+assert.match(
+  source,
   /ot-th-help/,
   '订单表头需要包含帮助提示图标结构'
 );
@@ -122,6 +128,18 @@ assert.equal(
   sandbox.OrderTableView.formatCurrencyAmount(summary.filteredTotal),
   '¥ 15.25',
   '金额格式化结果不正确'
+);
+
+assert.equal(
+  sandbox.OrderTableView.buildCurrentFilterTitle('B', '蓝色'),
+  '当前筛选 · 账号：B · 搜索：蓝色',
+  '当前筛选标题应同步显示账号和搜索条件'
+);
+
+assert.equal(
+  sandbox.OrderTableView.buildCurrentFilterTitle('__all__', ''),
+  '当前筛选',
+  '没有筛选条件时不应额外拼接说明'
 );
 
 assert.match(

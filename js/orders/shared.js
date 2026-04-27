@@ -68,6 +68,16 @@ const OrderTrackerShared = (function () {
       return parsed && parsed > 0 ? parsed : null;
     }
 
+    function isOrderRefunded(order) {
+      const raw = String(
+        order?.['是否退款']
+        ?? order?.isRefunded
+        ?? order?.refunded
+        ?? ''
+      ).trim().toLowerCase();
+      return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'y';
+    }
+
     function getPricingExchangeRate() {
       const globalStore = typeof window !== 'undefined' ? window.__tkGlobalSettingsStore : null;
       return typeof globalStore?.getExchangeRate === 'function'
@@ -78,7 +88,9 @@ const OrderTrackerShared = (function () {
     function computeOrderSaleCny(order, exchangeRate = getPricingExchangeRate()) {
       const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
       const rate = parseExchangeRateValue(exchangeRate);
-      if (saleJpy === null || saleJpy <= 0 || rate === null) return null;
+      if (rate === null) return null;
+      if (isOrderRefunded(order)) return 0;
+      if (saleJpy === null || saleJpy <= 0) return null;
       return roundMoney(saleJpy / rate);
     }
 
@@ -211,6 +223,7 @@ const OrderTrackerShared = (function () {
       const next = { ...order };
       const mergedStatus = normalizeStatusValue(next['入仓状态']) || normalizeStatusValue(next['订单状态']);
       next['订单状态'] = mergedStatus;
+      next['是否退款'] = isOrderRefunded(next) ? '1' : '';
       const seq = normalizeOrderSeq(next.seq);
       if (seq !== null) next.seq = seq;
       else delete next.seq;
@@ -604,6 +617,7 @@ const OrderTrackerShared = (function () {
       groupOrdersByAccountSlot,
       flattenOrdersByAccountSlot,
       detectCourierCompany,
+      isOrderRefunded,
       getOrderFormCourierFields,
       maybeAutoDetectCourierFromForm,
       todayStr,

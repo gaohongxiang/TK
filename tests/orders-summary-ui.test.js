@@ -150,6 +150,18 @@ assert.match(
 
 assert.match(
   source,
+  /总销售额 \$\{grossText\} - 总退款额 \$\{refundText\}/,
+  '有退款时，收入说明需要写成总销售额减总退款额'
+);
+
+assert.match(
+  source,
+  /含 \$\{refundMetric\.count\} 条退款/,
+  '统计说明需要补充退款订单条数'
+);
+
+assert.match(
+  source,
   /ot-summary-hero[\s\S]*预估总利润/,
   '统计卡片需要把预估利润总额放进独立主区'
 );
@@ -200,6 +212,28 @@ assert.equal(
   sandbox.OrderTableView.formatSummaryMetric(expenseOnlySummary.allProfitMetric),
   '¥ -12.00',
   '只有支出时，总利润应反映为负数'
+);
+
+const refundedSummary = sandbox.OrderTableView.derivePurchaseSummary({
+  orders: [
+    { id: 'refunded-1', '账号': 'A', '售价': '500', '是否退款': '1', '采购价格': '10', '预估运费': '2' },
+    { id: 'normal-1', '账号': 'A', '售价': '300', '采购价格': '5', '预估运费': '1' }
+  ],
+  activeAccount: '__all__',
+  searchQuery: '',
+  exchangeRate: 20
+});
+
+assert.equal(
+  refundedSummary.allRefundMetric.total,
+  25,
+  '退款汇总应按退款订单折算后的收入口径统计'
+);
+
+assert.equal(
+  refundedSummary.allRefundMetric.count,
+  1,
+  '退款汇总应统计退款订单条数'
 );
 
 console.log('orders summary ui contract ok');

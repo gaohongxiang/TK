@@ -93,6 +93,12 @@ assert.equal(
 );
 
 assert.equal(
+  sharedTools.computeOrderSaleCny({ '售价': '600', '是否退款': '1' }, 20),
+  0,
+  '退款订单的实际收入应按 0 计算'
+);
+
+assert.equal(
   sharedTools.computeOrderSaleCny({ '售价': '0' }, 20),
   null,
   '共享 helper 模块应把 0 日元售价视为未录入，而不是有效销售额'
@@ -102,6 +108,12 @@ assert.equal(
   sharedTools.computeOrderEstimatedProfit({ '售价': '600', '采购价格': '19.8', '预估运费': '6.5' }, 20),
   3.7,
   '共享 helper 模块应能按统一汇率计算订单人民币利润'
+);
+
+assert.equal(
+  sharedTools.computeOrderEstimatedProfit({ '售价': '600', '采购价格': '19.8', '预估运费': '6.5', '是否退款': '1' }, 20),
+  -26.3,
+  '退款订单的利润应按实收 0 减去成本计算'
 );
 
 assert.equal(

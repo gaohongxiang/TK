@@ -50,6 +50,11 @@ const OrderTableView = (function () {
     return parsed.hasValue && parsed.amount > 0 ? parsed.amount : null;
   }
 
+  function isOrderRefunded(order) {
+    const raw = String(order?.['是否退款'] ?? order?.isRefunded ?? '').trim().toLowerCase();
+    return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'y';
+  }
+
   function roundMoney(value) {
     return Number.isFinite(value) ? Number(value.toFixed(2)) : null;
   }
@@ -75,6 +80,43 @@ const OrderTableView = (function () {
     }, { total: 0, count: 0 });
   }
 
+  function sumRefundMoneyAmount(orders = [], fieldName = '售价') {
+    return (Array.isArray(orders) ? orders : []).reduce((acc, order) => {
+      if (!isOrderRefunded(order)) return acc;
+      const parsed = parseMoneyAmount(order?.[fieldName]);
+      return {
+        total: acc.total + parsed.amount,
+        count: acc.count + 1
+      };
+    }, { total: 0, count: 0 });
+  }
+
+  function sumGrossSaleAmount(orders = [], exchangeRate = null) {
+    const rate = parseExchangeRateValue(exchangeRate);
+    return (Array.isArray(orders) ? orders : []).reduce((acc, order) => {
+      if (rate === null) return acc;
+      const sale = parseMoneyAmount(order?.['售价']);
+      if (!sale.hasValue || sale.amount <= 0) return acc;
+      return {
+        total: acc.total + roundMoney(sale.amount / rate),
+        count: acc.count + 1
+      };
+    }, { total: 0, count: 0 });
+  }
+
+  function sumRefundSaleAmount(orders = [], exchangeRate = null) {
+    const rate = parseExchangeRateValue(exchangeRate);
+    return (Array.isArray(orders) ? orders : []).reduce((acc, order) => {
+      if (rate === null || !isOrderRefunded(order)) return acc;
+      const sale = parseMoneyAmount(order?.['售价']);
+      if (!sale.hasValue || sale.amount <= 0) return acc;
+      return {
+        total: acc.total + roundMoney(sale.amount / rate),
+        count: acc.count + 1
+      };
+    }, { total: 0, count: 0 });
+  }
+
   function normalizeResolvedAmount(value) {
     if (value === null || typeof value === 'undefined') return null;
     if (typeof value === 'string' && !value.trim()) return null;
@@ -85,7 +127,9 @@ const OrderTableView = (function () {
   function computeOrderSaleCnyAmount(order, exchangeRate = null) {
     const sale = parseMoneyAmount(order?.['售价']);
     const rate = parseExchangeRateValue(exchangeRate);
-    if (!sale.hasValue || sale.amount <= 0 || rate === null) return null;
+    if (rate === null) return null;
+    if (isOrderRefunded(order)) return 0;
+    if (!sale.hasValue || sale.amount <= 0) return null;
     return roundMoney(sale.amount / rate);
   }
 
@@ -105,6 +149,17 @@ const OrderTableView = (function () {
   function formatTableCellValue(value) {
     const text = String(value ?? '').trim();
     return text || '-';
+  }
+
+  function buildSaleCellMarkup(order) {
+    const saleText = String(order?.['售价'] ?? '').trim();
+    if (!saleText) return '-';
+    if (!isOrderRefunded(order)) return escapeHtml(formatTableCellValue(saleText));
+    return `
+      <span class="ot-sale-cell">
+        <span class="ot-sale-current">0</span>
+        <span class="ot-sale-original">${escapeHtml(saleText)}</span>
+      </span>`;
   }
 
   function formatCurrencyAmount(value) {
@@ -167,6 +222,7 @@ const OrderTableView = (function () {
             order?.['采购日期'],
             order?.['最晚到仓时间'],
             order?.['订单号'],
+            isOrderRefunded(order) ? '退款 已退款' : '',
             order?.['产品名称'],
             order?.['数量'],
             order?.['采购价格'],
@@ -223,6 +279,10 @@ const OrderTableView = (function () {
     const allSale = sumResolvedMoneyAmount(list, resolveSale);
     const filteredShipping = sumMoneyAmount(sorted, '预估运费');
     const allShipping = sumMoneyAmount(list, '预估运费');
+    const filteredRefund = sumRefundSaleAmount(sorted, exchangeRate);
+    const allRefund = sumRefundSaleAmount(list, exchangeRate);
+    const filteredGrossSale = sumGrossSaleAmount(sorted, exchangeRate);
+    const allGrossSale = sumGrossSaleAmount(list, exchangeRate);
     const filteredExpenseCount = (filteredPurchase.count || 0) + (filteredShipping.count || 0);
     const allExpenseCount = (allPurchase.count || 0) + (allShipping.count || 0);
     const filteredProfit = {
@@ -248,8 +308,12 @@ const OrderTableView = (function () {
       allPurchaseMetric: allPurchase,
       filteredSaleMetric: filteredSale,
       allSaleMetric: allSale,
+      filteredGrossSaleMetric: filteredGrossSale,
+      allGrossSaleMetric: allGrossSale,
       filteredShippingMetric: filteredShipping,
       allShippingMetric: allShipping,
+      filteredRefundMetric: filteredRefund,
+      allRefundMetric: allRefund,
       filteredProfitMetric: filteredProfit,
       allProfitMetric: allProfit
     };
@@ -323,7 +387,19 @@ const OrderTableView = (function () {
   }
 
   function buildSummaryMarkup(summary, { activeAccount = '__all__', searchQuery = '' } = {}) {
-    function buildCard(title, profitMetric, incomeMetric, expenseMetric, expenseDetail, metaText) {
+    function buildIncomeDetail(grossMetric, refundMetric) {
+      if (!refundMetric?.count) return '总销售额';
+      const grossText = grossMetric?.count ? formatCompactCurrencyAmount(grossMetric.total) : '-';
+      const refundText = formatCompactCurrencyAmount(refundMetric.total);
+      return `总销售额 ${grossText} - 总退款额 ${refundText}`;
+    }
+
+    function appendRefundCount(metaText, refundMetric) {
+      if (!refundMetric?.count) return metaText;
+      return `${metaText} · 含 ${refundMetric.count} 条退款`;
+    }
+
+    function buildCard(title, profitMetric, incomeMetric, incomeDetail, expenseMetric, expenseDetail, metaText) {
       return `
         <section class="ot-summary-section">
           <div class="ot-summary-head">
@@ -338,7 +414,7 @@ const OrderTableView = (function () {
             <div class="ot-summary-ledger-item is-income">
               <span class="ot-summary-ledger-label">收入</span>
               <strong class="ot-summary-ledger-value">${escapeHtml(incomeMetric.value)}</strong>
-              <span class="ot-summary-ledger-note">${escapeHtml(incomeMetric.label)}</span>
+              <span class="ot-summary-ledger-note">${escapeHtml(incomeDetail)}</span>
             </div>
             <div class="ot-summary-ledger-item is-expense">
               <span class="ot-summary-ledger-label">支出</span>
@@ -370,15 +446,17 @@ const OrderTableView = (function () {
         ${buildCard(buildCurrentFilterTitle(activeAccount, searchQuery),
       { label: '预估总利润', value: formatSummaryMetric(summary.filteredProfitMetric), tone: getSummaryTone(summary.filteredProfitMetric, 'profit') },
       { label: '总销售额', value: formatSummaryMetric(summary.filteredSaleMetric), tone: getSummaryTone(summary.filteredSaleMetric, 'income') },
+      buildIncomeDetail(summary.filteredGrossSaleMetric, summary.filteredRefundMetric),
       { ...filteredExpenseMetric, tone: getSummaryTone(filteredExpenseMetric, 'expense') },
       `总采购额 ${summary.filteredPurchaseMetric?.count ? formatCompactCurrencyAmount(summary.filteredPurchaseMetric.total) : '-'} + 预估总海外运费 ${summary.filteredShippingMetric?.count ? formatCompactCurrencyAmount(summary.filteredShippingMetric.total) : '-'}`,
-      `受账号标签和搜索影响 · 共 ${summary.filteredCount} 条`)}
+      appendRefundCount(`受账号标签和搜索影响 · 共 ${summary.filteredCount} 条`, summary.filteredRefundMetric))}
         ${buildCard('全部订单',
         { label: '预估总利润', value: formatSummaryMetric(summary.allProfitMetric), tone: getSummaryTone(summary.allProfitMetric, 'profit') },
         { label: '总销售额', value: formatSummaryMetric(summary.allSaleMetric), tone: getSummaryTone(summary.allSaleMetric, 'income') },
+        buildIncomeDetail(summary.allGrossSaleMetric, summary.allRefundMetric),
         { ...allExpenseMetric, tone: getSummaryTone(allExpenseMetric, 'expense') },
         `总采购额 ${summary.allPurchaseMetric?.count ? formatCompactCurrencyAmount(summary.allPurchaseMetric.total) : '-'} + 预估总海外运费 ${summary.allShippingMetric?.count ? formatCompactCurrencyAmount(summary.allShippingMetric.total) : '-'}`,
-        `不受账号、搜索、分页影响 · 共 ${summary.allCount} 条`)}
+        appendRefundCount(`不受账号、搜索、分页影响 · 共 ${summary.allCount} 条`, summary.allRefundMetric))}
         </div>
       </div>`;
   }
@@ -520,7 +598,7 @@ const OrderTableView = (function () {
         ? computeOrderEstimatedProfit(order, exchangeRate)
         : computeOrderProfitAmount(order, exchangeRate);
       return `
-        <tr>
+        <tr class="${isOrderRefunded(order) ? 'is-refunded' : ''}">
           <td style="color:var(--muted)">${seqNum}</td>
           ${isAll ? `<td><span class="chip muted">${escapeHtml(order?.['账号'] || '-')}</span></td>` : ''}
           <td>${escapeHtml(order?.['下单时间'])}</td>
@@ -530,7 +608,7 @@ const OrderTableView = (function () {
           <td>${escapeHtml(order?.['订单号'])}</td>
           <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(order?.['产品名称'])}">${escapeHtml(order?.['产品名称'])}</td>
           <td>${escapeHtml(formatTableCellValue(order?.['数量']))}</td>
-          <td>${escapeHtml(formatTableCellValue(order?.['售价']))}</td>
+          <td>${buildSaleCellMarkup(order)}</td>
           <td>${escapeHtml(formatTableCellValue(order?.['采购价格']))}</td>
           <td>${escapeHtml(formatTableCellValue(order?.['预估运费']))}</td>
           <td><span class="ot-profit-value is-${escapeHtml(getProfitCellToneClass(resolvedProfit))}">${escapeHtml(formatTableMoneyValue(resolvedProfit) || '-')}</span></td>

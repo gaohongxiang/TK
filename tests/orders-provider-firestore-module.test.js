@@ -62,6 +62,12 @@ assert.match(
 
 assert.match(
   source,
+  /'是否退款': data\?\.isRefunded \? '1' : ''[\s\S]*isRefunded: toBoolean\(order\?\.\['是否退款'\]\)/,
+  'Firestore provider 需要映射订单退款状态字段'
+);
+
+assert.match(
+  source,
   /'商品TK ID': data\?\.productTkId \|\| ''[\s\S]*productTkId: toNullableText\(onlyItem\?\.productTkId \|\| order\?\.\['商品TK ID'\]\)/,
   'Firestore provider 需要映射订单关联商品 TK ID'
 );

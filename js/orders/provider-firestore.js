@@ -122,6 +122,11 @@ const OrderTrackerProviderFirestore = (function () {
       return Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : null;
     }
 
+    function toBoolean(value) {
+      const raw = String(value ?? '').trim().toLowerCase();
+      return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'y';
+    }
+
     function toIsoString(value, fallback = '') {
       if (!value && fallback) return fallback;
       if (!value) return '';
@@ -259,6 +264,7 @@ const OrderTrackerProviderFirestore = (function () {
         '商品SKU名称': data?.productSkuName || '',
         '产品名称': productSummary,
         '数量': totalQuantity == null || totalQuantity === '' ? '' : String(totalQuantity),
+        '是否退款': data?.isRefunded ? '1' : '',
         '采购价格': totalPurchase == null || totalPurchase === '' ? '' : String(totalPurchase),
         '售价': totalSale == null || totalSale === '' ? '' : String(totalSale),
         '预估运费': data?.estimatedShippingFee == null ? '' : String(data.estimatedShippingFee),
@@ -300,6 +306,7 @@ const OrderTrackerProviderFirestore = (function () {
         productSkuName: toNullableText(onlyItem?.productSkuName || order?.['商品SKU名称']),
         productName: productSummary,
         quantity: items.length ? totals.quantity : toNullableInteger(order?.['数量']),
+        isRefunded: toBoolean(order?.['是否退款']),
         purchasePrice: topLevelPurchase ?? (items.length ? Number(totals.purchase.toFixed(2)) : null),
         salePrice: topLevelSale ?? (items.length ? Number(totals.sale.toFixed(2)) : null),
         estimatedShippingFee: toNullableDecimal(order?.['预估运费']),

@@ -14,6 +14,7 @@ const OrderTrackerCrud = (function () {
       getPricingContext,
       getPricingExchangeRate,
       computeOrderEstimatedProfit,
+      isOrderRefunded,
       normalizeOrderRecord,
       escapeHtml,
       normalizeAccountName,
@@ -27,6 +28,12 @@ const OrderTrackerCrud = (function () {
     const getNowIso = typeof nowIso === 'function'
       ? nowIso
       : () => new Date().toISOString();
+    const isRefundedOrder = typeof isOrderRefunded === 'function'
+      ? isOrderRefunded
+      : order => {
+        const raw = String(order?.['是否退款'] ?? order?.isRefunded ?? '').trim().toLowerCase();
+        return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'y';
+      };
     const {
       getUniqueAccounts,
       promptAddAccount,
@@ -764,6 +771,22 @@ const OrderTrackerCrud = (function () {
       if (estimatedProfitField) {
         estimatedProfitField.value = computeEstimatedProfitFromForm(form);
       }
+      syncRefundPresentation(form);
+    }
+
+    function syncRefundPresentation(form) {
+      if (!form) return;
+      const refundedField = form.querySelector('[name="是否退款"]');
+      const saleInput = form.querySelector('[name="售价"]');
+      const saleField = form.querySelector('.ot-sale-field');
+      const saleOriginal = form.querySelector('.ot-sale-input-original');
+      if (!refundedField || !saleInput || !saleField) return;
+      const refunded = !!refundedField.checked;
+      const saleText = String(saleInput.value || '').trim();
+      saleField.classList.toggle('is-refunded', refunded);
+      saleInput.readOnly = refunded;
+      if (saleOriginal) saleOriginal.textContent = saleText || '-';
+      if (refunded && typeof saleInput.blur === 'function') saleInput.blur();
     }
 
     function formatMoneyValue(value) {
@@ -924,18 +947,20 @@ const OrderTrackerCrud = (function () {
       return sharedRate !== null && sharedRate > 0 ? sharedRate : null;
     }
 
-    function computeEstimatedProfitValue({ salePrice = '', purchasePrice = '', estimatedShippingFee = '' } = {}) {
+    function computeEstimatedProfitValue({ salePrice = '', purchasePrice = '', estimatedShippingFee = '', isRefunded = '' } = {}) {
       const exchangeRate = resolveExchangeRate();
+      const refunded = isRefundedOrder({ '是否退款': isRefunded });
       const sharedProfit = typeof computeOrderEstimatedProfit === 'function'
         ? computeOrderEstimatedProfit({
           '售价': salePrice,
           '采购价格': purchasePrice,
-          '预估运费': estimatedShippingFee
+          '预估运费': estimatedShippingFee,
+          '是否退款': refunded ? '1' : ''
         }, exchangeRate)
         : null;
       if (sharedProfit !== null) return formatMoneyValue(sharedProfit);
 
-      const sale = parseMoneyValue(salePrice);
+      const sale = refunded ? 0 : parseMoneyValue(salePrice);
       const purchase = parseMoneyValue(purchasePrice);
       const shipping = parseMoneyValue(estimatedShippingFee);
       if (exchangeRate === null || sale === null || purchase === null || shipping === null) return '';
@@ -947,7 +972,8 @@ const OrderTrackerCrud = (function () {
       return computeEstimatedProfitValue({
         salePrice: form.querySelector('[name="售价"]')?.value || '',
         purchasePrice: form.querySelector('[name="采购价格"]')?.value || '',
-        estimatedShippingFee: form.querySelector('[name="预估运费"]')?.value || ''
+        estimatedShippingFee: form.querySelector('[name="预估运费"]')?.value || '',
+        isRefunded: form.querySelector('[name="是否退款"]')?.checked ? '1' : ''
       });
     }
 
@@ -1008,7 +1034,12 @@ const OrderTrackerCrud = (function () {
         Object.entries(order).forEach(([key, value]) => {
           if (key === '账号' || key === 'items') return;
           const input = form.querySelector(`[name="${key}"]`);
-          if (input) input.value = value ?? '';
+          if (!input) return;
+          if (String(input.type || '').toLowerCase() === 'checkbox') {
+            input.checked = String(value || '').trim() === '1';
+            return;
+          }
+          input.value = value ?? '';
         });
         renderOrderItems(getOrderItemsFromOrder(order));
       } else {
@@ -1051,6 +1082,7 @@ const OrderTrackerCrud = (function () {
         return;
       }
       const payload = normalizeOrderRecord(Object.fromEntries(new FormData(event.target).entries()));
+      payload['是否退款'] = event.target?.querySelector?.('[name="是否退款"]')?.checked ? '1' : '';
       const accountName = payload['账号'] || '';
       for (const item of items) {
         const product = item.productTkId ? getItemRowProduct(accountName, item.productTkId) : null;
@@ -1095,7 +1127,8 @@ const OrderTrackerCrud = (function () {
       payload['预估利润'] = computeEstimatedProfitValue({
         salePrice: payload['售价'],
         purchasePrice: payload['采购价格'],
-        estimatedShippingFee: payload['预估运费']
+        estimatedShippingFee: payload['预估运费'],
+        isRefunded: payload['是否退款']
       });
       payload['最晚到仓时间'] = payload['下单时间'] ? addDays(payload['下单时间'], 6) : '';
       payload['订单预警'] = computeWarning(payload).text;
@@ -1145,6 +1178,7 @@ const OrderTrackerCrud = (function () {
       const purchasePrice = form.querySelector('[name="采购价格"]');
       const salePrice = form.querySelector('[name="售价"]');
       const estimatedShippingFee = form.querySelector('[name="预估运费"]');
+      const refundedField = form.querySelector('[name="是否退款"]');
       const weightField = form.querySelector('[name="重量"]');
       const sizeField = form.querySelector('[name="尺寸"]');
       if (orderDate) orderDate.addEventListener('change', recomputeAuto);
@@ -1157,6 +1191,9 @@ const OrderTrackerCrud = (function () {
         field.addEventListener('input', recomputeAuto);
         field.addEventListener('change', recomputeAuto);
       });
+      if (refundedField) {
+        refundedField.addEventListener('change', recomputeAuto);
+      }
       if (estimatedShippingFee) {
         const handleEstimatedShippingInput = () => {
           recomputeAuto();

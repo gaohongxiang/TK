@@ -163,6 +163,18 @@ assert.match(
 );
 
 assert.match(
+  source,
+  /isOrderRefunded\(order\) \? '退款 已退款' : ''/,
+  '搜索口径需要包含退款关键词，便于搜出退款订单'
+);
+
+assert.match(
+  source,
+  /<tr class="\$\{isOrderRefunded\(order\) \? 'is-refunded' : ''\}">/,
+  '退款订单行需要挂上淡红提示样式'
+);
+
+assert.match(
   ordersSource,
   /OrderTableView\.render\(/,
   'js/orders/index.js 需要把表格渲染委托给 OrderTableView.render'

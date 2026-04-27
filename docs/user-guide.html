@@ -458,7 +458,9 @@
               <span class="doc-section-tag">Guide</span>
             </div>
             <p>按实际使用流程整理，说明怎么连接数据库、怎么维护商品、怎么录订单，以及几个模块之间如何配合。</p>
-            <p>项目已开源：<a href="https://github.com/gaohongxiang/TK" target="_blank" rel="noopener">https://github.com/gaohongxiang/TK</a>。你也可以直接基于开源代码自行部署到 <code>Cloudflare Pages</code>。</p>
+            <p>项目已开源：<a href="https://github.com/gaohongxiang/TK" target="_blank"
+                rel="noopener">https://github.com/gaohongxiang/TK</a>。你也可以直接基于开源代码自行部署到 <code>Cloudflare Pages</code>。
+            </p>
             <p>利润计算器不依赖数据库，可以直接使用。</p>
             <p>商品管理和订单管理依赖你自己的 Firebase Firestore 项目，本网站不保存你的数据。第一次使用时，需要先完成数据库连接，再开始录商品和订单。</p>
             <h3 style="margin-top:18px">推荐上手顺序</h3>
@@ -480,6 +482,17 @@
             </div>
             <p>商品管理和订单管理都依赖你自己的 Firebase Firestore 项目。第一次使用时，先把数据库创建好、规则发布好，再回到网站连接。</p>
 
+            <h3>为什么选择 Firebase</h3>
+            <ul class="doc-list" style="margin-top:12px">
+              <li><strong>数据在你自己手里：</strong>订单和商品资料都保存到你自己的 <code>Firebase Firestore</code> 项目里。本站不保存你的数据。</li>
+              <li><strong>接入简单：</strong>这是一个纯前端工具，不需要你自己先搭后端服务，创建好 Firebase 项目后就可以直接连接使用。</li>
+              <li><strong>字段扩展更轻：</strong>Firestore 是文档型数据库。后续如果只是给订单或商品增加字段，大多数情况下不需要像传统 SQL 表那样先改表结构再继续用。</li>
+              <li><strong>离线和同步现成：</strong>网站使用 <code>Firestore 自带的离线缓存</code>。离线时也能继续操作，恢复联网后可同步。</li>
+              <li><strong>换设备恢复简单：</strong>只要新设备连接的是同一个 Firebase 项目，并填入同一套 <code>firebaseConfig</code>，就可以恢复数据。</li>
+              <li><strong>一处连接，全站复用：</strong>商品管理和订单管理共用同一个 Firestore 项目。连一次，两个模块都会直接复用。</li>
+              <li><strong>更适合自己部署：</strong>如果你把项目部署到 Cloudflare Pages，也可以继续连你自己的 Firebase 项目，不需要把数据托管给别人。</li>
+            </ul>
+
             <h3>创建 Firebase 项目</h3>
             <ol class="doc-number-list" style="margin-top:12px">
               <li>打开 <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase
@@ -497,7 +510,7 @@
             </ol>
 
             <h3 style="margin-top:18px">发布 Firestore 规则</h3>
-            <p>网站提供了最新的 Firestore 规则。你需要把规则复制到 <a href="https://console.firebase.google.com/" target="_blank"
+            <p>本网站提供了最新的 Firestore 规则。你需要把规则复制到 <a href="https://console.firebase.google.com/" target="_blank"
                 rel="noopener">Firebase Console</a> 里并发布。</p>
             <ul class="doc-list" style="margin-top:12px">
               <li>第一次使用时，需要先发布一次规则。</li>
@@ -522,13 +535,6 @@
             <p>如果需要更新规则，直接打开 <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase
                 Console</a>，复制最新规则，在 <code>Firestore Rules</code> 页面重新发布即可。</p>
 
-            <h3 style="margin-top:18px">数据库连接后还有哪些事要知道</h3>
-            <ul class="doc-list" style="margin-top:12px">
-              <li><strong>数据保存在哪里：</strong>订单和商品资料都保存到你自己的 Firebase Firestore。网站不会把你的业务数据保存到作者自己的数据库。</li>
-              <li><strong>离线怎么工作：</strong>网站使用 Firestore 自带的离线缓存。离线时也能继续操作，恢复联网后会自动同步。</li>
-              <li><strong>换设备怎么恢复：</strong>只要新设备连接的是同一个 Firebase 项目，并填入同一套 <code>firebaseConfig</code>，就可以恢复数据。</li>
-              <li><strong>一个项目连一次就够吗：</strong>是。商品管理和订单管理共用同一个 Firestore 项目。连一次，两个模块都会直接复用。</li>
-            </ul>
           </section>
         </section>
 
@@ -549,8 +555,10 @@
             </ul>
             <h3>定价新公式与字段说明</h3>
             <ul class="doc-list" style="margin-top:12px">
-              <li><strong>总费用：</strong><code>采购价 + 海外运费。采购价是1688/拼多多等平台采购商品的实际成本，包含国内运费，平台的减免也算进去。</code>。</li>
+              <li><strong>总费用：</strong><code>采购价 + 海外运费</code>
+              </li>
               <li>
+                <strong>采购价：</strong><code>1688/拼多多等平台采购商品的实际成本，包含国内运费，平台的减免也算进去，首单可能减免，后面就按原价了。</code>。
                 <strong>海外运费：</strong><code>（基础费 + 每千克重量费 × 计费重 − 用户承担）× 运费倍率 ÷ 汇率 + 贴单费</code>。
                 <div class="doc-inline-note">可以先用海外运费计算器输入实重、尺寸和货物类型，系统会按计费重估算运费。计算结果会自动填入海外运费框；如果你已经知道运费，也可以直接手动输入海外运费。
                 </div>
@@ -676,11 +684,18 @@
 
             <h3 style="margin-top:18px">新增订单时，推荐怎么录</h3>
             <ul class="doc-list" style="margin-top:12px">
-              <li><strong>先填基本信息：</strong><code>账号</code>、<code>下单时间</code>、<code>订单号</code>、<code>采购日期</code>。<code>最晚到仓时间</code> 会按下单时间 + 6 天自动生成。</li>
-              <li><strong>再填订单明细项：</strong>在 <code>订单明细</code> 里逐条添加商品 / SKU / 数量。如果商品资料已经建好，优先关联商品和 SKU。关联后，系统会自动带出商品名称、单件重量和单件尺寸，这些值后面仍然可以手动修改。</li>
-              <li><strong>再看订单级汇总：</strong><code>总件数</code> 会按所有明细数量自动求和，<code>总重量</code> 会按所有明细 <code>单件重量 × 数量</code> 自动汇总，<code>总尺寸</code> 需要你按实际打包情况自己调整，<code>预估总海外运费</code> 会按当前的 <code>总重量 + 总尺寸</code> 自动计算。</li>
-              <li><strong>再填订单级金额：</strong><code>总售价（日元）</code> 是整张订单的总售价，<code>总采购额（元）</code> 是整张订单的总采购额，它们不再按明细逐条填写。</li>
-              <li><strong>最后补快递信息：</strong><code>快递公司</code>、<code>快递单号</code>、<code>订单状态</code>。<code>订单预警</code> 会自动生成。</li>
+              <li>
+                <strong>先填基本信息：</strong><code>账号</code>、<code>下单时间</code>、<code>订单号</code>、<code>采购日期</code>。<code>最晚到仓时间</code>
+                会按下单时间 + 6 天自动生成。
+              </li>
+              <li><strong>再填订单明细项：</strong>在 <code>订单明细</code> 里逐条添加商品 / SKU / 数量。如果商品资料已经建好，优先关联商品和
+                SKU。关联后，系统会自动带出商品名称、单件重量和单件尺寸，这些值后面仍然可以手动修改。</li>
+              <li><strong>再看订单级汇总：</strong><code>总件数</code> 会按所有明细数量自动求和，<code>总重量</code> 会按所有明细 <code>单件重量 × 数量</code>
+                自动汇总，<code>总尺寸</code> 需要你按实际打包情况自己调整，<code>预估总海外运费</code> 会按当前的 <code>总重量 + 总尺寸</code> 自动计算。</li>
+              <li><strong>再填订单级金额：</strong><code>总售价（日元）</code> 是整张订单的总售价，<code>总采购额（元）</code> 是整张订单的总采购额，<code>是否退款</code> 用来标记这张订单是否已经全额退款，它们不再按明细逐条填写。
+              </li>
+              <li><strong>最后补快递信息：</strong><code>快递公司</code>、<code>快递单号</code>、<code>订单状态</code>。<code>订单预警</code>
+                会自动生成。</li>
             </ul>
             <p>关联商品不是强制项，但推荐这样录，后面会顺很多。即使不关联商品，也可以手动把订单录完整。</p>
 
@@ -726,12 +741,18 @@
             <h3 style="margin-top:18px">订单里的金额口径</h3>
             <ul class="doc-list" style="margin-top:12px">
               <li><strong>总售价：</strong>录入的是 <code>日元</code>。</li>
+              <li><strong>是否退款：</strong>勾上后，这张订单的收入按 <code>0</code> 计算，但原始总售价仍然保留。</li>
               <li><strong>总采购额：</strong>录入的是 <code>人民币</code>。</li>
               <li><strong>预估总海外运费：</strong>录入的是 <code>人民币</code>。</li>
               <li><strong>预估利润：</strong>显示的是 <code>人民币</code>。</li>
             </ul>
             <p>预估利润公式：</p>
-            <p><code>预估利润 = 总售价（日元）÷ 汇率 -（总采购额 + 预估总海外运费）</code></p>
+            <p><code>预估利润 = 实收金额（日元）÷ 汇率 -（总采购额 + 预估总海外运费）</code></p>
+            <p>其中：</p>
+            <ul class="doc-list" style="margin-top:12px">
+              <li>未退款时，<code>实收金额 = 总售价</code>。</li>
+              <li>已退款时，<code>实收金额 = 0</code>。</li>
+            </ul>
             <p>这里用的是和利润计算器共用的全局汇率。</p>
 
             <h3 style="margin-top:18px">订单状态会自动变化吗</h3>
@@ -760,6 +781,16 @@
               <li><code>总销售额</code> 是收入。</li>
               <li><code>总采购额 + 预估总海外运费</code> 是支出。</li>
               <li><code>预估总利润 = 总销售额 - 总支出</code>。</li>
+            </ul>
+            <p>如果有退款订单：</p>
+            <ul class="doc-list" style="margin-top:12px">
+              <li>收入说明会写成 <code>总销售额 - 总退款额</code>。</li>
+              <li>条数说明里会额外写 <code>含 x 条退款</code>。</li>
+            </ul>
+            <p>如果订单被标记为已退款：</p>
+            <ul class="doc-list" style="margin-top:12px">
+              <li>这张订单的 <code>总销售额</code> 会按 <code>0</code> 计算。</li>
+              <li>原始 <code>总售价</code> 仍然保留在订单里，方便回看历史成交金额。</li>
             </ul>
 
             <h3 style="margin-top:18px">搜索、分页和导出怎么用</h3>

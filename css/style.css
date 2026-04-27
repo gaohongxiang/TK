@@ -373,6 +373,11 @@ nav.modules a.active {
   gap: 14px
 }
 
+.row.quint {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px
+}
+
 .row+.row {
   margin-top: 18px
 }
@@ -1403,6 +1408,35 @@ details[open] summary {
 
 .ot-summary-ledger-item.is-expense .ot-summary-ledger-value {
   color: var(--expense);
+}
+
+.ot-summary-refund {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed color-mix(in srgb, rgba(196, 78, 78, .22) 78%, white);
+}
+
+.ot-summary-refund-label {
+  color: #b56565;
+  font-size: 10.5px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.ot-summary-refund-value {
+  color: #c44e4e;
+  font-size: 16px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.ot-summary-refund-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .pl-toolbar {
@@ -2550,6 +2584,14 @@ table.ot tbody tr:hover {
   background: rgba(110, 168, 255, .05)
 }
 
+table.ot tbody tr.is-refunded {
+  background: rgba(196, 78, 78, .055);
+}
+
+table.ot tbody tr.is-refunded:hover {
+  background: rgba(196, 78, 78, .09);
+}
+
 .chip {
   display: inline-block;
   padding: 3px 10px;
@@ -2765,6 +2807,136 @@ table.ot tbody tr:hover {
 .modal .row.quad {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
+}
+
+.modal .row.quint {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ot-money-row {
+  grid-template-columns: minmax(56px, 68px) repeat(4, minmax(0, 1fr)) !important;
+}
+
+.ot-refund-toggle {
+  width: 100%;
+  min-height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+  background: transparent;
+}
+
+.ot-refund-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ot-refund-toggle-knob {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel2) 84%, white 16%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 88%, white 12%);
+  flex: 0 0 auto;
+  transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.ot-refund-toggle:hover .ot-refund-toggle-knob {
+  background: color-mix(in srgb, var(--panel2) 74%, white 26%);
+}
+
+.ot-refund-toggle-knob::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .18);
+  transition: left .18s ease;
+}
+
+.ot-refund-toggle:has(input:checked) {
+  background: transparent;
+}
+
+.ot-refund-toggle:has(input:checked) .ot-refund-toggle-knob {
+  background: linear-gradient(135deg, #f0b1b1, #de6a6a);
+  box-shadow: inset 0 0 0 1px rgba(196, 78, 78, .18);
+}
+
+.ot-refund-toggle:has(input:checked) .ot-refund-toggle-knob::after {
+  left: calc(100% - 36px);
+}
+
+.ot-sale-input-wrap {
+  position: relative;
+}
+
+.ot-sale-input-refund {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, #fff5f5 78%, var(--panel2) 22%);
+  box-shadow: inset 0 0 0 1px rgba(196, 78, 78, .16);
+  pointer-events: none;
+}
+
+.ot-sale-input-original,
+.ot-sale-input-zero {
+  font-variant-numeric: tabular-nums;
+}
+
+.ot-sale-input-original {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.2px;
+}
+
+.ot-sale-input-zero {
+  color: #c44e4e;
+  font-weight: 700;
+}
+
+.ot-sale-field.is-refunded input {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ot-sale-field.is-refunded .ot-sale-input-refund {
+  display: flex;
+}
+
+.ot-sale-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  text-align: center;
+}
+
+.ot-sale-cell .ot-sale-current {
+  font-weight: 600;
+  color: #c44e4e;
+}
+
+.ot-sale-cell .ot-sale-original {
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: line-through;
 }
 
 .modal .full {
@@ -3596,7 +3768,8 @@ table.ship td.actual {
 
   .row,
   .row.triple,
-  .row.quad {
+  .row.quad,
+  .row.quint {
     grid-template-columns: 1fr;
     gap: 12px
   }

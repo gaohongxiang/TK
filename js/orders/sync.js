@@ -441,7 +441,10 @@ const OrderTrackerSync = (function () {
         const remote = remoteMap.get(id) || null;
         const merged = mergedMap.get(id) || null;
         if (merged) {
-          if (!ordersEqual(merged, remote)) upserts.push(cloneOrder(merged));
+          const remoteNeedsCanonicalCleanup = remote?.__needsOrderCleanup === true;
+          if (remoteNeedsCanonicalCleanup || !ordersEqual(merged, remote)) {
+            upserts.push(cloneOrder(merged));
+          }
         } else if (remote) {
           deletions.push({
             id,

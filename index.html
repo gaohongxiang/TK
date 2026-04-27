@@ -849,7 +849,7 @@
           <div class="ot-item-block-head">
             <div>
               <h4>订单明细</h4>
-              <div class="ot-item-block-copy">一个订单可以包含多个 SKU；同一 SKU 直接通过数量表示多件。</div>
+              <div class="ot-item-block-copy">一个 TK 订单可以包含多个商品和多个 SKU；每条订单明细对应一个商品的一个 SKU，数量表示该 SKU 的件数。多条订单明细还可以归属同一个 1688 采购单。</div>
             </div>
             <button type="button" class="btn" id="ot-add-item-btn">+ 添加明细</button>
           </div>
@@ -906,26 +906,7 @@
             <input type="number" name="预估利润" step="0.01" readonly>
           </div>
         </div>
-        <div class="row quad">
-          <div class="field">
-            <label>快递公司</label>
-            <select name="快递公司">
-              <option value="">- 请选择 -</option>
-              <option>韵达快递</option>
-              <option>中通快递</option>
-              <option>圆通快递</option>
-              <option>申通快递</option>
-              <option>极兔快递</option>
-              <option>顺丰快递</option>
-              <option value="邮政快递">邮政 / EMS</option>
-              <option>景光物流</option>
-              <option>安能物流</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>快递单号</label>
-            <input type="text" name="快递单号">
-          </div>
+        <div class="row dual">
           <div class="field">
             <label>订单状态</label>
             <select name="订单状态">

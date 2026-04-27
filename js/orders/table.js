@@ -162,6 +162,44 @@ const OrderTableView = (function () {
       </span>`;
   }
 
+  function normalizeOrderItems(order) {
+    return Array.isArray(order?.items) ? order.items : [];
+  }
+
+  function resolveItemCourier(item = {}, order = {}) {
+    const orderCompany = String(order?.['快递公司'] || '').trim();
+    const orderTracking = String(order?.['快递单号'] || '').trim();
+    return {
+      company: String(item?.courierCompany || '').trim() || (item?.useOrderCourier === true ? orderCompany : ''),
+      tracking: String(item?.trackingNo || '').trim() || (item?.useOrderCourier === true ? orderTracking : '')
+    };
+  }
+
+  function getOrderCourierValues(order, field = 'company') {
+    const items = normalizeOrderItems(order);
+    if (!items.length) {
+      const fallback = String(field === 'company' ? order?.['快递公司'] : order?.['快递单号'] || '').trim();
+      return fallback ? [fallback] : [];
+    }
+    const values = items
+      .map(item => resolveItemCourier(item, order)[field])
+      .filter(Boolean);
+    const uniqueValues = Array.from(new Set(values));
+    if (uniqueValues.length) return uniqueValues;
+    const fallback = String(field === 'company' ? order?.['快递公司'] : order?.['快递单号'] || '').trim();
+    return fallback ? [fallback] : [];
+  }
+
+  function buildOrderCourierSummary(order, field = 'company', mode = 'full') {
+    const values = getOrderCourierValues(order, field);
+    if (!values.length) return '';
+    if (mode === 'compact') {
+      if (values.length === 1) return values[0];
+      return field === 'company' ? `共${values.length}家` : `共${values.length}个`;
+    }
+    return values.join(' / ');
+  }
+
   function formatCurrencyAmount(value) {
     const amount = Number(value);
     if (!Number.isFinite(amount)) return '-';
@@ -233,7 +271,9 @@ const OrderTableView = (function () {
             order?.['尺寸'],
             order?.['订单状态'],
             order?.['快递公司'],
-            order?.['快递单号']
+            order?.['快递单号'],
+            buildOrderCourierSummary(order, 'company', 'full'),
+            buildOrderCourierSummary(order, 'tracking', 'full')
           ].join(' '));
         return haystack.includes(query);
       });
@@ -597,6 +637,10 @@ const OrderTableView = (function () {
       const resolvedProfit = typeof computeOrderEstimatedProfit === 'function'
         ? computeOrderEstimatedProfit(order, exchangeRate)
         : computeOrderProfitAmount(order, exchangeRate);
+      const courierSummary = buildOrderCourierSummary(order, 'company', 'full');
+      const trackingSummary = buildOrderCourierSummary(order, 'tracking', 'full');
+      const courierDisplay = buildOrderCourierSummary(order, 'company', 'compact');
+      const trackingDisplay = buildOrderCourierSummary(order, 'tracking', 'compact');
       return `
         <tr class="${isOrderRefunded(order) ? 'is-refunded' : ''}">
           <td style="color:var(--muted)">${seqNum}</td>
@@ -615,8 +659,8 @@ const OrderTableView = (function () {
           <td>${escapeHtml(formatTableCellValue(order?.['重量']))}</td>
           <td>${escapeHtml(formatTableCellValue(order?.['尺寸']))}</td>
           <td>${escapeHtml(formatTableCellValue(order?.['订单状态']))}</td>
-          <td>${escapeHtml(formatTableCellValue(order?.['快递公司']))}</td>
-          <td>${escapeHtml(formatTableCellValue(order?.['快递单号']))}</td>
+          <td title="${escapeHtml(courierSummary)}">${escapeHtml(formatTableCellValue(courierDisplay))}</td>
+          <td title="${escapeHtml(trackingSummary)}">${escapeHtml(formatTableCellValue(trackingDisplay))}</td>
           <td>
             <button class="btn sm" data-edit="${escapeHtml(order?.id)}">编辑</button>
             <button class="btn sm danger" data-del="${escapeHtml(order?.id)}">删除</button>

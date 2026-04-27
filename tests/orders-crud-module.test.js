@@ -144,6 +144,18 @@ assert.match(
 );
 
 assert.match(
+  source,
+  /function copyTrackingNumberFromRow\(/,
+  '订单 CRUD 模块需要支持订单明细里的快递单号复制'
+);
+
+assert.match(
+  htmlSource,
+  /一个 TK 订单可以包含多个商品和多个 SKU；每条订单明细对应一个商品的一个 SKU，数量表示该 SKU 的件数。多条订单明细还可以归属同一个 1688 采购单。/,
+  '订单弹窗需要说明 TK 订单与订单明细、SKU 的对应关系'
+);
+
+assert.match(
   htmlSource,
   /<label>订单号 \*<\/label>[\s\S]*<input type="text" name="订单号" required>/,
   '订单号需要是必填字段'

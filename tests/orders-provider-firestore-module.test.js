@@ -68,14 +68,14 @@ assert.match(
 
 assert.match(
   source,
-  /'商品TK ID': data\?\.productTkId \|\| ''[\s\S]*productTkId: toNullableText\(onlyItem\?\.productTkId \|\| order\?\.\['商品TK ID'\]\)/,
-  'Firestore provider 需要映射订单关联商品 TK ID'
+  /function rawOrderNeedsCanonicalCleanup\(/,
+  'Firestore provider 需要识别需要清洗的旧订单字段'
 );
 
 assert.match(
   source,
-  /'商品SKU ID': data\?\.productSkuId \|\| ''[\s\S]*'商品SKU名称': data\?\.productSkuName \|\| ''[\s\S]*productSkuId: toNullableText\(onlyItem\?\.productSkuId \|\| order\?\.\['商品SKU ID'\]\)[\s\S]*productSkuName: toNullableText\(onlyItem\?\.productSkuName \|\| order\?\.\['商品SKU名称'\]\)/,
-  'Firestore provider 需要映射订单关联 SKU 字段'
+  /__needsOrderCleanup:\s*rawOrderNeedsCanonicalCleanup\(data\)/,
+  'Firestore provider 拉取订单时需要标记是否仍需结构清洗'
 );
 
 assert.match(
@@ -92,8 +92,26 @@ assert.match(
 
 assert.match(
   source,
-  /items: items\.length \? items\.map\(item => \(\{/,
+  /items: items\.length \? items\.map\(item => \{/,
   'Firestore provider 写回 Firestore 时需要保存订单明细 items'
+);
+
+assert.match(
+  source,
+  /productName:\s*productSummary[\s\S]*items: items\.length \? items\.map\(item => \{[\s\S]*if \(courierCompany\) row\.courierCompany = courierCompany[\s\S]*if \(trackingNo\) row\.trackingNo = trackingNo[\s\S]*mutations\.push\(batch => batch\.set\(orderRef\(currentDb, row\.id\), row\)\)/,
+  'Firestore provider 写回 Firestore 时需要只保留新结构字段，并用整单覆盖清掉旧兼容字段'
+);
+
+assert.match(
+  source,
+  /stripDuplicatedSkuSuffix\(item\.productName, item\.productSkuName\)/,
+  'Firestore provider 写回 Firestore 时需要清洗明细商品名称'
+);
+
+assert.match(
+  source,
+  /if \(unitPurchasePrice !== null\) row\.unitPurchasePrice = unitPurchasePrice[\s\S]*if \(unitSalePrice !== null\) row\.unitSalePrice = unitSalePrice/,
+  'Firestore provider 不应再把空的明细单价字段写成 null'
 );
 
 assert.match(
@@ -106,6 +124,13 @@ const sandbox = {
   window: {
     firebase: {
       apps: [],
+      firestore: {
+        FieldValue: {
+          delete() {
+            return { __delete__: true };
+          }
+        }
+      },
       initializeApp(config, name) {
         const app = {
           name,

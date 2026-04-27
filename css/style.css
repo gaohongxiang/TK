@@ -2715,7 +2715,7 @@ table.ot tbody tr.is-refunded:hover {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 8px;
-  padding: 12px 92px 12px 12px;
+  padding: 12px 44px 12px 12px;
   border: 1px solid color-mix(in srgb, var(--border) 88%, white);
   border-radius: 14px;
   background: color-mix(in srgb, var(--panel) 96%, white);
@@ -2724,7 +2724,26 @@ table.ot tbody tr.is-refunded:hover {
 .ot-item-remove {
   position: absolute;
   top: 10px;
-  right: 12px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--expense) 84%, white);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+
+.ot-item-remove:hover {
+  background: color-mix(in srgb, var(--expense) 10%, white);
+  color: var(--expense);
 }
 
 .ot-item-field {
@@ -2752,22 +2771,27 @@ table.ot tbody tr.is-refunded:hover {
 }
 
 .ot-item-edit-row .tk-search-select,
-.ot-item-edit-row .field input {
+.ot-item-edit-row .field input,
+.ot-item-edit-row .field select {
   width: 100%;
 }
 
 .ot-item-edit-row .tk-search-select-trigger,
-.ot-item-edit-row .field input {
+.ot-item-edit-row .field input,
+.ot-item-edit-row .field select,
+.ot-item-courier-toggle {
   min-height: 40px;
   height: 40px;
 }
 
 .ot-item-edit-row .tk-search-select-trigger-label,
-.ot-item-edit-row .field input {
+.ot-item-edit-row .field input,
+.ot-item-edit-row .field select {
   text-align: center;
 }
 
-.ot-item-edit-row .tk-search-select-trigger {
+.ot-item-edit-row .tk-search-select-trigger,
+.ot-item-edit-row .field select {
   padding: 0 12px;
   border-radius: 10px;
   border-color: color-mix(in srgb, var(--border) 82%, white);
@@ -2780,6 +2804,40 @@ table.ot tbody tr.is-refunded:hover {
 
 .ot-item-edit-row .tk-search-select.is-open {
   z-index: 120;
+}
+
+.ot-item-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+}
+
+.ot-item-inline-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.ot-item-inline-btn:hover {
+  color: color-mix(in srgb, var(--accent) 82%, black);
+}
+
+.ot-item-copy-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .ot-inline-hint {

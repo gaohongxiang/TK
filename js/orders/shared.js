@@ -117,19 +117,43 @@ const OrderTrackerShared = (function () {
       return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
+    function stripDuplicatedSkuSuffix(productName, skuName) {
+      const rawProductName = String(productName || '').trim();
+      const rawSkuName = String(skuName || '').trim();
+      if (!rawProductName || !rawSkuName) return rawProductName;
+      let next = rawProductName;
+      [` - ${rawSkuName}`, ` / ${rawSkuName}`].forEach(suffix => {
+        if (next.endsWith(suffix)) next = next.slice(0, -suffix.length).trim();
+      });
+      return next;
+    }
+
     function normalizeOrderItem(item = {}) {
       const quantity = Number.parseInt(String(item?.quantity ?? item?.['数量'] ?? '').trim(), 10);
+      const rawUseOrderCourier = item?.useOrderCourier ?? item?.['跟随订单默认快递'];
+      const hasUseOrderCourier = rawUseOrderCourier !== undefined
+        && rawUseOrderCourier !== null
+        && String(rawUseOrderCourier).trim() !== '';
+      const productSkuName = String(item?.productSkuName || item?.['商品SKU名称'] || '').trim();
       return {
         lineId: String(item?.lineId || '').trim() || uid(),
         productTkId: String(item?.productTkId || item?.['商品TK ID'] || '').trim(),
         productSkuId: String(item?.productSkuId || item?.['商品SKU ID'] || '').trim(),
-        productSkuName: String(item?.productSkuName || item?.['商品SKU名称'] || '').trim(),
-        productName: String(item?.productName || item?.['产品名称'] || '').trim(),
+        productSkuName,
+        productName: stripDuplicatedSkuSuffix(
+          item?.productName || item?.['产品名称'] || '',
+          productSkuName
+        ),
         quantity: Number.isFinite(quantity) && quantity > 0 ? String(quantity) : '1',
         unitPurchasePrice: String(item?.unitPurchasePrice ?? item?.['单件采购价'] ?? item?.['采购价格'] ?? '').trim(),
         unitSalePrice: String(item?.unitSalePrice ?? item?.['单件售价'] ?? item?.['售价'] ?? '').trim(),
         unitWeightG: String(item?.unitWeightG ?? item?.['单件重量'] ?? item?.['重量'] ?? '').trim(),
-        unitSizeText: String(item?.unitSizeText ?? item?.['单件尺寸'] ?? item?.['尺寸'] ?? '').trim()
+        unitSizeText: String(item?.unitSizeText ?? item?.['单件尺寸'] ?? item?.['尺寸'] ?? '').trim(),
+        useOrderCourier: hasUseOrderCourier
+          ? !['0', 'false', 'no', 'n'].includes(String(rawUseOrderCourier).trim().toLowerCase())
+          : null,
+        courierCompany: String(item?.courierCompany ?? item?.['快递公司'] ?? '').trim(),
+        trackingNo: String(item?.trackingNo ?? item?.['快递单号'] ?? '').trim()
       };
     }
 
@@ -143,6 +167,8 @@ const OrderTrackerShared = (function () {
           || item.unitSalePrice
           || item.unitWeightG
           || item.unitSizeText
+          || item.courierCompany
+          || item.trackingNo
         ))
         : [];
     }
@@ -219,6 +245,17 @@ const OrderTrackerShared = (function () {
       });
     }
 
+    function buildOrderCourierSummary(items = [], field = 'company') {
+      const values = normalizeOrderItems(items)
+        .map(item => (
+          field === 'company'
+            ? String(item?.courierCompany || '').trim()
+            : String(item?.trackingNo || '').trim()
+        ))
+        .filter(Boolean);
+      return Array.from(new Set(values)).join(' / ');
+    }
+
     function normalizeOrderRecord(order) {
       const next = { ...order };
       const mergedStatus = normalizeStatusValue(next['入仓状态']) || normalizeStatusValue(next['订单状态']);
@@ -249,13 +286,88 @@ const OrderTrackerShared = (function () {
         if (!String(next['尺寸'] || '').trim() && onlyItem?.unitSizeText) {
           next['尺寸'] = onlyItem.unitSizeText;
         }
-        next['商品TK ID'] = onlyItem?.productTkId || '';
-        next['商品SKU ID'] = onlyItem?.productSkuId || '';
-        next['商品SKU名称'] = onlyItem?.productSkuName || '';
+        next['商品TK ID'] = '';
+        next['商品SKU ID'] = '';
+        next['商品SKU名称'] = '';
+        next['快递公司'] = buildOrderCourierSummary(items, 'company');
+        next['快递单号'] = buildOrderCourierSummary(items, 'tracking');
       } else {
         delete next.items;
       }
       return next;
+    }
+
+    function hasLegacyOrderStructure(order) {
+      if (order?.__needsOrderCleanup === true) return true;
+      const items = Array.isArray(order?.items) ? order.items : [];
+      if (!items.length) {
+        return [
+          order?.['商品TK ID'],
+          order?.['商品SKU ID'],
+          order?.['商品SKU名称'],
+          order?.['产品名称'],
+          order?.['数量'],
+          order?.['重量'],
+          order?.['尺寸'],
+          order?.['快递公司'],
+          order?.['快递单号']
+        ].some(value => String(value || '').trim());
+      }
+
+      const hasItemCourier = items.some(item => {
+        const normalized = normalizeOrderItem(item);
+        return !!(normalized.courierCompany || normalized.trackingNo);
+      });
+      const hasTopLevelCourier = !!String(order?.['快递公司'] || '').trim()
+        || !!String(order?.['快递单号'] || '').trim();
+      return hasTopLevelCourier && !hasItemCourier;
+    }
+
+    function cleanOrderToCurrentShape(order) {
+      const next = { ...order };
+      const currentItems = normalizeOrderItems(next.items);
+      const topLevelCourierCompany = String(next?.['快递公司'] || '').trim();
+      const topLevelTrackingNo = String(next?.['快递单号'] || '').trim();
+      const buildCleanItem = item => {
+        const cleaned = normalizeOrderItem(item);
+        if (!cleaned.courierCompany && cleaned.trackingNo) {
+          cleaned.courierCompany = detectCourierCompany(cleaned.trackingNo);
+        }
+        if (!cleaned.courierCompany && topLevelCourierCompany) cleaned.courierCompany = topLevelCourierCompany;
+        if (!cleaned.trackingNo && topLevelTrackingNo) cleaned.trackingNo = topLevelTrackingNo;
+        cleaned.useOrderCourier = null;
+        return cleaned;
+      };
+
+      if (!currentItems.length) {
+        next.items = [buildCleanItem({
+          lineId: uid(),
+          productTkId: next?.['商品TK ID'],
+          productSkuId: next?.['商品SKU ID'],
+          productSkuName: next?.['商品SKU名称'],
+          productName: next?.['产品名称'],
+          quantity: next?.['数量'],
+          unitWeightG: next?.['重量'],
+          unitSizeText: next?.['尺寸'],
+          courierCompany: topLevelCourierCompany,
+          trackingNo: topLevelTrackingNo
+        })];
+      } else {
+        next.items = currentItems.map(buildCleanItem);
+      }
+
+      next['商品TK ID'] = '';
+      next['商品SKU ID'] = '';
+      next['商品SKU名称'] = '';
+      next['快递公司'] = '';
+      next['快递单号'] = '';
+      const normalized = normalizeOrderRecord(next);
+      normalized.__needsOrderCleanup = false;
+      return normalized;
+    }
+
+    function migrateOrderToCurrentShape(order) {
+      return cleanOrderToCurrentShape(order);
     }
 
     function normalizeOrderList(list) {
@@ -277,6 +389,7 @@ const OrderTrackerShared = (function () {
       Object.keys(normalized).sort().forEach(key => {
         const value = normalized[key];
         if (typeof value === 'undefined') return;
+        if (key.startsWith('__')) return;
         sorted[key] = value;
       });
       return JSON.stringify(sorted);
@@ -598,6 +711,9 @@ const OrderTrackerShared = (function () {
       computeOrderEstimatedProfit,
       escapeHtml,
       normalizeStatusValue,
+      hasLegacyOrderStructure,
+      cleanOrderToCurrentShape,
+      migrateOrderToCurrentShape,
       normalizeOrderRecord,
       normalizeOrderList,
       cloneOrder,

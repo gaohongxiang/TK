@@ -84,6 +84,32 @@ const OrderTrackerCrud = (function () {
       return skuName || skuId || '未命名SKU';
     }
 
+    function getCourierOptions() {
+      return [
+        '',
+        '韵达快递',
+        '中通快递',
+        '圆通快递',
+        '申通快递',
+        '极兔快递',
+        '顺丰快递',
+        '邮政快递',
+        '景光物流',
+        '安能物流'
+      ];
+    }
+
+    function buildCourierSelectOptionsMarkup(selectedValue = '') {
+      const selected = String(selectedValue || '').trim();
+      return getCourierOptions().map(value => {
+        const normalized = String(value || '').trim();
+        const label = normalized
+          ? (normalized === '邮政快递' ? '邮政 / EMS' : normalized)
+          : '- 请选择 -';
+        return `<option value="${escapeHtml(normalized)}"${normalized === selected ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+      }).join('');
+    }
+
     function skuUsesProductDefaults(sku = {}) {
       if (sku?.useProductDefaults === true) return true;
       if (sku?.useProductDefaults === false) return false;
@@ -342,6 +368,10 @@ const OrderTrackerCrud = (function () {
 
     function createOrderItemDraft(seed = {}) {
       const quantityRaw = Number.parseInt(String(seed.quantity ?? seed['数量'] ?? '').trim(), 10);
+      const rawUseOrderCourier = seed.useOrderCourier ?? seed['跟随订单默认快递'];
+      const hasUseOrderCourier = rawUseOrderCourier !== undefined
+        && rawUseOrderCourier !== null
+        && String(rawUseOrderCourier).trim() !== '';
       return {
         lineId: String(seed.lineId || uid()),
         productTkId: String(seed.productTkId || seed['商品TK ID'] || '').trim(),
@@ -352,7 +382,12 @@ const OrderTrackerCrud = (function () {
         unitSalePrice: String(seed.unitSalePrice ?? seed['单件售价'] ?? seed['售价'] ?? '').trim(),
         unitPurchasePrice: String(seed.unitPurchasePrice ?? seed['单件采购价'] ?? seed['采购价格'] ?? '').trim(),
         unitWeightG: String(seed.unitWeightG ?? seed['单件重量'] ?? seed['重量'] ?? '').trim(),
-        unitSizeText: String(seed.unitSizeText ?? seed['单件尺寸'] ?? seed['尺寸'] ?? '').trim()
+        unitSizeText: String(seed.unitSizeText ?? seed['单件尺寸'] ?? seed['尺寸'] ?? '').trim(),
+        useOrderCourier: hasUseOrderCourier
+          ? !['0', 'false', 'no', 'n'].includes(String(rawUseOrderCourier).trim().toLowerCase())
+          : null,
+        courierCompany: String(seed.courierCompany ?? seed['快递公司'] ?? '').trim(),
+        trackingNo: String(seed.trackingNo ?? seed['快递单号'] ?? '').trim()
       };
     }
 
@@ -373,7 +408,15 @@ const OrderTrackerCrud = (function () {
 
     function getOrderItemsFromOrder(order = {}) {
       if (Array.isArray(order?.items) && order.items.length) {
-        return order.items.map(createOrderItemDraft);
+        return order.items.map(item => {
+          const draft = createOrderItemDraft(item);
+          if (draft.useOrderCourier !== false) {
+            if (!draft.courierCompany) draft.courierCompany = String(order?.['快递公司'] || '').trim();
+            if (!draft.trackingNo) draft.trackingNo = String(order?.['快递单号'] || '').trim();
+          }
+          draft.useOrderCourier = null;
+          return draft;
+        });
       }
       return buildLegacyOrderItems(order);
     }
@@ -445,9 +488,77 @@ const OrderTrackerCrud = (function () {
         unitSalePrice: row.querySelector('[data-item-field="unitSalePrice"]')?.value || '',
         unitPurchasePrice: row.querySelector('[data-item-field="unitPurchasePrice"]')?.value || '',
         unitWeightG: row.querySelector('[data-item-field="unitWeightG"]')?.value || '',
-        unitSizeText: row.querySelector('[data-item-field="unitSizeText"]')?.value || ''
+        unitSizeText: row.querySelector('[data-item-field="unitSizeText"]')?.value || '',
+        useOrderCourier: null,
+        courierCompany: row.querySelector('[data-item-field="courierCompany"]')?.value || '',
+        trackingNo: row.querySelector('[data-item-field="trackingNo"]')?.value || ''
       }));
       return rows.length ? rows : readLegacyOrderItemsFromForm(container.closest('form') || $('#ot-form'));
+    }
+
+    function maybeAutoDetectCourierForItemRow(row) {
+      if (!row) return;
+      const trackingField = row.querySelector('[data-item-field="trackingNo"]');
+      const companyField = row.querySelector('[data-item-field="courierCompany"]');
+      if (!trackingField || !companyField) return;
+      const tracking = String(trackingField.value || '').trim();
+      const currentCompany = String(companyField.value || '').trim();
+      const autoDetected = String(companyField.dataset.autoDetectedCourier || '').trim();
+      if (!tracking) {
+        if (autoDetected && currentCompany === autoDetected) {
+          companyField.value = '';
+          companyField.dataset.autoDetectedCourier = '';
+        }
+        return;
+      }
+      if (currentCompany && currentCompany !== autoDetected) return;
+      const detected = String(detectCourierCompany(tracking) || '').trim();
+      companyField.value = detected;
+      companyField.dataset.autoDetectedCourier = detected;
+    }
+
+    async function copyTrackingNumberFromRow(row) {
+      if (!row) return;
+      const trackingNo = String(row.querySelector('[data-item-field="trackingNo"]')?.value || '').trim();
+      if (!trackingNo) {
+        if (typeof toast === 'function') toast('这条明细还没有快递单号', 'error');
+        return;
+      }
+      const legacyCopy = () => {
+        const textArea = document.createElement('textarea');
+        textArea.value = trackingNo;
+        textArea.setAttribute('readonly', 'readonly');
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+        } finally {
+          document.body.removeChild(textArea);
+        }
+      };
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(trackingNo);
+        } else {
+          legacyCopy();
+        }
+        if (typeof toast === 'function') toast('已复制快递单号', 'ok');
+      } catch (error) {
+        try {
+          legacyCopy();
+          if (typeof toast === 'function') toast('已复制快递单号', 'ok');
+        } catch (fallbackError) {
+          if (typeof toast === 'function') toast('复制失败，请手动复制', 'error');
+        }
+      }
+    }
+
+    function clearItemCourierAutodetect(row) {
+      if (!row) return;
+      const companyField = row.querySelector('[data-item-field="courierCompany"]');
+      if (companyField) companyField.dataset.autoDetectedCourier = '';
     }
 
     function getItemRowProduct(accountName = '', tkId = '') {
@@ -655,8 +766,8 @@ const OrderTrackerCrud = (function () {
     function buildOrderItemRowMarkup(item = {}) {
       return `
         <div class="ot-item-edit-row" data-line-id="${escapeHtml(item.lineId)}">
-          <button type="button" class="btn sm danger ot-item-remove" data-item-action="remove">删除</button>
-          <div class="field ot-item-field ot-item-span-4">
+          <button type="button" class="ot-item-remove" data-item-action="remove" aria-label="删除明细" title="删除明细">×</button>
+          <div class="field ot-item-field ot-item-span-3">
             <label>关联商品</label>
             <div class="tk-search-select" data-item-role="product-combobox">
               <input type="hidden" data-item-field="productTkId" value="${escapeHtml(item.productTkId || '')}">
@@ -672,7 +783,7 @@ const OrderTrackerCrud = (function () {
               </div>
             </div>
           </div>
-          <div class="field ot-item-field ot-item-span-4">
+          <div class="field ot-item-field ot-item-span-3">
             <label>关联SKU</label>
             <div class="tk-search-select" data-item-role="sku-combobox">
               <input type="hidden" data-item-field="productSkuId" value="${escapeHtml(item.productSkuId || '')}">
@@ -689,21 +800,31 @@ const OrderTrackerCrud = (function () {
             </div>
             <input type="hidden" data-item-field="productSkuName" value="${escapeHtml(item.productSkuName || '')}">
           </div>
-          <div class="field ot-item-field ot-item-span-4">
+          <div class="field ot-item-field ot-item-span-3">
             <label>商品名称</label>
             <input type="text" class="pl-sku-inline-input" data-item-field="productName" value="${escapeHtml(item.productName || '')}" placeholder="商品名称">
           </div>
-          <div class="field ot-item-field ot-item-span-4">
+          <div class="field ot-item-field ot-item-span-3">
+            <label>快递公司</label>
+            <select data-item-field="courierCompany">
+              ${buildCourierSelectOptionsMarkup(item.courierCompany || '')}
+            </select>
+          </div>
+          <div class="field ot-item-field ot-item-span-3">
             <label>数量</label>
             <input type="number" class="pl-sku-inline-input" data-item-field="quantity" min="1" step="1" value="${escapeHtml(item.quantity || '1')}">
           </div>
-          <div class="field ot-item-field ot-item-span-4">
+          <div class="field ot-item-field ot-item-span-3">
             <label>单件重量(g)</label>
             <input type="text" class="pl-sku-inline-input" data-item-field="unitWeightG" value="${escapeHtml(item.unitWeightG || '')}" placeholder="单件重量">
           </div>
-          <div class="field ot-item-field ot-item-span-4">
+          <div class="field ot-item-field ot-item-span-3">
             <label>单件尺寸(cm)</label>
             <input type="text" class="pl-sku-inline-input" data-item-field="unitSizeText" value="${escapeHtml(item.unitSizeText || '')}" placeholder="20×15×10">
+          </div>
+          <div class="field ot-item-field ot-item-span-3">
+            <label>快递单号 <span class="ot-item-inline-actions"><button type="button" class="ot-item-inline-btn ot-item-copy-btn" data-item-action="copy-tracking" aria-label="复制当前明细快递单号" title="复制当前明细快递单号"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="3" width="9" height="11" rx="2"></rect><rect x="4" y="6" width="9" height="11" rx="2"></rect></svg></button></span></label>
+            <input type="text" class="pl-sku-inline-input" data-item-field="trackingNo" value="${escapeHtml(item.trackingNo || '')}" placeholder="填写这一条明细的单号">
           </div>
         </div>`;
     }
@@ -977,39 +1098,6 @@ const OrderTrackerCrud = (function () {
       });
     }
 
-    function maybeAutoSetInTransitFromTracking() {
-      const form = $('#ot-form');
-      if (!form || state.editingId) return '';
-      const trackingField = form.querySelector('[name="快递单号"]');
-      const statusField = form.querySelector('[name="订单状态"]');
-      if (!trackingField || !statusField) return '';
-
-      const tracking = String(trackingField.value || '').trim();
-      const currentStatus = normalizeStatusValue(statusField.value);
-      const autoStatus = normalizeStatusValue(statusField.dataset.autoTrackingStatus || '');
-
-      if (!tracking) {
-        if (autoStatus && currentStatus === autoStatus) {
-          statusField.value = '';
-          statusField.dataset.autoTrackingStatus = '';
-          recomputeAuto();
-        }
-        return '';
-      }
-
-      const canAutoPromote = !currentStatus
-        || currentStatus === '未采购'
-        || currentStatus === '已采购'
-        || currentStatus === autoStatus;
-
-      if (!canAutoPromote) return currentStatus;
-
-      statusField.value = '在途';
-      statusField.dataset.autoTrackingStatus = '在途';
-      recomputeAuto();
-      return '在途';
-    }
-
     async function openModal(editId = null) {
       const form = $('#ot-form');
       const modal = $('#ot-modal');
@@ -1021,9 +1109,6 @@ const OrderTrackerCrud = (function () {
         await loadProductsForModal({ silent: false, force: true });
       }
       ensureSearchSelects();
-      const orderStatusField = form.querySelector('[name="订单状态"]');
-      if (orderStatusField) orderStatusField.dataset.autoTrackingStatus = '';
-
       if (editId) {
         const found = (state.orders || []).find(order => order.id === editId);
         if (!found) return;
@@ -1061,7 +1146,6 @@ const OrderTrackerCrud = (function () {
       }
 
       maybeAutoDetectCourierFromForm();
-      maybeAutoSetInTransitFromTracking();
       syncOrderSummaryFromItems();
       recomputeAuto();
       modal.classList.add('show');
@@ -1103,6 +1187,9 @@ const OrderTrackerCrud = (function () {
           const matchedSku = relatedSkus.find(sku => String(sku?.skuId || '').trim() === String(item.productSkuId || '').trim());
           item.productSkuName = matchedSku ? String(matchedSku?.skuName || '').trim() : String(item.productSkuName || '').trim();
         }
+        if (!item.courierCompany && item.trackingNo) {
+          item.courierCompany = detectCourierCompany(item.trackingNo);
+        }
       }
       payload.items = items;
       if (payload['账号'] === '__ADD__') {
@@ -1115,15 +1202,10 @@ const OrderTrackerCrud = (function () {
         if (orderNoField && typeof orderNoField.focus === 'function') orderNoField.focus();
         return;
       }
-      if (!payload['快递公司'] && payload['快递单号']) {
-        payload['快递公司'] = detectCourierCompany(payload['快递单号']);
-      }
-      if (!state.editingId && payload['快递单号']) {
-        const currentStatus = normalizeStatusValue(payload['订单状态']);
-        if (!currentStatus || currentStatus === '未采购' || currentStatus === '已采购') {
-          payload['订单状态'] = '在途';
-        }
-      }
+      const uniqueCompanies = Array.from(new Set(items.map(item => String(item.courierCompany || '').trim()).filter(Boolean)));
+      const uniqueTrackings = Array.from(new Set(items.map(item => String(item.trackingNo || '').trim()).filter(Boolean)));
+      payload['快递公司'] = uniqueCompanies.length === 1 ? uniqueCompanies[0] : '';
+      payload['快递单号'] = uniqueTrackings.length === 1 ? uniqueTrackings[0] : '';
       payload['预估利润'] = computeEstimatedProfitValue({
         salePrice: payload['售价'],
         purchasePrice: payload['采购价格'],
@@ -1225,29 +1307,18 @@ const OrderTrackerCrud = (function () {
         sizeField.addEventListener('input', markManualSize);
         sizeField.addEventListener('change', markManualSize);
       }
-      if (orderStatus) {
-        orderStatus.addEventListener('change', () => {
-          const autoStatus = normalizeStatusValue(orderStatus.dataset.autoTrackingStatus || '');
-          if (autoStatus && normalizeStatusValue(orderStatus.value) !== autoStatus) {
-            orderStatus.dataset.autoTrackingStatus = '';
-          }
-          recomputeAuto();
-        });
-      }
+      if (orderStatus) orderStatus.addEventListener('change', recomputeAuto);
 
       const courierFields = getOrderFormCourierFields();
       if (courierFields.tracking) {
         courierFields.tracking.addEventListener('input', () => {
           maybeAutoDetectCourierFromForm();
-          maybeAutoSetInTransitFromTracking();
         });
         courierFields.tracking.addEventListener('blur', () => {
           maybeAutoDetectCourierFromForm();
-          maybeAutoSetInTransitFromTracking();
         });
         courierFields.tracking.addEventListener('change', () => {
           maybeAutoDetectCourierFromForm();
-          maybeAutoSetInTransitFromTracking();
         });
       }
 
@@ -1305,22 +1376,37 @@ const OrderTrackerCrud = (function () {
       if (itemList) {
         itemList.addEventListener('click', event => {
           const removeBtn = event.target.closest('[data-item-action="remove"]');
-          if (!removeBtn) return;
-          const row = removeBtn.closest('[data-line-id]');
-          if (!row) return;
-          const drafts = readOrderItemsFromDom().filter(item => item.lineId !== row.dataset.lineId);
-          renderOrderItems(drafts.length ? drafts : [createOrderItemDraft()]);
+          const copyBtn = event.target.closest('[data-item-action="copy-tracking"]');
+          const row = event.target.closest('[data-line-id]');
+          if (removeBtn && row) {
+            const drafts = readOrderItemsFromDom().filter(item => item.lineId !== row.dataset.lineId);
+            renderOrderItems(drafts.length ? drafts : [createOrderItemDraft()]);
+            return;
+          }
+          if (copyBtn && row) {
+            copyTrackingNumberFromRow(row);
+            return;
+          }
         });
         itemList.addEventListener('input', event => {
           const target = event.target;
           if (!(target instanceof HTMLElement)) return;
           if (!target.matches('[data-item-field]')) return;
+          if (target.dataset.itemField === 'trackingNo') {
+            maybeAutoDetectCourierForItemRow(target.closest('[data-line-id]'));
+          }
           syncOrderSummaryFromItems();
         });
         itemList.addEventListener('change', event => {
           const target = event.target;
           if (!(target instanceof HTMLElement)) return;
           if (!target.matches('[data-item-field]')) return;
+          if (target.dataset.itemField === 'courierCompany') {
+            clearItemCourierAutodetect(target.closest('[data-line-id]'));
+          }
+          if (target.dataset.itemField === 'trackingNo') {
+            maybeAutoDetectCourierForItemRow(target.closest('[data-line-id]'));
+          }
           syncOrderSummaryFromItems();
         });
       }

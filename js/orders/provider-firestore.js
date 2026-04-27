@@ -144,6 +144,17 @@ const OrderTrackerProviderFirestore = (function () {
       return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
+    function stripDuplicatedSkuSuffix(productName, skuName) {
+      const rawProductName = String(productName || '').trim();
+      const rawSkuName = String(skuName || '').trim();
+      if (!rawProductName || !rawSkuName) return rawProductName;
+      let next = rawProductName;
+      [` - ${rawSkuName}`, ` / ${rawSkuName}`].forEach(suffix => {
+        if (next.endsWith(suffix)) next = next.slice(0, -suffix.length).trim();
+      });
+      return next;
+    }
+
     function normalizeOrderItems(items = []) {
       if (!Array.isArray(items)) return [];
       return items.map(item => ({
@@ -151,13 +162,59 @@ const OrderTrackerProviderFirestore = (function () {
         productTkId: String(item?.productTkId || '').trim(),
         productSkuId: String(item?.productSkuId || '').trim(),
         productSkuName: String(item?.productSkuName || '').trim(),
-        productName: String(item?.productName || '').trim(),
+        productName: stripDuplicatedSkuSuffix(item?.productName || '', item?.productSkuName || ''),
         quantity: toNullableInteger(item?.quantity) || 1,
         unitPurchasePrice: toNullableDecimal(item?.unitPurchasePrice),
         unitSalePrice: toNullableDecimal(item?.unitSalePrice),
         unitWeightG: toNullableDecimal(item?.unitWeightG),
-        unitSizeText: toNullableText(item?.unitSizeText)
+        unitSizeText: toNullableText(item?.unitSizeText),
+        useOrderCourier: item?.useOrderCourier === true
+          ? true
+          : item?.useOrderCourier === false
+            ? false
+            : null,
+        courierCompany: toNullableText(item?.courierCompany),
+        trackingNo: toNullableText(item?.trackingNo)
       }));
+    }
+
+    function buildCourierSummary(items = [], field = 'company') {
+      const values = normalizeOrderItems(items)
+        .map(item => (
+          field === 'company'
+            ? String(item?.courierCompany || '').trim()
+            : String(item?.trackingNo || '').trim()
+        ))
+        .filter(Boolean);
+      return Array.from(new Set(values)).join(' / ');
+    }
+
+    function rawOrderNeedsCanonicalCleanup(data = {}) {
+      const rawItems = Array.isArray(data?.items) ? data.items : [];
+      const hasLegacyTopLevelItemFields = [
+        data?.productTkId,
+        data?.productSkuId,
+        data?.productSkuName
+      ].some(value => String(value || '').trim());
+      const hasLegacyTopLevelCourierFields = [
+        data?.courierCompany,
+        data?.trackingNo
+      ].some(value => String(value || '').trim());
+      if (!rawItems.length) {
+        return hasLegacyTopLevelItemFields
+          || hasLegacyTopLevelCourierFields
+          || !!String(data?.productName || '').trim();
+      }
+      return hasLegacyTopLevelItemFields
+        || hasLegacyTopLevelCourierFields
+        || rawItems.some(item => {
+          const skuName = String(item?.productSkuName || '').trim();
+          const productName = String(item?.productName || '').trim();
+          return ('useOrderCourier' in (item || {}))
+            || ('unitPurchasePrice' in (item || {}) && item?.unitPurchasePrice == null)
+            || ('unitSalePrice' in (item || {}) && item?.unitSalePrice == null)
+            || stripDuplicatedSkuSuffix(productName, skuName) !== productName;
+        });
     }
 
     function getOrderItemSummaryParts(item = {}) {
@@ -246,10 +303,13 @@ const OrderTrackerProviderFirestore = (function () {
         ? data?.salePrice
         : (items.length ? totals.sale : data?.salePrice);
       const productSummary = items.length ? buildOrderItemsSummary(items) : (data?.productName || '');
+      const courierSummary = items.length ? buildCourierSummary(items, 'company') : (data?.courierCompany || '');
+      const trackingSummary = items.length ? buildCourierSummary(items, 'tracking') : (data?.trackingNo || '');
       return {
         id: String(data?.id || '').trim(),
         ...(seq !== null ? { seq } : {}),
         ...(items.length ? { items } : {}),
+        __needsOrderCleanup: rawOrderNeedsCanonicalCleanup(data),
         createdAt: toIsoString(data?.createdAt || data?.created_at || ''),
         updatedAt: toIsoString(data?.updatedAt || data?.updated_at || ''),
         deletedAt: toIsoString(data?.deletedAt || data?.deleted_at || ''),
@@ -259,9 +319,9 @@ const OrderTrackerProviderFirestore = (function () {
         '最晚到仓时间': data?.latestWarehouseAt || '',
         '订单预警': data?.warningText || '',
         '订单号': data?.orderNo || '',
-        '商品TK ID': data?.productTkId || '',
-        '商品SKU ID': data?.productSkuId || '',
-        '商品SKU名称': data?.productSkuName || '',
+        '商品TK ID': items.length === 1 ? (items[0]?.productTkId || '') : (data?.productTkId || ''),
+        '商品SKU ID': items.length === 1 ? (items[0]?.productSkuId || '') : (data?.productSkuId || ''),
+        '商品SKU名称': items.length === 1 ? (items[0]?.productSkuName || '') : (data?.productSkuName || ''),
         '产品名称': productSummary,
         '数量': totalQuantity == null || totalQuantity === '' ? '' : String(totalQuantity),
         '是否退款': data?.isRefunded ? '1' : '',
@@ -272,8 +332,8 @@ const OrderTrackerProviderFirestore = (function () {
         '重量': data?.weightText || '',
         '尺寸': data?.sizeText || '',
         '订单状态': data?.orderStatus || '',
-        '快递公司': data?.courierCompany || '',
-        '快递单号': data?.trackingNo || ''
+        '快递公司': courierSummary,
+        '快递单号': trackingSummary
       };
     }
 
@@ -284,12 +344,11 @@ const OrderTrackerProviderFirestore = (function () {
       const items = normalizeOrderItems(order?.items);
       const totals = deriveOrderItemTotals(items);
       const productSummary = items.length ? buildOrderItemsSummary(items) : toNullableText(order?.['产品名称']);
-      const onlyItem = items.length === 1 ? items[0] : null;
       const topLevelWeight = toNullableText(order?.['重量']);
       const topLevelSize = toNullableText(order?.['尺寸']);
       const topLevelPurchase = toNullableDecimal(order?.['采购价格']);
       const topLevelSale = toNullableDecimal(order?.['售价']);
-      return {
+      const doc = {
         id: String(order?.id || '').trim(),
         ...(seq !== null ? { seq } : {}),
         createdAt,
@@ -301,9 +360,6 @@ const OrderTrackerProviderFirestore = (function () {
         latestWarehouseAt: toNullableText(order?.['最晚到仓时间']),
         warningText: toNullableText(order?.['订单预警']),
         orderNo: toNullableText(order?.['订单号']),
-        productTkId: toNullableText(onlyItem?.productTkId || order?.['商品TK ID']),
-        productSkuId: toNullableText(onlyItem?.productSkuId || order?.['商品SKU ID']),
-        productSkuName: toNullableText(onlyItem?.productSkuName || order?.['商品SKU名称']),
         productName: productSummary,
         quantity: items.length ? totals.quantity : toNullableInteger(order?.['数量']),
         isRefunded: toBoolean(order?.['是否退款']),
@@ -312,23 +368,37 @@ const OrderTrackerProviderFirestore = (function () {
         estimatedShippingFee: toNullableDecimal(order?.['预估运费']),
         estimatedProfit: toNullableDecimal(order?.['预估利润']),
         weightText: topLevelWeight || (items.length && totals.weight ? Number(totals.weight.toFixed(2)).toString() : null),
-        sizeText: topLevelSize || toNullableText(onlyItem?.unitSizeText || ''),
+        sizeText: topLevelSize || (items.length === 1 ? toNullableText(items[0]?.unitSizeText || '') : null),
         orderStatus: toNullableText(order?.['订单状态']),
-        courierCompany: toNullableText(order?.['快递公司']),
-        trackingNo: toNullableText(order?.['快递单号']),
-        items: items.length ? items.map(item => ({
-          lineId: item.lineId,
-          productTkId: toNullableText(item.productTkId),
-          productSkuId: toNullableText(item.productSkuId),
-          productSkuName: toNullableText(item.productSkuName),
-          productName: toNullableText(item.productName),
-          quantity: toNullableInteger(item.quantity),
-          unitPurchasePrice: toNullableDecimal(item.unitPurchasePrice),
-          unitSalePrice: toNullableDecimal(item.unitSalePrice),
-          unitWeightG: toNullableDecimal(item.unitWeightG),
-          unitSizeText: toNullableText(item.unitSizeText)
-        })) : null
+        items: items.length ? items.map(item => {
+          const row = {
+            lineId: item.lineId,
+            quantity: toNullableInteger(item.quantity)
+          };
+          const productTkId = toNullableText(item.productTkId);
+          const productSkuId = toNullableText(item.productSkuId);
+          const productSkuName = toNullableText(item.productSkuName);
+          const productName = toNullableText(stripDuplicatedSkuSuffix(item.productName, item.productSkuName));
+          const unitPurchasePrice = toNullableDecimal(item.unitPurchasePrice);
+          const unitSalePrice = toNullableDecimal(item.unitSalePrice);
+          const unitWeightG = toNullableDecimal(item.unitWeightG);
+          const unitSizeText = toNullableText(item.unitSizeText);
+          const courierCompany = toNullableText(item.courierCompany);
+          const trackingNo = toNullableText(item.trackingNo);
+          if (productTkId) row.productTkId = productTkId;
+          if (productSkuId) row.productSkuId = productSkuId;
+          if (productSkuName) row.productSkuName = productSkuName;
+          if (productName) row.productName = productName;
+          if (unitPurchasePrice !== null) row.unitPurchasePrice = unitPurchasePrice;
+          if (unitSalePrice !== null) row.unitSalePrice = unitSalePrice;
+          if (unitWeightG !== null) row.unitWeightG = unitWeightG;
+          if (unitSizeText) row.unitSizeText = unitSizeText;
+          if (courierCompany) row.courierCompany = courierCompany;
+          if (trackingNo) row.trackingNo = trackingNo;
+          return row;
+        }) : null
       };
+      return doc;
     }
 
     function sortOrdersForSeqAssignment(left, right) {
@@ -543,7 +613,7 @@ const OrderTrackerProviderFirestore = (function () {
           ...order,
           updatedAt
         });
-        mutations.push(batch => batch.set(orderRef(currentDb, row.id), row, { merge: true }));
+        mutations.push(batch => batch.set(orderRef(currentDb, row.id), row));
       });
 
       deletions.forEach(item => {

@@ -28,6 +28,24 @@ assert.match(
 
 assert.match(
   source,
+  /function hasLegacyOrderStructure\(/,
+  '共享 helper 模块需要包含旧订单结构识别逻辑'
+);
+
+assert.match(
+  source,
+  /function migrateOrderToCurrentShape\(/,
+  '共享 helper 模块需要包含旧订单结构迁移逻辑'
+);
+
+assert.match(
+  source,
+  /function cleanOrderToCurrentShape\(/,
+  '共享 helper 模块需要包含订单结构清洗逻辑'
+);
+
+assert.match(
+  source,
   /function detectCourierCompany\(/,
   '共享 helper 模块需要包含快递识别逻辑'
 );
@@ -134,7 +152,8 @@ const normalizedMultiItemOrder = sharedTools.normalizeOrderRecord({
       unitPurchasePrice: '10',
       unitSalePrice: '300',
       unitWeightG: '120',
-      unitSizeText: '10×10×10'
+      unitSizeText: '10×10×10',
+      useOrderCourier: true
     },
     {
       lineId: 'b',
@@ -146,7 +165,10 @@ const normalizedMultiItemOrder = sharedTools.normalizeOrderRecord({
       unitPurchasePrice: '12',
       unitSalePrice: '320',
       unitWeightG: '140',
-      unitSizeText: '12×10×10'
+      unitSizeText: '12×10×10',
+      useOrderCourier: false,
+      courierCompany: '顺丰快递',
+      trackingNo: 'SF9988'
     }
   ]
 });
@@ -179,6 +201,84 @@ assert.equal(
   normalizedMultiItemOrder['商品TK ID'],
   '',
   '多条订单明细时不应把某一个商品 TK ID 冒充成整单商品'
+);
+
+assert.equal(
+  normalizedMultiItemOrder['快递公司'],
+  '顺丰快递',
+  '共享 helper 模块应能从订单明细汇总快递公司'
+);
+
+assert.equal(
+  normalizedMultiItemOrder.items[1].trackingNo,
+  'SF9988',
+  '共享 helper 模块应保留订单明细自己的快递单号'
+);
+
+const migratedLegacyOrder = sharedTools.migrateOrderToCurrentShape({
+  id: 'legacy-order',
+  '商品TK ID': 'TK-9',
+  '商品SKU ID': 'SKU-9',
+  '商品SKU名称': '蓝 / M',
+  '产品名称': '测试商品',
+  '数量': '2',
+  '重量': '320',
+  '尺寸': '20×10×8',
+  '快递公司': '中通快递',
+  '快递单号': 'ZT123456'
+});
+
+assert.equal(
+  sharedTools.hasLegacyOrderStructure({
+    '商品TK ID': 'TK-9',
+    '产品名称': '测试商品'
+  }),
+  true,
+  '共享 helper 模块应识别没有 items[] 的旧订单结构'
+);
+
+assert.ok(
+  Array.isArray(migratedLegacyOrder.items) && migratedLegacyOrder.items.length === 1,
+  '旧订单迁移后应补成包含 items[] 的新结构'
+);
+
+assert.equal(
+  migratedLegacyOrder.items[0].trackingNo,
+  'ZT123456',
+  '旧订单迁移后应把顶层快递单号迁入订单明细'
+);
+
+const cleanedOrder = sharedTools.cleanOrderToCurrentShape({
+  id: 'dirty-order',
+  '快递公司': '中通快递',
+  '快递单号': 'ZT123456',
+  items: [
+    {
+      lineId: 'line-1',
+      productTkId: 'TK-1',
+      productSkuId: 'SKU-1',
+      productSkuName: '黑 / XXL',
+      productName: '雨衣 - 黑 / XXL',
+      quantity: 1,
+      unitWeightG: 650,
+      unitSizeText: '35×32×5',
+      useOrderCourier: null,
+      courierCompany: '',
+      trackingNo: ''
+    }
+  ]
+});
+
+assert.equal(
+  cleanedOrder.items[0].productName,
+  '雨衣',
+  '订单结构清洗应去掉明细商品名称里重复拼接的 SKU 后缀'
+);
+
+assert.equal(
+  cleanedOrder.items[0].courierCompany,
+  '中通快递',
+  '订单结构清洗应把顶层快递公司补入明细'
 );
 
 assert.match(

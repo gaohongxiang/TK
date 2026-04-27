@@ -25,6 +25,12 @@ assert.match(
 );
 
 assert.match(
+  source,
+  /remoteNeedsCanonicalCleanup\s*=\s*remote\?\.__needsOrderCleanup === true[\s\S]*upserts\.push\(cloneOrder\(merged\)\)/,
+  '云端订单仍有旧兼容字段时，同步模块应强制重写为新结构'
+);
+
+assert.match(
   indexSource,
   /OrderTrackerSync\.create\(/,
   'js/orders/index.js 需要通过 OrderTrackerSync.create 接入同步模块'

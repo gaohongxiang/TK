@@ -5,7 +5,7 @@
 1. 先到 [Supabase Dashboard](https://supabase.com/dashboard) 新建一个项目。
 2. 确认项目启用了 `Data API`；如果你想先看官方说明，可以直接看 [Data API 文档](https://supabase.com/docs/guides/api)。
 3. 确认项目对外暴露的表启用了 `RLS`。
-4. 打开 `SQL Editor`，执行最新的 [order-tracker-schema.sql](./order-tracker-schema.sql)。
+4. 打开 `SQL Editor`，执行最新的 [order-tracker-schema.sql](/supabase/order-tracker-schema.sql)。
 5. 在 `General` 页面复制 `Project ID`；再到 `API Keys` 页面复制 `Publishable key`。
 6. 打开工具里的订单页，选择 `Supabase`。
 7. 填入 `Project ID` 和 `Publishable key`。

@@ -6,7 +6,7 @@
 2. 在项目里进入 `Firestore Database`，创建数据库。
 3. 在 `Project settings -> General` 里创建一个 `Web App`。
 4. 复制控制台给你的整段 `firebaseConfig`。
-5. 打开 Firestore 的 `Rules` 页面，把 [order-tracker-firestore.rules](./order-tracker-firestore.rules) 里的内容粘贴进去并发布。
+5. 打开 Firestore 的 `Rules` 页面，把 [order-tracker-firestore.rules](/firebase/order-tracker-firestore.rules) 里的内容粘贴进去并发布。
 6. 打开工具里的订单页，选择 `Firebase Firestore`。
 7. 把整段 `firebaseConfig` 粘到配置框里，点击连接。
 

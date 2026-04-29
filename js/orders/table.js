@@ -50,6 +50,11 @@ const OrderTableView = (function () {
     return parsed.hasValue && parsed.amount > 0 ? parsed.amount : null;
   }
 
+  function parseCreatorCommissionRateValue(value) {
+    const parsed = parseMoneyAmount(value);
+    return parsed.hasValue && parsed.amount > 0 ? parsed.amount : null;
+  }
+
   function isOrderRefunded(order) {
     const raw = String(order?.['是否退款'] ?? order?.isRefunded ?? '').trim().toLowerCase();
     return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'y';
@@ -137,8 +142,20 @@ const OrderTableView = (function () {
     const saleCny = computeOrderSaleCnyAmount(order, exchangeRate);
     const purchase = parseMoneyAmount(order?.['采购价格']);
     const shipping = parseMoneyAmount(order?.['预估运费']);
-    if (saleCny === null || !purchase.hasValue || !shipping.hasValue) return null;
-    return roundMoney(saleCny - purchase.amount - shipping.amount);
+    const creatorCommission = computeOrderCreatorCommissionAmount(order, exchangeRate);
+    if (saleCny === null || !purchase.hasValue || !shipping.hasValue || creatorCommission === null) return null;
+    return roundMoney(saleCny - purchase.amount - shipping.amount - creatorCommission);
+  }
+
+  function computeOrderCreatorCommissionAmount(order, exchangeRate = null) {
+    const sale = parseMoneyAmount(order?.['售价']);
+    const rate = parseExchangeRateValue(exchangeRate);
+    const creatorCommissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率']);
+    if (rate === null) return null;
+    if (creatorCommissionRate === null) return 0;
+    if (isOrderRefunded(order)) return 0;
+    if (!sale.hasValue || sale.amount <= 0) return null;
+    return roundMoney((sale.amount / rate) * (creatorCommissionRate / 100));
   }
 
   function formatTableMoneyValue(value) {
@@ -265,6 +282,8 @@ const OrderTableView = (function () {
             order?.['数量'],
             order?.['采购价格'],
             order?.['售价'],
+            order?.['达人佣金率'],
+            order?.['达人佣金'],
             order?.['预估运费'],
             order?.['预估利润'],
             order?.['重量'],
@@ -305,6 +324,7 @@ const OrderTableView = (function () {
     sortOrder = 'asc',
     exchangeRate = null,
     computeOrderSaleCny,
+    computeOrderCreatorCommission,
     computeOrderEstimatedProfit
   } = {}) {
     const list = Array.isArray(orders) ? orders : [];
@@ -319,18 +339,26 @@ const OrderTableView = (function () {
     const allSale = sumResolvedMoneyAmount(list, resolveSale);
     const filteredShipping = sumMoneyAmount(sorted, '预估运费');
     const allShipping = sumMoneyAmount(list, '预估运费');
+    const resolveCreatorCommission = order => {
+      const creatorCommissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率']);
+      if (creatorCommissionRate === null) return null;
+      if (typeof computeOrderCreatorCommission === 'function') return computeOrderCreatorCommission(order, exchangeRate);
+      return computeOrderCreatorCommissionAmount(order, exchangeRate);
+    };
+    const filteredCreatorCommission = sumResolvedMoneyAmount(sorted, resolveCreatorCommission);
+    const allCreatorCommission = sumResolvedMoneyAmount(list, resolveCreatorCommission);
     const filteredRefund = sumRefundSaleAmount(sorted, exchangeRate);
     const allRefund = sumRefundSaleAmount(list, exchangeRate);
     const filteredGrossSale = sumGrossSaleAmount(sorted, exchangeRate);
     const allGrossSale = sumGrossSaleAmount(list, exchangeRate);
-    const filteredExpenseCount = (filteredPurchase.count || 0) + (filteredShipping.count || 0);
-    const allExpenseCount = (allPurchase.count || 0) + (allShipping.count || 0);
+    const filteredExpenseCount = (filteredPurchase.count || 0) + (filteredShipping.count || 0) + (filteredCreatorCommission.count || 0);
+    const allExpenseCount = (allPurchase.count || 0) + (allShipping.count || 0) + (allCreatorCommission.count || 0);
     const filteredProfit = {
-      total: roundMoney(filteredSale.total - (filteredPurchase.total + filteredShipping.total)) ?? 0,
+      total: roundMoney(filteredSale.total - (filteredPurchase.total + filteredShipping.total + filteredCreatorCommission.total)) ?? 0,
       count: Math.max(filteredSale.count || 0, filteredExpenseCount)
     };
     const allProfit = {
-      total: roundMoney(allSale.total - (allPurchase.total + allShipping.total)) ?? 0,
+      total: roundMoney(allSale.total - (allPurchase.total + allShipping.total + allCreatorCommission.total)) ?? 0,
       count: Math.max(allSale.count || 0, allExpenseCount)
     };
     return {
@@ -342,6 +370,8 @@ const OrderTableView = (function () {
       allSaleTotal: allSale.total,
       filteredShippingTotal: filteredShipping.total,
       allShippingTotal: allShipping.total,
+      filteredCreatorCommissionTotal: filteredCreatorCommission.total,
+      allCreatorCommissionTotal: allCreatorCommission.total,
       filteredProfitTotal: filteredProfit.total,
       allProfitTotal: allProfit.total,
       filteredPurchaseMetric: filteredPurchase,
@@ -352,6 +382,8 @@ const OrderTableView = (function () {
       allGrossSaleMetric: allGrossSale,
       filteredShippingMetric: filteredShipping,
       allShippingMetric: allShipping,
+      filteredCreatorCommissionMetric: filteredCreatorCommission,
+      allCreatorCommissionMetric: allCreatorCommission,
       filteredRefundMetric: filteredRefund,
       allRefundMetric: allRefund,
       filteredProfitMetric: filteredProfit,
@@ -465,18 +497,18 @@ const OrderTableView = (function () {
         </section>`;
     }
 
-    const filteredExpenseTotal = summary.filteredTotal + summary.filteredShippingTotal;
-    const allExpenseTotal = summary.allTotal + summary.allShippingTotal;
+    const filteredExpenseTotal = summary.filteredTotal + summary.filteredShippingTotal + summary.filteredCreatorCommissionTotal;
+    const allExpenseTotal = summary.allTotal + summary.allShippingTotal + summary.allCreatorCommissionTotal;
     const filteredExpenseMetric = {
       value: formatSummaryMetric({
         total: filteredExpenseTotal,
-        count: (summary.filteredPurchaseMetric?.count || 0) + (summary.filteredShippingMetric?.count || 0)
+        count: (summary.filteredPurchaseMetric?.count || 0) + (summary.filteredShippingMetric?.count || 0) + (summary.filteredCreatorCommissionMetric?.count || 0)
       })
     };
     const allExpenseMetric = {
       value: formatSummaryMetric({
         total: allExpenseTotal,
-        count: (summary.allPurchaseMetric?.count || 0) + (summary.allShippingMetric?.count || 0)
+        count: (summary.allPurchaseMetric?.count || 0) + (summary.allShippingMetric?.count || 0) + (summary.allCreatorCommissionMetric?.count || 0)
       })
     };
 
@@ -488,14 +520,14 @@ const OrderTableView = (function () {
       { label: '总销售额', value: formatSummaryMetric(summary.filteredSaleMetric), tone: getSummaryTone(summary.filteredSaleMetric, 'income') },
       buildIncomeDetail(summary.filteredGrossSaleMetric, summary.filteredRefundMetric),
       { ...filteredExpenseMetric, tone: getSummaryTone(filteredExpenseMetric, 'expense') },
-      `总采购额 ${summary.filteredPurchaseMetric?.count ? formatCompactCurrencyAmount(summary.filteredPurchaseMetric.total) : '-'} + 预估总海外运费 ${summary.filteredShippingMetric?.count ? formatCompactCurrencyAmount(summary.filteredShippingMetric.total) : '-'}`,
+      `总采购额 ${summary.filteredPurchaseMetric?.count ? formatCompactCurrencyAmount(summary.filteredPurchaseMetric.total) : '-'} + 预估总海外运费 ${summary.filteredShippingMetric?.count ? formatCompactCurrencyAmount(summary.filteredShippingMetric.total) : '-'} + 达人佣金 ${summary.filteredCreatorCommissionMetric?.count ? formatCompactCurrencyAmount(summary.filteredCreatorCommissionMetric.total) : '-'}`,
       appendRefundCount(`受账号标签和搜索影响 · 共 ${summary.filteredCount} 条`, summary.filteredRefundMetric))}
         ${buildCard('全部订单',
         { label: '预估总利润', value: formatSummaryMetric(summary.allProfitMetric), tone: getSummaryTone(summary.allProfitMetric, 'profit') },
         { label: '总销售额', value: formatSummaryMetric(summary.allSaleMetric), tone: getSummaryTone(summary.allSaleMetric, 'income') },
         buildIncomeDetail(summary.allGrossSaleMetric, summary.allRefundMetric),
         { ...allExpenseMetric, tone: getSummaryTone(allExpenseMetric, 'expense') },
-        `总采购额 ${summary.allPurchaseMetric?.count ? formatCompactCurrencyAmount(summary.allPurchaseMetric.total) : '-'} + 预估总海外运费 ${summary.allShippingMetric?.count ? formatCompactCurrencyAmount(summary.allShippingMetric.total) : '-'}`,
+        `总采购额 ${summary.allPurchaseMetric?.count ? formatCompactCurrencyAmount(summary.allPurchaseMetric.total) : '-'} + 预估总海外运费 ${summary.allShippingMetric?.count ? formatCompactCurrencyAmount(summary.allShippingMetric.total) : '-'} + 达人佣金 ${summary.allCreatorCommissionMetric?.count ? formatCompactCurrencyAmount(summary.allCreatorCommissionMetric.total) : '-'}`,
         appendRefundCount(`不受账号、搜索、分页影响 · 共 ${summary.allCount} 条`, summary.allRefundMetric))}
         </div>
       </div>`;
@@ -701,6 +733,7 @@ const OrderTableView = (function () {
     pageSizeOptions = [],
     exchangeRate = null,
     computeOrderSaleCny,
+    computeOrderCreatorCommission,
     computeOrderEstimatedProfit,
     computeWarning,
     getSearchComposing,
@@ -723,6 +756,7 @@ const OrderTableView = (function () {
       sortOrder,
       exchangeRate,
       computeOrderSaleCny,
+      computeOrderCreatorCommission,
       computeOrderEstimatedProfit
     });
     const hasQuery = !!normalizeSearchValue(searchQuery);

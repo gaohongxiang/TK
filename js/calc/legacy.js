@@ -18,24 +18,27 @@ const CalcLegacyPricing = (function () {
 
     function calcLegacyRow(origPrice, discount) {
       const feeRate = (state.fee || 0) / 100;
+      const creatorRate = (state.creatorRate || 0) / 100;
       const cost = state.cost || 0;
       const rate = state.rate || 1;
       const shipping = state.shipping || 0;
       const jpyPrice = origPrice * discount * (1 - feeRate);
-      const cnyNet = jpyPrice / rate - shipping;
+      const creatorCommission = (jpyPrice / rate) * creatorRate;
+      const cnyNet = jpyPrice / rate - creatorCommission - shipping;
       const margin = cost > 0 ? cnyNet / cost : NaN;
-      return { discount, jpyPrice, cnyNet, margin };
+      return { discount, jpyPrice, cnyNet, creatorCommission, margin };
     }
 
     function deriveLegacyOrigPrice() {
       const feeRate = (state.fee || 0) / 100;
+      const creatorRate = (state.creatorRate || 0) / 100;
       const cost = state.cost || 0;
       const rate = state.rate || 1;
       const shipping = state.shipping || 0;
       const targetMargin = state.targetMargin || 0;
       const anchor = state.anchor || 0.40;
-      if (anchor === 0 || feeRate >= 1) return 0;
-      return Math.max(0, ((cost * targetMargin + shipping) * rate) / (anchor * (1 - feeRate)));
+      if (anchor === 0 || feeRate >= 1 || creatorRate >= 1) return 0;
+      return Math.max(0, ((cost * targetMargin + shipping) * rate) / (anchor * (1 - feeRate) * (1 - creatorRate)));
     }
 
     function renderLegacyAnchorOptions() {
@@ -75,6 +78,7 @@ const CalcLegacyPricing = (function () {
       setInputValue(els.fee, state.fee);
       setInputValue(els.rate, state.rate);
       setInputValue(els.shipping, state.shipping);
+      setInputValue(els.creatorRate, state.creatorRate);
       setInputValue(els.discounts, (state.discounts || []).join(','));
       setInputValue(els.cost, state.cost);
       setInputValue(els.targetMargin, state.targetMargin);
@@ -106,6 +110,7 @@ const CalcLegacyPricing = (function () {
       bindLegacyNumber(els.fee, 'fee');
       bindLegacyNumber(els.rate, 'rate');
       bindLegacyNumber(els.shipping, 'shipping');
+      bindLegacyNumber(els.creatorRate, 'creatorRate');
       bindLegacyNumber(els.cost, 'cost');
       bindLegacyNumber(els.targetMargin, 'targetMargin');
 

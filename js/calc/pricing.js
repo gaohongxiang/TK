@@ -29,6 +29,7 @@ const CalcPricing = (function () {
       cost: ['cost'],
       fee: ['fee'],
       rate: ['rate'],
+      creatorRateNew: ['creatorRateNew', 'creatorRateReview'],
       shipping: ['shipping']
     };
 
@@ -56,35 +57,42 @@ const CalcPricing = (function () {
     function calcRow(viewKey, origPrice, discount) {
       const view = PRICING_VIEWS[viewKey];
       const feeRate = (state[view.fee] || 0) / 100;
+      const creatorRate = (state.creatorRateNew || 0) / 100;
       const cost = computeTotalCostNew();
       const rate = state[view.rate] || 1;
       const jpyPrice = origPrice * discount * (1 - feeRate);
-      const cnyNet = jpyPrice / rate;
+      const cnyGross = jpyPrice / rate;
+      const creatorCommission = cnyGross * creatorRate;
+      const cnyNet = cnyGross - creatorCommission;
       const profit = cnyNet - cost;
       const margin = cost > 0 ? cnyNet / cost : NaN;
-      return { discount, jpyPrice, cnyNet, profit, margin };
+      return { discount, jpyPrice, cnyNet, creatorCommission, profit, margin };
     }
 
     function deriveOrigPrice(viewKey = 'pricingNew') {
       const view = PRICING_VIEWS[viewKey];
       const feeRate = (state[view.fee] || 0) / 100;
+      const creatorRate = (state.creatorRateNew || 0) / 100;
       const cost = computeTotalCostNew();
       const rate = state[view.rate] || 1;
       const targetMargin = state[view.targetMarginState] || 0;
       const anchor = state[view.anchorState] || 0.40;
-      if (anchor === 0 || feeRate >= 1) return 0;
-      return Math.max(0, (cost * targetMargin * rate) / (anchor * (1 - feeRate)));
+      if (anchor === 0 || feeRate >= 1 || creatorRate >= 1) return 0;
+      return Math.max(0, (cost * targetMargin * rate) / (anchor * (1 - feeRate) * (1 - creatorRate)));
     }
 
     function calcSalePrice() {
       const salePrice = state.salePrice || 0;
       const cost = computeTotalCostNew();
       const rate = state.rateNew || 1;
+      const creatorRate = (state.creatorRateNew || 0) / 100;
       if (salePrice <= 0) return null;
-      const cnyNet = salePrice / rate;
+      const cnyGross = salePrice / rate;
+      const creatorCommission = cnyGross * creatorRate;
+      const cnyNet = cnyGross - creatorCommission;
       const profit = cnyNet - cost;
       const margin = cost > 0 ? cnyNet / cost : NaN;
-      return { cnyNet, profit, margin };
+      return { cnyNet, creatorCommission, profit, margin };
     }
 
     function renderAnchorOptions(viewKey = 'pricingNew') {
@@ -149,6 +157,8 @@ const CalcPricing = (function () {
       const result = calcSalePrice();
       if (!result) {
         els.saleNet.textContent = '-';
+        if (els.saleCommission) els.saleCommission.textContent = '-';
+        if (els.saleCommissionReview) setInputValue(els.saleCommissionReview, '');
         els.saleProfit.textContent = '-';
         els.saleMargin.textContent = '-';
         els.saleProfit.className = 'value mono';
@@ -158,6 +168,8 @@ const CalcPricing = (function () {
 
       const profitClass = result.profit > 0 ? 'profit-pos' : (result.profit < 0 ? 'profit-neg' : '');
       els.saleNet.textContent = fmtCny(result.cnyNet, 2);
+      if (els.saleCommission) els.saleCommission.textContent = fmtCny(result.creatorCommission, 2);
+      if (els.saleCommissionReview) setInputValue(els.saleCommissionReview, result.creatorCommission.toFixed(2));
       els.saleProfit.textContent = fmtCny(result.profit, 2);
       els.saleMargin.textContent = fmtMargin(result.margin);
       els.saleProfit.className = `value mono ${profitClass}`.trim();
@@ -177,6 +189,8 @@ const CalcPricing = (function () {
       setInputValue(els.totalCostNew, computeTotalCostNew().toFixed(2));
       setInputValue(els.totalCostReview, computeTotalCostNew().toFixed(2));
       setInputValue(els.feeNew, state.feeNew);
+      setInputValue(els.creatorRateNew, state.creatorRateNew);
+      setInputValue(els.creatorRateReview, state.creatorRateNew);
       setInputValue(els.rateNew, state.rateNew);
       setInputValue(els.discountsNew, state.discountsNew.map(discount => discount).join(','));
       setInputValue(els.targetMarginNew, state.targetMarginNew);
@@ -268,6 +282,8 @@ const CalcPricing = (function () {
       bindNumber(els.costReview, 'costNew');
       bindNumber(els.shippingReview, 'overseasShippingNew', { shippingSource: 'manual' });
       bindNumber(els.feeNew, 'feeNew');
+      bindNumber(els.creatorRateNew, 'creatorRateNew', { sync: true });
+      bindNumber(els.creatorRateReview, 'creatorRateNew', { sync: true });
       bindNumber(els.rateNew, 'rateNew', { autoFillShipping: () => state.shippingSourceNew === 'calculator' });
       bindNumber(els.costNew, 'costNew');
       bindNumber(els.overseasShippingNew, 'overseasShippingNew', { shippingSource: 'manual' });

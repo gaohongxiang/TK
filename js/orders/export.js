@@ -11,6 +11,7 @@ const OrderTrackerExport = (function () {
       todayStr,
       computeWarning,
       getPricingExchangeRate,
+      computeOrderCreatorCommission,
       computeOrderEstimatedProfit,
       escapeHtml
     } = helpers;
@@ -147,9 +148,12 @@ const OrderTrackerExport = (function () {
       }
 
       const exchangeRate = typeof getPricingExchangeRate === 'function' ? getPricingExchangeRate() : null;
-      const headers = ['账号', '下单时间', '采购日期', '最晚到仓时间', '订单预警', '订单号', '产品名称', '数量', '采购价格', '售价(日元)', '预估运费(人民币)', '预估利润(人民币)', '重量', '尺寸', '订单状态', '快递公司', '快递单号'];
+      const headers = ['账号', '下单时间', '采购日期', '最晚到仓时间', '订单预警', '订单号', '产品名称', '数量', '采购价格', '售价(日元)', '达人佣金率(%)', '达人佣金(人民币)', '预估运费(人民币)', '预估利润(人民币)', '重量', '尺寸', '订单状态', '快递公司', '快递单号'];
       const rows = rowsSource.map(order => {
         const warning = computeWarning(order).text;
+        const creatorCommission = typeof computeOrderCreatorCommission === 'function'
+          ? computeOrderCreatorCommission(order, exchangeRate)
+          : order['达人佣金'];
         const estimatedProfit = typeof computeOrderEstimatedProfit === 'function'
           ? computeOrderEstimatedProfit(order, exchangeRate)
           : order['预估利润'];
@@ -164,6 +168,8 @@ const OrderTrackerExport = (function () {
           order['数量'] || '',
           order['采购价格'] || '',
           order['售价'] || '',
+          order['达人佣金率'] || '',
+          creatorCommission ?? '',
           order['预估运费'] || '',
           estimatedProfit ?? '',
           order['重量'] || '',

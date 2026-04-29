@@ -111,6 +111,18 @@ assert.equal(
 );
 
 assert.equal(
+  sharedTools.computeOrderCreatorCommission({ '售价': '600', '达人佣金率': '10' }, 20),
+  3,
+  '共享 helper 模块应能按订单总售价和达人佣金率计算达人佣金'
+);
+
+assert.equal(
+  sharedTools.computeOrderCreatorCommission({ '售价': '600', '达人佣金率': '10', '是否退款': '1' }, 20),
+  0,
+  '退款订单的达人佣金应按 0 处理'
+);
+
+assert.equal(
   sharedTools.computeOrderSaleCny({ '售价': '600', '是否退款': '1' }, 20),
   0,
   '退款订单的实际收入应按 0 计算'
@@ -123,9 +135,15 @@ assert.equal(
 );
 
 assert.equal(
+  sharedTools.computeOrderEstimatedProfit({ '售价': '600', '采购价格': '19.8', '预估运费': '6.5', '达人佣金率': '10' }, 20),
+  0.7,
+  '共享 helper 模块应能把达人佣金一并计入订单人民币利润'
+);
+
+assert.equal(
   sharedTools.computeOrderEstimatedProfit({ '售价': '600', '采购价格': '19.8', '预估运费': '6.5' }, 20),
   3.7,
-  '共享 helper 模块应能按统一汇率计算订单人民币利润'
+  '共享 helper 模块在没有达人佣金率时应维持原利润口径'
 );
 
 assert.equal(

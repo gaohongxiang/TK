@@ -13,6 +13,7 @@ const OrderTrackerCrud = (function () {
       computeWarning,
       getPricingContext,
       getPricingExchangeRate,
+      computeOrderCreatorCommission,
       computeOrderEstimatedProfit,
       isOrderRefunded,
       normalizeOrderRecord,
@@ -884,10 +885,14 @@ const OrderTrackerCrud = (function () {
       const warehouseField = form.querySelector('[name="最晚到仓时间"]');
       const warningField = form.querySelector('[name="订单预警"]');
       const estimatedProfitField = form.querySelector('[name="预估利润"]');
+      const creatorCommissionField = form.querySelector('[name="达人佣金"]');
       if (warehouseField) warehouseField.value = ordered ? addDays(ordered, 6) : '';
       if (warningField) {
         const temp = Object.fromEntries(new FormData(form).entries());
         warningField.value = computeWarning(temp).text;
+      }
+      if (creatorCommissionField) {
+        creatorCommissionField.value = computeCreatorCommissionFromForm(form);
       }
       if (estimatedProfitField) {
         estimatedProfitField.value = computeEstimatedProfitFromForm(form);
@@ -1057,6 +1062,14 @@ const OrderTrackerCrud = (function () {
       const estimatedShippingFeeField = form?.querySelector?.('[name="预估运费"]');
       if (!estimatedShippingFeeField) return;
       const nextValue = computeEstimatedShippingFromForm(form, product, sku);
+      const currentValue = String(estimatedShippingFeeField.value || '').trim();
+      const isAutoManaged = estimatedShippingFeeField.dataset.autoManaged === '1';
+      if (!nextValue) {
+        if (!force && currentValue && !isAutoManaged) return;
+        estimatedShippingFeeField.value = '';
+        estimatedShippingFeeField.dataset.autoManaged = '';
+        return;
+      }
       estimatedShippingFeeField.value = nextValue;
       estimatedShippingFeeField.dataset.autoManaged = nextValue ? '1' : '';
     }
@@ -1068,14 +1081,21 @@ const OrderTrackerCrud = (function () {
       return sharedRate !== null && sharedRate > 0 ? sharedRate : null;
     }
 
-    function computeEstimatedProfitValue({ salePrice = '', purchasePrice = '', estimatedShippingFee = '', isRefunded = '' } = {}) {
+    function computeEstimatedProfitValue({ salePrice = '', purchasePrice = '', estimatedShippingFee = '', creatorCommissionRate = '', isRefunded = '' } = {}) {
       const exchangeRate = resolveExchangeRate();
       const refunded = isRefundedOrder({ '是否退款': isRefunded });
+      const creatorCommissionValue = computeCreatorCommissionValue({
+        salePrice,
+        creatorCommissionRate,
+        isRefunded
+      });
+      const creatorCommission = parseMoneyValue(creatorCommissionValue);
       const sharedProfit = typeof computeOrderEstimatedProfit === 'function'
         ? computeOrderEstimatedProfit({
           '售价': salePrice,
           '采购价格': purchasePrice,
           '预估运费': estimatedShippingFee,
+          '达人佣金率': creatorCommissionRate,
           '是否退款': refunded ? '1' : ''
         }, exchangeRate)
         : null;
@@ -1084,8 +1104,29 @@ const OrderTrackerCrud = (function () {
       const sale = refunded ? 0 : parseMoneyValue(salePrice);
       const purchase = parseMoneyValue(purchasePrice);
       const shipping = parseMoneyValue(estimatedShippingFee);
-      if (exchangeRate === null || sale === null || purchase === null || shipping === null) return '';
-      return formatMoneyValue((sale / exchangeRate) - (purchase + shipping));
+      if (exchangeRate === null || sale === null || purchase === null || shipping === null || creatorCommission === null) return '';
+      return formatMoneyValue((sale / exchangeRate) - (purchase + shipping + creatorCommission));
+    }
+
+    function computeCreatorCommissionValue({ salePrice = '', creatorCommissionRate = '', isRefunded = '' } = {}) {
+      const exchangeRate = resolveExchangeRate();
+      const refunded = isRefundedOrder({ '是否退款': isRefunded });
+      const sharedCommission = typeof computeOrderCreatorCommission === 'function'
+        ? computeOrderCreatorCommission({
+          '售价': salePrice,
+          '达人佣金率': creatorCommissionRate,
+          '是否退款': refunded ? '1' : ''
+        }, exchangeRate)
+        : null;
+      if (sharedCommission !== null) return formatMoneyValue(sharedCommission);
+
+      const sale = parseMoneyValue(salePrice);
+      const rate = parseMoneyValue(creatorCommissionRate);
+      if (exchangeRate === null) return '';
+      if (rate === null || rate <= 0) return '0';
+      if (refunded) return '0';
+      if (sale === null || sale <= 0) return '';
+      return formatMoneyValue((sale / exchangeRate) * (rate / 100));
     }
 
     function computeEstimatedProfitFromForm(form) {
@@ -1094,6 +1135,16 @@ const OrderTrackerCrud = (function () {
         salePrice: form.querySelector('[name="售价"]')?.value || '',
         purchasePrice: form.querySelector('[name="采购价格"]')?.value || '',
         estimatedShippingFee: form.querySelector('[name="预估运费"]')?.value || '',
+        creatorCommissionRate: form.querySelector('[name="达人佣金率"]')?.value || '',
+        isRefunded: form.querySelector('[name="是否退款"]')?.checked ? '1' : ''
+      });
+    }
+
+    function computeCreatorCommissionFromForm(form) {
+      if (!form) return '';
+      return computeCreatorCommissionValue({
+        salePrice: form.querySelector('[name="售价"]')?.value || '',
+        creatorCommissionRate: form.querySelector('[name="达人佣金率"]')?.value || '',
         isRefunded: form.querySelector('[name="是否退款"]')?.checked ? '1' : ''
       });
     }
@@ -1210,6 +1261,12 @@ const OrderTrackerCrud = (function () {
         salePrice: payload['售价'],
         purchasePrice: payload['采购价格'],
         estimatedShippingFee: payload['预估运费'],
+        creatorCommissionRate: payload['达人佣金率'],
+        isRefunded: payload['是否退款']
+      });
+      payload['达人佣金'] = computeCreatorCommissionValue({
+        salePrice: payload['售价'],
+        creatorCommissionRate: payload['达人佣金率'],
         isRefunded: payload['是否退款']
       });
       payload['最晚到仓时间'] = payload['下单时间'] ? addDays(payload['下单时间'], 6) : '';
@@ -1259,6 +1316,7 @@ const OrderTrackerCrud = (function () {
       const quantityField = form.querySelector('[name="数量"]');
       const purchasePrice = form.querySelector('[name="采购价格"]');
       const salePrice = form.querySelector('[name="售价"]');
+      const creatorCommissionRate = form.querySelector('[name="达人佣金率"]');
       const estimatedShippingFee = form.querySelector('[name="预估运费"]');
       const refundedField = form.querySelector('[name="是否退款"]');
       const weightField = form.querySelector('[name="重量"]');
@@ -1268,7 +1326,7 @@ const OrderTrackerCrud = (function () {
         quantityField.addEventListener('input', syncOrderSpecFromQuantity);
         quantityField.addEventListener('change', syncOrderSpecFromQuantity);
       }
-      [purchasePrice, salePrice, estimatedShippingFee].forEach(field => {
+      [purchasePrice, salePrice, creatorCommissionRate, estimatedShippingFee].forEach(field => {
         if (!field) return;
         field.addEventListener('input', recomputeAuto);
         field.addEventListener('change', recomputeAuto);

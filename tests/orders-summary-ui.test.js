@@ -144,8 +144,8 @@ assert.equal(
 
 assert.match(
   source,
-  /收入[\s\S]*支出[\s\S]*总采购额[\s\S]*预估总海外运费/,
-  '统计卡片需要按收入和支出组织汇总信息'
+  /收入[\s\S]*支出[\s\S]*总采购额[\s\S]*预估总海外运费[\s\S]*达人佣金/,
+  '统计卡片需要按收入和支出组织汇总信息，并把达人佣金计入支出'
 );
 
 assert.match(
@@ -234,6 +234,27 @@ assert.equal(
   refundedSummary.allRefundMetric.count,
   1,
   '退款汇总应统计退款订单条数'
+);
+
+const creatorCommissionSummary = sandbox.OrderTableView.derivePurchaseSummary({
+  orders: [
+    { id: 'creator-1', '账号': 'A', '售价': '1000', '达人佣金率': '10', '采购价格': '20', '预估运费': '5' }
+  ],
+  activeAccount: '__all__',
+  searchQuery: '',
+  exchangeRate: 20
+});
+
+assert.equal(
+  creatorCommissionSummary.allCreatorCommissionMetric.total,
+  5,
+  '达人佣金汇总应按订单总售价百分比折算后统计'
+);
+
+assert.equal(
+  creatorCommissionSummary.allProfitTotal,
+  20,
+  '摘要区总利润应扣除达人佣金'
 );
 
 console.log('orders summary ui contract ok');

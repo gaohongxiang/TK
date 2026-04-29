@@ -548,8 +548,8 @@
               利润计算器用于统一测算售价、利润，并在已知售价的情况下复盘实际利润。它包含三个模式：<strong>定价旧</strong>、<strong>定价新</strong>、<strong>利润复盘</strong>。
             </p>
             <ul class="doc-list" style="margin-top:12px">
-              <li><strong>定价旧：</strong>适合按旧的逻辑快速反推原价、折扣和利润率，适合保留原来的计算习惯。</li>
-              <li><strong>定价新：</strong>适合更精细地计算采购价、海外运费、平台手续费、汇率与折扣档位，也支持先算运费再回填。</li>
+              <li><strong>定价旧：</strong>按旧口径快速反推原价、各折扣售价和利润率，适合粗算、对比和保留原来的计算习惯。</li>
+              <li><strong>定价新：</strong>以目标利润率为核心，根据采购价、海外运费、平台手续费、达人佣金率、汇率和折扣档位反推原价，并联动计算各档售价、人民币到手和利润；也支持先算运费再回填。</li>
               <li><strong>利润复盘：</strong>适合在售价已经确定后，复盘这笔单子的实际利润和表现。</li>
               <li><strong>全局参数共用：</strong>利润计算器里的汇率和海外运费参数，会和订单管理共用同一套全局口径。</li>
             </ul>
@@ -572,11 +572,13 @@
                   <li><strong>贴单费：</strong>中转仓到海外需要重新贴单，默认1.2元。</li>
                 </ul>
               </li>
-              <li><strong>日元售价：</strong>原价 × 折扣 × (1 − 平台手续费)。商家商品一般会打折扣，目前是按4折后还有1.4倍来算的，同时tk平台会有个手续费，扣完之后才给到商家。</li>
-              <li><strong>人民币到手价：</strong><code>日元售价 ÷ 汇率</code></li>
-              <li><strong>利润：</strong><code>利润 = 人民币到手价： - 总费用</code></li>
+              <li><strong>日元售价：</strong>原价 × 折扣 × (1 − 平台手续费率)。商家商品一般会打折扣，目前是按4折后还有1.4倍来算的，同时tk平台会有个手续费，扣完之后才给到商家。</li>
+              <li><strong>达人佣金：</strong><code>日元售价 × 达人佣金率</code>。如果这单有达人带货，就在这里把按售价百分比要分给达人的部分扣掉。</li>
+              <li><strong>人民币到手：</strong><code>（日元售价 - 达人佣金）÷ 汇率</code></li>
+              <li><strong>利润：</strong><code>利润 = 人民币到手 - 总费用</code></li>
+              <li><strong>利润率：</strong><code>利润率 = 人民币到手 ÷ 总费用</code></li>
               <li><strong>原价反推：</strong>总费用 × 目标利润率 × 汇率 ÷ [基准折扣 × (1 −
-                平台手续费)]。系统会根据目标利润率、基准折扣、手续费、总费用和汇率，反推出一个可参考的商品原价，这个价就是上架商品时填入的价格。</li>
+                平台手续费) × (1 − 达人佣金率)]。系统会根据目标利润率、基准折扣、手续费、达人佣金率、总费用和汇率，反推出一个可参考的商品原价，这个价就是上架商品时填入的价格。</li>
             </ul>
           </section>
         </section>
@@ -692,7 +694,7 @@
                 SKU。关联后，系统会自动带出商品名称、单件重量和单件尺寸，这些值后面仍然可以手动修改。每条明细都记录自己的快递公司和快递单号；如果几条明细用的是同一个单号，可以先复制单号，再正常粘贴到另一条明细里。</li>
               <li><strong>再看订单级汇总：</strong><code>总件数</code> 会按所有明细数量自动求和，<code>总重量</code> 会按所有明细 <code>单件重量 × 数量</code>
                 自动汇总，<code>总尺寸</code> 需要你按实际打包情况自己调整，<code>预估总海外运费</code> 会按当前的 <code>总重量 + 总尺寸</code> 自动计算。</li>
-              <li><strong>再填订单级金额：</strong><code>总售价（日元）</code> 是整张订单的总售价，<code>总采购额（元）</code> 是整张订单的总采购额，<code>是否退款</code> 用来标记这张订单是否已经全额退款，它们不再按明细逐条填写。
+              <li><strong>再填订单级金额：</strong><code>总售价（日元）</code> 是整张订单的总售价，<code>达人佣金率（%）</code> 按整张订单的总售价填写，空着或填 <code>0</code> 表示没有达人分成，<code>达人佣金（元）</code> 会按当前汇率自动计算，<code>总采购额（元）</code> 是整张订单的总采购额，<code>是否退款</code> 用来标记这张订单是否已经全额退款，它们不再按明细逐条填写。
               </li>
               <li><strong>最后补订单级状态：</strong><code>订单状态</code>。<code>订单预警</code>
                 会自动生成。</li>
@@ -750,13 +752,15 @@
             <h3 style="margin-top:18px">订单里的金额口径</h3>
             <ul class="doc-list" style="margin-top:12px">
               <li><strong>总售价：</strong>录入的是 <code>日元</code>。</li>
+              <li><strong>达人佣金率：</strong>录入的是 <code>百分比</code>。</li>
+              <li><strong>达人佣金：</strong>显示的是 <code>人民币</code>。</li>
               <li><strong>是否退款：</strong>勾上后，这张订单的收入按 <code>0</code> 计算，但原始总售价仍然保留。</li>
               <li><strong>总采购额：</strong>录入的是 <code>人民币</code>。</li>
               <li><strong>预估总海外运费：</strong>录入的是 <code>人民币</code>。</li>
               <li><strong>预估利润：</strong>显示的是 <code>人民币</code>。</li>
             </ul>
             <p>预估利润公式：</p>
-            <p><code>预估利润 = 实收金额（日元）÷ 汇率 -（总采购额 + 预估总海外运费）</code></p>
+            <p><code>预估利润 = 实收金额（日元）÷ 汇率 -（总采购额 + 预估总海外运费 + 达人佣金）</code></p>
             <p>其中：</p>
             <ul class="doc-list" style="margin-top:12px">
               <li>未退款时，<code>实收金额 = 总售价</code>。</li>
@@ -782,12 +786,13 @@
               <li>总销售额</li>
               <li>总采购额</li>
               <li>预估总海外运费</li>
+              <li>达人佣金</li>
               <li>预估总利润</li>
             </ul>
             <p>其中：</p>
             <ul class="doc-list" style="margin-top:12px">
               <li><code>总销售额</code> 是收入。</li>
-              <li><code>总采购额 + 预估总海外运费</code> 是支出。</li>
+              <li><code>总采购额 + 预估总海外运费 + 达人佣金</code> 是支出。</li>
               <li><code>预估总利润 = 总销售额 - 总支出</code>。</li>
             </ul>
             <p>如果有退款订单：</p>

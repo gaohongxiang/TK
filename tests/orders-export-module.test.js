@@ -32,14 +32,14 @@ assert.match(
 
 assert.match(
   source,
-  /采购价格[\s\S]*售价\(日元\)[\s\S]*预估运费\(人民币\)[\s\S]*预估利润\(人民币\)/,
-  'CSV 导出需要明确标注售价为日元、利润和运费为人民币'
+  /采购价格[\s\S]*售价\(日元\)[\s\S]*达人佣金率\(%\)[\s\S]*达人佣金\(人民币\)[\s\S]*预估运费\(人民币\)[\s\S]*预估利润\(人民币\)/,
+  'CSV 导出需要明确标注售价为日元、达人佣金/运费/利润为人民币'
 );
 
 assert.match(
   source,
-  /computeOrderEstimatedProfit/,
-  'CSV 导出需要按当前汇率重新计算人民币预估利润，不能直接信任旧存量字段'
+  /computeOrderCreatorCommission[\s\S]*computeOrderEstimatedProfit/,
+  'CSV 导出需要按当前汇率重新计算达人佣金和人民币预估利润，不能直接信任旧存量字段'
 );
 
 assert.match(

@@ -68,6 +68,11 @@ const OrderTrackerShared = (function () {
       return parsed && parsed > 0 ? parsed : null;
     }
 
+    function parseCreatorCommissionRateValue(value) {
+      const parsed = parseOrderMoneyValue(value);
+      return parsed && parsed > 0 ? parsed : null;
+    }
+
     function isOrderRefunded(order) {
       const raw = String(
         order?.['是否退款']
@@ -94,12 +99,24 @@ const OrderTrackerShared = (function () {
       return roundMoney(saleJpy / rate);
     }
 
+    function computeOrderCreatorCommission(order, exchangeRate = getPricingExchangeRate()) {
+      const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
+      const rate = parseExchangeRateValue(exchangeRate);
+      const commissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率'] ?? order?.creatorCommissionRate);
+      if (rate === null) return null;
+      if (commissionRate === null) return 0;
+      if (isOrderRefunded(order)) return 0;
+      if (saleJpy === null || saleJpy <= 0) return null;
+      return roundMoney((saleJpy / rate) * (commissionRate / 100));
+    }
+
     function computeOrderEstimatedProfit(order, exchangeRate = getPricingExchangeRate()) {
       const saleCny = computeOrderSaleCny(order, exchangeRate);
       const purchase = parseOrderMoneyValue(order?.['采购价格'] ?? order?.purchasePrice);
       const shipping = parseOrderMoneyValue(order?.['预估运费'] ?? order?.estimatedShippingFee);
-      if (saleCny === null || purchase === null || shipping === null) return null;
-      return roundMoney(saleCny - purchase - shipping);
+      const commission = computeOrderCreatorCommission(order, exchangeRate);
+      if (saleCny === null || purchase === null || shipping === null || commission === null) return null;
+      return roundMoney(saleCny - purchase - shipping - commission);
     }
 
     function escapeHtml(value) {
@@ -707,7 +724,9 @@ const OrderTrackerShared = (function () {
       showDatePicker,
       parseOrderMoneyValue,
       getPricingExchangeRate,
+      parseCreatorCommissionRateValue,
       computeOrderSaleCny,
+      computeOrderCreatorCommission,
       computeOrderEstimatedProfit,
       escapeHtml,
       normalizeStatusValue,

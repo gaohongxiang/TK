@@ -142,6 +142,7 @@ const OrderTracker = (function () {
     user: ''
   };
   let productProvider = null;
+  let productLoadPromise = null;
   function resetTablePage() {
     state.currentPage = 1;
   }
@@ -197,16 +198,22 @@ const OrderTracker = (function () {
     if (!force && !configChanged && Array.isArray(state.products) && state.products.length) {
       return state.products;
     }
-    try {
-      await provider.init({ configText: cfg.configText });
-      const result = await provider.pullProducts();
-      state.products = Array.isArray(result?.products) ? result.products : [];
-      return state.products;
-    } catch (error) {
-      state.products = [];
-      if (!silent) toast(formatProductAccessError(error), 'error');
-      return [];
-    }
+    if (productLoadPromise) return productLoadPromise;
+    productLoadPromise = (async () => {
+      try {
+        await provider.init({ configText: cfg.configText });
+        const result = await provider.pullProducts();
+        state.products = Array.isArray(result?.products) ? result.products : [];
+        return state.products;
+      } catch (error) {
+        state.products = [];
+        if (!silent) toast(formatProductAccessError(error), 'error');
+        return [];
+      } finally {
+        productLoadPromise = null;
+      }
+    })();
+    return productLoadPromise;
   }
   function bindStorageHelpModal() {
     const trigger = $('#ot-storage-help-btn');

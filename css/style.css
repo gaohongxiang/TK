@@ -2884,11 +2884,11 @@ table.ot tbody tr.is-refunded:hover {
 }
 
 .ot-money-row-top {
-  grid-template-columns: minmax(56px, 68px) repeat(3, minmax(0, 1fr)) !important;
+  grid-template-columns: minmax(96px, 112px) repeat(4, minmax(0, 1fr)) !important;
 }
 
-.ot-money-row {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+.ot-meta-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
 }
 
 .ot-refund-toggle {

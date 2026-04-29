@@ -1149,6 +1149,17 @@ const OrderTrackerCrud = (function () {
       });
     }
 
+    function refreshProductsInOpenModal(modal, openToken, { silent = true, force = true } = {}) {
+      if (!modal || typeof loadProductsForModal !== 'function') return;
+      void loadProductsForModal({ silent, force }).then(() => {
+        if (!modal.classList.contains('show')) return;
+        if (modal.dataset.openToken !== openToken) return;
+        renderOrderItems(readOrderItemsFromDom());
+        syncOrderSummaryFromItems();
+        recomputeAuto();
+      });
+    }
+
     async function openModal(editId = null) {
       const form = $('#ot-form');
       const modal = $('#ot-modal');
@@ -1156,9 +1167,9 @@ const OrderTrackerCrud = (function () {
       form.reset();
       resetSpecAutoState(form);
       state.editingId = editId;
-      if (typeof loadProductsForModal === 'function') {
-        await loadProductsForModal({ silent: false, force: true });
-      }
+      const openToken = uid();
+      modal.dataset.openToken = openToken;
+      const hasCachedProducts = Array.isArray(state.products) && state.products.length > 0;
       ensureSearchSelects();
       if (editId) {
         const found = (state.orders || []).find(order => order.id === editId);
@@ -1200,6 +1211,10 @@ const OrderTrackerCrud = (function () {
       syncOrderSummaryFromItems();
       recomputeAuto();
       modal.classList.add('show');
+      refreshProductsInOpenModal(modal, openToken, {
+        silent: hasCachedProducts,
+        force: true
+      });
     }
 
     function closeModal() {

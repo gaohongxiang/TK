@@ -27,7 +27,7 @@
           <a href="#products" data-view="products">商品管理</a>
           <a href="#orders" data-view="orders">订单管理</a>
         </nav>
-        <a href="docs/user-guide.html" target="_blank" rel="noopener" class="app-doc-link">使用文档</a>
+        <a href="docs/user-guide.html" target="_blank" rel="noopener" class="app-doc-link">文档</a>
       </div>
     </header>
 
@@ -873,8 +873,7 @@
           <div class="ot-item-block-head">
             <div>
               <h4>订单明细</h4>
-              <div class="ot-item-block-copy">一个 TK 订单可以包含多个商品和多个 SKU；每条订单明细对应一个商品的一个 SKU，数量表示该 SKU 的件数。多条订单明细还可以归属同一个
-                1688 采购单。</div>
+              <div class="ot-item-block-copy">一个 TK 订单可以包含多个商品和多个 SKU；每条订单明细对应一个商品的一个 SKU，数量表示该 SKU 的件数。多条订单明细还可以归属同一个 1688 采购单。</div>
             </div>
             <button type="button" class="btn" id="ot-add-item-btn">+ 添加明细</button>
           </div>
@@ -900,7 +899,7 @@
             <input type="text" name="尺寸" placeholder="例如 20×15×10">
           </div>
         </div>
-        <div class="row quad ot-money-row-top">
+        <div class="row quint ot-money-row-top">
           <div class="field ot-refund-field">
             <label>是否退款</label>
             <label class="ot-refund-toggle">
@@ -919,16 +918,6 @@
             </div>
           </div>
           <div class="field">
-            <label>达人佣金率（%）</label>
-            <input type="number" name="达人佣金率" min="0" step="0.01" placeholder="例如 8">
-          </div>
-          <div class="field">
-            <label>达人佣金（元） <span class="kbd">自动</span></label>
-            <input type="number" name="达人佣金" step="0.01" readonly>
-          </div>
-        </div>
-        <div class="row triple ot-money-row">
-          <div class="field">
             <label>总采购额（元）</label>
             <input type="number" id="ot-total-purchase" name="采购价格" min="0" step="0.01" placeholder="请输入订单总采购额">
           </div>
@@ -941,7 +930,15 @@
             <input type="number" name="预估利润" step="0.01" readonly>
           </div>
         </div>
-        <div class="row dual">
+        <div class="row quad ot-meta-row">
+          <div class="field">
+            <label>达人佣金率（%）</label>
+            <input type="number" name="达人佣金率" min="0" step="0.01" placeholder="例如 8">
+          </div>
+          <div class="field">
+            <label>达人佣金（元） <span class="kbd">自动</span></label>
+            <input type="number" name="达人佣金" step="0.01" readonly>
+          </div>
           <div class="field">
             <label>订单状态</label>
             <select name="订单状态">

@@ -11,7 +11,7 @@ hero:
       link: /guide/overview
     - theme: alt
       text: 返回工具
-      link: /toolbox.html
+      link: https://tk-evu.pages.dev/
 
 features:
   - title: 工具使用

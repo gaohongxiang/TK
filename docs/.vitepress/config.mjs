@@ -18,7 +18,7 @@ export default {
       { text: '概览', link: '/guide/overview' },
       { text: '工具使用', link: '/guide/database' },
       { text: 'TK运营', link: '/ops/selection-principles' },
-      { text: '返回工具', link: '/toolbox.html' }
+      { text: '返回工具', link: 'https://tk-evu.pages.dev/' }
     ],
     sidebar: [
       {

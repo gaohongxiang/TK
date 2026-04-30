@@ -205,6 +205,15 @@ const TKFirestoreConnection = (function () {
     return copyText(getRulesSource());
   }
 
+  function requestDisconnect({ closeModal = false } = {}) {
+    const cfg = getConfig();
+    if (!cfg?.projectId) return;
+    const confirmed = window.confirm(`确定退出当前 Firebase 数据库连接吗？\n当前项目：${cfg.projectId}`);
+    if (!confirmed) return;
+    clearConfig();
+    if (closeModal) close();
+  }
+
   function bind() {
     const trigger = $('#app-firestore-connection');
     const modal = $('#app-firestore-modal');
@@ -218,6 +227,7 @@ const TKFirestoreConnection = (function () {
     const saveBtn = $('#app-save-firestore-config');
     const clearBtn = $('#app-clear-firestore-config');
     const textarea = $('#app-firestore-config');
+    const disconnectButtons = document.querySelectorAll('[data-firestore-disconnect]');
     if (!modal || modal.dataset.bound === 'true') return;
 
     trigger?.addEventListener('click', open);
@@ -271,11 +281,13 @@ const TKFirestoreConnection = (function () {
         }
       }
     });
-    clearBtn?.addEventListener('click', () => {
-      clearConfig();
-      close();
-    });
+    clearBtn?.addEventListener('click', () => requestDisconnect({ closeModal: true }));
     rulesCloseBtn?.addEventListener('click', closeRulesNotice);
+    disconnectButtons.forEach(button => {
+      if (button.dataset.bound === 'true') return;
+      button.addEventListener('click', () => requestDisconnect());
+      button.dataset.bound = 'true';
+    });
 
     if (trigger) trigger.dataset.bound = 'true';
     modal.dataset.bound = 'true';

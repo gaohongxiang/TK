@@ -60,6 +60,13 @@ const OrderTableView = (function () {
     return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'y';
   }
 
+  function isCreatorOrder(order) {
+    const creatorCommissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率']);
+    if (creatorCommissionRate !== null && creatorCommissionRate > 0) return true;
+    const creatorCommission = parseMoneyAmount(order?.['达人佣金']);
+    return creatorCommission.hasValue && creatorCommission.amount > 0;
+  }
+
   function roundMoney(value) {
     return Number.isFinite(value) ? Number(value.toFixed(2)) : null;
   }
@@ -179,6 +186,23 @@ const OrderTableView = (function () {
       </span>`;
   }
 
+  function buildOrderNoCellMarkup(order) {
+    const orderNo = escapeHtml(formatTableCellValue(order?.['订单号']));
+    const tags = [];
+    if (isCreatorOrder(order)) {
+      tags.push('<span class="ot-order-tag ot-order-tag-creator" title="达人带货订单" aria-label="达人带货订单">达人</span>');
+    }
+    if (isOrderRefunded(order)) {
+      tags.push('<span class="ot-order-tag ot-order-tag-creator" title="退款订单" aria-label="退款订单">退款</span>');
+    }
+    if (!tags.length) return orderNo;
+    return `
+      <span class="ot-order-no-cell">
+        <span class="ot-order-no-text">${orderNo}</span>
+        ${tags.join('')}
+      </span>`;
+  }
+
   function normalizeOrderItems(order) {
     return Array.isArray(order?.items) ? order.items : [];
   }
@@ -278,6 +302,7 @@ const OrderTableView = (function () {
             order?.['最晚到仓时间'],
             order?.['订单号'],
             isOrderRefunded(order) ? '退款 已退款' : '',
+            isCreatorOrder(order) ? '达人 达人单' : '',
             order?.['产品名称'],
             order?.['数量'],
             order?.['采购价格'],
@@ -460,10 +485,17 @@ const OrderTableView = (function () {
 
   function buildSummaryMarkup(summary, { activeAccount = '__all__', searchQuery = '' } = {}) {
     function buildIncomeDetail(grossMetric, refundMetric) {
-      if (!refundMetric?.count) return '总销售额';
+      if (!refundMetric?.count) return '销售';
       const grossText = grossMetric?.count ? formatCompactCurrencyAmount(grossMetric.total) : '-';
       const refundText = formatCompactCurrencyAmount(refundMetric.total);
-      return `总销售额 ${grossText} - 总退款额 ${refundText}`;
+      return `销售 ${grossText} - 退款 ${refundText}`;
+    }
+
+    function buildExpenseDetail(purchaseMetric, shippingMetric, creatorMetric) {
+      const purchaseText = purchaseMetric?.count ? formatCompactCurrencyAmount(purchaseMetric.total) : '-';
+      const shippingText = shippingMetric?.count ? formatCompactCurrencyAmount(shippingMetric.total) : '-';
+      const creatorText = creatorMetric?.count ? formatCompactCurrencyAmount(creatorMetric.total) : '-';
+      return `采购 ${purchaseText} · 运费 ${shippingText} · 达人 ${creatorText}`;
     }
 
     function appendRefundCount(metaText, refundMetric) {
@@ -520,14 +552,14 @@ const OrderTableView = (function () {
       { label: '总销售额', value: formatSummaryMetric(summary.filteredSaleMetric), tone: getSummaryTone(summary.filteredSaleMetric, 'income') },
       buildIncomeDetail(summary.filteredGrossSaleMetric, summary.filteredRefundMetric),
       { ...filteredExpenseMetric, tone: getSummaryTone(filteredExpenseMetric, 'expense') },
-      `总采购额 ${summary.filteredPurchaseMetric?.count ? formatCompactCurrencyAmount(summary.filteredPurchaseMetric.total) : '-'} + 预估总海外运费 ${summary.filteredShippingMetric?.count ? formatCompactCurrencyAmount(summary.filteredShippingMetric.total) : '-'} + 达人佣金 ${summary.filteredCreatorCommissionMetric?.count ? formatCompactCurrencyAmount(summary.filteredCreatorCommissionMetric.total) : '-'}`,
+      buildExpenseDetail(summary.filteredPurchaseMetric, summary.filteredShippingMetric, summary.filteredCreatorCommissionMetric),
       appendRefundCount(`受账号标签和搜索影响 · 共 ${summary.filteredCount} 条`, summary.filteredRefundMetric))}
         ${buildCard('全部订单',
         { label: '预估总利润', value: formatSummaryMetric(summary.allProfitMetric), tone: getSummaryTone(summary.allProfitMetric, 'profit') },
         { label: '总销售额', value: formatSummaryMetric(summary.allSaleMetric), tone: getSummaryTone(summary.allSaleMetric, 'income') },
         buildIncomeDetail(summary.allGrossSaleMetric, summary.allRefundMetric),
         { ...allExpenseMetric, tone: getSummaryTone(allExpenseMetric, 'expense') },
-        `总采购额 ${summary.allPurchaseMetric?.count ? formatCompactCurrencyAmount(summary.allPurchaseMetric.total) : '-'} + 预估总海外运费 ${summary.allShippingMetric?.count ? formatCompactCurrencyAmount(summary.allShippingMetric.total) : '-'} + 达人佣金 ${summary.allCreatorCommissionMetric?.count ? formatCompactCurrencyAmount(summary.allCreatorCommissionMetric.total) : '-'}`,
+        buildExpenseDetail(summary.allPurchaseMetric, summary.allShippingMetric, summary.allCreatorCommissionMetric),
         appendRefundCount(`不受账号、搜索、分页影响 · 共 ${summary.allCount} 条`, summary.allRefundMetric))}
         </div>
       </div>`;
@@ -681,7 +713,7 @@ const OrderTableView = (function () {
           <td>${escapeHtml(order?.['采购日期'])}</td>
           <td>${escapeHtml(order?.['最晚到仓时间'])}</td>
           <td><span class="chip ${escapeHtml(warn.cls || '')}">${escapeHtml(warn.text || '')}</span></td>
-          <td>${escapeHtml(order?.['订单号'])}</td>
+          <td>${buildOrderNoCellMarkup(order)}</td>
           <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(order?.['产品名称'])}">${escapeHtml(order?.['产品名称'])}</td>
           <td>${escapeHtml(formatTableCellValue(order?.['数量']))}</td>
           <td>${buildSaleCellMarkup(order)}</td>

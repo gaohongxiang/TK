@@ -144,13 +144,13 @@ assert.equal(
 
 assert.match(
   source,
-  /收入[\s\S]*支出[\s\S]*总采购额[\s\S]*预估总海外运费[\s\S]*达人佣金/,
+  /return `采购 \$\{purchaseText\} · 运费 \$\{shippingText\} · 达人 \$\{creatorText\}`;/,
   '统计卡片需要按收入和支出组织汇总信息，并把达人佣金计入支出'
 );
 
 assert.match(
   source,
-  /总销售额 \$\{grossText\} - 总退款额 \$\{refundText\}/,
+  /销售 \$\{grossText\} - 退款 \$\{refundText\}/,
   '有退款时，收入说明需要写成总销售额减总退款额'
 );
 

@@ -1281,25 +1281,38 @@ details[open] summary {
 }
 
 .ot-summary-surface {
-  padding: 18px 20px;
+  padding: 18px 0;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(110, 168, 255, .07), rgba(138, 255, 207, .04));
 }
 
 .ot-summary-grid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
 }
 
+.ot-summary-grid::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 50%;
+  width: 1px;
+  background: color-mix(in srgb, var(--border) 86%, white);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
 .ot-summary-section {
   min-width: 0;
-  padding: 4px 18px 2px;
+  padding: 4px 38px 2px;
 }
 
 .ot-summary-section+.ot-summary-section {
-  border-left: 1px solid color-mix(in srgb, var(--border) 86%, white);
+  border-left: 0;
 }
 
 .ot-summary-head {
@@ -1406,11 +1419,9 @@ details[open] summary {
   font-size: 10.5px;
   line-height: 1.35;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   letter-spacing: -.01em;
-}
-
-.ot-summary-ledger-item.is-expense {
-  padding-left: 4px;
 }
 
 .ot-summary-ledger-item.is-income .ot-summary-ledger-value {
@@ -2433,6 +2444,10 @@ details[open] summary {
     gap: 14px;
   }
 
+  .ot-summary-grid::after {
+    display: none;
+  }
+
   .ot-summary-head {
     flex-direction: column;
     gap: 4px;
@@ -2884,7 +2899,7 @@ table.ot tbody tr.is-refunded:hover {
 }
 
 .ot-money-row-top {
-  grid-template-columns: minmax(96px, 112px) repeat(4, minmax(0, 1fr)) !important;
+  grid-template-columns: minmax(72px, 84px) repeat(4, minmax(0, 1fr)) !important;
 }
 
 .ot-meta-row {
@@ -2892,7 +2907,7 @@ table.ot tbody tr.is-refunded:hover {
 }
 
 .ot-refund-toggle {
-  width: 100%;
+  width: 76px;
   min-height: 40px;
   padding: 0;
   display: flex;
@@ -2910,7 +2925,7 @@ table.ot tbody tr.is-refunded:hover {
 
 .ot-refund-toggle-knob {
   position: relative;
-  width: 100%;
+  width: 76px;
   height: 40px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--panel2) 84%, white 16%);
@@ -3010,6 +3025,39 @@ table.ot tbody tr.is-refunded:hover {
   font-size: 11px;
   color: var(--muted);
   text-decoration: line-through;
+}
+
+.ot-order-no-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.ot-order-no-text {
+  min-width: 0;
+}
+
+.ot-order-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.ot-order-tag-creator {
+  color: #b5525e;
+  background: rgba(196, 78, 78, .12);
+  border: 1px solid rgba(196, 78, 78, .22);
+  opacity: .98;
 }
 
 .modal .full {
@@ -3911,6 +3959,10 @@ table.ship td.actual {
   .ot-summary-grid {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .ot-summary-grid::after {
+    display: none;
   }
 
   .ot-summary-hero-value {

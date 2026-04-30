@@ -137,6 +137,18 @@ assert.match(
 
 assert.match(
   indexSource,
+  /id="pl-export"[\s\S]*导出 CSV/,
+  '商品库已连接状态条需要提供导出 CSV 按钮'
+);
+
+assert.match(
+  indexSource,
+  /id="pl-export-modal"[\s\S]*id="pl-export-options"[\s\S]*id="pl-export-confirm"/,
+  '商品库需要提供按账号选择的导出 CSV 弹层'
+);
+
+assert.match(
+  indexSource,
   /id="pl-disconnected"/,
   '商品库在未连接时需要提供轻量空态容器'
 );
@@ -187,6 +199,24 @@ assert.match(
   productsIndexSource,
   /classList\.add\('is-spinning'\)[\s\S]*classList\.remove\('is-spinning'\)/,
   '商品库刷新时需要和订单页一样显示转圈状态'
+);
+
+assert.match(
+  productsIndexSource,
+  /function exportProductsCsv\(/,
+  '商品库需要提供 CSV 导出逻辑'
+);
+
+assert.match(
+  productsIndexSource,
+  /ProductLibraryTableView\?\.deriveDisplayedProducts/,
+  '商品库导出应复用当前筛选结果，而不是忽略账号和搜索条件'
+);
+
+assert.match(
+  productsIndexSource,
+  /function promptProductExportAccounts\(/,
+  '商品库导出需要提供账号选择流程'
 );
 
 assert.match(

@@ -36,6 +36,7 @@ export default {
         text: 'TK运营',
         collapsed: false,
         items: [
+          { text: '日本站官方学习中心', link: '/ops/jp-official-learning-center' },
           {
             text: '选品',
             collapsed: false,

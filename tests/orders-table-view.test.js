@@ -59,6 +59,19 @@ assert.equal(result.isAll, true, '全部账号模式下 isAll 应为 true');
 assert.equal(result.sorted.length, 1, '搜索应只命中一条记录');
 assert.equal(result.sorted[0].id, '1', '应命中包含关键词的订单');
 
+const creatorSearchResult = sandbox.OrderTableView.deriveDisplayedOrders({
+  orders: [
+    { id: 'creator-1', '账号': 'A', '订单号': 'AA-1', '达人佣金率': '10' },
+    { id: 'creator-2', '账号': 'A', '订单号': 'AA-2', '达人佣金率': '' }
+  ],
+  activeAccount: '__all__',
+  searchQuery: '达人',
+  sortOrder: 'asc'
+});
+
+assert.equal(creatorSearchResult.sorted.length, 1, '搜索达人应命中达人带货订单');
+assert.equal(creatorSearchResult.sorted[0].id, 'creator-1', '达人搜索应命中佣金率大于 0 的订单');
+
 const dateSearchResult = sandbox.OrderTableView.deriveDisplayedOrders({
   orders: [
     { id: 'dated-1', '账号': 'A', '下单时间': '2026-04-23', '订单号': 'AA-1' },
@@ -166,6 +179,18 @@ assert.match(
   source,
   /isOrderRefunded\(order\) \? '退款 已退款' : ''/,
   '搜索口径需要包含退款关键词，便于搜出退款订单'
+);
+
+assert.match(
+  source,
+  /isCreatorOrder\(order\) \? '达人 达人单' : ''/,
+  '搜索口径需要包含达人关键词，便于搜出达人带货订单'
+);
+
+assert.match(
+  source,
+  /ot-order-tag ot-order-tag-creator"[\s\S]*?>达人</,
+  '订单号列需要在达人带货订单后显示达人标记'
 );
 
 assert.match(

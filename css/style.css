@@ -3284,12 +3284,14 @@ table.ot tbody tr.is-refunded:hover {
 
 /* —— 运费计算器 / 参考表 —— */
 .ship-calc,
-.ship-ref {
+.ship-ref,
+.commission-ref {
   margin-top: 18px
 }
 
 .ship-calc .ship-meta,
-.ship-ref .ship-meta {
+.ship-ref .ship-meta,
+.commission-ref .ship-meta {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -3303,13 +3305,15 @@ table.ot tbody tr.is-refunded:hover {
 }
 
 .ship-calc .ship-meta b,
-.ship-ref .ship-meta b {
+.ship-ref .ship-meta b,
+.commission-ref .ship-meta b {
   color: var(--text);
   font-weight: 600
 }
 
 .ship-calc .ship-meta .sep,
-.ship-ref .ship-meta .sep {
+.ship-ref .ship-meta .sep,
+.commission-ref .ship-meta .sep {
   opacity: .4
 }
 
@@ -3603,6 +3607,88 @@ table.ship td.actual {
   color: #f87171;
   font-weight: 600;
   text-shadow: 0 0 12px rgba(248, 113, 113, .25)
+}
+
+.commission-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.commission-group {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(110, 168, 255, .05);
+}
+
+.commission-rate-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--panel2);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 86%, white 14%);
+}
+
+.commission-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.commission-tags span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .78);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 86%, white 14%);
+  font-size: 12.5px;
+  line-height: 1.2;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.commission-note {
+  margin-top: 14px;
+}
+
+@media (max-width: 768px) {
+  .commission-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .commission-group {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 10px;
+    padding: 11px 12px;
+  }
+
+  .commission-rate-badge {
+    min-height: 30px;
+    font-size: 13.5px;
+  }
+
+  .commission-tags {
+    gap: 6px;
+  }
+
+  .commission-tags span {
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
 }
 
 /* —— 订单跟踪器 · 账号下拉历史 —— */

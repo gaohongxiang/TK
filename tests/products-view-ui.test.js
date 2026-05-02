@@ -82,6 +82,12 @@ assert.match(
 );
 
 assert.match(
+  indexSource,
+  /id="pl-batch-axis-a"[\s\S]*id="pl-batch-axis-b"[\s\S]*id="pl-batch-axis-c"/,
+  '商品库弹窗批量生成 SKU 需要在同一行提供三个规格维度'
+);
+
+assert.match(
   crudSource,
   /data-sku-field="sizeText"/,
   '商品库弹窗需要在 SKU 区块里提供单个尺寸输入框'

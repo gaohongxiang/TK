@@ -72,19 +72,16 @@ const ProductLibraryCrud = (function () {
     ));
   }
 
-  function buildBatchSkuDrafts(axisAInput, axisBInput) {
-    const axisA = parseBatchTokens(axisAInput);
-    const axisB = parseBatchTokens(axisBInput);
-    if (!axisA.length && !axisB.length) return [];
-    if (axisA.length && !axisB.length) {
-      return axisA.map(label => ({ skuName: label }));
-    }
-    if (!axisA.length && axisB.length) {
-      return axisB.map(label => ({ skuName: label }));
-    }
-    return axisA.flatMap(left => axisB.map(right => ({
-      skuName: `${left} / ${right}`
-    })));
+  function buildBatchSkuDrafts(...axisInputs) {
+    const axes = axisInputs
+      .map(parseBatchTokens)
+      .filter(axis => axis.length);
+    if (!axes.length) return [];
+    return axes.reduce((groups, axis) => (
+      groups.flatMap(group => axis.map(label => [...group, label]))
+    ), [[]]).map(labels => ({
+      skuName: labels.join(' / ')
+    }));
   }
 
   function tokenizeSkuName(value) {
@@ -305,7 +302,7 @@ const ProductLibraryCrud = (function () {
     }
 
     function clearBatchTools() {
-      ['#pl-batch-axis-a', '#pl-batch-axis-b', '#pl-batch-match', '#pl-batch-weight', '#pl-batch-size'].forEach(selector => {
+      ['#pl-batch-axis-a', '#pl-batch-axis-b', '#pl-batch-axis-c', '#pl-batch-match', '#pl-batch-weight', '#pl-batch-size'].forEach(selector => {
         const input = $(selector);
         if (input) input.value = '';
       });
@@ -326,7 +323,11 @@ const ProductLibraryCrud = (function () {
 
     function appendGeneratedSkus() {
       const drafts = readSkuDrafts();
-      const generated = buildBatchSkuDrafts($('#pl-batch-axis-a')?.value, $('#pl-batch-axis-b')?.value);
+      const generated = buildBatchSkuDrafts(
+        $('#pl-batch-axis-a')?.value,
+        $('#pl-batch-axis-b')?.value,
+        $('#pl-batch-axis-c')?.value
+      );
       if (!generated.length) {
         toast('请先填写至少一组规格值', 'error');
         return;

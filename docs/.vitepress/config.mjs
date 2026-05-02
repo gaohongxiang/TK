@@ -46,6 +46,8 @@ export default {
               { text: '小卖家打法', link: '/ops/selection-small-seller' }
             ]
           },
+          { text: 'AI 视频日更', link: '/ops/ai-video-daily' },
+          { text: '优惠券与秒杀', link: '/ops/promotions' },
           { text: '运营话术', link: '/ops/scripts' }
         ]
       },

@@ -561,6 +561,76 @@
 
       </section>
 
+      <section class="card commission-ref">
+        <h2>💰 TK 佣金费率参考表</h2>
+
+        <div class="ship-meta">
+          <span><b>类目佣金率参考</b> 用于达人佣金率和类目判断</span>
+          <span class="sep">•</span>
+          <span>带 <b>*</b> 的类目有例外</span>
+          <span class="sep">•</span>
+          <span>最终请以店铺后台实时显示为准</span>
+        </div>
+
+        <div class="commission-grid">
+          <div class="commission-group">
+            <div class="commission-rate-badge mono">7%</div>
+            <div class="commission-tags">
+              <span>汽车与摩托车</span>
+              <span>电脑办公</span>
+              <span>食品饮料</span>
+              <span>家电</span>
+              <span>手机与数码</span>
+              <span>家具</span>
+              <span>家装建材</span>
+            </div>
+          </div>
+          <div class="commission-group">
+            <div class="commission-rate-badge mono">9%</div>
+            <div class="commission-tags">
+              <span>图书&amp;杂志&amp;音频</span>
+              <span>收藏品</span>
+              <span>居家日用*</span>
+              <span>厨房用品</span>
+              <span>家纺布艺</span>
+              <span>五金工具</span>
+            </div>
+          </div>
+          <div class="commission-group">
+            <div class="commission-rate-badge mono">10%</div>
+            <div class="commission-tags">
+              <span>母婴用品*</span>
+              <span>美妆个护*</span>
+              <span>保健</span>
+              <span>珠宝与衍生品</span>
+              <span>鞋靴</span>
+              <span>运动与户外</span>
+              <span>玩具和爱好</span>
+            </div>
+          </div>
+          <div class="commission-group">
+            <div class="commission-rate-badge mono">12%</div>
+            <div class="commission-tags">
+              <span>时尚配件</span>
+              <span>儿童时尚</span>
+              <span>箱包</span>
+              <span>男装与男士内衣</span>
+              <span>穆斯林服饰</span>
+              <span>宠物用品*</span>
+              <span>女装与女士内衣</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ship-note commission-note">
+          <div class="title">带 * 类目例外说明</div>
+          <div class="text"><b>居家日用 9%*</b>：以下子类目的佣金费率为 7%：毛巾、家用清洁剂、厨房用纸&amp;湿巾、清洁海绵与百洁布、餐巾纸&amp;湿巾、厕所用纸&amp;湿巾、垃圾袋。</div>
+          <div class="text"><b>母婴用品 10%*</b>：以下子类目的佣金费率为 7%：婴儿配方奶粉、成长奶粉。</div>
+          <div class="text"><b>美妆个护 10%*</b>：以下子类目的佣金费率为 7%：美容、个护电器。</div>
+          <div class="text"><b>宠物用品 12%*</b>：以下子类目的佣金费率为 7%：猫狗食品、猫狗如厕用品。</div>
+        </div>
+      </section>
+
       <!-- 物流运费参考表（静态，用户参考用） -->
       <section class="card ship-ref">
         <h2>📦 旧版海外运费参考表</h2>
@@ -1045,7 +1115,7 @@
             <div class="pl-sku-batch-block">
               <div class="pl-sku-batch-title">批量生成多个 SKU</div>
               <div class="pl-sku-batch-copy">按颜色、尺寸等规格值自动组合生成，已有 SKU 不会重复追加。</div>
-              <div class="row pl-sku-batch-row">
+              <div class="row triple pl-sku-batch-row">
                 <div class="field">
                   <label>规格维度 1</label>
                   <input type="text" id="pl-batch-axis-a" placeholder="例如 白、黑、蓝">
@@ -1053,6 +1123,10 @@
                 <div class="field">
                   <label>规格维度 2</label>
                   <input type="text" id="pl-batch-axis-b" placeholder="例如 S、M、L">
+                </div>
+                <div class="field">
+                  <label>规格维度 3</label>
+                  <input type="text" id="pl-batch-axis-c" placeholder="例如 普通款、升级款">
                 </div>
               </div>
               <div class="pl-sku-batch-actions">

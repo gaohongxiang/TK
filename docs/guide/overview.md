@@ -1,6 +1,6 @@
 # 概览
 
-本文档分成两部分：前半部分是工具使用，后半部分是 TK 运营里的选品和话术。
+本文档分成两部分：前半部分是工具使用，后半部分是 TK 运营里的选品、内容发布、营销活动和话术。
 
 - 项目已开源：[https://github.com/gaohongxiang/TK](https://github.com/gaohongxiang/TK)
 - 你可以直接基于开源代码自行部署到 `Cloudflare Pages`

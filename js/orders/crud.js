@@ -49,6 +49,7 @@ const OrderTrackerCrud = (function () {
     } = ui;
     let productSelectApi = null;
     let skuSelectApi = null;
+    let itemDraftCache = [];
 
     function updateModalAccountSelect(selectedAcc) {
       const select = $('#ot-acc-select');
@@ -497,6 +498,33 @@ const OrderTrackerCrud = (function () {
       return rows.length ? rows : readLegacyOrderItemsFromForm(container.closest('form') || $('#ot-form'));
     }
 
+    function cloneOrderItemDrafts(items = []) {
+      return (Array.isArray(items) ? items : []).map(createOrderItemDraft);
+    }
+
+    function rememberOrderItemDrafts(items = readOrderItemsFromDom()) {
+      itemDraftCache = cloneOrderItemDrafts(items);
+      return itemDraftCache;
+    }
+
+    function mergeOrderItemDraftCache(items = []) {
+      const drafts = cloneOrderItemDrafts(items);
+      if (!itemDraftCache.length) return drafts;
+      const cachedByLineId = new Map(itemDraftCache.map(item => [String(item.lineId || ''), item]));
+      return drafts.map(draft => {
+        const cached = cachedByLineId.get(String(draft.lineId || ''));
+        if (!cached) return draft;
+        const next = { ...draft };
+        Object.entries(cached).forEach(([key, value]) => {
+          if (key === 'lineId') return;
+          if (String(next[key] ?? '').trim()) return;
+          if (value === null || value === undefined || String(value).trim() === '') return;
+          next[key] = value;
+        });
+        return createOrderItemDraft(next);
+      });
+    }
+
     function maybeAutoDetectCourierForItemRow(row) {
       if (!row) return;
       const trackingField = row.querySelector('[data-item-field="trackingNo"]');
@@ -714,6 +742,7 @@ const OrderTrackerCrud = (function () {
       const form = $('#ot-form');
       if (!form) return;
       const items = readOrderItemsFromDom();
+      rememberOrderItemDrafts(items);
       const quantityTotal = items.reduce((sum, item) => sum + (Number.parseInt(String(item.quantity || '').trim(), 10) || 0), 0);
       const totalWeight = items.reduce((sum, item) => {
         const qty = Number.parseInt(String(item.quantity || '').trim(), 10) || 0;
@@ -833,7 +862,8 @@ const OrderTrackerCrud = (function () {
     function renderOrderItems(items = []) {
       const container = getOrderItemsContainer();
       if (!container) return;
-      const drafts = (Array.isArray(items) && items.length ? items : [createOrderItemDraft()]).map(createOrderItemDraft);
+      const sourceDrafts = (Array.isArray(items) && items.length ? items : [createOrderItemDraft()]).map(createOrderItemDraft);
+      const drafts = mergeOrderItemDraftCache(sourceDrafts);
       container.innerHTML = drafts.map(buildOrderItemRowMarkup).join('');
 
       const accountName = $('#ot-acc-select')?.value || '';
@@ -1149,27 +1179,27 @@ const OrderTrackerCrud = (function () {
       });
     }
 
-    function refreshProductsInOpenModal(modal, openToken, { silent = true, force = true } = {}) {
-      if (!modal || typeof loadProductsForModal !== 'function') return;
-      void loadProductsForModal({ silent, force }).then(() => {
-        if (!modal.classList.contains('show')) return;
-        if (modal.dataset.openToken !== openToken) return;
-        renderOrderItems(readOrderItemsFromDom());
-        syncOrderSummaryFromItems();
-        recomputeAuto();
-      });
+    async function prepareProductsBeforeEditing() {
+      if (Array.isArray(state.products) && state.products.length) return;
+      if (typeof loadProductsForModal !== 'function') return;
+      const timeout = new Promise(resolve => setTimeout(resolve, 120));
+      await Promise.race([
+        Promise.resolve(loadProductsForModal({ silent: true, force: false })).catch(() => []),
+        timeout
+      ]);
     }
 
     async function openModal(editId = null) {
       const form = $('#ot-form');
       const modal = $('#ot-modal');
       if (!form || !modal) return;
+      await prepareProductsBeforeEditing();
       form.reset();
       resetSpecAutoState(form);
       state.editingId = editId;
       const openToken = uid();
       modal.dataset.openToken = openToken;
-      const hasCachedProducts = Array.isArray(state.products) && state.products.length > 0;
+      itemDraftCache = [];
       ensureSearchSelects();
       if (editId) {
         const found = (state.orders || []).find(order => order.id === editId);
@@ -1211,10 +1241,6 @@ const OrderTrackerCrud = (function () {
       syncOrderSummaryFromItems();
       recomputeAuto();
       modal.classList.add('show');
-      refreshProductsInOpenModal(modal, openToken, {
-        silent: hasCachedProducts,
-        force: true
-      });
     }
 
     function closeModal() {

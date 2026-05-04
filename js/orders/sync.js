@@ -33,9 +33,25 @@ const OrderTrackerSync = (function () {
     let syncTimer = null;
     let syncInFlight = false;
     let syncQueued = false;
+    let syncQueuedOptimisticFirestoreWrite = false;
+    let firestorePendingWriteCount = 0;
+    let firestoreOptimisticWriteSeq = 0;
+    let firestoreAppliedWriteSeq = 0;
 
     function latestIso(values) {
       return (values || []).filter(Boolean).sort().slice(-1)[0] || '';
+    }
+
+    function hasPendingFirestoreWrites() {
+      return firestorePendingWriteCount > 0;
+    }
+
+    function beginPendingFirestoreWrite() {
+      firestorePendingWriteCount += 1;
+    }
+
+    function finishPendingFirestoreWrite() {
+      firestorePendingWriteCount = Math.max(0, firestorePendingWriteCount - 1);
     }
 
     function normalizeAccounts(accounts) {
@@ -55,6 +71,15 @@ const OrderTrackerSync = (function () {
       if (leftList.length !== rightList.length) return false;
       const rightMap = new Map(rightList.map(order => [String(order?.id || ''), order]));
       return leftList.every(order => ordersEqual(order, rightMap.get(String(order?.id || '')) || null));
+    }
+
+    function parseOrderSeq(value) {
+      const parsed = Number.parseInt(String(value ?? '').trim(), 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    function getOrdersMissingSeq(orders = []) {
+      return normalizeOrderList(orders).filter(order => order?.id && parseOrderSeq(order?.seq) === null);
     }
 
     function computeDirtyState() {
@@ -320,7 +345,47 @@ const OrderTrackerSync = (function () {
     async function commitLocalOrders(statusText = '已保存到本地，等待同步…') {
       renderLocalOrders(statusText, 'local');
       await persistCache();
+      if (state.remoteProvider?.key === 'firestore' && state.remoteProvider?.isConnected?.()) {
+        void syncNow({ optimisticFirestoreWrite: true });
+        return;
+      }
       queueSync();
+    }
+
+    function buildOptimisticFirestoreChangeSet() {
+      const dirtySlots = getDirtyAccountSlots();
+      const touchedSlots = dirtySlots.length ? dirtySlots : Object.keys(state.accountLocalRevisions || {});
+      const touchedSet = new Set(touchedSlots);
+      const localOrders = normalizeOrderList(state.orders);
+      const baseOrders = Array.isArray(state.baseOrders) ? normalizeOrderList(state.baseOrders) : [];
+      const localMap = new Map(localOrders.map(order => [String(order?.id || ''), order]));
+      const baseMap = new Map(baseOrders.map(order => [String(order?.id || ''), order]));
+      const upserts = localOrders.filter(order => {
+        const slot = toAccountSlot(order?.['账号']);
+        if (touchedSet.size && !touchedSet.has(slot)) return false;
+        return !ordersEqual(order, baseMap.get(String(order?.id || '')) || null);
+      });
+      const deletions = baseOrders
+        .filter(order => {
+          const slot = toAccountSlot(order?.['账号']);
+          if (touchedSet.size && !touchedSet.has(slot)) return false;
+          return !localMap.has(String(order?.id || ''));
+        })
+        .map(order => ({
+          id: order.id,
+          accountName: order['账号'] || '',
+          deletedAt: getLocalDeletionTimestamp(order)
+        }));
+      const localAccounts = uniqueAccounts(state.accounts || []);
+      const baseAccountSet = new Set(uniqueAccounts(state.baseAccounts || []));
+      const localAccountSet = new Set(localAccounts);
+      return {
+        touchedSlots,
+        upserts,
+        deletions,
+        accountUpserts: localAccounts.filter(name => !baseAccountSet.has(name)),
+        accountDeletions: [...baseAccountSet].filter(name => !localAccountSet.has(name))
+      };
     }
 
     function getLocalDeletionTimestamp(baseOrder) {
@@ -475,6 +540,26 @@ const OrderTrackerSync = (function () {
       });
     }
 
+    async function reconcileFirestoreMissingSeqs(provider, remote = {}) {
+      const missingSeqOrders = getOrdersMissingSeq(remote.orders);
+      if (!missingSeqOrders.length) return remote;
+      setSync('正在补齐 Firestore 录入编号…', 'saving');
+      const pushResult = await provider.pushChanges({
+        upserts: missingSeqOrders,
+        deletions: [],
+        accountUpserts: [],
+        accountDeletions: [],
+        clientId: state.clientId || '',
+        assignSeq: true
+      });
+      return {
+        ...remote,
+        orders: applyAssignedOrderFields(remote.orders, pushResult.assignedOrders || []),
+        updatedAt: pushResult.updatedAt || remote.updatedAt || '',
+        remoteCursor: pushResult.remoteCursor || pushResult.updatedAt || remote.remoteCursor || ''
+      };
+    }
+
     function applyRemoteSnapshot(snapshot) {
       state.orders = normalizeOrderList(snapshot.orders);
       state.baseOrders = normalizeOrderList(snapshot.orders);
@@ -489,7 +574,11 @@ const OrderTrackerSync = (function () {
       state.accountsDirty = false;
       state.accountsLocalUpdatedAt = '';
       state.accountsRevision = 0;
-      state.accountsLastRemoteUpdatedAt = snapshot.accountsUpdatedAt || snapshot.metaUpdatedAt || snapshot.updatedAt || '';
+      state.accountsLastRemoteUpdatedAt = latestIso([
+        snapshot.accountsUpdatedAt,
+        snapshot.metaUpdatedAt,
+        snapshot.updatedAt
+      ]);
       state.accountsLastSyncedAt = nowIso();
       state.remoteCursor = snapshot.remoteCursor || snapshot.updatedAt || state.remoteCursor || '';
       refreshDirtyState();
@@ -737,9 +826,104 @@ const OrderTrackerSync = (function () {
       return true;
     }
 
-    async function syncFirestore(provider, { forcePull = false } = {}) {
+    async function syncFirestore(provider, { forcePull = false, optimisticFirestoreWrite = false } = {}) {
       if (state.dirty) {
         setSync('正在同步到 Firestore…', 'saving');
+        if (optimisticFirestoreWrite) {
+          const changeSet = buildOptimisticFirestoreChangeSet();
+          const hasChanges = changeSet.upserts.length
+            || changeSet.deletions.length
+            || changeSet.accountUpserts.length
+            || changeSet.accountDeletions.length;
+          if (!hasChanges) {
+            state.baseOrders = normalizeOrderList(state.orders);
+            state.baseAccounts = uniqueAccounts(state.accounts);
+            state.accountsDirty = false;
+            state.accountsLocalUpdatedAt = '';
+            state.accountsLastSyncedAt = nowIso();
+            changeSet.touchedSlots.forEach(slot => {
+              state.accountLastSyncedAt[slot] = state.accountsLastSyncedAt;
+              clearAccountDirtyState(slot);
+              delete state.accountLocalUpdatedAt[slot];
+            });
+            refreshDirtyState();
+            await persistCache();
+            syncQueued = true;
+            syncQueuedOptimisticFirestoreWrite = false;
+            setSync(`已同步 · ${state.orders.length} 条`, 'saved');
+            return true;
+          }
+          const pushedOrders = normalizeOrderList(state.orders);
+          const pushedAccounts = uniqueAccounts(state.accounts);
+          const syncedAccountsRevision = state.accountsRevision;
+          const syncedAccountRevisions = Object.fromEntries(
+            changeSet.touchedSlots.map(slot => [slot, state.accountLocalRevisions[slot] || 0])
+          );
+          const pushResult = await provider.pushChanges({
+            upserts: changeSet.upserts,
+            deletions: changeSet.deletions,
+            accountUpserts: changeSet.accountUpserts,
+            accountDeletions: changeSet.accountDeletions,
+            clientId: state.clientId || '',
+            assignSeq: false,
+            waitForCommit: false
+          });
+          const writeSeq = ++firestoreOptimisticWriteSeq;
+          beginPendingFirestoreWrite();
+          const commitPromise = Promise.resolve(pushResult.commitPromise);
+          state.accountsLastRemoteUpdatedAt = pushResult.updatedAt;
+          state.remoteCursor = pushResult.remoteCursor || pushResult.updatedAt || state.remoteCursor || '';
+          refreshDirtyState();
+          await persistCache();
+          setSync(`已进入 Firestore 本地队列 · ${state.orders.length} 条`, 'saving');
+          commitPromise
+            .then(async () => {
+              if (writeSeq < firestoreAppliedWriteSeq) return;
+              firestoreAppliedWriteSeq = writeSeq;
+              const syncedAt = nowIso();
+              state.baseOrders = pushedOrders;
+              state.baseAccounts = pushedAccounts;
+              state.accountsLastSyncedAt = syncedAt;
+              if (state.accountsDirty && state.accountsRevision === syncedAccountsRevision) {
+                state.accountsDirty = false;
+                state.accountsLocalUpdatedAt = '';
+              } else if (state.accountsDirty) {
+                syncQueued = true;
+              }
+              changeSet.touchedSlots.forEach(slot => {
+                state.accountLastSyncedAt[slot] = syncedAt;
+                if ((state.accountLocalRevisions[slot] || 0) === (syncedAccountRevisions[slot] || 0)) {
+                  clearAccountDirtyState(slot);
+                  delete state.accountLocalUpdatedAt[slot];
+                } else if (state.dirtyAccounts[slot]) {
+                  syncQueued = true;
+                }
+              });
+              refreshDirtyState();
+              await persistCache();
+              setSync(state.dirty ? '本地已更新，继续等待同步…' : `已同步 · ${state.orders.length} 条`, state.dirty ? 'saving' : 'saved');
+              if (!state.dirty) {
+                syncQueued = true;
+                syncQueuedOptimisticFirestoreWrite = false;
+              }
+            })
+            .catch(error => {
+              if (writeSeq < firestoreAppliedWriteSeq) return;
+              setSync('Firestore 写入失败，已保留本地缓存', 'error');
+              toast('Firestore 写入失败: ' + formatFirestoreError(error), 'error');
+            })
+            .finally(() => {
+              finishPendingFirestoreWrite();
+              if (hasPendingFirestoreWrites()) return;
+              if (syncQueued || syncQueuedOptimisticFirestoreWrite || state.dirty) {
+                const nextOptimistic = syncQueuedOptimisticFirestoreWrite || state.dirty;
+                syncQueued = false;
+                syncQueuedOptimisticFirestoreWrite = false;
+                void syncNow({ optimisticFirestoreWrite: nextOptimistic });
+              }
+            });
+          return true;
+        }
         const remote = await provider.pullSnapshot({ cursor: state.remoteCursor || '' });
         const mergeResult = mergeFirestoreOrders({
           baseOrders: Array.isArray(state.baseOrders) ? state.baseOrders : [],
@@ -791,7 +975,14 @@ const OrderTrackerSync = (function () {
       }
 
       setSync(forcePull ? '正在刷新云端数据…' : '正在检查云端更新…', 'saving');
-      const remote = await provider.pullSnapshot({ cursor: forcePull ? '' : (state.remoteCursor || '') });
+      let remote = await provider.pullSnapshot({ cursor: forcePull ? '' : (state.remoteCursor || '') });
+      if (state.dirty || hasPendingFirestoreWrites()) {
+        syncQueued = true;
+        syncQueuedOptimisticFirestoreWrite = true;
+        setSync(state.dirty ? '本地已更新，等待写入 Firestore…' : 'Firestore 本地队列写入中…', 'saving');
+        return false;
+      }
+      remote = await reconcileFirestoreMissingSeqs(provider, remote);
       const shouldApplyRemote = forcePull
         || !Array.isArray(state.baseOrders)
         || !sameOrdersSnapshot(state.baseOrders, remote.orders)
@@ -804,12 +995,13 @@ const OrderTrackerSync = (function () {
       return true;
     }
 
-    async function syncNow({ forcePull = false } = {}) {
+    async function syncNow({ forcePull = false, optimisticFirestoreWrite = false } = {}) {
       const provider = state.remoteProvider;
       if (!provider) return false;
       if (typeof provider.isConnected === 'function' && !provider.isConnected()) return false;
       if (syncInFlight) {
         syncQueued = true;
+        if (optimisticFirestoreWrite) syncQueuedOptimisticFirestoreWrite = true;
         return false;
       }
       if (syncTimer) {
@@ -819,7 +1011,7 @@ const OrderTrackerSync = (function () {
 
       syncInFlight = true;
       try {
-        if (provider.key === 'firestore') return await syncFirestore(provider, { forcePull });
+        if (provider.key === 'firestore') return await syncFirestore(provider, { forcePull, optimisticFirestoreWrite });
         throw new Error('当前只支持 Firebase Firestore 同步');
       } catch (error) {
         setSync(state.dirty ? '同步失败，已保留本地缓存' : '加载失败', 'error');
@@ -828,8 +1020,10 @@ const OrderTrackerSync = (function () {
       } finally {
         syncInFlight = false;
         if (syncQueued) {
+          const nextOptimistic = syncQueuedOptimisticFirestoreWrite;
           syncQueued = false;
-          void syncNow();
+          syncQueuedOptimisticFirestoreWrite = false;
+          void syncNow({ optimisticFirestoreWrite: nextOptimistic });
         }
       }
     }

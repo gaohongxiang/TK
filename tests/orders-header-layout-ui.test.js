@@ -83,14 +83,14 @@ assert.match(
 
 assert.match(
   tableSource,
-  /ot-sticky-controls/,
-  '表格视图需要输出吸顶控制带容器'
+  /tableControls\.buildTableToolbarMarkup\(\{[\s\S]*prefix: 'ot'[\s\S]*includeSearch/,
+  '表格视图需要通过共用控件输出订单吸顶控制带'
 );
 
 assert.match(
-  tableSource,
+  fs.readFileSync(path.join(__dirname, '..', 'js', 'table-controls.js'), 'utf8'),
   /ot-table-toolbar-left/,
-  '表格视图需要把搜索区放到控制带左侧'
+  '共用表格控件需要把搜索区放到控制带左侧'
 );
 
 assert.match(

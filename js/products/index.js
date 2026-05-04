@@ -512,11 +512,12 @@ const ProductLibrary = (function () {
   }
 
   async function saveProduct(product) {
-    return provider.upsertProduct(product);
+    const result = await provider.upsertProduct(product, { waitForCommit: false });
+    return result?.product || result;
   }
 
   async function deleteProduct(tkId) {
-    return provider.deleteProduct(tkId);
+    return provider.deleteProduct(tkId, { waitForCommit: false });
   }
 
   const crud = ProductLibraryCrud.create({

@@ -150,6 +150,42 @@ assert.match(
 );
 
 assert.match(
+  source,
+  /function rememberOrderItemDrafts\(/,
+  '订单 CRUD 模块需要缓存订单明细草稿，避免异步刷新商品资料时丢失快递单号'
+);
+
+assert.match(
+  source,
+  /async function prepareProductsBeforeEditing\(/,
+  '订单弹窗应在进入可编辑状态前准备商品资料，避免打开后后台刷新抢焦点'
+);
+
+assert.match(
+  source,
+  /async function openModal[\s\S]{0,220}await prepareProductsBeforeEditing\(\);/,
+  '订单弹窗需要先准备商品资料再渲染订单明细'
+);
+
+assert.doesNotMatch(
+  source,
+  /function refreshProductsInOpenModal\(/,
+  '订单弹窗打开后不应再启动后台商品资料刷新去触碰编辑区'
+);
+
+assert.doesNotMatch(
+  source,
+  /shouldDeferItemOptionRefresh|markOrderItemFieldInteraction|pointerdown[\s\S]{0,260}data-item-field/,
+  '订单弹窗不应依赖延迟抢焦点补丁，应从流程上避免后台刷新编辑区'
+);
+
+assert.doesNotMatch(
+  source,
+  /function refreshProductsInOpenModal[\s\S]{0,900}renderOrderItems\(readOrderItemsFromDom\(\)\)/,
+  '订单弹窗异步刷新商品资料不应重渲染明细行，否则刚填写的快递单号可能被清空'
+);
+
+assert.match(
   htmlSource,
   /一个 TK 订单可以包含多个商品和多个 SKU；每条订单明细对应一个商品的一个 SKU，数量表示该 SKU 的件数。多条订单明细还可以归属同一个 1688 采购单。/,
   '订单弹窗需要说明 TK 订单与订单明细、SKU 的对应关系'

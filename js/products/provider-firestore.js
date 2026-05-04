@@ -248,20 +248,37 @@ const ProductLibraryProviderFirestore = (function () {
       };
     }
 
-    async function upsertProduct(product) {
+    function trackWritePromise(promise, label, { waitForCommit = true } = {}) {
+      const commitPromise = Promise.resolve(promise);
+      if (!waitForCommit) commitPromise.catch(error => console.error(label, error));
+      return commitPromise;
+    }
+
+    async function upsertProduct(product, { waitForCommit = true } = {}) {
       const currentDb = await requireDb();
       const doc = buildProductDoc(product);
       if (!doc.tkId) throw new Error('商品 TK ID 不能为空');
-      await currentDb.collection('products').doc(doc.tkId).set(doc, { merge: true });
-      return normalizePulledProduct(doc);
+      const commitPromise = trackWritePromise(
+        currentDb.collection('products').doc(doc.tkId).set(doc, { merge: true }),
+        'Firestore product local queue write failed',
+        { waitForCommit }
+      );
+      if (waitForCommit) await commitPromise;
+      const saved = normalizePulledProduct(doc);
+      return waitForCommit ? saved : { product: saved, commitPromise };
     }
 
-    async function deleteProduct(tkId) {
+    async function deleteProduct(tkId, { waitForCommit = true } = {}) {
       const currentDb = await requireDb();
       const id = String(tkId || '').trim();
       if (!id) throw new Error('商品 TK ID 不能为空');
-      await currentDb.collection('products').doc(id).delete();
-      return true;
+      const commitPromise = trackWritePromise(
+        currentDb.collection('products').doc(id).delete(),
+        'Firestore product delete local queue write failed',
+        { waitForCommit }
+      );
+      if (waitForCommit) await commitPromise;
+      return waitForCommit ? true : { deleted: true, commitPromise };
     }
 
     return {

@@ -120,6 +120,18 @@ assert.match(
   'Firestore provider 拉取数据时需要优先读取服务器，再回退到本地缓存'
 );
 
+assert.match(
+  source,
+  /waitForCommit\s*=\s*true/,
+  'Firestore provider 写入应支持保存时不等待云端提交'
+);
+
+assert.match(
+  source,
+  /assignSeq\s*=\s*true/,
+  'Firestore provider 写入应支持保存时跳过远端 seq 分配'
+);
+
 const sandbox = {
   window: {
     firebase: {

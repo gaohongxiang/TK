@@ -221,6 +221,18 @@ assert.match(
 
 assert.match(
   productsIndexSource,
+  /provider\.upsertProduct\(product,\s*\{\s*waitForCommit:\s*false\s*\}\)/,
+  '商品库保存应先进入 Firestore 本地队列，不等待云端提交后才更新 UI'
+);
+
+assert.match(
+  productsIndexSource,
+  /provider\.deleteProduct\(tkId,\s*\{\s*waitForCommit:\s*false\s*\}\)/,
+  '商品库删除应先进入 Firestore 本地队列，不等待云端提交后才更新 UI'
+);
+
+assert.match(
+  productsIndexSource,
   /function promptProductExportAccounts\(/,
   '商品库导出需要提供账号选择流程'
 );

@@ -22,7 +22,7 @@ assert.match(indexSource, /CalcPricing\.create\(/, 'js/calc/index.js 需要接�
 assert.doesNotMatch(htmlSource, /<script src="js\/calc\.js" defer><\/script>/, 'index.html 不应再直接加载旧的 js/calc.js');
 assert.match(
   htmlSource,
-  /<script src="js\/app\.js" defer><\/script>\s*<script src="js\/global-settings\.js" defer><\/script>\s*<script src="js\/shipping-core\.js" defer><\/script>\s*<script src="js\/firestore-connection\.js" defer><\/script>\s*<script src="js\/calc\/shared\.js" defer><\/script>\s*<script src="js\/calc\/shipping\.js" defer><\/script>\s*<script src="js\/calc\/legacy\.js" defer><\/script>\s*<script src="js\/calc\/pricing\.js" defer><\/script>\s*<script src="js\/calc\/index\.js" defer><\/script>/,
+  /<script src="js\/app\.js" defer><\/script>[\s\S]*<script src="js\/global-settings\.js" defer><\/script>[\s\S]*<script src="js\/shipping-core\.js" defer><\/script>\s*<script src="js\/firestore-connection\.js" defer><\/script>\s*<script src="js\/calc\/shared\.js" defer><\/script>\s*<script src="js\/calc\/shipping\.js" defer><\/script>\s*<script src="js\/calc\/legacy\.js" defer><\/script>\s*<script src="js\/calc\/pricing\.js" defer><\/script>\s*<script src="js\/calc\/index\.js" defer><\/script>/,
   'index.html 需要先加载全局设置、共享运费核心和全局 Firestore 连接模块，再按 shared -> shipping -> legacy -> pricing -> index 的顺序加载利润计算器模块'
 );
 

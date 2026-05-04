@@ -47,6 +47,18 @@ assert.match(
   '商品库 Firestore provider 需要读写 skus 数组'
 );
 
+assert.match(
+  source,
+  /waitForCommit\s*=\s*true/,
+  '商品库 Firestore provider 写入应支持保存时不等待云端提交'
+);
+
+assert.match(
+  source,
+  /commitPromise/,
+  '商品库 Firestore provider 保存时应返回 Firestore 本地队列写入 Promise'
+);
+
 const sandbox = {
   window: {
     firebase: {

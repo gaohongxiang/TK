@@ -31,6 +31,42 @@ assert.match(
 );
 
 assert.match(
+  source,
+  /void syncNow\(\{ optimisticFirestoreWrite: true \}\)/,
+  'Firestore 保存后应立即投递给 SDK 本地写入队列，不应等待 debounce 后才同步'
+);
+
+assert.match(
+  source,
+  /function buildOptimisticFirestoreChangeSet\(/,
+  'Firestore 乐观写入需要只构造本地变更集'
+);
+
+assert.match(
+  source,
+  /waitForCommit: false/,
+  'Firestore 乐观写入不应等待云端提交完成'
+);
+
+assert.match(
+  source,
+  /function reconcileFirestoreMissingSeqs\(/,
+  'Firestore 乐观写入后需要后台补齐缺失的录入编号'
+);
+
+assert.match(
+  source,
+  /firestoreOptimisticWriteSeq[\s\S]*writeSeq = \+\+firestoreOptimisticWriteSeq[\s\S]*writeSeq < firestoreAppliedWriteSeq/,
+  'Firestore 连续快速保存时，旧写入确认不应覆盖新写入基线'
+);
+
+assert.match(
+  source,
+  /reconcileFirestoreMissingSeqs\(provider, remote\)/,
+  'Firestore 干净同步时需要执行缺失 seq 的最终一致性修复'
+);
+
+assert.match(
   indexSource,
   /OrderTrackerSync\.create\(/,
   'js/orders/index.js 需要通过 OrderTrackerSync.create 接入同步模块'

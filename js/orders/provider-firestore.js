@@ -488,14 +488,19 @@ const OrderTrackerProviderFirestore = (function () {
       return normalized;
     }
 
-    async function commitMutations(currentDb, mutations) {
-      if (!mutations.length) return;
+    function commitMutations(currentDb, mutations, { waitForCommit = true } = {}) {
+      if (!mutations.length) return Promise.resolve();
       const chunkSize = 400;
+      const commits = [];
       for (let index = 0; index < mutations.length; index += chunkSize) {
         const batch = currentDb.batch();
         mutations.slice(index, index + chunkSize).forEach(apply => apply(batch));
-        await batch.commit();
+        const commitPromise = batch.commit();
+        commits.push(commitPromise);
       }
+      const allCommits = Promise.all(commits);
+      if (!waitForCommit) allCommits.catch(error => console.error('Firestore local queue write failed', error));
+      return allCommits;
     }
 
     async function init(config) {
@@ -605,11 +610,13 @@ const OrderTrackerProviderFirestore = (function () {
       deletions = [],
       accountUpserts = [],
       accountDeletions = [],
-      clientId = ''
+      clientId = '',
+      assignSeq = true,
+      waitForCommit = true
     } = {}) {
       const currentDb = await requireDb();
       const updatedAt = nowIso();
-      const assignedOrders = await assignOrderSeqs(currentDb, upserts);
+      const assignedOrders = assignSeq ? await assignOrderSeqs(currentDb, upserts) : normalizeOrderList(upserts);
       const mutations = [];
 
       assignedOrders.forEach(order => {
@@ -662,11 +669,13 @@ const OrderTrackerProviderFirestore = (function () {
         schemaVersion: 1
       }, { merge: true }));
 
-      await commitMutations(currentDb, mutations);
+      const commitPromise = commitMutations(currentDb, mutations, { waitForCommit });
+      if (waitForCommit) await commitPromise;
       return {
         updatedAt,
         remoteCursor: updatedAt,
-        assignedOrders
+        assignedOrders,
+        commitPromise
       };
     }
 

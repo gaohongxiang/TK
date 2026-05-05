@@ -627,6 +627,8 @@ npm run release:check
 - 新增 `src/orders/table.mjs`，提供订单表格筛选排序、日期型搜索判断、退款/达人识别、快递汇总、金额格式化、利润颜色和采购/销售/运费/达人佣金/利润摘要统计等 ESM 纯函数导出。
 - `tests/orders-table-view.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证搜索筛选、达人搜索、稳定排序、利润颜色和多明细快递紧凑展示口径一致。
 - `tests/orders-summary-ui.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证摘要统计、摘要金额格式化和当前筛选标题一致。
+- 新增 `src/orders/export.mjs`，提供导出账号选项、导出文件名、CSV 转义、CSV 行构造、订单筛选和 CSV 字符串生成等 ESM 纯函数导出，并保留 `OrderTrackerExport.create()` 兼容壳。
+- `tests/orders-export-module.test.js` 已新增动态 `import()` 断言，验证 ESM 导出模块的账号选项、文件名、CSV 表头、CSV 双引号转义、未关联账号筛选，以及达人佣金/预估利润按当前汇率计算。
 
 当前已验证通过：
 
@@ -634,6 +636,7 @@ npm run release:check
 node tests/orders-shared-module.test.js
 node tests/orders-table-view.test.js
 node tests/orders-summary-ui.test.js
+node tests/orders-export-module.test.js
 npm test
 npm run build
 git diff --check
@@ -642,7 +645,7 @@ npm run release:check
 
 下一步：
 
-- 继续按顺序拆 `orders/export`。
+- 继续按顺序拆 `orders/tabs`。
 - 暂时不要改 `orders/sync.js`。
 
 ### 8.5 标准模块化期间的构建变化

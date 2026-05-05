@@ -833,6 +833,7 @@ export {
   buildOrderCourierSummary,
   buildOrderItemsSummary,
   cleanOrderToCurrentShape,
+  computeWarning,
   computeOrderCreatorCommission,
   computeOrderSaleCny,
   createOrderNormalizer,
@@ -848,5 +849,6 @@ export {
   normalizeOrderSeq,
   normalizeStatusValue,
   parseCreatorCommissionRateValue,
-  parseOrderMoneyValue
+  parseOrderMoneyValue,
+  todayStr
 };

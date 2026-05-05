@@ -1,14 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const vm = require('vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'firestore-connection.js'), 'utf8');
+const root = path.join(__dirname, '..');
+const source = fs.readFileSync(path.join(root, 'src', 'firestore-connection.mjs'), 'utf8');
 
 assert.match(
   source,
-  /const TKFirestoreConnection = \(function \(\) \{/,
-  '需要独立的全局 Firestore 连接模块'
+  /const TKFirestoreConnection = \{/,
+  '需要独立的 Firestore 连接 ESM 模块'
 );
 
 assert.match(
@@ -43,44 +43,31 @@ assert.match(
 
 assert.match(
   source,
-  /window\.TKFirestoreConnection\s*=\s*TKFirestoreConnection;/,
-  '全局 Firestore 连接模块需要挂到 window 上，供订单和商品库直接调用'
+  /window\.TKFirestoreConnection\s*=\s*TKFirestoreConnection/,
+  'Firestore 连接 ESM 模块需要挂到 window 上，供订单和商品库直接调用'
 );
 
-const sandbox = {
-  window: {
-    addEventListener() {},
-    dispatchEvent() {}
-  },
-  localStorage: {
-    getItem() { return null; },
-    setItem() {},
-    removeItem() {}
-  },
-  document: {
-    querySelector() { return null; },
-    addEventListener() {}
-  },
-  CustomEvent: function CustomEvent(type, init) {
-    this.type = type;
-    this.detail = init?.detail;
-  }
-};
-vm.createContext(sandbox);
-vm.runInContext(`${source}\nthis.TKFirestoreConnection = TKFirestoreConnection;`, sandbox);
+(async () => {
+  const module = await import(`file://${path.join(root, 'src', 'firestore-connection.mjs')}`);
 
-assert.equal(typeof sandbox.TKFirestoreConnection.open, 'function', '全局 Firestore 连接模块需要暴露 open');
-assert.equal(typeof sandbox.TKFirestoreConnection.getConfig, 'function', '全局 Firestore 连接模块需要暴露 getConfig');
-assert.equal(typeof sandbox.TKFirestoreConnection.clearConfig, 'function', '全局 Firestore 连接模块需要暴露 clearConfig');
-assert.equal(typeof sandbox.TKFirestoreConnection.notifyRulesUpdateNeeded, 'function', '全局 Firestore 连接模块需要暴露 notifyRulesUpdateNeeded');
+  assert.equal(typeof module.TKFirestoreConnection.open, 'function', 'Firestore 连接模块需要暴露 open');
+  assert.equal(typeof module.TKFirestoreConnection.getConfig, 'function', 'Firestore 连接模块需要暴露 getConfig');
+  assert.equal(typeof module.TKFirestoreConnection.clearConfig, 'function', 'Firestore 连接模块需要暴露 clearConfig');
+  assert.equal(typeof module.TKFirestoreConnection.notifyRulesUpdateNeeded, 'function', 'Firestore 连接模块需要暴露 notifyRulesUpdateNeeded');
+  assert.equal(typeof module.parseConfigInput, 'function', 'Firestore 连接模块需要导出 parseConfigInput 供测试和后续迁移复用');
 
-const parsed = sandbox.TKFirestoreConnection.parseConfigInput(`const firebaseConfig = {
-  apiKey: "AIza",
-  authDomain: "demo.firebaseapp.com",
-  projectId: "demo",
-  appId: "1:web:demo"
-};`);
+  const parsed = module.TKFirestoreConnection.parseConfigInput(`const firebaseConfig = {
+    apiKey: "AIza",
+    authDomain: "demo.firebaseapp.com",
+    projectId: "demo",
+    appId: "1:web:demo"
+  };`);
 
-assert.equal(parsed.projectId, 'demo', '全局 Firestore 连接模块应能解析 projectId');
+  assert.equal(parsed.projectId, 'demo', 'Firestore 连接模块应能解析 projectId');
+  assert.equal(module.normalizeConfigText({ apiKey: 'key', projectId: 'p', appId: 'app' }).includes('"authDomain": "p.firebaseapp.com"'), true, 'Firestore 连接模块需要补齐默认 authDomain');
 
-console.log('firestore connection module ok');
+  console.log('firestore connection module ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

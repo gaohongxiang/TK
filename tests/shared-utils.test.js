@@ -38,7 +38,7 @@ assert.match(srcMainSource, /import '\.\/searchable-select\.mjs'/, 'ESM 主入�
 
 assert.doesNotMatch(indexSource, /<script src="js\/shared\/html\.js" defer><\/script>/, 'index.html 不应再加载旧共享 HTML 普通脚本');
 assert.doesNotMatch(indexSource, /<script src="js\/shared\/format\.js" defer><\/script>/, 'index.html 不应再加载旧共享格式化普通脚本');
-assert.match(indexSource, /<script type="module" src="\/src\/main\.mjs"><\/script>\s*<script src="js\/firestore-connection\.js" defer><\/script>/, '共享工具应由 ESM 主入口先挂载，再加载后续旧 helper');
+assert.match(indexSource, /<script type="module" src="\/src\/main\.mjs"><\/script>\s*<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>/, '共享工具应由 ESM 主入口先挂载，再加载后续模块');
 
 assert.doesNotMatch(
   indexSource,

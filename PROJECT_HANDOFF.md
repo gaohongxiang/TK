@@ -621,7 +621,7 @@ npm run release:check
 
 订单最复杂，最后迁移。
 
-当前状态：M5 已完成主入口切换。订单页面现在通过 `/src/orders/index.mjs` 加载订单入口；旧 `js/orders/index.js` 暂时保留为历史参考和回退，不再由主页面加载。旧 `js/orders/*.js` helper 仍继续加载，旧 `js/orders/sync.js` 的运行逻辑未改。
+当前状态：M5 已完成主入口切换。订单页面现在通过 `/src/orders/index.mjs` 加载订单入口；旧 `js/orders/index.js` 暂时保留为历史参考和回退，不再由主页面加载。主页面订单普通脚本只剩 `js/orders/sync.js` 和 `js/orders/crud.js`，旧 `js/orders/sync.js` 的运行逻辑未改。
 
 顺序：
 
@@ -666,9 +666,12 @@ npm run release:check
 - `tests/orders-firestore-rules.test.js` 已新增动态 `import()` 断言，确认 ESM 内置规则和文档规则保持一致。
 - 新增 `src/orders/form-utils.mjs`，提供订单弹窗商品/SKU 标签、商品默认参数合并、订单明细草稿归一化、旧版订单明细恢复、金额/尺寸解析等纯函数 ESM 导出，并在浏览器里挂回 `window.OrderTrackerFormUtils`。
 - `tests/orders-form-utils-module.test.js` 已新增动态 `import()` 断言，确认订单表单纯函数 ESM 输出和旧 `OrderTrackerFormUtils` 一致。
+- 新增 `src/firestore-connection.mjs`，提供全局 Firestore 连接弹窗、配置解析、本地存储迁移、复制规则和配置变更广播等 ESM 导出，并在浏览器里继续挂回 `window.TKFirestoreConnection`。
+- `tests/firestore-connection-module.test.js` 已改为动态 `import()` 断言，确认 Firestore 连接 ESM 模块可直接导入、可解析 `firebaseConfig`，并保留旧全局 API。
 - `src/orders/provider-firestore.mjs` 已直接注册 `TKDataSourceRegistry.registerProvider('orders', ...)`，旧 `js/orders/provider-firestore.js` 不再负责页面运行链路。
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载，改为 `<script type="module" src="/src/orders/index.mjs"></script>`。
 - `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js`、`js/orders/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 已移除旧 `js/firestore-connection.js` 的页面加载，改为 `<script type="module" src="/src/firestore-connection.mjs"></script>`。
 - `index.html` 仍保留 `js/orders/sync.js`、`js/orders/crud.js`，因为这些仍承载同步状态机或弹窗行为。
 - 新增 `tests/orders-index-module.test.js`，验证订单 ESM 入口可直接 import、懒初始化、挂回全局，以及旧订单 index 普通脚本不再由主页面加载。
 
@@ -685,6 +688,7 @@ node tests/orders-session-module.test.js
 node tests/orders-provider-firestore-module.test.js
 node tests/orders-sync-module.test.js
 node tests/orders-index-module.test.js
+node tests/firestore-connection-module.test.js
 npm test
 npm run build
 git diff --check
@@ -1401,7 +1405,7 @@ scripts/release-check.sh
 
 ```text
 js/data-sources/registry.js
-js/firestore-connection.js
+src/firestore-connection.mjs
 js/orders/provider-firestore.js
 js/products/provider-firestore.js
 src/orders/products.mjs

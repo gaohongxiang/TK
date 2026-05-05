@@ -3,7 +3,7 @@ const path = require('path');
 const assert = require('assert');
 
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const connectionSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'firestore-connection.js'), 'utf8');
+const connectionSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'firestore-connection.mjs'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
 
 assert.doesNotMatch(
@@ -20,8 +20,8 @@ assert.match(
 
 assert.match(
   connectionSource,
-  /const TKFirestoreConnection = \(function \(\) \{/,
-  '需要独立的全局 Firestore 连接模块'
+  /const TKFirestoreConnection = \{/,
+  '需要独立的 Firestore 连接 ESM 模块'
 );
 
 assert.match(

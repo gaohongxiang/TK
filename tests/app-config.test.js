@@ -46,8 +46,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>\s*<script src="js\/firestore-connection\.js" defer><\/script>/,
-  'index.html 需要通过 Vite ESM 主入口加载主站壳层，再加载仍保留的 Firestore helper'
+  /<script type="module" src="\/src\/main\.mjs"><\/script>\s*<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>/,
+  'index.html 需要通过 Vite ESM 主入口加载主站壳层，再加载 Firestore 连接模块'
 );
 
 assert.doesNotMatch(

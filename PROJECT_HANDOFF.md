@@ -635,6 +635,8 @@ npm run release:check
 - `tests/orders-crud-module.test.js` 已新增动态 `import()` 断言，验证 ESM CRUD 工具的商品/SKU 选项、明细汇总、达人佣金/预估利润计算和明细快递识别规则。
 - 新增 `src/orders/session.mjs`，提供订单会话连接文案、配置状态应用、缓存恢复文案、连接状态重置和刷新按钮 loading 状态等 ESM helper，并保留 `OrderTrackerSession.create()` 兼容壳。
 - `tests/orders-session-module.test.js` 已新增动态 `import()` 断言，验证 ESM 会话模块的 `init/onEnter` 接口、已连接文案、本地缓存文案、配置状态应用/重置和刷新按钮状态切换。
+- 新增 `src/orders/provider-firestore.mjs`，提供 Firestore 配置解析/序列化、显示名、items 归一化、旧结构清洗识别、订单拉取映射、订单写入 doc 构造等 ESM 纯函数，并保留 `OrderTrackerProviderFirestore.create()` 兼容壳。
+- `tests/orders-provider-firestore-module.test.js` 已新增动态 `import()` 断言，验证 ESM provider 的配置解析、显示名、items 清洗、拉取订单字段映射、写入 doc 汇总和空字段处理。
 
 当前已验证通过：
 
@@ -646,6 +648,7 @@ node tests/orders-export-module.test.js
 node tests/orders-tabs-module.test.js
 node tests/orders-crud-module.test.js
 node tests/orders-session-module.test.js
+node tests/orders-provider-firestore-module.test.js
 npm test
 npm run build
 git diff --check
@@ -654,7 +657,7 @@ npm run release:check
 
 下一步：
 
-- 文档顺序下一项是 `orders/sync`，但 `orders/sync.js` 明确最后动；先复核是否应把 `provider-firestore` 提前拆纯函数，最后再处理 `sync` 和 `index` 入口切换。
+- 剩余 `orders/sync` 和 `orders/index`。`orders/sync.js` 风险最高，最后处理；先评估是否仅拆同步纯函数，还是等待订单入口切换前一起动。
 - 暂时不要改 `orders/sync.js`。
 
 ### 8.5 标准模块化期间的构建变化

@@ -2,8 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 const vm = require('vm');
+const { pathToFileURL } = require('url');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'provider-firestore.js'), 'utf8');
+const esmPath = path.join(__dirname, '..', 'src', 'orders', 'provider-firestore.mjs');
+const esmSource = fs.readFileSync(esmPath, 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -16,6 +19,30 @@ assert.match(
   source,
   /function create\(/,
   'Firestore provider 需要暴露 create 工厂'
+);
+
+assert.match(
+  esmSource,
+  /const OrderTrackerProviderFirestore = \{/,
+  'ESM Firestore provider 需要保留 OrderTrackerProviderFirestore 命名导出'
+);
+
+assert.match(
+  esmSource,
+  /function parseConfigInput\(/,
+  'ESM Firestore provider 需要暴露 firebaseConfig 解析工具'
+);
+
+assert.match(
+  esmSource,
+  /function buildOrderDoc\(/,
+  'ESM Firestore provider 需要暴露订单写入 doc 构造纯函数'
+);
+
+assert.match(
+  esmSource,
+  /export \{[\s\S]*OrderTrackerProviderFirestore[\s\S]*buildOrderDoc[\s\S]*normalizePulledOrder[\s\S]*parseConfigInput[\s\S]*\}/,
+  'ESM Firestore provider 需要导出命名空间和关键纯函数'
 );
 
 assert.match(
@@ -213,7 +240,156 @@ const configText = `const firebaseConfig = {
 
 provider.init({ configText })
   .then(() => provider.init({ configText }))
-  .then(() => {
+  .then(async () => {
+    const providerModule = await import(pathToFileURL(esmPath).href);
+
+    assert.deepEqual(
+      providerModule.parseConfigInput(configText),
+      provider.parseConfigInput(configText),
+      'ESM Firestore provider 的配置解析结果应和旧模块一致'
+    );
+
+    assert.equal(
+      providerModule.getDisplayName({ projectId: 'demo' }),
+      'demo · Firestore',
+      'ESM Firestore provider 应生成显示名'
+    );
+
+    assert.deepEqual(
+      providerModule.normalizeOrderItems([
+        {
+          lineId: 'line-1',
+          productTkId: 'TK-1',
+          productSkuId: 'SKU-1',
+          productSkuName: '黑 / XXL',
+          productName: '雨衣 - 黑 / XXL',
+          quantity: '2',
+          unitPurchasePrice: '10.125',
+          unitSalePrice: '300',
+          unitWeightG: '120',
+          unitSizeText: '20×10×5',
+          useOrderCourier: true,
+          courierCompany: '顺丰快递',
+          trackingNo: 'SF123'
+        }
+      ]),
+      [
+        {
+          lineId: 'line-1',
+          productTkId: 'TK-1',
+          productSkuId: 'SKU-1',
+          productSkuName: '黑 / XXL',
+          productName: '雨衣',
+          quantity: 2,
+          unitPurchasePrice: 10.13,
+          unitSalePrice: 300,
+          unitWeightG: 120,
+          unitSizeText: '20×10×5',
+          useOrderCourier: true,
+          courierCompany: '顺丰快递',
+          trackingNo: 'SF123'
+        }
+      ],
+      'ESM Firestore provider 应归一化 items 并清洗重复 SKU 后缀'
+    );
+
+    const pulledOrder = providerModule.normalizePulledOrder({
+      id: 'order-1',
+      seq: 2,
+      accountName: 'A',
+      orderedAt: '2026-04-23',
+      orderNo: 'ORDER-1',
+      isRefunded: true,
+      items: [
+        {
+          lineId: 'line-1',
+          productTkId: 'TK-1',
+          productSkuId: 'SKU-1',
+          productSkuName: '白色',
+          productName: '马克杯',
+          quantity: 2,
+          unitPurchasePrice: 10,
+          unitSalePrice: 300,
+          unitWeightG: 120,
+          courierCompany: '顺丰快递',
+          trackingNo: 'SF123'
+        },
+        {
+          lineId: 'line-2',
+          productTkId: 'TK-1',
+          productSkuId: 'SKU-2',
+          productSkuName: '黑色',
+          productName: '马克杯',
+          quantity: 3,
+          unitPurchasePrice: 12,
+          unitSalePrice: 320,
+          unitWeightG: 140
+        }
+      ]
+    });
+
+    assert.equal(pulledOrder['产品名称'], '马克杯（白色 ×2，黑色 ×3）', 'ESM Firestore provider 拉取时应从 items 生成商品摘要');
+    assert.equal(pulledOrder['数量'], '5', 'ESM Firestore provider 拉取时应汇总数量');
+    assert.equal(pulledOrder['采购价格'], '56', 'ESM Firestore provider 拉取时应汇总采购价格');
+    assert.equal(pulledOrder['售价'], '1560', 'ESM Firestore provider 拉取时应汇总售价');
+    assert.equal(pulledOrder['是否退款'], '1', 'ESM Firestore provider 拉取时应映射退款字段');
+    assert.equal(pulledOrder['快递公司'], '顺丰快递', 'ESM Firestore provider 拉取时应汇总快递公司');
+
+    const orderDoc = providerModule.buildOrderDoc({
+      id: 'order-1',
+      seq: '3',
+      createdAt: '2026-04-23T10:00:00.000Z',
+      updatedAt: '2026-04-23T11:00:00.000Z',
+      '账号': 'A',
+      '下单时间': '2026-04-23',
+      '订单号': 'ORDER-1',
+      '是否退款': '1',
+      '达人佣金率': '10',
+      '达人佣金': '3',
+      '预估运费': '6.5',
+      '预估利润': '0.7',
+      items: [
+        {
+          lineId: 'line-1',
+          productTkId: 'TK-1',
+          productSkuId: 'SKU-1',
+          productSkuName: '黑 / XXL',
+          productName: '雨衣 - 黑 / XXL',
+          quantity: '2',
+          unitPurchasePrice: '10',
+          unitSalePrice: '300',
+          unitWeightG: '120',
+          unitSizeText: '20×10×5',
+          courierCompany: '顺丰快递',
+          trackingNo: 'SF123'
+        }
+      ]
+    });
+
+    assert.equal(orderDoc.productName, '雨衣（黑 / XXL ×2）', 'ESM Firestore provider 写入时应从 items 生成商品摘要');
+    assert.equal(orderDoc.quantity, 2, 'ESM Firestore provider 写入时应汇总数量');
+    assert.equal(orderDoc.purchasePrice, 20, 'ESM Firestore provider 写入时应汇总采购价格');
+    assert.equal(orderDoc.salePrice, 600, 'ESM Firestore provider 写入时应汇总售价');
+    assert.equal(orderDoc.isRefunded, true, 'ESM Firestore provider 写入时应映射退款字段');
+    assert.deepEqual(
+      orderDoc.items[0],
+      {
+        lineId: 'line-1',
+        quantity: 2,
+        productTkId: 'TK-1',
+        productSkuId: 'SKU-1',
+        productSkuName: '黑 / XXL',
+        productName: '雨衣',
+        unitPurchasePrice: 10,
+        unitSalePrice: 300,
+        unitWeightG: 120,
+        unitSizeText: '20×10×5',
+        courierCompany: '顺丰快递',
+        trackingNo: 'SF123'
+      },
+      'ESM Firestore provider 写入 items 时应清洗重复 SKU 后缀且不写空字段'
+    );
+
     console.log('orders firestore provider contract ok');
   })
   .catch(error => {

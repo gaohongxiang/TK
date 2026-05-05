@@ -6,8 +6,8 @@ const vm = require('vm');
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'js', 'products', 'form-utils.js'), 'utf8');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'products', 'form-utils.mjs'), 'utf8');
-const mainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
 const crudSource = fs.readFileSync(path.join(root, 'js', 'products', 'crud.js'), 'utf8');
+const srcCrudSource = fs.readFileSync(path.join(root, 'src', 'products', 'crud.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -53,15 +53,15 @@ assert.match(
 );
 
 assert.match(
-  mainSource,
-  /import '\.\/products\/form-utils\.mjs'/,
-  'ESM 主入口需要先导入商品表单工具以挂回全局'
-);
-
-assert.match(
   crudSource,
   /const formUtils = ProductLibraryFormUtils/,
   '商品库 CRUD 需要接入 ProductLibraryFormUtils'
+);
+
+assert.match(
+  srcCrudSource,
+  /from '\.\/form-utils\.mjs'/,
+  '商品 CRUD ESM 需要直接导入商品表单工具'
 );
 
 assert.doesNotMatch(
@@ -77,9 +77,15 @@ assert.doesNotMatch(
 );
 
 assert.match(
+  srcCrudSource,
+  /create\(\{ state, helpers, ui \}\)/,
+  '商品 CRUD ESM 需要保留弹窗与保存工厂入口'
+);
+
+assert.doesNotMatch(
   htmlSource,
   /<script src="js\/products\/crud\.js" defer><\/script>/,
-  'index.html 需要保留商品 CRUD 普通脚本，商品表单工具由 ESM 主入口挂回全局'
+  'index.html 不应再加载旧商品 CRUD 普通脚本'
 );
 
 const sandbox = {};

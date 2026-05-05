@@ -5,6 +5,10 @@ const vm = require('vm');
 
 const formUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'form-utils.js'), 'utf8');
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'crud.js'), 'utf8');
+const root = path.join(__dirname, '..');
+const srcSource = fs.readFileSync(path.join(root, 'src', 'products', 'crud.mjs'), 'utf8');
+const srcIndexSource = fs.readFileSync(path.join(root, 'src', 'products', 'index.mjs'), 'utf8');
+const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
   source,
@@ -22,6 +26,42 @@ assert.doesNotMatch(
   source,
   /function buildEstimatedShippingSnapshot\(|function parseSizeInput\(|function buildBatchSkuDrafts\(|function matchesBatchSkuName\(|function skuUsesProductDefaults\(/,
   '商品库 CRUD 不应继续内联已经拆出的 SKU 表单纯函数'
+);
+
+assert.match(
+  srcSource,
+  /import \{[\s\S]*buildBatchSkuDrafts[\s\S]*buildEstimatedShippingSnapshot[\s\S]*parseSizeInput[\s\S]*\} from '\.\/form-utils\.mjs'/,
+  '路线二 M4 需要让商品 CRUD ESM 直接导入商品表单纯函数'
+);
+
+assert.match(
+  srcSource,
+  /const ProductLibraryCrud = \{/,
+  '路线二 M4 需要提供商品 CRUD ESM 模块'
+);
+
+assert.match(
+  srcSource,
+  /window\.ProductLibraryCrud = ProductLibraryCrud/,
+  '商品 CRUD ESM 模块需要挂回旧全局命名空间'
+);
+
+assert.match(
+  srcSource,
+  /export\s+\{[\s\S]*ProductLibraryCrud[\s\S]*parseSizeInput[\s\S]*buildBatchSkuDrafts[\s\S]*buildEstimatedShippingSnapshot[\s\S]*create[\s\S]*\}/,
+  '商品 CRUD ESM 模块需要导出 CRUD 工厂和兼容纯函数'
+);
+
+assert.match(
+  srcIndexSource,
+  /import \{ ProductLibraryCrud \} from '\.\/crud\.mjs'/,
+  '商品 ESM 入口需要直接导入商品 CRUD 模块'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script src="js\/products\/crud\.js" defer><\/script>/,
+  'index.html 不应再加载旧商品 CRUD 普通脚本'
 );
 
 assert.match(
@@ -146,4 +186,62 @@ const snapshotFromSizeText = sandbox.ProductLibraryCrud.buildEstimatedShippingSn
 
 assert.equal(snapshotFromSizeText.estimatedShippingFee, '17.02', '尺寸单输入也需要正常生成运费快照');
 
-console.log('products crud module contract ok');
+function plain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+(async () => {
+  const module = await import(path.join(root, 'src', 'products', 'crud.mjs'));
+  assert.equal(typeof module.ProductLibraryCrud.create, 'function', '商品 CRUD ESM 需要暴露 create 工厂');
+  assert.deepStrictEqual(
+    plain(module.ProductLibraryCrud.parseSizeInput('20×10×8')),
+    plain(parsedSize),
+    '商品 CRUD ESM 需要保留尺寸解析兼容导出'
+  );
+  assert.deepStrictEqual(
+    plain(module.ProductLibraryCrud.buildBatchSkuDrafts('白、黑、蓝', 'S、M、L')),
+    plain(generatedSkus),
+    '商品 CRUD ESM 需要保留批量 SKU 兼容导出'
+  );
+  assert.equal(
+    module.ProductLibraryCrud.matchesBatchSkuName('白 / M', 'S'),
+    false,
+    '商品 CRUD ESM 需要保留 SKU 名称匹配行为'
+  );
+  assert.deepStrictEqual(
+    plain(module.ProductLibraryCrud.buildEstimatedShippingSnapshot({
+      shippingCore: {
+        computeShippingQuote() {
+          return {
+            cnyFee: 14.38,
+            chargeWeightKg: 0.42,
+            band: { range: '0 - 0.5 kg' },
+            alerts: []
+          };
+        },
+        computeCalculatedShippingCost() {
+          return 17.02;
+        }
+      },
+      product: {
+        cargoType: 'general',
+        weightG: '320',
+        lengthCm: '20',
+        widthCm: '10',
+        heightCm: '8'
+      },
+      pricingContext: {
+        rate: 23.5,
+        shippingMultiplier: 1.1,
+        labelFee: 1.2
+      }
+    })),
+    plain(snapshot),
+    '商品 CRUD ESM 需要保留运费快照行为'
+  );
+
+  console.log('products crud module contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

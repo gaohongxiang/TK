@@ -5,6 +5,7 @@ const vm = require('vm');
 
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'js', 'products', 'form-utils.js'), 'utf8');
+const srcSource = fs.readFileSync(path.join(root, 'src', 'products', 'form-utils.mjs'), 'utf8');
 const crudSource = fs.readFileSync(path.join(root, 'js', 'products', 'crud.js'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
@@ -36,6 +37,12 @@ assert.match(
   source,
   /function buildEstimatedShippingSnapshot\(/,
   '商品库弹窗纯函数模块需要负责运费快照生成'
+);
+
+assert.match(
+  srcSource,
+  /export\s+\{[\s\S]*ProductLibraryFormUtils[\s\S]*parseSizeInput[\s\S]*buildBatchSkuDrafts[\s\S]*buildEstimatedShippingSnapshot[\s\S]*\}/,
+  '路线二 M4 需要提供商品 CRUD 纯函数 ESM 导出'
 );
 
 assert.match(
@@ -132,4 +139,55 @@ assert.strictEqual(utils.skuUsesProductDefaults({}), true, '空 SKU 默认继承
 assert.strictEqual(utils.skuUsesProductDefaults({ weightG: '120' }), false, '自带重量的 SKU 不应继承商品参数');
 assert.strictEqual(utils.formatSizeInput({ lengthCm: '20', widthCm: '10', heightCm: '8' }), '20×10×8', '长宽高需要格式化为尺寸文本');
 
-console.log('products form utils module contract ok');
+(async () => {
+  const module = await import(`file://${path.join(root, 'src', 'products', 'form-utils.mjs')}`);
+  assert.equal(typeof module.ProductLibraryFormUtils.parseSizeInput, 'function', '商品 CRUD ESM 纯函数模块需要暴露命名空间');
+  assert.deepStrictEqual(
+    module.parseSizeInput('20*10*8'),
+    { ...parsedSize },
+    '商品 CRUD ESM 尺寸解析需要和旧模块一致'
+  );
+  assert.deepStrictEqual(
+    module.buildBatchSkuDrafts('白、黑、蓝', 'S、M、L', '普通款、升级款'),
+    Array.from(generatedSkus, sku => ({ ...sku })),
+    '商品 CRUD ESM 批量 SKU 草稿需要和旧模块一致'
+  );
+  assert.equal(module.matchesBatchSkuName('加厚白色 / M', '白色'), true, '商品 CRUD ESM 需要保留 SKU 名称匹配');
+  assert.equal(module.skuUsesProductDefaults({ weightG: '120' }), false, '商品 CRUD ESM 需要保留 SKU 默认值判断');
+  assert.deepStrictEqual(
+    module.buildEstimatedShippingSnapshot({
+      shippingCore: {
+        computeShippingQuote() {
+          return {
+            chargeWeightKg: 0.42,
+            alerts: [{ text: '特殊品需确认渠道' }]
+          };
+        },
+        computeCalculatedShippingCost() {
+          return 17.02;
+        }
+      },
+      product: {
+        cargoType: 'general',
+        weightG: '320',
+        sizeText: '20×10×8'
+      },
+      pricingContext: {
+        rate: 23.5,
+        shippingMultiplier: 1.1,
+        labelFee: 1.2
+      }
+    }),
+    {
+      estimatedShippingFee: '17.02',
+      chargeWeightKg: '0.42',
+      shippingNote: '特殊品需确认渠道'
+    },
+    '商品 CRUD ESM 运费快照需要保留原输出结构'
+  );
+
+  console.log('products form utils module contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

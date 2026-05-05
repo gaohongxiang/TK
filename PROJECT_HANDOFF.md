@@ -580,6 +580,8 @@ npm run release:check
 - `tests/products-view-ui.test.js` 已新增动态 `import()` 断言，确认商品表格 ESM 纯函数和旧 `ProductLibraryTableView.deriveDisplayedProducts` 排序结果一致。
 - 新增 `src/products/form-utils.mjs`，提供商品 CRUD/SKU 弹窗的尺寸解析、批量 SKU 草稿、SKU 名称匹配、运费快照、SKU 默认值判断等纯函数 ESM 导出。
 - `tests/products-form-utils-module.test.js` 已新增动态 `import()` 断言，确认商品 CRUD 纯函数 ESM 输出和旧 `ProductLibraryFormUtils` 一致。
+- 新增 `src/products/provider-firestore.mjs`，提供商品 Firestore provider 的配置解析、展示名、商品/SKU 归一化、Firestore 写入 doc 构造等纯函数 ESM 导出。
+- `tests/products-provider-firestore-module.test.js` 已新增动态 `import()` 断言，确认 provider 纯函数 ESM 的配置解析和商品/SKU 文档映射保持旧行为。
 - 主页面仍保留旧 `js/products/table.js` 普通脚本加载，未切商品管理入口。
 
 当前已验证通过：
@@ -587,8 +589,10 @@ npm run release:check
 ```bash
 node tests/products-view-ui.test.js
 node tests/products-form-utils-module.test.js
+node tests/products-provider-firestore-module.test.js
 npm test
 npm run build
+npm run release:check
 ```
 
 #### M5：迁移订单管理

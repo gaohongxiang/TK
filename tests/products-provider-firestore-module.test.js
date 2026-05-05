@@ -4,6 +4,7 @@ const assert = require('assert');
 const vm = require('vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'provider-firestore.js'), 'utf8');
+const srcSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'provider-firestore.mjs'), 'utf8');
 
 assert.match(
   source,
@@ -15,6 +16,12 @@ assert.match(
   source,
   /function parseConfigInput\(/,
   '商品库 Firestore provider 需要解析 firebaseConfig'
+);
+
+assert.match(
+  srcSource,
+  /export\s+\{[\s\S]*ProductLibraryProviderFirestoreUtils[\s\S]*parseConfigInput[\s\S]*normalizePulledProduct[\s\S]*buildProductDoc[\s\S]*\}/,
+  '路线二 M4 需要提供商品 Firestore provider 纯函数 ESM 导出'
 );
 
 assert.match(
@@ -131,6 +138,53 @@ const configText = `const firebaseConfig = {
 
 provider.init({ configText })
   .then(() => provider.init({ configText }))
+  .then(async () => {
+    const module = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'provider-firestore.mjs')}`);
+    const esmParsed = module.parseConfigInput(configText);
+    assert.deepStrictEqual(esmParsed, { ...parsed }, '商品 provider ESM 配置解析需要和旧 provider 一致');
+
+    assert.equal(
+      module.ProductLibraryProviderFirestoreUtils.getDisplayName({ configText, user: '运营A' }),
+      '运营A · Firestore',
+      '商品 provider ESM 需要保留展示名称逻辑'
+    );
+
+    const productDoc = module.buildProductDoc({
+      tkId: 'TK-001',
+      accountName: '账号A',
+      name: '雨衣',
+      imageUrl: '',
+      link1688: 'https://detail.1688.com/item.htm?id=1',
+      defaults: {
+        cargoType: 'special',
+        weightG: '320',
+        lengthCm: '20.05',
+        widthCm: '10',
+        heightCm: '8',
+        estimatedShippingFee: '17.026',
+        chargeWeightKg: '0.42',
+        shippingNote: ''
+      },
+      skus: [
+        { skuId: 'S-1', skuName: '蓝 / M', useProductDefaults: true },
+        { skuId: '', skuName: '空 SKU' }
+      ],
+      createdAt: '',
+      updatedAt: ''
+    }, {
+      nowIso: () => '2026-04-24T10:00:00.000Z'
+    });
+    assert.equal(productDoc.tkId, 'TK-001', '商品 provider ESM 需要构造商品 doc TK ID');
+    assert.equal(productDoc.defaults.cargoType, 'special', '商品 provider ESM 需要构造 defaults');
+    assert.equal(productDoc.defaults.lengthCm, 20.05, '商品 provider ESM 需要按两位小数保存尺寸');
+    assert.equal(productDoc.defaults.estimatedShippingFee, 17.03, '商品 provider ESM 需要按两位小数保存运费');
+    assert.equal(productDoc.skus.length, 1, '商品 provider ESM 需要过滤空 SKU ID');
+    assert.equal(productDoc.skus[0].useProductDefaults, true, '商品 provider ESM 需要保留 SKU 默认值标记');
+
+    const normalized = module.normalizePulledProduct(productDoc);
+    assert.equal(normalized.defaults.estimatedShippingFee, '17.03', '商品 provider ESM 需要把 Firestore 数值归一化为表单字符串');
+    assert.equal(normalized.skus[0].skuId, 'S-1', '商品 provider ESM 需要归一化 SKU 子结构');
+  })
   .then(() => {
     console.log('products firestore provider contract ok');
   })

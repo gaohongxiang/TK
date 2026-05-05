@@ -4,6 +4,7 @@ const assert = require('assert');
 const vm = require('vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'global-settings.js'), 'utf8');
+const srcSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'global-settings.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -28,6 +29,12 @@ assert.match(
   source,
   /tk\.profit\.v1/,
   '全局设置模块需要兼容从旧利润计算器存储迁移汇率'
+);
+
+assert.match(
+  srcSource,
+  /export\s+\{[\s\S]*TKGlobalSettings[\s\S]*create[\s\S]*ensureGlobalSettingsStore[\s\S]*\}/,
+  '路线二 M3 需要提供全局设置 ESM 导出'
 );
 
 const localStorageState = new Map([
@@ -64,4 +71,38 @@ assert.match(
   'index.html 需要在业务模块前先加载全局设置模块'
 );
 
-console.log('global settings module contract ok');
+(async () => {
+  const module = await import(`file://${path.join(__dirname, '..', 'src', 'global-settings.mjs')}`);
+  const esmLocalStorageState = new Map([
+    ['tk.profit.v1', JSON.stringify({ rateNew: 22.75 })]
+  ]);
+  const originalLocalStorage = global.localStorage;
+  global.localStorage = {
+    getItem(key) {
+      return esmLocalStorageState.has(key) ? esmLocalStorageState.get(key) : null;
+    },
+    setItem(key, value) {
+      esmLocalStorageState.set(key, String(value));
+    }
+  };
+
+  try {
+    const esmStore = module.TKGlobalSettings.create();
+    assert.equal(esmStore.getExchangeRate(), 22.75, '全局设置 ESM 模块需要从旧利润计算器存储迁移汇率');
+    esmStore.setExchangeRate(24.12567);
+    assert.equal(esmStore.getExchangeRate(), 24.1257, '全局设置 ESM 模块需要按同样精度保存汇率');
+    const saved = JSON.parse(esmLocalStorageState.get('tk.global-settings.v1') || 'null');
+    assert.equal(saved.exchangeRate, 24.1257, '全局设置 ESM 模块需要写入独立存储');
+  } finally {
+    if (originalLocalStorage === undefined) {
+      delete global.localStorage;
+    } else {
+      global.localStorage = originalLocalStorage;
+    }
+  }
+
+  console.log('global settings module contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

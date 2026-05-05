@@ -1,6 +1,7 @@
 import {
   normalizeOrderItems as normalizeSharedOrderItems
 } from './shared.mjs';
+import { TKDataSourceRegistry } from '../data-sources/registry.mjs';
 
 function latestIso(values) {
   return (values || []).filter(Boolean).sort().slice(-1)[0] || '';
@@ -698,6 +699,20 @@ const OrderTrackerProviderFirestore = {
   create
 };
 
+if (typeof window !== 'undefined') {
+  window.OrderTrackerProviderFirestore = OrderTrackerProviderFirestore;
+}
+
+TKDataSourceRegistry.registerProvider('orders', {
+  key: 'firestore',
+  label: 'Firebase Firestore',
+  module: OrderTrackerProviderFirestore,
+  ownership: 'user-owned',
+  storesUserData: false,
+  localFirst: true,
+  offline: 'firestore-persistence'
+});
+
 export {
   OrderTrackerProviderFirestore,
   buildCourierSummary,
@@ -723,4 +738,3 @@ export {
   toNullableText,
   usesBuiltInLocalCache
 };
-

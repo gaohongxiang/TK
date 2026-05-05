@@ -58,7 +58,7 @@ assert.doesNotMatch(
 
 assert.match(
   htmlSource,
-  /<script src="js\/products\/provider-firestore\.js" defer><\/script>\s*<script src="js\/orders\/provider-firestore\.js" defer><\/script>[\s\S]*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  /<script src="js\/products\/provider-firestore\.js" defer><\/script>[\s\S]*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
   'index.html 需要先加载商品 Firestore provider 和订单商品桥接模块，再加载订单入口'
 );
 

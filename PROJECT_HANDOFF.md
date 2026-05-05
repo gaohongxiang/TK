@@ -644,8 +644,12 @@ npm run release:check
 - 新增 `src/orders/sync.mjs`，提供 Firestore 乐观写入变更集、订单三方合并、账号合并、远端 canonical cleanup 写回变更集、缺失 seq 检测、远端快照应用判断等同步纯函数，并保留 `OrderTrackerSync.create()` 兼容壳。
 - `tests/orders-sync-module.test.js` 已新增动态 `import()` 断言，验证 ESM sync 的乐观写入 upsert/delete、更新时间冲突合并、本地删除时间记录、远端新增吸收，以及 `__needsOrderCleanup` 强制写回。
 - 新增 `src/orders/index.mjs`，提供订单管理 ESM 入口，导出 `createOrderTracker`、`getOrderTracker` 和 `OrderTracker`，并通过 `window.OrderTracker` 挂回给旧 hash 路由调用。
-- `src/orders/index.mjs` 采用懒初始化，保留旧 helper 工厂依赖，避免 ESM 入口执行早于旧 `js/orders/*` 子模块时出现时序问题。
+- `src/orders/index.mjs` 采用懒初始化，直接 `import` 已完整迁移的 `shared`、`provider-firestore`、`export`、`tabs`、`session` ESM helper，并保留未完整迁移 helper 的旧全局依赖。
+- `src/orders/shared.mjs`、`src/orders/export.mjs`、`src/orders/tabs.mjs`、`src/orders/session.mjs`、`src/orders/provider-firestore.mjs` 已在浏览器里挂回对应旧 `window.OrderTracker...` 命名空间。
+- `src/orders/provider-firestore.mjs` 已直接注册 `TKDataSourceRegistry.registerProvider('orders', ...)`，旧 `js/orders/provider-firestore.js` 不再负责页面运行链路。
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载，改为 `<script type="module" src="/src/orders/index.mjs"></script>`。
+- `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 仍保留 `js/orders/table.js`、`js/orders/sync.js`、`js/orders/form-utils.js`、`js/orders/crud.js`、`js/orders/products.js`，因为这些仍承载完整页面渲染、同步状态机、弹窗行为或商品桥接。
 - 新增 `tests/orders-index-module.test.js`，验证订单 ESM 入口可直接 import、懒初始化、挂回全局，以及旧订单 index 普通脚本不再由主页面加载。
 
 当前已验证通过：

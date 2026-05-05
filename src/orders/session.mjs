@@ -276,6 +276,10 @@ const OrderTrackerSession = {
   create
 };
 
+if (typeof window !== 'undefined') {
+  window.OrderTrackerSession = OrderTrackerSession;
+}
+
 export {
   OrderTrackerSession,
   applyGlobalConfig,
@@ -289,4 +293,3 @@ export {
   setRefreshButtonLoading,
   shouldShowSetup
 };
-

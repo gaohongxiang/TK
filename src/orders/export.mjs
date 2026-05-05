@@ -319,6 +319,10 @@ const OrderTrackerExport = {
   create
 };
 
+if (typeof window !== 'undefined') {
+  window.OrderTrackerExport = OrderTrackerExport;
+}
+
 export {
   OrderTrackerExport,
   CSV_HEADERS,
@@ -330,4 +334,3 @@ export {
   getExportAccountOptions,
   selectOrdersForExport
 };
-

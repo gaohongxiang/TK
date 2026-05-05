@@ -7,6 +7,7 @@ const { pathToFileURL } = require('url');
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'provider-firestore.js'), 'utf8');
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'provider-firestore.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
+const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -43,6 +44,18 @@ assert.match(
   esmSource,
   /export \{[\s\S]*OrderTrackerProviderFirestore[\s\S]*buildOrderDoc[\s\S]*normalizePulledOrder[\s\S]*parseConfigInput[\s\S]*\}/,
   'ESM Firestore provider 需要导出命名空间和关键纯函数'
+);
+
+assert.match(
+  esmSource,
+  /window\.OrderTrackerProviderFirestore = OrderTrackerProviderFirestore/,
+  'ESM Firestore provider 需要挂回旧全局命名空间'
+);
+
+assert.match(
+  esmSource,
+  /TKDataSourceRegistry\.registerProvider\('orders'[\s\S]*module:\s*OrderTrackerProviderFirestore[\s\S]*localFirst:\s*true/,
+  'ESM Firestore provider 需要登记为订单 Firestore 数据源'
 );
 
 assert.match(
@@ -226,9 +239,15 @@ assert.equal(typeof provider.pushChanges, 'function', 'Firestore provider 需要
 assert.equal(typeof provider.parseConfigInput, 'function', 'Firestore provider 需要暴露 firebaseConfig 解析工具');
 
 assert.match(
+  indexSource,
+  /import \{ OrderTrackerProviderFirestore \} from '\.\/provider-firestore\.mjs'/,
+  '订单 ESM 入口需要直接导入订单 Firestore provider'
+);
+
+assert.doesNotMatch(
   htmlSource,
   /<script src="js\/orders\/provider-firestore\.js" defer><\/script>/,
-  'index.html 需要在订单模块中加载 Firestore provider'
+  'index.html 不应再加载旧订单 Firestore provider 普通脚本'
 );
 
 const configText = `const firebaseConfig = {

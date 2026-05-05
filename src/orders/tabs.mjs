@@ -239,6 +239,10 @@ const OrderTrackerTabs = {
   create
 };
 
+if (typeof window !== 'undefined') {
+  window.OrderTrackerTabs = OrderTrackerTabs;
+}
+
 export {
   OrderTrackerTabs,
   ALL_ACCOUNT,
@@ -251,4 +255,3 @@ export {
   getUniqueAccounts,
   resolveActiveAccount
 };
-

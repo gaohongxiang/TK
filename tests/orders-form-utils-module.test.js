@@ -52,7 +52,7 @@ assert.doesNotMatch(
 
 assert.match(
   htmlSource,
-  /<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>/,
+  /<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>/,
   'index.html 需要在订单 CRUD 前加载 form-utils.js'
 );
 

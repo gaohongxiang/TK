@@ -27,15 +27,51 @@ assert.match(
 );
 
 assert.match(
+  source,
+  /import \{ OrderTrackerShared \} from '\.\/shared\.mjs'/,
+  '订单 ESM 入口需要直接导入共享 helper ESM'
+);
+
+assert.match(
+  source,
+  /import \{ OrderTrackerProviderFirestore \} from '\.\/provider-firestore\.mjs'/,
+  '订单 ESM 入口需要直接导入订单 Firestore provider ESM'
+);
+
+assert.match(
+  source,
+  /import \{ OrderTrackerExport \} from '\.\/export\.mjs'/,
+  '订单 ESM 入口需要直接导入导出 helper ESM'
+);
+
+assert.match(
+  source,
+  /import \{ OrderTrackerTabs \} from '\.\/tabs\.mjs'/,
+  '订单 ESM 入口需要直接导入账号标签 helper ESM'
+);
+
+assert.match(
+  source,
+  /import \{ OrderTrackerSession \} from '\.\/session\.mjs'/,
+  '订单 ESM 入口需要直接导入会话 helper ESM'
+);
+
+assert.match(
   htmlSource,
   /<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先加载订单旧 helper，再通过 ESM 入口加载订单管理'
+  'index.html 需要先加载尚未迁移的订单商品桥接 helper，再通过 ESM 入口加载订单管理'
 );
 
 assert.doesNotMatch(
   htmlSource,
   /<script src="js\/orders\/index\.js" defer><\/script>/,
   'index.html 不应再加载旧订单 index 普通脚本'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script src="js\/orders\/(?:provider-firestore|export|tabs|session|shared)\.js" defer><\/script>/,
+  'index.html 不应再加载已由订单 ESM 入口接管的订单 helper 普通脚本'
 );
 
 (async () => {

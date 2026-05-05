@@ -42,6 +42,12 @@ assert.match(
 );
 
 assert.match(
+  esmSource,
+  /window\.OrderTrackerSession = OrderTrackerSession/,
+  'ESM 订单会话模块需要挂回旧全局命名空间'
+);
+
+assert.match(
   source,
   /window\.TKFirestoreConnection/,
   '订单会话模块需要通过全局 Firestore 连接模块读取配置'
@@ -138,9 +144,21 @@ assert.match(
 );
 
 assert.match(
+  indexSource,
+  /import \{ OrderTrackerSession \} from '\.\/session\.mjs'/,
+  '订单 ESM 入口需要直接导入会话 ESM helper'
+);
+
+assert.match(
   htmlSource,
-  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要在订单 ESM 入口前先加载 form-utils.js、session.js、shared.js 和 products.js'
+  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要在订单 ESM 入口前保留尚未迁移的订单旧 helper'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script src="js\/orders\/session\.js" defer><\/script>/,
+  'index.html 不应再加载旧订单会话普通脚本'
 );
 
 (async () => {

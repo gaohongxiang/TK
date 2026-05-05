@@ -52,6 +52,12 @@ assert.match(
 );
 
 assert.match(
+  esmSource,
+  /window\.OrderTrackerExport = OrderTrackerExport/,
+  'ESM 订单导出模块需要挂回旧全局命名空间'
+);
+
+assert.match(
   source,
   /async function exportOrdersCsv\(/,
   '订单导出模块需要包含 CSV 导出逻辑'
@@ -76,9 +82,21 @@ assert.match(
 );
 
 assert.match(
+  indexSource,
+  /import \{ OrderTrackerExport \} from '\.\/export\.mjs'/,
+  '订单 ESM 入口需要直接导入导出 ESM helper'
+);
+
+assert.match(
   htmlSource,
-  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要在订单 ESM 入口前先加载 table.js、sync.js、export.js、tabs.js、form-utils.js、crud.js、session.js、shared.js、products.js'
+  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要在订单 ESM 入口前保留尚未迁移的 table、sync、form-utils、crud 和 products helper'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script src="js\/orders\/export\.js" defer><\/script>/,
+  'index.html 不应再加载旧订单导出普通脚本'
 );
 
 (async () => {

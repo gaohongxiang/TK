@@ -77,6 +77,12 @@ assert.match(
   'ESM 订单共享 helper 需要导出共享命名空间和关键纯函数'
 );
 
+assert.match(
+  esmSource,
+  /window\.OrderTrackerShared = OrderTrackerShared/,
+  'ESM 订单共享 helper 需要挂回旧全局命名空间'
+);
+
 const sandbox = {
   window: {
     __tkGlobalSettingsStore: {
@@ -333,9 +339,21 @@ assert.match(
 );
 
 assert.match(
+  indexSource,
+  /import \{ OrderTrackerShared \} from '\.\/shared\.mjs'/,
+  '订单 ESM 入口需要直接导入共享 helper ESM'
+);
+
+assert.match(
   htmlSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/form-utils\.js" defer><\/script>[\s\S]*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先加载 ESM 主入口挂载基础全局，再加载订单旧 helper 和订单 ESM 入口'
+  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要先加载 ESM 主入口，再保留尚未迁移的订单旧 helper 和订单 ESM 入口'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script src="js\/orders\/shared\.js" defer><\/script>/,
+  'index.html 不应再加载旧订单共享 helper 普通脚本'
 );
 
 function toPlain(value) {

@@ -855,6 +855,10 @@ const OrderTrackerShared = {
   create
 };
 
+if (typeof window !== 'undefined') {
+  window.OrderTrackerShared = OrderTrackerShared;
+}
+
 export {
   OrderTrackerShared,
   create,

@@ -46,6 +46,12 @@ assert.match(
   'ESM 订单账号标签栏模块需要导出命名空间和账号标签纯函数'
 );
 
+assert.match(
+  esmSource,
+  /window\.OrderTrackerTabs = OrderTrackerTabs/,
+  'ESM 订单账号标签栏模块需要挂回旧全局命名空间'
+);
+
 const sandbox = {};
 vm.createContext(sandbox);
 vm.runInContext(`${source}\nthis.OrderTrackerTabs = OrderTrackerTabs;`, sandbox);
@@ -80,9 +86,21 @@ assert.match(
 );
 
 assert.match(
+  indexSource,
+  /import \{ OrderTrackerTabs \} from '\.\/tabs\.mjs'/,
+  '订单 ESM 入口需要直接导入账号标签 ESM helper'
+);
+
+assert.match(
   htmlSource,
-  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要在订单 ESM 入口前先加载 tabs.js、form-utils.js、crud.js、session.js、shared.js、products.js'
+  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要在订单 ESM 入口前保留尚未迁移的订单旧 helper'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script src="js\/orders\/tabs\.js" defer><\/script>/,
+  'index.html 不应再加载旧订单账号标签普通脚本'
 );
 
 (async () => {

@@ -4,6 +4,7 @@ const assert = require('assert');
 const vm = require('vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'table.js'), 'utf8');
+const srcTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'table.mjs'), 'utf8');
 const accountsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'accounts.js'), 'utf8');
 const exportSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'export.js'), 'utf8');
 const crudSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'crud.js'), 'utf8');
@@ -22,6 +23,12 @@ assert.match(
   source,
   /function deriveDisplayedProducts\(/,
   '商品库表格视图需要暴露 deriveDisplayedProducts'
+);
+
+assert.match(
+  srcTableSource,
+  /export\s+\{[\s\S]*ProductLibraryTable[\s\S]*deriveDisplayedProducts[\s\S]*mergeProductSku[\s\S]*\}/,
+  '路线二 M4 需要提供商品表格纯函数 ESM 导出'
 );
 
 assert.match(
@@ -363,16 +370,62 @@ const accountScoped = sandbox.ProductLibraryTableView.deriveDisplayedProducts({
 assert.equal(accountScoped.length, 1, '商品库应支持按账号筛选');
 assert.equal(accountScoped[0].tkId, 'TK-001', '商品库账号筛选结果不正确');
 
+const numericProducts = [
+  { tkId: '1', name: 'A' },
+  { tkId: '2', name: 'B' },
+  { tkId: '10', name: 'C' }
+];
 const descSorted = sandbox.ProductLibraryTableView.deriveDisplayedProducts({
-  products: [
-    { tkId: '1', name: 'A' },
-    { tkId: '2', name: 'B' },
-    { tkId: '10', name: 'C' }
-  ],
+  products: numericProducts,
   sortOrder: 'desc'
 });
 
 assert.equal(descSorted[0].tkId, '10', '商品库倒序应支持自然数字排序');
 assert.equal(descSorted[2].tkId, '1', '商品库倒序结果不正确');
 
-console.log('products view ui contract ok');
+(async () => {
+  const tableModule = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'table.mjs')}`);
+  const esmSearch = tableModule.ProductLibraryTable.deriveDisplayedProducts({
+    products: [
+      { tkId: 'TK-002', name: '红色杯子', cargoType: 'general' },
+      { tkId: 'TK-001', name: '蓝色盘子', cargoType: 'special' }
+    ],
+    searchQuery: '特货'
+  });
+  assert.equal(esmSearch.length, 1, '商品表格 ESM 模块需要支持按货物类型筛选');
+  assert.equal(esmSearch[0].tkId, 'TK-001', '商品表格 ESM 搜索结果不正确');
+
+  const esmDescSorted = tableModule.deriveDisplayedProducts({
+    products: numericProducts,
+    sortOrder: 'desc'
+  });
+  const legacySortOrder = Array.from(descSorted, product => product.tkId);
+  const esmSortOrder = Array.from(esmDescSorted, product => product.tkId);
+  assert.deepStrictEqual(
+    esmSortOrder,
+    legacySortOrder,
+    '商品表格 ESM 模块排序结果需要和旧表格模块一致'
+  );
+
+  const mergedSku = tableModule.mergeProductSku(
+    {
+      tkId: 'TK-001',
+      defaults: {
+        weightG: '120',
+        lengthCm: '10',
+        widthCm: '8',
+        heightCm: '3',
+        estimatedShippingFee: '12.5'
+      }
+    },
+    { skuId: 'S-1', skuName: '蓝 / M', useProductDefaults: true }
+  );
+  assert.equal(mergedSku.weightG, '120', '商品表格 ESM 模块需要为继承默认值的 SKU 合并重量');
+  assert.equal(tableModule.formatSize(mergedSku), '10 * 8 * 3', '商品表格 ESM 模块需要格式化 SKU 尺寸');
+  assert.equal(tableModule.formatSkuShippingFee({ defaults: { estimatedShippingFee: '12.5' } }, { skuId: 'S-1' }), '¥ 12.50', '商品表格 ESM 模块需要格式化 SKU 运费');
+
+  console.log('products view ui contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

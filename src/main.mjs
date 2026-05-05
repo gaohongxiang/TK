@@ -1,5 +1,6 @@
 import { TKAppConfig } from './app-config.mjs';
 import './table-controls.mjs';
+import './searchable-select.mjs';
 import './data-sources/registry.mjs';
 
 const FALLBACK_MODULES = Object.freeze([

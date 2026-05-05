@@ -9,6 +9,7 @@ const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'crud.
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'crud.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
+const mainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -232,9 +233,15 @@ assert.match(
 );
 
 assert.match(
+  mainSource,
+  /import '\.\/searchable-select\.mjs'/,
+  'ESM 主入口需要预先加载共用的可搜索下拉组件'
+);
+
+assert.doesNotMatch(
   htmlSource,
   /<script src="js\/searchable-select\.js" defer><\/script>/,
-  '页面需要预先加载共用的可搜索下拉组件'
+  'index.html 不应再加载旧可搜索下拉组件普通脚本'
 );
 
 (async () => {

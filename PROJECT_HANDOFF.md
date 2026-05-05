@@ -688,6 +688,9 @@ npm run release:check
 - 新增 `src/data-sources/registry.mjs`，提供数据源注册表 ESM 导出，并由 `src/main.mjs` 挂回 `window.TKDataSourceRegistry`，保证旧 Firestore provider 注册顺序不变。
 - `index.html` 已移除旧 `js/table-controls.js` 和 `js/data-sources/registry.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `tests/shared-utils.test.js`、`tests/data-source-registry.test.js`、`tests/orders-table-view.test.js`、`tests/products-view-ui.test.js` 已覆盖这两个基础模块的 ESM 导出、入口挂载和旧页面加载移除。
+- 新增 `src/searchable-select.mjs`，提供订单商品/SKU 可搜索下拉框 ESM 导出，并由 `src/main.mjs` 挂回 `window.TKSearchSelect`。
+- `index.html` 已移除旧 `js/searchable-select.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `tests/shared-utils.test.js` 和 `tests/orders-crud-module.test.js` 已覆盖可搜索下拉框 ESM 导出、入口挂载和旧页面加载移除。
 
 当前仍保留大量旧 helper 普通脚本，主要供订单/商品入口使用。不要一次删除旧 `js/`。
 

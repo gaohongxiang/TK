@@ -591,7 +591,7 @@ npm run release:check
 - 新增 `src/products/provider-firestore.mjs`，提供商品 Firestore provider 的配置解析、展示名、商品/SKU 归一化、Firestore 写入 doc 构造、`create/init/pullProducts/upsertProduct/deleteProduct` 的 ESM 导出。
 - `tests/products-provider-firestore-module.test.js` 已新增动态 `import()` 断言，确认 provider 纯函数 ESM 的配置解析和商品/SKU 文档映射保持旧行为。
 - `src/products/provider-firestore.mjs` 已在浏览器里挂回 `window.ProductLibraryProviderFirestore`，并注册 `TKDataSourceRegistry.registerProvider('products', ...)`。
-- `src/products/index.mjs` 和 `src/orders/index.mjs` 已导入商品 provider ESM；订单商品桥接仍通过旧 `js/orders/products.js` 读取该全局 provider。
+- `src/products/index.mjs` 和 `src/orders/products.mjs` 已导入商品 provider ESM；订单商品桥接不再依赖旧普通脚本加载顺序。
 - 新增 `src/products/index.mjs`，提供商品管理 ESM 入口，并通过 `window.ProductLibrary` 挂回给旧 hash 路由调用。
 - `src/products/index.mjs` 采用懒初始化，避免 ESM 入口执行早于旧 `js/products/*` 子模块时出现 `undefined.create`。
 - `index.html` 已移除旧 `js/products/index.js` 的页面加载，改为 `<script type="module" src="/src/products/index.mjs"></script>`。
@@ -660,10 +660,12 @@ npm run release:check
 - 新增 `src/orders/index.mjs`，提供订单管理 ESM 入口，导出 `createOrderTracker`、`getOrderTracker` 和 `OrderTracker`，并通过 `window.OrderTracker` 挂回给旧 hash 路由调用。
 - `src/orders/index.mjs` 采用懒初始化，直接 `import` 已完整迁移的 `shared`、`provider-firestore`、`export`、`tabs`、`session` ESM helper，并保留未完整迁移 helper 的旧全局依赖。
 - `src/orders/shared.mjs`、`src/orders/export.mjs`、`src/orders/tabs.mjs`、`src/orders/session.mjs`、`src/orders/provider-firestore.mjs` 已在浏览器里挂回对应旧 `window.OrderTracker...` 命名空间。
+- 新增 `src/orders/products.mjs`，提供订单弹窗商品资料读取桥接、按账号筛商品、按 TK ID 查商品、商品缓存重置等 ESM 导出，并在浏览器里挂回 `window.OrderTrackerProducts`。
+- `tests/orders-products-module.test.js` 已新增动态 `import()` 断言，确认订单商品桥接 ESM 加载商品、账号筛选、TK ID 查找和缓存重置行为与旧模块一致。
 - `src/orders/provider-firestore.mjs` 已直接注册 `TKDataSourceRegistry.registerProvider('orders', ...)`，旧 `js/orders/provider-firestore.js` 不再负责页面运行链路。
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载，改为 `<script type="module" src="/src/orders/index.mjs"></script>`。
-- `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js` 页面加载；旧文件暂时保留为历史参考和回退。
-- `index.html` 仍保留 `js/orders/table.js`、`js/orders/sync.js`、`js/orders/form-utils.js`、`js/orders/crud.js`、`js/orders/products.js`，因为这些仍承载完整页面渲染、同步状态机、弹窗行为或商品桥接。
+- `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 仍保留 `js/orders/table.js`、`js/orders/sync.js`、`js/orders/form-utils.js`、`js/orders/crud.js`，因为这些仍承载完整页面渲染、同步状态机或弹窗行为。
 - 新增 `tests/orders-index-module.test.js`，验证订单 ESM 入口可直接 import、懒初始化、挂回全局，以及旧订单 index 普通脚本不再由主页面加载。
 
 当前已验证通过：
@@ -1397,8 +1399,8 @@ scripts/release-check.sh
 js/data-sources/registry.js
 js/firestore-connection.js
 js/orders/provider-firestore.js
-js/orders/products.js
 js/products/provider-firestore.js
+src/orders/products.mjs
 ```
 
 ### 订单
@@ -1407,7 +1409,6 @@ js/products/provider-firestore.js
 js/orders/index.js
 js/orders/session.js
 js/orders/sync.js
-js/orders/products.js
 js/orders/crud.js
 js/orders/table.js
 js/orders/tabs.js

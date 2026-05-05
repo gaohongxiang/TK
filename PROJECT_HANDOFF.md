@@ -565,7 +565,7 @@ npm run release:check
 
 商品管理依赖 Firestore 和 SKU UI。
 
-当前状态：进行中，先拆低风险纯函数，不切商品管理页面入口。
+当前状态：已完成商品管理 ESM 入口切换。`index.html` 现在通过 `/src/products/index.mjs` 加载商品管理入口；旧 `js/products/index.js` 文件暂时保留为历史参考和回退，不再进入主页面加载链。
 
 迁移顺序：
 
@@ -582,7 +582,10 @@ npm run release:check
 - `tests/products-form-utils-module.test.js` 已新增动态 `import()` 断言，确认商品 CRUD 纯函数 ESM 输出和旧 `ProductLibraryFormUtils` 一致。
 - 新增 `src/products/provider-firestore.mjs`，提供商品 Firestore provider 的配置解析、展示名、商品/SKU 归一化、Firestore 写入 doc 构造等纯函数 ESM 导出。
 - `tests/products-provider-firestore-module.test.js` 已新增动态 `import()` 断言，确认 provider 纯函数 ESM 的配置解析和商品/SKU 文档映射保持旧行为。
-- 主页面仍保留旧 `js/products/table.js` 普通脚本加载，未切商品管理入口。
+- 新增 `src/products/index.mjs`，提供商品管理 ESM 入口，并通过 `window.ProductLibrary` 挂回给旧 hash 路由调用。
+- `src/products/index.mjs` 采用懒初始化，避免 ESM 入口执行早于旧 `js/products/*` 子模块时出现 `undefined.create`。
+- `index.html` 已移除旧 `js/products/index.js` 的页面加载，改为 `<script type="module" src="/src/products/index.mjs"></script>`。
+- `js/products/provider-firestore.js`、`js/products/table.js`、`js/products/accounts.js`、`js/products/export.js`、`js/products/form-utils.js`、`js/products/crud.js` 仍保留在页面加载链里，作为商品 ESM 入口当前依赖的旧全局子模块。
 
 当前已验证通过：
 
@@ -592,6 +595,7 @@ node tests/products-form-utils-module.test.js
 node tests/products-provider-firestore-module.test.js
 npm test
 npm run build
+npm run e2e
 npm run release:check
 ```
 

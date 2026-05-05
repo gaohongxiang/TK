@@ -5,6 +5,7 @@ const vm = require('vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'table.js'), 'utf8');
 const srcTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'table.mjs'), 'utf8');
+const srcProductsIndexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'index.mjs'), 'utf8');
 const accountsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'accounts.js'), 'utf8');
 const exportSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'export.js'), 'utf8');
 const crudSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'crud.js'), 'utf8');
@@ -41,6 +42,24 @@ assert.match(
   source,
   /function render\(/,
   '商品库表格视图需要暴露 render'
+);
+
+assert.match(
+  srcProductsIndexSource,
+  /function createProductLibrary\(options = \{\}\)/,
+  '路线二 M4 商品管理 ESM 入口需要导出可注入依赖的创建函数'
+);
+
+assert.match(
+  srcProductsIndexSource,
+  /function getProductLibrary\(options = \{\}\)/,
+  '路线二 M4 商品管理 ESM 入口需要懒初始化，避免旧 defer 子模块时序问题'
+);
+
+assert.match(
+  srcProductsIndexSource,
+  /window\.ProductLibrary = ProductLibrary/,
+  '路线二 M4 商品管理 ESM 入口需要挂回 ProductLibrary 全局供旧路由调用'
 );
 
 assert.match(
@@ -201,8 +220,14 @@ assert.match(
 
 assert.match(
   indexSource,
-  /<script src="js\/products\/provider-firestore\.js" defer><\/script>[\s\S]*<script src="js\/products\/table\.js" defer><\/script>\s*<script src="js\/products\/accounts\.js" defer><\/script>\s*<script src="js\/products\/export\.js" defer><\/script>\s*<script src="js\/products\/form-utils\.js" defer><\/script>\s*<script src="js\/products\/crud\.js" defer><\/script>\s*<script src="js\/products\/index\.js" defer><\/script>/,
-  'index.html 需要先加载商品 provider，再按 table -> accounts -> export -> form-utils -> crud -> index 顺序加载商品库模块'
+  /<script src="js\/products\/provider-firestore\.js" defer><\/script>[\s\S]*<script src="js\/products\/table\.js" defer><\/script>\s*<script src="js\/products\/accounts\.js" defer><\/script>\s*<script src="js\/products\/export\.js" defer><\/script>\s*<script src="js\/products\/form-utils\.js" defer><\/script>\s*<script src="js\/products\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/products\/index\.mjs"><\/script>/,
+  'index.html 需要先加载商品 provider/table/accounts/export/form-utils/crud，再通过 ESM 入口加载商品库 index'
+);
+
+assert.doesNotMatch(
+  indexSource,
+  /<script src="js\/products\/index\.js" defer><\/script>/,
+  'index.html 不应再加载旧商品 index 普通脚本'
 );
 
 assert.match(
@@ -385,6 +410,9 @@ assert.equal(descSorted[2].tkId, '1', '商品库倒序结果不正确');
 
 (async () => {
   const tableModule = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'table.mjs')}`);
+  const productsIndexModule = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'index.mjs')}`);
+  assert.equal(typeof productsIndexModule.createProductLibrary, 'function', '商品管理 ESM 入口需要可被直接 import');
+  assert.equal(typeof productsIndexModule.getProductLibrary, 'function', '商品管理 ESM 入口需要导出懒初始化入口');
   const esmSearch = tableModule.ProductLibraryTable.deriveDisplayedProducts({
     products: [
       { tkId: 'TK-002', name: '红色杯子', cargoType: 'general' },

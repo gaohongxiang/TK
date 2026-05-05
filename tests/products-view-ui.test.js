@@ -232,8 +232,14 @@ assert.match(
 
 assert.match(
   indexSource,
-  /<script src="js\/products\/export\.js" defer><\/script>\s*<script src="js\/products\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/products\/index\.mjs"><\/script>/,
-  'index.html 需要先加载商品 export/crud，再通过 ESM 入口加载商品库 index'
+  /<script src="js\/products\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/products\/index\.mjs"><\/script>/,
+  'index.html 需要先加载商品 crud，再通过 ESM 入口加载商品库 index'
+);
+
+assert.doesNotMatch(
+  indexSource,
+  /<script src="js\/products\/export\.js" defer><\/script>/,
+  'index.html 不应再加载旧商品 export 普通脚本'
 );
 
 assert.doesNotMatch(

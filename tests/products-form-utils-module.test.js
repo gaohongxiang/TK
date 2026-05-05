@@ -78,7 +78,7 @@ assert.doesNotMatch(
 
 assert.match(
   htmlSource,
-  /<script src="js\/products\/export\.js" defer><\/script>\s*<script src="js\/products\/crud\.js" defer><\/script>/,
+  /<script src="js\/products\/crud\.js" defer><\/script>/,
   'index.html 需要保留商品 CRUD 普通脚本，商品表单工具由 ESM 主入口挂回全局'
 );
 

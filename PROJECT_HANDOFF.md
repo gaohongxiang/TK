@@ -598,7 +598,10 @@ npm run release:check
 - `index.html` 已移除旧 `js/products/provider-firestore.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `index.html` 已移除旧 `js/products/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `index.html` 已移除旧 `js/products/accounts.js` 页面加载；旧文件暂时保留为历史参考和回退。
-- `js/products/export.js`、`js/products/crud.js` 仍保留在页面加载链里，作为商品 ESM 入口当前依赖的旧全局子模块。
+- 新增 `src/products/export.mjs`，提供商品导出账号选择、CSV 行构建、CSV 下载和导出相关纯函数的 ESM 导出，并在浏览器里挂回 `window.ProductLibraryExport`。
+- `tests/products-export-module.test.js` 已新增动态 `import()` 断言，确认商品导出 ESM 输出和旧 `ProductLibraryExport` 账号选项、CSV 行构建行为一致。
+- `index.html` 已移除旧 `js/products/export.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `js/products/crud.js` 仍保留在页面加载链里，作为商品 ESM 入口当前依赖的旧全局子模块。
 
 当前已验证通过：
 
@@ -1417,10 +1420,10 @@ js/orders/firestore-rules.js
 js/products/index.js
 js/products/provider-firestore.js
 js/products/accounts.js
-js/products/export.js
 js/products/form-utils.js
 js/products/crud.js
 js/products/table.js
+src/products/export.mjs
 ```
 
 ### 数据分析

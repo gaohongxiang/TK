@@ -229,8 +229,8 @@ assert.match(
 
 assert.match(
   indexSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先通过 ESM 主入口挂载共享控件，再保留 table.js -> sync.js -> form-utils.js -> crud.js -> ESM index 的订单加载边界'
+  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要先通过 ESM 主入口挂载共享控件，再保留 table.js -> sync.js -> crud.js -> ESM index 的订单加载边界'
 );
 
 assert.match(

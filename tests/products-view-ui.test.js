@@ -28,8 +28,20 @@ assert.match(
 
 assert.match(
   srcTableSource,
-  /export\s+\{[\s\S]*ProductLibraryTable[\s\S]*deriveDisplayedProducts[\s\S]*mergeProductSku[\s\S]*\}/,
-  '路线二 M4 需要提供商品表格纯函数 ESM 导出'
+  /export\s+\{[\s\S]*ProductLibraryTable[\s\S]*ProductLibraryTableView[\s\S]*deriveDisplayedProducts[\s\S]*mergeProductSku[\s\S]*render[\s\S]*\}/,
+  '路线二 M4 需要提供商品表格 ESM 导出和渲染壳'
+);
+
+assert.match(
+  srcTableSource,
+  /window\.ProductLibraryTableView = ProductLibraryTableView/,
+  '商品表格 ESM 模块需要挂回旧全局命名空间'
+);
+
+assert.match(
+  srcProductsIndexSource,
+  /import \{ ProductLibraryTableView \} from '\.\/table\.mjs'/,
+  '商品 ESM 入口需要直接导入商品表格 ESM 模块'
 );
 
 assert.match(
@@ -220,8 +232,14 @@ assert.match(
 
 assert.match(
   indexSource,
-  /<script src="js\/products\/table\.js" defer><\/script>\s*<script src="js\/products\/accounts\.js" defer><\/script>\s*<script src="js\/products\/export\.js" defer><\/script>\s*<script src="js\/products\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/products\/index\.mjs"><\/script>/,
-  'index.html 需要先加载商品 table/accounts/export/crud，再通过 ESM 入口加载商品库 index'
+  /<script src="js\/products\/accounts\.js" defer><\/script>\s*<script src="js\/products\/export\.js" defer><\/script>\s*<script src="js\/products\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/products\/index\.mjs"><\/script>/,
+  'index.html 需要先加载商品 accounts/export/crud，再通过 ESM 入口加载商品库 index'
+);
+
+assert.doesNotMatch(
+  indexSource,
+  /<script src="js\/products\/table\.js" defer><\/script>/,
+  'index.html 不应再加载旧商品 table 普通脚本'
 );
 
 assert.doesNotMatch(
@@ -425,6 +443,7 @@ assert.equal(descSorted[2].tkId, '1', '商品库倒序结果不正确');
   const productsIndexModule = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'index.mjs')}`);
   assert.equal(typeof productsIndexModule.createProductLibrary, 'function', '商品管理 ESM 入口需要可被直接 import');
   assert.equal(typeof productsIndexModule.getProductLibrary, 'function', '商品管理 ESM 入口需要导出懒初始化入口');
+  assert.equal(typeof tableModule.ProductLibraryTableView.render, 'function', '商品表格 ESM 模块需要保留渲染壳');
   const esmSearch = tableModule.ProductLibraryTable.deriveDisplayedProducts({
     products: [
       { tkId: 'TK-002', name: '红色杯子', cargoType: 'general' },

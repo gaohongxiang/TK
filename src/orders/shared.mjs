@@ -472,6 +472,37 @@ function migrateOrderToCurrentShape(order, options) {
   return createOrderNormalizer(options).migrateOrderToCurrentShape(order);
 }
 
+function normalizeOrderList(list, options) {
+  return Array.isArray(list) ? list.map(order => normalizeOrderRecord(order, options)) : [];
+}
+
+function cloneOrder(order, options) {
+  return order ? normalizeOrderRecord({ ...order }, options) : null;
+}
+
+function getOrderUpdatedAt(order) {
+  return String(order?.updatedAt || order?.updated_at || '').trim();
+}
+
+function serializeOrder(order, options) {
+  if (!order) return '';
+  const normalized = normalizeOrderRecord({ ...order }, options);
+  const sorted = {};
+  Object.keys(normalized).sort().forEach(key => {
+    const value = normalized[key];
+    if (typeof value === 'undefined') return;
+    if (key.startsWith('__')) return;
+    sorted[key] = value;
+  });
+  return JSON.stringify(sorted);
+}
+
+function ordersEqual(a, b, options) {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return serializeOrder(a, options) === serializeOrder(b, options);
+}
+
 function create({
   state = {},
   constants = {},
@@ -841,14 +872,18 @@ export {
   detectCourierCompany,
   escapeHtml,
   getOrderCreatedAt,
+  getOrderUpdatedAt,
   hasLegacyOrderStructure,
   isOrderRefunded,
+  cloneOrder,
   migrateOrderToCurrentShape,
   normalizeAccountName,
   normalizeOrderItem,
   normalizeOrderItems,
+  normalizeOrderList,
   normalizeOrderSeq,
   normalizeStatusValue,
+  ordersEqual,
   parseCreatorCommissionRateValue,
   parseOrderMoneyValue,
   todayStr

@@ -603,7 +603,7 @@ npm run release:check
 
 订单最复杂，最后迁移。
 
-当前状态：进行中，已先拆出 `orders/shared` ESM 共享模块。订单页面仍继续加载旧 `js/orders/shared.js` 和旧订单入口，暂不切换订单主入口，避免同步链路和 DOM 执行顺序一次性变化。
+当前状态：进行中，已拆出订单多数 ESM 工具模块，包括 `orders/shared`、表格、导出、Tabs、CRUD helper、session、provider-firestore 和 sync 纯函数。订单页面仍继续加载旧 `js/orders/*.js` 和旧订单入口，暂不切换订单主入口，避免同步链路和 DOM 执行顺序一次性变化。
 
 顺序：
 
@@ -617,7 +617,7 @@ npm run release:check
 - provider-firestore
 - index
 
-`orders/sync.js` 最后动。
+旧 `orders/sync.js` 运行链路最后动；当前只新增 ESM 纯函数模块，不切旧同步入口。
 
 已完成：
 
@@ -637,6 +637,8 @@ npm run release:check
 - `tests/orders-session-module.test.js` 已新增动态 `import()` 断言，验证 ESM 会话模块的 `init/onEnter` 接口、已连接文案、本地缓存文案、配置状态应用/重置和刷新按钮状态切换。
 - 新增 `src/orders/provider-firestore.mjs`，提供 Firestore 配置解析/序列化、显示名、items 归一化、旧结构清洗识别、订单拉取映射、订单写入 doc 构造等 ESM 纯函数，并保留 `OrderTrackerProviderFirestore.create()` 兼容壳。
 - `tests/orders-provider-firestore-module.test.js` 已新增动态 `import()` 断言，验证 ESM provider 的配置解析、显示名、items 清洗、拉取订单字段映射、写入 doc 汇总和空字段处理。
+- 新增 `src/orders/sync.mjs`，提供 Firestore 乐观写入变更集、订单三方合并、账号合并、远端 canonical cleanup 写回变更集、缺失 seq 检测、远端快照应用判断等同步纯函数，并保留 `OrderTrackerSync.create()` 兼容壳。
+- `tests/orders-sync-module.test.js` 已新增动态 `import()` 断言，验证 ESM sync 的乐观写入 upsert/delete、更新时间冲突合并、本地删除时间记录、远端新增吸收，以及 `__needsOrderCleanup` 强制写回。
 
 当前已验证通过：
 
@@ -649,6 +651,7 @@ node tests/orders-tabs-module.test.js
 node tests/orders-crud-module.test.js
 node tests/orders-session-module.test.js
 node tests/orders-provider-firestore-module.test.js
+node tests/orders-sync-module.test.js
 npm test
 npm run build
 git diff --check
@@ -657,8 +660,8 @@ npm run release:check
 
 下一步：
 
-- 剩余 `orders/sync` 和 `orders/index`。`orders/sync.js` 风险最高，最后处理；先评估是否仅拆同步纯函数，还是等待订单入口切换前一起动。
-- 暂时不要改 `orders/sync.js`。
+- 剩余 `orders/index` 入口切换评估。先读取旧 `js/orders/index.js` 的全局依赖和初始化顺序，再决定是新增 `src/orders/index.mjs` 兼容入口，还是继续保持旧入口到下一轮。
+- 暂时不要改旧 `js/orders/sync.js` 的运行逻辑。
 
 ### 8.5 标准模块化期间的构建变化
 

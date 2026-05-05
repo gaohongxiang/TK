@@ -7,7 +7,7 @@ const { pathToFileURL } = require('url');
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'tabs.js'), 'utf8');
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'tabs.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'index.js'), 'utf8');
+const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -75,14 +75,14 @@ assert.deepEqual(
 
 assert.match(
   indexSource,
-  /OrderTrackerTabs\.create\(/,
-  'js/orders/index.js 需要通过 OrderTrackerTabs.create 接入账号标签栏模块'
+  /tabsFactory\.create\(/,
+  '订单 ESM 入口需要通过账号标签栏工厂接入账号标签模块'
 );
 
 assert.match(
   htmlSource,
-  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
-  'index.html 需要在 index.js 前先加载 tabs.js、form-utils.js、crud.js、session.js、shared.js、products.js'
+  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要在订单 ESM 入口前先加载 tabs.js、form-utils.js、crud.js、session.js、shared.js、products.js'
 );
 
 (async () => {

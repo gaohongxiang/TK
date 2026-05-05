@@ -7,7 +7,7 @@ const { pathToFileURL } = require('url');
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'session.js'), 'utf8');
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'session.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'index.js'), 'utf8');
+const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const syncSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'sync.js'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
@@ -133,14 +133,14 @@ assert.match(
 
 assert.match(
   indexSource,
-  /OrderTrackerSession\.create\(/,
-  'js/orders/index.js 需要通过 OrderTrackerSession.create 接入会话模块'
+  /sessionFactory\.create\(/,
+  '订单 ESM 入口需要通过会话模块工厂接入会话模块'
 );
 
 assert.match(
   htmlSource,
-  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
-  'index.html 需要在 index.js 前先加载 form-utils.js、session.js、shared.js 和 products.js'
+  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要在订单 ESM 入口前先加载 form-utils.js、session.js、shared.js 和 products.js'
 );
 
 (async () => {

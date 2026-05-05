@@ -3,7 +3,6 @@ const path = require('path');
 const assert = require('assert');
 
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const ordersIndexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'index.js'), 'utf8');
 const connectionSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'firestore-connection.js'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
 

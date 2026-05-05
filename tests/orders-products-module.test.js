@@ -5,7 +5,7 @@ const vm = require('vm');
 
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'js', 'orders', 'products.js'), 'utf8');
-const indexSource = fs.readFileSync(path.join(root, 'js', 'orders', 'index.js'), 'utf8');
+const indexSource = fs.readFileSync(path.join(root, 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -46,7 +46,7 @@ assert.match(
 
 assert.match(
   indexSource,
-  /OrderTrackerProducts\.create\(/,
+  /productsFactory\.create\(/,
   '订单入口需要通过 OrderTrackerProducts.create 接入商品桥接模块'
 );
 
@@ -58,7 +58,7 @@ assert.doesNotMatch(
 
 assert.match(
   htmlSource,
-  /<script src="js\/products\/provider-firestore\.js" defer><\/script>\s*<script src="js\/orders\/provider-firestore\.js" defer><\/script>[\s\S]*<script src="js\/orders\/products\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
+  /<script src="js\/products\/provider-firestore\.js" defer><\/script>\s*<script src="js\/orders\/provider-firestore\.js" defer><\/script>[\s\S]*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
   'index.html 需要先加载商品 Firestore provider 和订单商品桥接模块，再加载订单入口'
 );
 

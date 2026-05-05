@@ -8,7 +8,7 @@ const formUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'crud.js'), 'utf8');
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'crud.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'index.js'), 'utf8');
+const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -137,20 +137,20 @@ assert.equal(typeof crudTools.bindEvents, 'function', 'CRUD 模块需要返回 b
 
 assert.match(
   indexSource,
-  /OrderTrackerCrud\.create\(/,
-  'js/orders/index.js 需要通过 OrderTrackerCrud.create 接入 CRUD 模块'
+  /crudFactory\.create\(/,
+  '订单 ESM 入口需要通过 CRUD 工厂接入 CRUD 模块'
 );
 
 assert.match(
   indexSource,
-  /OrderTrackerProducts\.create\([\s\S]*loadProductsForModal/,
+  /productsFactory\.create\([\s\S]*loadProductsForModal/,
   '订单模块需要通过商品桥接模块为 CRUD 提供商品资料'
 );
 
 assert.match(
   htmlSource,
-  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
-  'index.html 需要在 index.js 前先加载 form-utils.js、crud.js、session.js、shared.js、products.js'
+  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要在订单 ESM 入口前先加载 form-utils.js、crud.js、session.js、shared.js、products.js'
 );
 
 assert.match(

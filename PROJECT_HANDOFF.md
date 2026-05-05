@@ -603,7 +603,7 @@ npm run release:check
 
 订单最复杂，最后迁移。
 
-当前状态：进行中，已拆出订单多数 ESM 工具模块，包括 `orders/shared`、表格、导出、Tabs、CRUD helper、session、provider-firestore 和 sync 纯函数。订单页面仍继续加载旧 `js/orders/*.js` 和旧订单入口，暂不切换订单主入口，避免同步链路和 DOM 执行顺序一次性变化。
+当前状态：M5 已完成主入口切换。订单页面现在通过 `/src/orders/index.mjs` 加载订单入口；旧 `js/orders/index.js` 暂时保留为历史参考和回退，不再由主页面加载。旧 `js/orders/*.js` helper 仍继续加载，旧 `js/orders/sync.js` 的运行逻辑未改。
 
 顺序：
 
@@ -617,7 +617,7 @@ npm run release:check
 - provider-firestore
 - index
 
-旧 `orders/sync.js` 运行链路最后动；当前只新增 ESM 纯函数模块，不切旧同步入口。
+旧 `orders/sync.js` 运行链路未改；当前先完成 ESM 入口挂载和纯函数覆盖，不删除旧 helper。
 
 已完成：
 
@@ -639,6 +639,10 @@ npm run release:check
 - `tests/orders-provider-firestore-module.test.js` 已新增动态 `import()` 断言，验证 ESM provider 的配置解析、显示名、items 清洗、拉取订单字段映射、写入 doc 汇总和空字段处理。
 - 新增 `src/orders/sync.mjs`，提供 Firestore 乐观写入变更集、订单三方合并、账号合并、远端 canonical cleanup 写回变更集、缺失 seq 检测、远端快照应用判断等同步纯函数，并保留 `OrderTrackerSync.create()` 兼容壳。
 - `tests/orders-sync-module.test.js` 已新增动态 `import()` 断言，验证 ESM sync 的乐观写入 upsert/delete、更新时间冲突合并、本地删除时间记录、远端新增吸收，以及 `__needsOrderCleanup` 强制写回。
+- 新增 `src/orders/index.mjs`，提供订单管理 ESM 入口，导出 `createOrderTracker`、`getOrderTracker` 和 `OrderTracker`，并通过 `window.OrderTracker` 挂回给旧 hash 路由调用。
+- `src/orders/index.mjs` 采用懒初始化，保留旧 helper 工厂依赖，避免 ESM 入口执行早于旧 `js/orders/*` 子模块时出现时序问题。
+- `index.html` 已移除旧 `js/orders/index.js` 的页面加载，改为 `<script type="module" src="/src/orders/index.mjs"></script>`。
+- 新增 `tests/orders-index-module.test.js`，验证订单 ESM 入口可直接 import、懒初始化、挂回全局，以及旧订单 index 普通脚本不再由主页面加载。
 
 当前已验证通过：
 
@@ -652,6 +656,7 @@ node tests/orders-crud-module.test.js
 node tests/orders-session-module.test.js
 node tests/orders-provider-firestore-module.test.js
 node tests/orders-sync-module.test.js
+node tests/orders-index-module.test.js
 npm test
 npm run build
 git diff --check
@@ -660,7 +665,7 @@ npm run release:check
 
 下一步：
 
-- 剩余 `orders/index` 入口切换评估。先读取旧 `js/orders/index.js` 的全局依赖和初始化顺序，再决定是新增 `src/orders/index.mjs` 兼容入口，还是继续保持旧入口到下一轮。
+- M5 进入观察期。不要急着删除旧 `js/orders/index.js` 或旧 helper；先让 release/e2e 稳定后，再考虑统一清理旧入口参考文件。
 - 暂时不要改旧 `js/orders/sync.js` 的运行逻辑。
 
 ### 8.5 标准模块化期间的构建变化

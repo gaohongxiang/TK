@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'share
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'shared.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const globalSettingsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'global-settings.js'), 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'index.js'), 'utf8');
+const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -328,14 +328,14 @@ assert.equal(
 
 assert.match(
   indexSource,
-  /OrderTrackerShared\.create\(/,
-  'js/orders/index.js 需要通过 OrderTrackerShared.create 接入共享 helper 模块'
+  /sharedFactory\.create\(/,
+  '订单 ESM 入口需要通过共享 helper 工厂接入共享模块'
 );
 
 assert.match(
   htmlSource,
-  /<script src="js\/global-settings\.js" defer><\/script>[\s\S]*<script src="js\/orders\/form-utils\.js" defer><\/script>[\s\S]*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
-  'index.html 需要在订单模块前先加载全局设置模块，并在 index.js 前先加载 form-utils.js、shared.js 和 products.js'
+  /<script src="js\/global-settings\.js" defer><\/script>[\s\S]*<script src="js\/orders\/form-utils\.js" defer><\/script>[\s\S]*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要在订单 ESM 入口前先加载全局设置模块、form-utils.js、shared.js 和 products.js'
 );
 
 function toPlain(value) {

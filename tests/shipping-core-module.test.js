@@ -3,7 +3,9 @@ const path = require('path');
 const assert = require('assert');
 const vm = require('vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'shipping-core.js'), 'utf8');
+const root = path.join(__dirname, '..');
+const source = fs.readFileSync(path.join(root, 'js', 'shipping-core.js'), 'utf8');
+const srcSource = fs.readFileSync(path.join(root, 'src', 'shipping-core.mjs'), 'utf8');
 
 assert.match(
   source,
@@ -22,6 +24,15 @@ assert.match(
   /function computeCalculatedShippingCost\(/,
   '共享运费核心需要暴露 computeCalculatedShippingCost'
 );
+
+assert.match(
+  srcSource,
+  /export\s+\{/,
+  '路线二 M3 需要提供共享运费核心 ESM 导出'
+);
+assert.match(srcSource, /\bTKShippingCore\b/, '共享运费核心 ESM 导出需要保留命名空间');
+assert.match(srcSource, /\bcomputeShippingQuote\b/, '共享运费核心 ESM 导出需要提供 computeShippingQuote');
+assert.match(srcSource, /\bcomputeCalculatedShippingCost\b/, '共享运费核心 ESM 导出需要提供 computeCalculatedShippingCost');
 
 const sandbox = {};
 vm.createContext(sandbox);
@@ -63,4 +74,30 @@ assert.ok(
   '共享运费核心需要保留低于 50g 的提示'
 );
 
-console.log('shipping core module ok');
+(async () => {
+  const shippingModule = await import(`file://${path.join(root, 'src', 'shipping-core.mjs')}`);
+
+  const esmQuote = shippingModule.computeShippingQuote({
+    cargoType: 'general',
+    actualWeight: 50,
+    length: 30,
+    width: 10,
+    height: 10,
+    rate: 23.5
+  });
+
+  assert.equal(esmQuote.band.range, quote.band.range, '共享运费核心 ESM 模块需要命中同一价卡');
+  assert.equal(esmQuote.chargeWeightKg, quote.chargeWeightKg, '共享运费核心 ESM 模块需要按同一计费重');
+  assert.equal(esmQuote.jpyFee, quote.jpyFee, '共享运费核心 ESM 模块需要输出同一日元运费');
+  assert.equal(
+    shippingModule.computeCalculatedShippingCost({ quote: esmQuote, multiplier: 1.1, labelFee: 1.2 }),
+    finalCnyFee,
+    '共享运费核心 ESM 模块需要输出同一人民币运费'
+  );
+  assert.equal(typeof shippingModule.TKShippingCore.getShippingBand, 'function', '共享运费核心 ESM 模块需要保留命名空间导出');
+
+  console.log('shipping core module ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

@@ -514,7 +514,7 @@ npm run release:check
 
 #### M3：迁移利润计算器
 
-当前状态：进行中，已完成 `CalcShared` 纯工具 ESM 迁移。
+当前状态：进行中，已完成 `CalcShared` 和共享运费核心的 ESM 迁移。
 
 利润计算器数据依赖较少，适合第二批。
 
@@ -529,6 +529,8 @@ npm run release:check
 - 新增 `src/calc/shared.mjs`，提供 `CalcShared` 和 `create` 的 ESM 导出。
 - `src/calc/shared.mjs` 保持旧 `js/calc/shared.js` 的存储迁移、折扣解析、金额/重量格式化、小数符号归一化和输入行为 helper。
 - `tests/calc-module-split.test.js` 已新增动态 `import()` 断言，确认 calc shared ESM 模块可被 Node 直接导入。
+- 新增 `src/shipping-core.mjs`，提供 `TKShippingCore`、`SHIPPING_RULES`、`DEFAULT_CONSTANTS`、`getShippingBand`、`computeShippingQuote` 和 `computeCalculatedShippingCost` 的 ESM 导出。
+- `tests/shipping-core-module.test.js` 已新增动态 `import()` 断言，确认共享运费核心 ESM 模块和旧全局模块输出一致。
 - 主页面仍保留旧 `js/calc/*.js` 普通脚本加载，未切利润计算器入口。
 
 当前已验证通过：
@@ -538,11 +540,13 @@ node tests/calc-module-split.test.js
 node tests/calc-formulas.test.js
 node tests/calc-pricing-sync.test.js
 node tests/calc-shipping-quote.test.js
+node tests/shipping-core-module.test.js
+npm run release:check
 ```
 
 下一步：
 
-- 再评估 `src/calc/shipping.mjs`，优先迁移纯计算和运费 quote 层。
+- 再评估 `src/calc/shipping.mjs`，先迁移薄壳层并继续复用 `src/shipping-core.mjs`。
 - `CalcPricing` 和 `CalcLegacyPricing` 仍需保守处理，因为它们和 DOM 渲染、输入同步绑定较多。
 
 #### M4：迁移商品管理

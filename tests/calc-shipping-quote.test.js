@@ -6,6 +6,18 @@ const vm = require('vm');
 const shippingCoreSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'shipping-core.js'), 'utf8');
 const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shared.js'), 'utf8');
 const shippingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shipping.js'), 'utf8');
+const srcShippingSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'shipping.mjs'), 'utf8');
+
+assert.match(
+  srcShippingSource,
+  /import\s+\{\s*TKShippingCore\s*\}\s+from\s+'..\/shipping-core\.mjs'/,
+  '路线二 M3 calc shipping ESM 模块需要复用共享运费核心'
+);
+assert.match(
+  srcShippingSource,
+  /export\s+\{[\s\S]*CalcShipping[\s\S]*create[\s\S]*\}/,
+  '路线二 M3 calc shipping 需要提供 ESM 导出'
+);
 
 const sandbox = {
   document: {
@@ -129,4 +141,56 @@ assert.ok(
   '低于 50g 时需要给出提示'
 );
 
-console.log('calc shipping quote ok');
+(async () => {
+  const sharedModule = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'shared.mjs')}`);
+  const shippingModule = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'shipping.mjs')}`);
+
+  const esmShared = sharedModule.CalcShared.create({
+    storageKey: 'tk.profit.v1',
+    defaults: {}
+  });
+  const esmState = {
+    ...state,
+    shippingMultiplierNew: 1.1,
+    labelFeeNew: 1.2,
+    costNew: 10,
+    overseasShippingNew: 0,
+    shipCargoTypeNew: 'general',
+    shipActualWeightNew: 50,
+    shipLengthNew: 30,
+    shipWidthNew: 10,
+    shipHeightNew: 10,
+    rateNew: 23.5
+  };
+  const esmEls = {
+    overseasShippingNew: { value: '' },
+    shippingReview: { value: '' }
+  };
+  const esmShipping = shippingModule.CalcShipping.create({
+    state: esmState,
+    els: esmEls,
+    helpers: esmShared,
+    constants: {
+      SHIPPING_RULES: sandbox.TKShippingCore.SHIPPING_RULES,
+      MIN_BILLABLE_WEIGHT_KG: 0.05,
+      MAX_WEIGHT_KG: 30,
+      VOLUME_DIVISOR: 8000,
+      VOLUME_TRIGGER_MULTIPLIER: 1.5,
+      SIZE_LIMITS: [60, 50, 40],
+      CUSTOMER_SHIPPING_JPY: 350
+    }
+  });
+
+  const esmQuote = esmShipping.computePricingNewShipping();
+  assert.equal(esmQuote.chargeWeightKg, volumeQuote.chargeWeightKg, 'calc shipping ESM 模块需要复用同一运费 quote 逻辑');
+  assert.equal(esmShipping.getCalculatedShippingCostNew(esmQuote), 16.3, 'calc shipping ESM 模块需要计算最终人民币运费');
+  assert.equal(esmShipping.applyCalculatedShippingCostNew(esmQuote, { markSource: true }), 16.3, 'calc shipping ESM 模块需要支持回填计算运费');
+  assert.equal(esmState.shippingSourceNew, 'calculator', 'calc shipping ESM 模块需要保留计算器来源标记');
+  assert.equal(esmShipping.computeTotalCostNew(), 26.3, 'calc shipping ESM 模块需要计算定价新总成本');
+  assert.equal(esmShipping.renderShippingCalc(), null, 'calc shipping ESM 模块在缺少 DOM 容器时应安全返回');
+
+  console.log('calc shipping quote ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

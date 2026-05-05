@@ -701,3 +701,15 @@ const OrderTrackerProviderFirestore = (function () {
     create
   };
 })();
+
+if (typeof TKDataSourceRegistry !== 'undefined') {
+  TKDataSourceRegistry.registerProvider('orders', {
+    key: 'firestore',
+    label: 'Firebase Firestore',
+    module: OrderTrackerProviderFirestore,
+    ownership: 'user-owned',
+    storesUserData: false,
+    localFirst: true,
+    offline: 'firestore-persistence'
+  });
+}

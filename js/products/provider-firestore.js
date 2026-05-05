@@ -297,3 +297,15 @@ const ProductLibraryProviderFirestore = (function () {
     create
   };
 })();
+
+if (typeof TKDataSourceRegistry !== 'undefined') {
+  TKDataSourceRegistry.registerProvider('products', {
+    key: 'firestore',
+    label: 'Firebase Firestore',
+    module: ProductLibraryProviderFirestore,
+    ownership: 'user-owned',
+    storesUserData: false,
+    localFirst: true,
+    offline: 'firestore-persistence'
+  });
+}

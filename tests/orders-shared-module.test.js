@@ -307,8 +307,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script src="js\/global-settings\.js" defer><\/script>[\s\S]*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
-  'index.html 需要在订单模块前先加载全局设置模块，并在 index.js 前先加载 shared.js'
+  /<script src="js\/global-settings\.js" defer><\/script>[\s\S]*<script src="js\/orders\/form-utils\.js" defer><\/script>[\s\S]*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
+  'index.html 需要在订单模块前先加载全局设置模块，并在 index.js 前先加载 form-utils.js、shared.js 和 products.js'
 );
 
 console.log('orders shared module contract ok');

@@ -1,0 +1,18 @@
+{
+  "name": "TK 电商工具箱",
+  "short_name": "TK 工具箱",
+  "description": "TikTok Shop 日本跨境店工具箱：利润计算、商品管理、订单管理和本地 Excel 数据分析。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f8fb",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "500x500",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

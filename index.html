@@ -5,13 +5,28 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>TK 电商工具箱</title>
-  <meta name="description" content="TikTok Shop 日本跨境店工具箱：利润计算器 + 商品管理 + 订单管理。" />
+  <meta name="description" content="TikTok Shop 日本跨境店工具箱：利润计算器 + 商品管理 + 订单管理 + 数据分析。" />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="https://tk-evu.pages.dev/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="zh_CN" />
+  <meta property="og:title" content="TK 电商工具箱" />
+  <meta property="og:description" content="TikTok Shop 日本跨境店工具箱：利润计算、商品管理、订单管理和本地 Excel 数据分析。" />
+  <meta property="og:url" content="https://tk-evu.pages.dev/" />
+  <meta property="og:image" content="https://tk-evu.pages.dev/logo.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="TK 电商工具箱" />
+  <meta name="twitter:description" content="TikTok Shop 日本跨境店工具箱：利润计算、商品管理、订单管理和本地 Excel 数据分析。" />
+  <meta name="twitter:image" content="https://tk-evu.pages.dev/logo.png" />
+  <meta name="theme-color" content="#ffffff" />
   <link rel="icon" type="image/png" sizes="500x500" href="logo.png" />
   <link rel="apple-touch-icon" href="logo.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 
 <body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
   <div class="wrap">
 
     <header class="app-header">
@@ -23,14 +38,16 @@
       </div>
       <div class="app-header-side">
         <nav class="modules" aria-label="模块导航">
-          <a href="#calc" data-view="calc" class="active">利润计算器</a>
+          <a href="#calc" data-view="calc" class="active" aria-current="page">利润计算器</a>
           <a href="#products" data-view="products">商品管理</a>
           <a href="#orders" data-view="orders">订单管理</a>
+          <a href="#analytics" data-view="analytics">数据分析</a>
         </nav>
         <a href="https://tk-evu-docs.pages.dev/" target="_blank" rel="noopener" class="app-doc-link">文档</a>
       </div>
     </header>
 
+    <main id="main-content" class="app-main" tabindex="-1">
     <!-- ============================================================
        VIEW 1 · 利润计算器
        ============================================================ -->
@@ -906,9 +923,115 @@
       </section>
     </div>
 
+    <!-- ============================================================
+       VIEW 4 · 数据分析
+       ============================================================ -->
+    <div id="view-analytics" class="view">
+      <div class="module-hero page-hero page-hero-analytics">
+        <div class="module-hero-copy">
+          <div class="module-hero-title-row">
+            <h2>数据分析</h2>
+            <div class="module-kicker">Excel 导入 / 流量诊断 / 商品动作</div>
+          </div>
+          <p>本地解析 TikTok Shop 商品流量导出表，生成渠道表现、商品排行和运营诊断；数据不上传到本站服务器。</p>
+        </div>
+      </div>
+
+      <section class="card analytics-upload-card">
+        <div class="analytics-upload-grid">
+          <div class="analytics-upload-copy">
+            <h2>导入商品流量表</h2>
+            <p>支持 TikTok Shop 导出的商品流量详情 Excel。文件只在当前浏览器内解析，不会保存到 Cloudflare，也不会进入本站数据库。</p>
+            <div class="analytics-privacy-strip">
+              <span>本地解析</span>
+              <span>不上传文件</span>
+              <span>不保存用户数据</span>
+            </div>
+          </div>
+          <div class="analytics-upload-action">
+            <label class="analytics-file-picker" for="analytics-file-input">
+              <span class="analytics-file-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 4v10" />
+                  <path d="M8 10l4 4 4-4" />
+                  <path d="M5 19h14" />
+                </svg>
+              </span>
+              <span>选择 Excel 文件</span>
+            </label>
+            <input id="analytics-file-input" type="file" accept=".xlsx,.xls" />
+            <div id="analytics-file-meta" class="analytics-file-meta">尚未导入数据</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="analytics-empty" class="card analytics-empty">
+        <div class="ot-empty">
+          <div style="font-size:15px;margin-bottom:6px">等待导入商品流量 Excel</div>
+          <div style="font-size:12.5px">导入后会自动生成渠道图表、Top 商品排行和商品诊断标签。</div>
+        </div>
+      </section>
+
+      <section id="analytics-main" class="analytics-main" style="display:none">
+        <div id="analytics-kpi-grid" class="analytics-kpi-grid"></div>
+
+        <div class="analytics-layout">
+          <section class="card analytics-chart-card">
+            <div class="analytics-section-head">
+              <h2>渠道 GMV</h2>
+              <span id="analytics-period-chip" class="analytics-chip muted">-</span>
+            </div>
+            <div id="analytics-channel-gmv" class="analytics-chart"></div>
+          </section>
+
+          <section class="card analytics-chart-card">
+            <div class="analytics-section-head">
+              <h2>流量漏斗</h2>
+              <span class="analytics-chip muted">曝光 / 浏览 / 成交</span>
+            </div>
+            <div id="analytics-funnel" class="analytics-funnel"></div>
+          </section>
+        </div>
+
+        <div class="analytics-layout">
+          <section class="card analytics-chart-card">
+            <div class="analytics-section-head">
+              <h2>Top 商品 GMV</h2>
+              <span class="analytics-chip muted">前 10</span>
+            </div>
+            <div id="analytics-top-products" class="analytics-ranking"></div>
+          </section>
+
+          <section class="card analytics-chart-card">
+            <div class="analytics-section-head">
+              <h2>商品诊断</h2>
+              <span class="analytics-chip muted">运营动作</span>
+            </div>
+            <div id="analytics-diagnostics" class="analytics-diagnostics"></div>
+          </section>
+        </div>
+
+        <section class="card analytics-table-card">
+          <div class="analytics-section-head">
+            <h2>商品明细</h2>
+            <span id="analytics-row-count" class="analytics-chip muted">-</span>
+          </div>
+          <div class="ot-table-wrap analytics-table-wrap">
+            <div id="analytics-table"></div>
+          </div>
+        </section>
+      </section>
+    </div>
+    </main>
+
     <footer>
-      本地参数保存在浏览器（localStorage），订单与商品资料同步到你自己的 Firebase Firestore，并使用 Firestore 自带的离线缓存 · TK 电商工具箱 © <span
-        id="yr"></span>
+      <span>本地参数保存在浏览器（localStorage），订单与商品资料同步到你自己的 Firebase Firestore，并使用 Firestore 自带的离线缓存</span>
+      <span class="footer-links">
+        <a href="/privacy.html">隐私与数据边界</a>
+        <a href="/terms.html">使用条款</a>
+        <a href="https://tk-evu-docs.pages.dev/guide/database" target="_blank" rel="noopener">数据库说明</a>
+      </span>
+      <span>TK 电商工具箱 © <span id="yr"></span></span>
     </footer>
   </div>
 
@@ -1290,33 +1413,46 @@
   <div id="toast" class="toast"></div>
 
   <!-- JS 模块（defer 保证顺序加载：路由 → 利润计算器 → 商品管理 / 订单管理） -->
+  <script src="js/app-config.js" defer></script>
   <script src="js/app.js" defer></script>
   <script src="js/global-settings.js" defer></script>
   <script src="js/table-controls.js" defer></script>
   <script src="js/searchable-select.js" defer></script>
   <script src="js/shipping-core.js" defer></script>
+  <script src="js/shared/html.js" defer></script>
+  <script src="js/shared/format.js" defer></script>
   <script src="js/firestore-connection.js" defer></script>
   <script src="js/calc/shared.js" defer></script>
   <script src="js/calc/shipping.js" defer></script>
   <script src="js/calc/legacy.js" defer></script>
   <script src="js/calc/pricing.js" defer></script>
   <script src="js/calc/index.js" defer></script>
+  <script src="js/data-sources/registry.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore-compat.js" defer></script>
+  <script src="js/products/provider-firestore.js" defer></script>
   <script src="js/orders/provider-firestore.js" defer></script>
   <script src="js/orders/firestore-rules.js" defer></script>
   <script src="js/orders/table.js" defer></script>
   <script src="js/orders/sync.js" defer></script>
   <script src="js/orders/export.js" defer></script>
   <script src="js/orders/tabs.js" defer></script>
+  <script src="js/orders/form-utils.js" defer></script>
   <script src="js/orders/crud.js" defer></script>
   <script src="js/orders/session.js" defer></script>
   <script src="js/orders/shared.js" defer></script>
+  <script src="js/orders/products.js" defer></script>
   <script src="js/orders/index.js" defer></script>
-  <script src="js/products/provider-firestore.js" defer></script>
   <script src="js/products/table.js" defer></script>
+  <script src="js/products/accounts.js" defer></script>
+  <script src="js/products/export.js" defer></script>
+  <script src="js/products/form-utils.js" defer></script>
   <script src="js/products/crud.js" defer></script>
   <script src="js/products/index.js" defer></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
+  <script src="js/analytics/parser.js" defer></script>
+  <script src="js/analytics/analyzer.js" defer></script>
+  <script src="js/analytics/index.js" defer></script>
 </body>
 
 </html>

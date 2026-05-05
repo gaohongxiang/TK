@@ -10,7 +10,7 @@ export default {
     /\/supabase\/order-tracker-schema\.sql$/
   ],
   title: 'TK 电商工具箱文档',
-  description: '利润计算器、商品管理、订单管理，以及 TK 运营选品与话术。',
+  description: 'TikTok Shop 日本跨境店工具箱文档：利润计算、Firebase 商品订单管理、本地 Excel 数据分析和 TK 运营资料。',
   cleanUrls: true,
   themeConfig: {
     siteTitle: 'TK 电商工具箱文档',
@@ -29,7 +29,10 @@ export default {
           { text: '数据库', link: '/guide/database' },
           { text: '利润计算器', link: '/guide/calculator' },
           { text: '商品管理', link: '/guide/products' },
-          { text: '订单管理', link: '/guide/orders' }
+          { text: '订单管理', link: '/guide/orders' },
+          { text: '数据分析', link: '/guide/analytics' },
+          { text: '部署发布', link: '/guide/deploy' },
+          { text: '常见问题', link: '/guide/faq' }
         ]
       },
       {
@@ -50,13 +53,6 @@ export default {
           { text: '优惠券与秒杀', link: '/ops/promotions' },
           { text: '运营话术', link: '/ops/scripts' }
         ]
-      },
-      {
-        text: '补充',
-        collapsed: true,
-        items: [
-          { text: '常见问题', link: '/guide/faq' }
-        ]
       }
     ],
     outline: {
@@ -71,6 +67,8 @@ export default {
     }
   },
   head: [
-    ['meta', { name: 'theme-color', content: '#ffffff' }]
+    ['meta', { name: 'theme-color', content: '#ffffff' }],
+    ['meta', { name: 'robots', content: 'index,follow' }],
+    ['meta', { name: 'description', content: 'TikTok Shop 日本跨境店工具箱文档：Firebase 商品订单管理、本地 Excel 数据分析、Cloudflare Pages 部署和 TK 运营资料。' }]
   ]
 };

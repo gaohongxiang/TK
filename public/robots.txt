@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tk-evu.pages.dev/sitemap.xml
+Host: https://tk-evu.pages.dev

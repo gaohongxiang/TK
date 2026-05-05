@@ -3,6 +3,7 @@ const path = require('path');
 const assert = require('assert');
 const vm = require('vm');
 
+const formUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'form-utils.js'), 'utf8');
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'crud.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'index.js'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
@@ -69,7 +70,7 @@ assert.match(
 
 const sandbox = {};
 vm.createContext(sandbox);
-vm.runInContext(`${source}\nthis.OrderTrackerCrud = OrderTrackerCrud;`, sandbox);
+vm.runInContext(`${formUtilsSource}\n${source}\nthis.OrderTrackerCrud = OrderTrackerCrud;`, sandbox);
 
 const crudTools = sandbox.OrderTrackerCrud.create({
   state: {},
@@ -115,14 +116,14 @@ assert.match(
 
 assert.match(
   indexSource,
-  /ProductLibraryProviderFirestore[\s\S]*loadProductsForModal/,
-  '订单模块需要复用商品库 Firestore provider 拉取商品资料'
+  /OrderTrackerProducts\.create\([\s\S]*loadProductsForModal/,
+  '订单模块需要通过商品桥接模块为 CRUD 提供商品资料'
 );
 
 assert.match(
   htmlSource,
-  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
-  'index.html 需要在 index.js 前先加载 crud.js、session.js、shared.js'
+  /<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script src="js\/orders\/index\.js" defer><\/script>/,
+  'index.html 需要在 index.js 前先加载 form-utils.js、crud.js、session.js、shared.js、products.js'
 );
 
 assert.match(

@@ -3,6 +3,7 @@ const path = require('path');
 const assert = require('assert');
 const vm = require('vm');
 
+const formUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'form-utils.js'), 'utf8');
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'crud.js'), 'utf8');
 
 assert.match(
@@ -13,26 +14,14 @@ assert.match(
 
 assert.match(
   source,
-  /function buildEstimatedShippingSnapshot\(/,
-  '商品库 CRUD 需要暴露预估运费快照构建函数'
+  /const formUtils = ProductLibraryFormUtils/,
+  '商品库 CRUD 需要接入商品弹窗纯函数模块'
 );
 
-assert.match(
+assert.doesNotMatch(
   source,
-  /function parseSizeInput\(/,
-  '商品库 CRUD 需要把单个尺寸输入拆成长宽高'
-);
-
-assert.match(
-  source,
-  /function buildBatchSkuDrafts\(/,
-  '商品库 CRUD 需要支持批量生成 SKU 草稿'
-);
-
-assert.match(
-  source,
-  /function matchesBatchSkuName\(/,
-  '商品库 CRUD 需要用更严格的 SKU 名称匹配，避免批量应用误伤'
+  /function buildEstimatedShippingSnapshot\(|function parseSizeInput\(|function buildBatchSkuDrafts\(|function matchesBatchSkuName\(|function skuUsesProductDefaults\(/,
+  '商品库 CRUD 不应继续内联已经拆出的 SKU 表单纯函数'
 );
 
 assert.match(
@@ -73,7 +62,7 @@ assert.match(
 
 const sandbox = {};
 vm.createContext(sandbox);
-vm.runInContext(`${source}\nthis.ProductLibraryCrud = ProductLibraryCrud;`, sandbox);
+vm.runInContext(`${formUtilsSource}\n${source}\nthis.ProductLibraryCrud = ProductLibraryCrud;`, sandbox);
 
 const snapshot = sandbox.ProductLibraryCrud.buildEstimatedShippingSnapshot({
   shippingCore: {

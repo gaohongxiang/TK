@@ -3,6 +3,7 @@ const path = require('path');
 const assert = require('assert');
 const vm = require('vm');
 
+const formUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'form-utils.js'), 'utf8');
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'crud.js'), 'utf8');
 
 const sandbox = {
@@ -35,7 +36,7 @@ const sandbox = {
 };
 
 vm.createContext(sandbox);
-vm.runInContext(`${source}\nthis.OrderTrackerCrud = OrderTrackerCrud;`, sandbox);
+vm.runInContext(`${formUtilsSource}\n${source}\nthis.OrderTrackerCrud = OrderTrackerCrud;`, sandbox);
 
 function makeField(initialValue = '') {
   const listeners = {};

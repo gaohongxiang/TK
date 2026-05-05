@@ -1,0 +1,18 @@
+{
+  "name": "tk-toolbox",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build && node scripts/copy-main-assets.mjs",
+    "preview": "vite preview --host 0.0.0.0",
+    "smoke": "node scripts/preview-smoke.mjs",
+    "e2e": "playwright test",
+    "release:check": "sh scripts/release-check.sh",
+    "test": "sh -c 'for f in tests/*.test.js; do node \"$f\" || exit 1; done'"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "vite": "8.0.10"
+  }
+}

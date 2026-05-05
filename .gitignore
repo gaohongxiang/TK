@@ -2,3 +2,10 @@ node_modules/
 .DS_Store
 .claude/
 dist/
+test-results/
+playwright-report/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+*.xlsx
+*.xls
+*.csv

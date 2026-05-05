@@ -4,8 +4,11 @@ const assert = require('assert');
 const vm = require('vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'table.js'), 'utf8');
+const accountsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'accounts.js'), 'utf8');
+const exportSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'export.js'), 'utf8');
 const crudSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'crud.js'), 'utf8');
 const productsIndexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'index.js'), 'utf8');
+const configSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-config.js'), 'utf8');
 const appSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
@@ -34,9 +37,15 @@ assert.match(
 );
 
 assert.match(
+  configSource,
+  /key:\s*'products'/,
+  '全局配置需要新增商品库模块'
+);
+
+assert.match(
   appSource,
-  /products:\s*\{\s*\}/,
-  '全局路由需要新增商品库模块'
+  /TKAppConfig\.modules/,
+  '全局路由需要从项目配置读取模块列表'
 );
 
 assert.match(
@@ -185,8 +194,8 @@ assert.match(
 
 assert.match(
   indexSource,
-  /<script src="js\/products\/provider-firestore\.js" defer><\/script>\s*<script src="js\/products\/table\.js" defer><\/script>\s*<script src="js\/products\/crud\.js" defer><\/script>\s*<script src="js\/products\/index\.js" defer><\/script>/,
-  'index.html 需要按 provider -> table -> crud -> index 顺序加载商品库模块'
+  /<script src="js\/products\/provider-firestore\.js" defer><\/script>[\s\S]*<script src="js\/products\/table\.js" defer><\/script>\s*<script src="js\/products\/accounts\.js" defer><\/script>\s*<script src="js\/products\/export\.js" defer><\/script>\s*<script src="js\/products\/form-utils\.js" defer><\/script>\s*<script src="js\/products\/crud\.js" defer><\/script>\s*<script src="js\/products\/index\.js" defer><\/script>/,
+  'index.html 需要先加载商品 provider，再按 table -> accounts -> export -> form-utils -> crud -> index 顺序加载商品库模块'
 );
 
 assert.match(
@@ -208,14 +217,14 @@ assert.match(
 );
 
 assert.match(
-  productsIndexSource,
+  exportSource,
   /function exportProductsCsv\(/,
   '商品库需要提供 CSV 导出逻辑'
 );
 
 assert.match(
-  productsIndexSource,
-  /ProductLibraryTableView\?\.deriveDisplayedProducts/,
+  exportSource,
+  /getDisplayedProducts\(\{\s*activeAccount:\s*'__all__'\s*\}\)/,
   '商品库导出应复用当前筛选结果，而不是忽略账号和搜索条件'
 );
 
@@ -232,9 +241,15 @@ assert.match(
 );
 
 assert.match(
-  productsIndexSource,
+  exportSource,
   /function promptProductExportAccounts\(/,
   '商品库导出需要提供账号选择流程'
+);
+
+assert.match(
+  accountsSource,
+  /function renderAccountTabs\(/,
+  '商品库账号标签渲染需要从入口文件拆到账号模块'
 );
 
 assert.match(

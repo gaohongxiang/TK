@@ -182,8 +182,8 @@ assert.match(
 
 assert.match(
   indexSource,
-  /<script src="js\/orders\/firestore-rules\.js" defer><\/script>/,
-  '页面需要预加载内置 Firestore 规则文本'
+  /<script type="module" src="\/src\/orders\/firestore-rules\.mjs"><\/script>/,
+  '页面需要通过 ESM 预加载内置 Firestore 规则文本'
 );
 
 assert.match(

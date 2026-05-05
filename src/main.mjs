@@ -6,6 +6,7 @@ import './shared/format.mjs';
 import './table-controls.mjs';
 import './searchable-select.mjs';
 import './data-sources/registry.mjs';
+import './products/form-utils.mjs';
 
 const FALLBACK_MODULES = Object.freeze([
   Object.freeze({ key: 'calc' }),

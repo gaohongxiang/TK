@@ -584,12 +584,14 @@ npm run release:check
 - `tests/products-view-ui.test.js` 已新增动态 `import()` 断言，确认商品表格 ESM 纯函数和旧 `ProductLibraryTableView.deriveDisplayedProducts` 排序结果一致。
 - 新增 `src/products/form-utils.mjs`，提供商品 CRUD/SKU 弹窗的尺寸解析、批量 SKU 草稿、SKU 名称匹配、运费快照、SKU 默认值判断等纯函数 ESM 导出。
 - `tests/products-form-utils-module.test.js` 已新增动态 `import()` 断言，确认商品 CRUD 纯函数 ESM 输出和旧 `ProductLibraryFormUtils` 一致。
+- `src/products/form-utils.mjs` 已由 `src/main.mjs` 导入，并在浏览器里挂回 `window.ProductLibraryFormUtils`，供尚未迁移的 `js/products/crud.js` 使用。
+- `index.html` 已移除旧 `js/products/form-utils.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - 新增 `src/products/provider-firestore.mjs`，提供商品 Firestore provider 的配置解析、展示名、商品/SKU 归一化、Firestore 写入 doc 构造等纯函数 ESM 导出。
 - `tests/products-provider-firestore-module.test.js` 已新增动态 `import()` 断言，确认 provider 纯函数 ESM 的配置解析和商品/SKU 文档映射保持旧行为。
 - 新增 `src/products/index.mjs`，提供商品管理 ESM 入口，并通过 `window.ProductLibrary` 挂回给旧 hash 路由调用。
 - `src/products/index.mjs` 采用懒初始化，避免 ESM 入口执行早于旧 `js/products/*` 子模块时出现 `undefined.create`。
 - `index.html` 已移除旧 `js/products/index.js` 的页面加载，改为 `<script type="module" src="/src/products/index.mjs"></script>`。
-- `js/products/provider-firestore.js`、`js/products/table.js`、`js/products/accounts.js`、`js/products/export.js`、`js/products/form-utils.js`、`js/products/crud.js` 仍保留在页面加载链里，作为商品 ESM 入口当前依赖的旧全局子模块。
+- `js/products/provider-firestore.js`、`js/products/table.js`、`js/products/accounts.js`、`js/products/export.js`、`js/products/crud.js` 仍保留在页面加载链里，作为商品 ESM 入口当前依赖的旧全局子模块。
 
 当前已验证通过：
 

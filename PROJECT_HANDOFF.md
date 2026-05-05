@@ -514,6 +514,8 @@ npm run release:check
 
 #### M3：迁移利润计算器
 
+当前状态：进行中，已完成 `CalcShared` 纯工具 ESM 迁移。
+
 利润计算器数据依赖较少，适合第二批。
 
 迁移时保持：
@@ -521,6 +523,27 @@ npm run release:check
 - DOM id 不变。
 - 计算公式不变。
 - 测试先行。
+
+已完成：
+
+- 新增 `src/calc/shared.mjs`，提供 `CalcShared` 和 `create` 的 ESM 导出。
+- `src/calc/shared.mjs` 保持旧 `js/calc/shared.js` 的存储迁移、折扣解析、金额/重量格式化、小数符号归一化和输入行为 helper。
+- `tests/calc-module-split.test.js` 已新增动态 `import()` 断言，确认 calc shared ESM 模块可被 Node 直接导入。
+- 主页面仍保留旧 `js/calc/*.js` 普通脚本加载，未切利润计算器入口。
+
+当前已验证通过：
+
+```bash
+node tests/calc-module-split.test.js
+node tests/calc-formulas.test.js
+node tests/calc-pricing-sync.test.js
+node tests/calc-shipping-quote.test.js
+```
+
+下一步：
+
+- 再评估 `src/calc/shipping.mjs`，优先迁移纯计算和运费 quote 层。
+- `CalcPricing` 和 `CalcLegacyPricing` 仍需保守处理，因为它们和 DOM 渲染、输入同步绑定较多。
 
 #### M4：迁移商品管理
 

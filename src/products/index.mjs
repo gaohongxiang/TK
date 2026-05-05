@@ -1,3 +1,4 @@
+import { ProductLibraryAccounts } from './accounts.mjs';
 import { ProductLibraryProviderFirestore } from './provider-firestore.mjs';
 import { ProductLibraryTableView } from './table.mjs';
 

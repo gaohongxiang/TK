@@ -583,6 +583,7 @@ npm run release:check
 - 新增 `src/products/table.mjs`，提供商品表格筛选、排序、SKU 默认值合并、SKU 标签/尺寸/运费格式化、表格渲染壳等 ESM 导出。
 - `src/products/table.mjs` 已在浏览器里挂回 `window.ProductLibraryTableView`，供过渡期兼容。
 - `tests/products-view-ui.test.js` 已新增动态 `import()` 断言，确认商品表格 ESM 纯函数和旧 `ProductLibraryTableView.deriveDisplayedProducts` 排序结果一致，并覆盖 ESM 渲染壳存在。
+- 新增 `src/products/accounts.mjs`，提供商品账号归并、账号槽、账号下拉和账号标签渲染的 ESM 导出，并在浏览器里挂回 `window.ProductLibraryAccounts`。
 - 新增 `src/products/form-utils.mjs`，提供商品 CRUD/SKU 弹窗的尺寸解析、批量 SKU 草稿、SKU 名称匹配、运费快照、SKU 默认值判断等纯函数 ESM 导出。
 - `tests/products-form-utils-module.test.js` 已新增动态 `import()` 断言，确认商品 CRUD 纯函数 ESM 输出和旧 `ProductLibraryFormUtils` 一致。
 - `src/products/form-utils.mjs` 已由 `src/main.mjs` 导入，并在浏览器里挂回 `window.ProductLibraryFormUtils`，供尚未迁移的 `js/products/crud.js` 使用。
@@ -596,7 +597,8 @@ npm run release:check
 - `index.html` 已移除旧 `js/products/index.js` 的页面加载，改为 `<script type="module" src="/src/products/index.mjs"></script>`。
 - `index.html` 已移除旧 `js/products/provider-firestore.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `index.html` 已移除旧 `js/products/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
-- `js/products/accounts.js`、`js/products/export.js`、`js/products/crud.js` 仍保留在页面加载链里，作为商品 ESM 入口当前依赖的旧全局子模块。
+- `index.html` 已移除旧 `js/products/accounts.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `js/products/export.js`、`js/products/crud.js` 仍保留在页面加载链里，作为商品 ESM 入口当前依赖的旧全局子模块。
 
 当前已验证通过：
 

@@ -8,6 +8,7 @@ const parserSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'parser.
 const analyzerSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'analyzer.js'), 'utf8');
 const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'parser.mjs'), 'utf8');
 const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'analyzer.mjs'), 'utf8');
+const srcAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
 const analyticsSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'index.js'), 'utf8');
 const configSource = fs.readFileSync(path.join(root, 'js', 'app-config.js'), 'utf8');
 const appSource = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
@@ -53,8 +54,8 @@ assert.match(
 
 assert.match(
   indexSource,
-  /xlsx\.full\.min\.js[\s\S]*js\/analytics\/parser\.js[\s\S]*js\/analytics\/analyzer\.js[\s\S]*js\/analytics\/index\.js/,
-  'SheetJS、parser、analyzer、index 需要按顺序加载'
+  /xlsx\.full\.min\.js[\s\S]*<script type="module" src="\/src\/analytics\/index\.mjs"><\/script>/,
+  '数据分析需要在 SheetJS 后加载 ESM 入口'
 );
 
 assert.match(
@@ -106,9 +107,27 @@ assert.match(
 );
 
 assert.match(
+  srcAnalyticsSource,
+  /import\s+\{\s*TKAnalyticsAnalyzer\s*\}\s+from\s+'\.\/analyzer\.mjs'/,
+  '路线二 M2 需要提供 analytics index ESM 入口'
+);
+
+assert.match(
+  srcAnalyticsSource,
+  /function createAnalyticsModule\(options = \{\}\)/,
+  '路线二 M2 analytics ESM 入口需要导出可注入依赖的创建函数'
+);
+
+assert.match(
+  srcAnalyticsSource,
+  /function registerAnalyticsProvider\(registry = globalThis\.TKDataSourceRegistry/,
+  '路线二 M2 analytics ESM 入口需要保留数据源注册入口'
+);
+
+assert.match(
   analyticsSource,
   /const TKAnalytics = \(function \(\) \{/,
-  '数据分析 DOM 模块需要使用独立命名空间'
+  '旧数据分析 DOM 模块需要保留独立命名空间兼容参考'
 );
 
 assert.match(
@@ -124,7 +143,7 @@ assert.match(
 );
 
 assert.doesNotMatch(
-  [parserSource, analyzerSource, analyticsSource].join('\n'),
+  [parserSource, analyzerSource, analyticsSource, srcParserSource, srcAnalyzerSource, srcAnalyticsSource].join('\n'),
   /\bfetch\s*\(|XMLHttpRequest|sendBeacon|firebase|Firestore|localStorage\.setItem/,
   '数据分析相关模块不应上传或持久化用户 Excel 数据'
 );
@@ -287,6 +306,7 @@ assert.ok(
 (async () => {
   const parserModule = await import(`file://${path.join(root, 'src', 'analytics', 'parser.mjs')}`);
   const analyzerModule = await import(`file://${path.join(root, 'src', 'analytics', 'analyzer.mjs')}`);
+  const analyticsModule = await import(`file://${path.join(root, 'src', 'analytics', 'index.mjs')}`);
 
   const parsedByModule = parserModule.parseRows(rows);
   assert.strictEqual(parsedByModule.records[0].gmv, 70036, 'analytics parser ESM 模块需要可被直接 import');
@@ -295,6 +315,20 @@ assert.ok(
   const analysisByModule = analyzerModule.analyze(parsedByModule.records, parsedByModule.period);
   assert.strictEqual(analysisByModule.kpis.totalOrders, 51, 'analytics analyzer ESM 模块需要可被直接 import');
   assert.strictEqual(typeof analyzerModule.TKAnalyticsAnalyzer.diagnoseProduct, 'function', 'analytics analyzer ESM 模块需要保留命名空间导出');
+
+  const analyticsByModule = analyticsModule.createAnalyticsModule();
+  assert.strictEqual(analyticsByModule.parseRows(rows).records[0].gmv, 70036, 'analytics index ESM 入口需要可创建模块');
+  assert.strictEqual(analyticsByModule.analyze(parsedByModule.records, parsedByModule.period).kpis.totalOrders, 51, 'analytics index ESM 入口需要接入 analyzer');
+
+  let registeredProvider = null;
+  analyticsModule.registerAnalyticsProvider({
+    registerProvider(key, provider) {
+      registeredProvider = { key, provider };
+    }
+  }, analyticsByModule);
+  assert.strictEqual(registeredProvider.key, 'analytics', 'analytics index ESM 入口需要保留 provider 注册');
+  assert.strictEqual(registeredProvider.provider.module, analyticsByModule, 'analytics index ESM 入口需要注册传入模块');
+  assert.strictEqual(registeredProvider.provider.storesUserData, false, 'analytics index ESM 入口仍应声明不保存用户数据');
 
   console.log('analytics module contract ok');
 })().catch(error => {

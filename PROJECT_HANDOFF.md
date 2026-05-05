@@ -475,6 +475,8 @@ npm run release:check
 
 #### M2：迁移数据分析
 
+当前状态：已完成。
+
 数据分析相对独立。
 
 迁移：
@@ -490,6 +492,25 @@ window.TKAnalytics = TKAnalytics;
 ```
 
 过渡期可继续提供全局对象，避免 `app.js` 一次大改。
+
+已完成：
+
+- 新增 `src/analytics/index.mjs`，通过 ESM `import` 接入 `parser`、`analyzer`、共享 HTML 和格式化工具。
+- `src/analytics/index.mjs` 导出 `createAnalyticsModule`、`TKAnalytics` 和 `registerAnalyticsProvider`。
+- 浏览器中自动挂载 `window.TKAnalytics`，并兼容旧的 `TKDataSourceRegistry` 注册方式。
+- `index.html` 已把数据分析的三段旧普通脚本替换为 `<script type="module" src="/src/analytics/index.mjs"></script>`。
+- 旧 `js/analytics/*.js` 暂时保留，作为兼容参考和回退点，不再由主页面加载。
+- Vite 构建已开始打包数据分析 ESM 入口；构建提示里不再包含 `js/analytics/parser.js`、`js/analytics/analyzer.js`、`js/analytics/index.js`。
+- `tests/analytics-module.test.js` 和 `tests/main-build-contract.test.js` 已覆盖数据分析 ESM 入口、provider 注册和“不上传/不持久化 Excel”的边界。
+
+当前已验证通过：
+
+```bash
+node tests/analytics-module.test.js
+node tests/main-build-contract.test.js
+npm run e2e
+npm run release:check
+```
 
 #### M3：迁移利润计算器
 

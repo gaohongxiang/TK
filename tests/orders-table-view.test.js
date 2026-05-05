@@ -235,8 +235,8 @@ assert.match(
 
 assert.match(
   indexSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先通过 ESM 主入口挂载共享控件，再保留 crud.js -> ESM index 的订单加载边界'
+  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要先通过 ESM 主入口挂载共享控件，再加载订单 ESM 入口'
 );
 
 assert.doesNotMatch(

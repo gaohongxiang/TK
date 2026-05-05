@@ -7,7 +7,7 @@ const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'js', 'orders', 'form-utils.js'), 'utf8');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'orders', 'form-utils.mjs'), 'utf8');
 const mainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
-const crudSource = fs.readFileSync(path.join(root, 'js', 'orders', 'crud.js'), 'utf8');
+const crudSource = fs.readFileSync(path.join(root, 'src', 'orders', 'crud.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -42,8 +42,8 @@ assert.match(
 
 assert.match(
   crudSource,
-  /const formUtils = OrderTrackerFormUtils/,
-  '订单 CRUD 需要接入 OrderTrackerFormUtils'
+  /import \{ OrderTrackerFormUtils \} from '\.\/form-utils\.mjs'/,
+  '订单 CRUD ESM 需要直接接入 OrderTrackerFormUtils'
 );
 
 assert.match(
@@ -82,10 +82,10 @@ assert.doesNotMatch(
   'index.html 不应再加载旧订单 form-utils 普通脚本'
 );
 
-assert.match(
+assert.doesNotMatch(
   htmlSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/crud\.js" defer><\/script>/,
-  '订单 CRUD 普通脚本需要在 ESM 主入口挂回 form-utils 全局后加载'
+  /<script src="js\/orders\/crud\.js" defer><\/script>/,
+  'index.html 不应再加载旧订单 CRUD 普通脚本'
 );
 
 const sandbox = {};

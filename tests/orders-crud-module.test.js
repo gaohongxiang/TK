@@ -1,51 +1,54 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const vm = require('vm');
 const { pathToFileURL } = require('url');
 
-const formUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'form-utils.js'), 'utf8');
-const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'crud.js'), 'utf8');
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'crud.mjs');
-const esmSource = fs.readFileSync(esmPath, 'utf8');
+const source = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const mainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
   source,
-  /const OrderTrackerCrud = \(function \(\) \{/,
-  '需要新的订单 CRUD 模块'
+  /const OrderTrackerCrud = \{/,
+  'ESM 订单 CRUD 模块需要保留 OrderTrackerCrud 命名导出'
 );
 
 assert.match(
   source,
-  /function create\(/,
-  '订单 CRUD 模块需要暴露 create 工厂'
+  /function create\(\{ state, constants, helpers, ui \}\)/,
+  'ESM 订单 CRUD 模块需要暴露运行版 create 工厂'
 );
 
 assert.match(
-  esmSource,
-  /const OrderTrackerCrud = \{/,
-  'ESM 订单 CRUD 工具模块需要保留 OrderTrackerCrud 命名导出'
-);
-
-assert.match(
-  esmSource,
+  source,
   /function buildItemProductOptions\(/,
   'ESM 订单 CRUD 工具模块需要包含商品选项纯函数'
 );
 
 assert.match(
-  esmSource,
+  source,
   /function deriveOrderItemSummaryFields\(/,
   'ESM 订单 CRUD 工具模块需要包含明细汇总纯函数'
 );
 
 assert.match(
-  esmSource,
+  source,
   /export \{[\s\S]*OrderTrackerCrud[\s\S]*buildItemProductOptions[\s\S]*deriveOrderItemSummaryFields[\s\S]*computeEstimatedProfitValue[\s\S]*\}/,
   'ESM 订单 CRUD 工具模块需要导出命名空间和关键纯函数'
+);
+
+assert.match(
+  source,
+  /import \{ OrderTrackerFormUtils \} from '\.\/form-utils\.mjs'/,
+  'ESM 订单 CRUD 模块需要直接导入订单表单工具'
+);
+
+assert.match(
+  source,
+  /window\.OrderTrackerCrud = OrderTrackerCrud/,
+  'ESM 订单 CRUD 模块需要挂回旧全局命名空间'
 );
 
 assert.match(
@@ -96,11 +99,11 @@ assert.match(
   '订单 CRUD 模块需要包含表单事件绑定逻辑'
 );
 
-const sandbox = {};
-vm.createContext(sandbox);
-vm.runInContext(`${formUtilsSource}\n${source}\nthis.OrderTrackerCrud = OrderTrackerCrud;`, sandbox);
+const crudModulePromise = import(pathToFileURL(esmPath).href);
 
-const crudTools = sandbox.OrderTrackerCrud.create({
+(async () => {
+const crudModule = await crudModulePromise;
+const crudTools = crudModule.OrderTrackerCrud.create({
   state: {},
   constants: {
     ORDER_STATUS_OPTIONS: []
@@ -135,11 +138,21 @@ assert.equal(typeof crudTools.openModal, 'function', 'CRUD 模块需要返回 op
 assert.equal(typeof crudTools.closeModal, 'function', 'CRUD 模块需要返回 closeModal');
 assert.equal(typeof crudTools.deleteOrder, 'function', 'CRUD 模块需要返回 deleteOrder');
 assert.equal(typeof crudTools.bindEvents, 'function', 'CRUD 模块需要返回 bindEvents');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});
 
 assert.match(
   indexSource,
   /crudFactory\.create\(/,
   '订单 ESM 入口需要通过 CRUD 工厂接入 CRUD 模块'
+);
+
+assert.match(
+  indexSource,
+  /import \{ OrderTrackerCrud \} from '\.\/crud\.mjs'/,
+  '订单 ESM 入口需要直接导入 CRUD ESM helper'
 );
 
 assert.match(
@@ -150,8 +163,14 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script src="js\/orders\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要在订单 ESM 入口前保留 crud.js'
+  /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要通过订单 ESM 入口加载 CRUD 模块'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script src="js\/orders\/crud\.js" defer><\/script>/,
+  'index.html 不应再加载旧订单 CRUD 普通脚本'
 );
 
 assert.match(
@@ -245,7 +264,7 @@ assert.doesNotMatch(
 );
 
 (async () => {
-  const crudModule = await import(pathToFileURL(esmPath).href);
+  const crudModule = await crudModulePromise;
   const products = [
     {
       tkId: 'TK-1',

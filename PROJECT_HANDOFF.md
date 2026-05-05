@@ -621,7 +621,7 @@ npm run release:check
 
 订单最复杂，最后迁移。
 
-当前状态：M5 已完成主入口切换。订单页面现在通过 `/src/orders/index.mjs` 加载订单入口；旧 `js/orders/index.js` 暂时保留为历史参考和回退，不再由主页面加载。主页面订单普通脚本只剩 `js/orders/crud.js`，订单同步运行链路已由 `src/orders/sync.mjs` 接管。
+当前状态：M5 已完成主入口切换。订单页面现在通过 `/src/orders/index.mjs` 加载订单入口；旧 `js/orders/index.js` 暂时保留为历史参考和回退，不再由主页面加载。订单同步和弹窗 CRUD 运行链路已分别由 `src/orders/sync.mjs`、`src/orders/crud.mjs` 接管。
 
 顺序：
 
@@ -649,8 +649,8 @@ npm run release:check
 - `tests/orders-export-module.test.js` 已新增动态 `import()` 断言，验证 ESM 导出模块的账号选项、文件名、CSV 表头、CSV 双引号转义、未关联账号筛选，以及达人佣金/预估利润按当前汇率计算。
 - 新增 `src/orders/tabs.mjs`，提供订单账号归并、账号订单数统计、激活账号兜底、标签 HTML 和删除账号提示文案等 ESM 纯函数导出，并保留 `OrderTrackerTabs.create()` 兼容壳。
 - `tests/orders-tabs-module.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/tabs.js` 验证账号归并，并覆盖账号计数、激活账号兜底、标签 HTML 和删除提示文案。
-- 新增 `src/orders/crud.mjs`，先拆出 CRUD 弹窗里稳定的工具规则：快递选项、商品/SKU 选项、明细草稿缓存合并、明细数量/商品摘要/总重量汇总、快递自动识别状态、达人佣金和预估利润计算。旧 `js/orders/crud.js` 页面入口暂不切换。
-- `tests/orders-crud-module.test.js` 已新增动态 `import()` 断言，验证 ESM CRUD 工具的商品/SKU 选项、明细汇总、达人佣金/预估利润计算和明细快递识别规则。
+- 新增 `src/orders/crud.mjs`，提供订单弹窗运行版 `OrderTrackerCrud.create()`，并导出快递选项、商品/SKU 选项、明细草稿缓存合并、明细数量/商品摘要/总重量汇总、快递自动识别状态、达人佣金和预估利润计算等工具函数。
+- `tests/orders-crud-module.test.js` 已新增动态 `import()` 断言，验证 ESM CRUD 的运行版工厂、商品/SKU 选项、明细汇总、达人佣金/预估利润计算和明细快递识别规则。
 - 新增 `src/orders/session.mjs`，提供订单会话连接文案、配置状态应用、缓存恢复文案、连接状态重置和刷新按钮 loading 状态等 ESM helper，并保留 `OrderTrackerSession.create()` 兼容壳。
 - `tests/orders-session-module.test.js` 已新增动态 `import()` 断言，验证 ESM 会话模块的 `init/onEnter` 接口、已连接文案、本地缓存文案、配置状态应用/重置和刷新按钮状态切换。
 - 新增 `src/orders/provider-firestore.mjs`，提供 Firestore 配置解析/序列化、显示名、items 归一化、旧结构清洗识别、订单拉取映射、订单写入 doc 构造等 ESM 纯函数，并保留 `OrderTrackerProviderFirestore.create()` 兼容壳。
@@ -658,7 +658,7 @@ npm run release:check
 - 新增 `src/orders/sync.mjs`，提供 Firestore 乐观写入变更集、订单三方合并、账号合并、远端 canonical cleanup 写回变更集、缺失 seq 检测、远端快照应用判断等同步纯函数，并承载订单同步运行版 `OrderTrackerSync.create()`。
 - `tests/orders-sync-module.test.js` 已新增动态 `import()` 断言，验证 ESM sync 的乐观写入 upsert/delete、更新时间冲突合并、本地删除时间记录、远端新增吸收、`__needsOrderCleanup` 强制写回，以及订单入口直接 import `src/orders/sync.mjs`。
 - 新增 `src/orders/index.mjs`，提供订单管理 ESM 入口，导出 `createOrderTracker`、`getOrderTracker` 和 `OrderTracker`，并通过 `window.OrderTracker` 挂回给旧 hash 路由调用。
-- `src/orders/index.mjs` 采用懒初始化，直接 `import` 已完整迁移的 `shared`、`provider-firestore`、`export`、`tabs`、`session`、`sync` ESM helper，并保留未完整迁移 helper 的旧全局依赖。
+- `src/orders/index.mjs` 采用懒初始化，直接 `import` 已完整迁移的 `shared`、`provider-firestore`、`export`、`tabs`、`session`、`sync`、`crud` ESM helper。
 - `src/orders/shared.mjs`、`src/orders/export.mjs`、`src/orders/tabs.mjs`、`src/orders/session.mjs`、`src/orders/provider-firestore.mjs` 已在浏览器里挂回对应旧 `window.OrderTracker...` 命名空间。
 - 新增 `src/orders/products.mjs`，提供订单弹窗商品资料读取桥接、按账号筛商品、按 TK ID 查商品、商品缓存重置等 ESM 导出，并在浏览器里挂回 `window.OrderTrackerProducts`。
 - `tests/orders-products-module.test.js` 已新增动态 `import()` 断言，确认订单商品桥接 ESM 加载商品、账号筛选、TK ID 查找和缓存重置行为与旧模块一致。
@@ -672,8 +672,8 @@ npm run release:check
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载，改为 `<script type="module" src="/src/orders/index.mjs"></script>`。
 - `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js`、`js/orders/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `index.html` 已移除旧 `js/orders/sync.js` 的页面加载，订单入口直接 import `src/orders/sync.mjs`。
+- `index.html` 已移除旧 `js/orders/crud.js` 的页面加载，订单入口直接 import `src/orders/crud.mjs`。
 - `index.html` 已移除旧 `js/firestore-connection.js` 的页面加载，改为 `<script type="module" src="/src/firestore-connection.mjs"></script>`。
-- `index.html` 仍保留 `js/orders/crud.js`，因为它仍承载订单弹窗运行行为。
 - 新增 `tests/orders-index-module.test.js`，验证订单 ESM 入口可直接 import、懒初始化、挂回全局，以及旧订单 index 普通脚本不再由主页面加载。
 
 当前已验证通过：
@@ -1417,12 +1417,12 @@ src/orders/products.mjs
 ```text
 js/orders/index.js
 js/orders/session.js
-js/orders/crud.js
 js/orders/tabs.js
 js/orders/export.js
 js/orders/shared.js
 src/orders/firestore-rules.mjs
 src/orders/form-utils.mjs
+src/orders/crud.mjs
 src/orders/sync.mjs
 src/orders/table.mjs
 ```

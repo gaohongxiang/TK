@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'crud.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'crud.mjs'), 'utf8');
 
 assert.doesNotMatch(
   source,

@@ -1,42 +1,16 @@
-const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const vm = require('vm');
+const { pathToFileURL } = require('url');
 
-const formUtilsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'form-utils.js'), 'utf8');
-const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'crud.js'), 'utf8');
+globalThis.FormData = class FormData {
+  constructor(target) {
+    this.target = target;
+  }
 
-const sandbox = {
-  FormData: class FormData {
-    constructor(target) {
-      this.target = target;
-    }
-
-    entries() {
-      return this.target.entries();
-    }
-  },
-  localStorage: {
-    getItem: () => JSON.stringify({ rateNew: 20 }),
-    setItem: () => {}
-  },
-  window: {
-    confirm: () => true,
-    __tkGlobalSettingsStore: {
-      getExchangeRate: () => 20
-    }
-  },
-  document: {
-    createElement: () => ({
-      value: '',
-      textContent: ''
-    }),
-    querySelector: selector => (selector === '#rateNew' ? { value: '20' } : null)
+  entries() {
+    return this.target.entries();
   }
 };
-
-vm.createContext(sandbox);
-vm.runInContext(`${formUtilsSource}\n${source}\nthis.OrderTrackerCrud = OrderTrackerCrud;`, sandbox);
 
 function makeField(initialValue = '') {
   const listeners = {};
@@ -140,57 +114,58 @@ const state = {
   accounts: ['账号A']
 };
 
-const crudTools = sandbox.OrderTrackerCrud.create({
-  state,
-  constants: {
-    ORDER_STATUS_OPTIONS: ['未采购', '已采购', '在途', '已入仓']
-  },
-  helpers: {
-    $: selector => dom[selector] || null,
-    uid: () => 'new-order-id',
-    nowIso: () => '2026-04-23T10:00:00.000Z',
-    todayStr: () => '2026-04-23',
-    addDays: () => '2026-04-29',
-    computeWarning: () => ({ text: '-' }),
-    getPricingExchangeRate: () => 20,
-    normalizeOrderRecord: value => value,
-    escapeHtml: value => String(value),
-    normalizeStatusValue: value => String(value || '').trim(),
-    detectCourierCompany: () => '',
-    maybeAutoDetectCourierFromForm: () => '',
-    getOrderFormCourierFields: () => ({ tracking: fields.tracking, company: fields.company }),
-    showDatePicker: () => {}
-  },
-  ui: {
-    getUniqueAccounts: () => state.accounts,
-    promptAddAccount: async () => null,
-    addAccount: () => false,
-    markAccountsDirty: () => {},
-    markOrderAccountsDirty: () => {},
-    commitLocalOrders: async () => {},
-    toast: () => {}
-  }
-});
-
-crudTools.bindEvents();
-
-fields.salePrice.trigger('input');
-assert.equal(fields.creatorCommission.value, '3', '输入达人佣金率后应自动回填达人佣金');
-assert.equal(fields.estimatedProfit.value, '0.7', '输入日元售价、采购价、达人佣金率、预估运费后应按汇率自动回填人民币利润');
-
-fields.estimatedShippingFee.value = '7';
-fields.estimatedShippingFee.trigger('change');
-assert.equal(fields.estimatedProfit.value, '0.2', '修改预估运费后应实时更新人民币利润');
-
-fields.estimatedShippingFee.value = '';
-fields.estimatedShippingFee.trigger('change');
-assert.equal(fields.estimatedProfit.value, '', '缺少任一金额字段时不应计算预估利润');
-
-fields.estimatedShippingFee.value = '7';
-fields.estimatedShippingFee.trigger('change');
-assert.equal(fields.estimatedProfit.value, '0.2', '重新补齐金额字段后应恢复人民币利润计算');
-
 (async () => {
+  const { OrderTrackerCrud } = await import(pathToFileURL(path.join(__dirname, '..', 'src', 'orders', 'crud.mjs')).href);
+  const crudTools = OrderTrackerCrud.create({
+    state,
+    constants: {
+      ORDER_STATUS_OPTIONS: ['未采购', '已采购', '在途', '已入仓']
+    },
+    helpers: {
+      $: selector => dom[selector] || null,
+      uid: () => 'new-order-id',
+      nowIso: () => '2026-04-23T10:00:00.000Z',
+      todayStr: () => '2026-04-23',
+      addDays: () => '2026-04-29',
+      computeWarning: () => ({ text: '-' }),
+      getPricingExchangeRate: () => 20,
+      normalizeOrderRecord: value => value,
+      escapeHtml: value => String(value),
+      normalizeStatusValue: value => String(value || '').trim(),
+      detectCourierCompany: () => '',
+      maybeAutoDetectCourierFromForm: () => '',
+      getOrderFormCourierFields: () => ({ tracking: fields.tracking, company: fields.company }),
+      showDatePicker: () => {}
+    },
+    ui: {
+      getUniqueAccounts: () => state.accounts,
+      promptAddAccount: async () => null,
+      addAccount: () => false,
+      markAccountsDirty: () => {},
+      markOrderAccountsDirty: () => {},
+      commitLocalOrders: async () => {},
+      toast: () => {}
+    }
+  });
+
+  crudTools.bindEvents();
+
+  fields.salePrice.trigger('input');
+  assert.equal(fields.creatorCommission.value, '3', '输入达人佣金率后应自动回填达人佣金');
+  assert.equal(fields.estimatedProfit.value, '0.7', '输入日元售价、采购价、达人佣金率、预估运费后应按汇率自动回填人民币利润');
+
+  fields.estimatedShippingFee.value = '7';
+  fields.estimatedShippingFee.trigger('change');
+  assert.equal(fields.estimatedProfit.value, '0.2', '修改预估运费后应实时更新人民币利润');
+
+  fields.estimatedShippingFee.value = '';
+  fields.estimatedShippingFee.trigger('change');
+  assert.equal(fields.estimatedProfit.value, '', '缺少任一金额字段时不应计算预估利润');
+
+  fields.estimatedShippingFee.value = '7';
+  fields.estimatedShippingFee.trigger('change');
+  assert.equal(fields.estimatedProfit.value, '0.2', '重新补齐金额字段后应恢复人民币利润计算');
+
   await form.onsubmit({
     preventDefault: () => {},
     target: form

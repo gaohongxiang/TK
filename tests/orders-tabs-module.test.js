@@ -93,8 +93,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script src="js\/orders\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要在订单 ESM 入口前保留尚未迁移的订单旧 helper'
+  /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要通过订单 ESM 入口加载账号标签模块'
 );
 
 assert.doesNotMatch(

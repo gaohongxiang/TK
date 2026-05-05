@@ -346,8 +346,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先加载 ESM 主入口，再保留尚未迁移的订单旧 helper 和订单 ESM 入口'
+  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要先加载 ESM 主入口，再加载订单 ESM 入口'
 );
 
 assert.doesNotMatch(

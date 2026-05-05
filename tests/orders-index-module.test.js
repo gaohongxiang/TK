@@ -58,6 +58,12 @@ assert.match(
 
 assert.match(
   source,
+  /import \{ OrderTrackerCrud \} from '\.\/crud\.mjs'/,
+  '订单 ESM 入口需要直接导入 CRUD helper ESM'
+);
+
+assert.match(
+  source,
   /import \{ OrderTrackerSession \} from '\.\/session\.mjs'/,
   '订单 ESM 入口需要直接导入会话 helper ESM'
 );
@@ -70,8 +76,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script src="js\/orders\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先加载尚未迁移的订单 CRUD helper，再通过 ESM 入口加载订单管理'
+  /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要通过 ESM 入口加载订单管理'
 );
 
 assert.doesNotMatch(

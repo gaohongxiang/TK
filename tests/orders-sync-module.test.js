@@ -100,8 +100,8 @@ assert.match(
 
 assert.match(
   indexHtml,
-  /<script src="js\/orders\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 只需要在订单 ESM 入口前继续加载尚未迁移的 CRUD 普通脚本'
+  /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要通过订单 ESM 入口加载同步模块'
 );
 
 assert.doesNotMatch(

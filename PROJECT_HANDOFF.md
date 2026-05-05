@@ -603,6 +603,8 @@ npm run release:check
 
 订单最复杂，最后迁移。
 
+当前状态：进行中，已先拆出 `orders/shared` ESM 共享模块。订单页面仍继续加载旧 `js/orders/shared.js` 和旧订单入口，暂不切换订单主入口，避免同步链路和 DOM 执行顺序一次性变化。
+
 顺序：
 
 - shared
@@ -616,6 +618,27 @@ npm run release:check
 - index
 
 `orders/sync.js` 最后动。
+
+已完成：
+
+- 新增 `src/orders/shared.mjs`，提供 `OrderTrackerShared`、`create` 以及订单归一化、旧结构迁移/清洗、快递识别、金额/佣金/利润计算等关键纯函数 ESM 导出。
+- `src/orders/shared.mjs` 保留旧 `OrderTrackerShared.create()` 返回接口，并让原来依赖 `window` / `document` 的读取点可注入，方便 Node 测试和后续入口迁移。
+- `tests/orders-shared-module.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/shared.js` 验证账号去重、汇率读取、利润计算、快递识别、多明细订单归一化和旧订单结构清洗输出一致。
+
+当前已验证通过：
+
+```bash
+node tests/orders-shared-module.test.js
+npm test
+npm run build
+git diff --check
+npm run release:check
+```
+
+下一步：
+
+- 继续按顺序拆 `orders/table`。
+- 暂时不要改 `orders/sync.js`。
 
 ### 8.5 标准模块化期间的构建变化
 

@@ -2,8 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 const vm = require('vm');
+const { pathToFileURL } = require('url');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'shared.js'), 'utf8');
+const esmPath = path.join(__dirname, '..', 'src', 'orders', 'shared.mjs');
+const esmSource = fs.readFileSync(esmPath, 'utf8');
 const globalSettingsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'global-settings.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'index.js'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
@@ -48,6 +51,30 @@ assert.match(
   source,
   /function detectCourierCompany\(/,
   '共享 helper 模块需要包含快递识别逻辑'
+);
+
+assert.match(
+  esmSource,
+  /const OrderTrackerShared = \{/,
+  'ESM 订单共享 helper 需要保留 OrderTrackerShared 命名导出'
+);
+
+assert.match(
+  esmSource,
+  /function create\(/,
+  'ESM 订单共享 helper 需要暴露 create 工厂'
+);
+
+assert.match(
+  esmSource,
+  /function normalizeOrderRecord\(/,
+  'ESM 订单共享 helper 需要包含订单归一化逻辑'
+);
+
+assert.match(
+  esmSource,
+  /export \{[\s\S]*OrderTrackerShared[\s\S]*create[\s\S]*normalizeOrderRecord[\s\S]*computeOrderEstimatedProfit[\s\S]*\}/,
+  'ESM 订单共享 helper 需要导出共享命名空间和关键纯函数'
 );
 
 const sandbox = {
@@ -311,4 +338,121 @@ assert.match(
   'index.html 需要在订单模块前先加载全局设置模块，并在 index.js 前先加载 form-utils.js、shared.js 和 products.js'
 );
 
-console.log('orders shared module contract ok');
+function toPlain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+(async () => {
+  const sharedModule = await import(pathToFileURL(esmPath).href);
+  const esmTools = sharedModule.OrderTrackerShared.create({
+    state: {
+      orders: [{ id: '1', '账号': 'A' }]
+    },
+    constants: {
+      UNASSIGNED_ACCOUNT_SLOT: '__unassigned__',
+      ACCOUNT_FILE_PREFIX: 'tk-order-tracker__',
+      ACCOUNT_FILE_SUFFIX: '.json',
+      COURIER_AUTO_DETECTORS: [
+        { name: '顺丰快递', test: value => /^SF/i.test(value) }
+      ]
+    },
+    window: sandbox.window
+  });
+
+  assert.deepEqual(
+    esmTools.uniqueAccounts([' A ', '', 'B', 'A']),
+    ['A', 'B'],
+    'ESM 共享 helper 应能正确去重账号'
+  );
+
+  assert.equal(
+    esmTools.getPricingExchangeRate(),
+    20,
+    'ESM 共享 helper 应优先读取利润计算器的日元汇率'
+  );
+
+  assert.equal(
+    esmTools.computeOrderEstimatedProfit({ '售价': '600', '采购价格': '19.8', '预估运费': '6.5', '达人佣金率': '10' }, 20),
+    0.7,
+    'ESM 共享 helper 应能把达人佣金一并计入订单人民币利润'
+  );
+
+  assert.equal(
+    esmTools.detectCourierCompany('SF123456'),
+    '顺丰快递',
+    'ESM 共享 helper 应能识别快递公司'
+  );
+
+  assert.deepEqual(
+    toPlain(esmTools.normalizeOrderRecord({
+      items: [
+        {
+          lineId: 'a',
+          productTkId: 'TK-1',
+          productSkuId: 'SKU-1',
+          productSkuName: '白色 / S',
+          productName: '马克杯',
+          quantity: '2',
+          unitPurchasePrice: '10',
+          unitSalePrice: '300',
+          unitWeightG: '120',
+          unitSizeText: '10×10×10',
+          useOrderCourier: true
+        },
+        {
+          lineId: 'b',
+          productTkId: 'TK-1',
+          productSkuId: 'SKU-2',
+          productSkuName: '黑色 / M',
+          productName: '马克杯',
+          quantity: '3',
+          unitPurchasePrice: '12',
+          unitSalePrice: '320',
+          unitWeightG: '140',
+          unitSizeText: '12×10×10',
+          useOrderCourier: false,
+          courierCompany: '顺丰快递',
+          trackingNo: 'SF9988'
+        }
+      ]
+    })),
+    toPlain(normalizedMultiItemOrder),
+    'ESM 共享 helper 的多明细订单归一化结果应和旧模块一致'
+  );
+
+  assert.deepEqual(
+    toPlain(esmTools.cleanOrderToCurrentShape({
+      id: 'dirty-order',
+      '快递公司': '中通快递',
+      '快递单号': 'ZT123456',
+      items: [
+        {
+          lineId: 'line-1',
+          productTkId: 'TK-1',
+          productSkuId: 'SKU-1',
+          productSkuName: '黑 / XXL',
+          productName: '雨衣 - 黑 / XXL',
+          quantity: 1,
+          unitWeightG: 650,
+          unitSizeText: '35×32×5',
+          useOrderCourier: null,
+          courierCompany: '',
+          trackingNo: ''
+        }
+      ]
+    })),
+    toPlain(cleanedOrder),
+    'ESM 共享 helper 的订单结构清洗结果应和旧模块一致'
+  );
+
+  assert.equal(
+    sharedModule.computeOrderEstimatedProfit({ '售价': '600', '采购价格': '19.8', '预估运费': '6.5', '达人佣金率': '10' }, 20),
+    0.7,
+    'ESM 订单共享模块应支持直接导入核心纯函数'
+  );
+
+  console.log('orders shared module contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

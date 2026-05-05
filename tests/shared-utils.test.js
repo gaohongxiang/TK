@@ -6,6 +6,8 @@ const vm = require('vm');
 const root = path.join(__dirname, '..');
 const htmlSource = fs.readFileSync(path.join(root, 'js', 'shared', 'html.js'), 'utf8');
 const formatSource = fs.readFileSync(path.join(root, 'js', 'shared', 'format.js'), 'utf8');
+const srcHtmlSource = fs.readFileSync(path.join(root, 'src', 'shared', 'html.mjs'), 'utf8');
+const srcFormatSource = fs.readFileSync(path.join(root, 'src', 'shared', 'format.mjs'), 'utf8');
 const analyticsSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'index.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
@@ -16,6 +18,8 @@ assert.match(formatSource, /const TKFormat = \(function \(\) \{/, '需要共享�
 assert.match(formatSource, /function integer\(value/, '共享格式化工具需要 integer');
 assert.match(formatSource, /function yen\(value\)/, '共享格式化工具需要 yen');
 assert.match(formatSource, /function percent\(value,\s*digits = 2\)/, '共享格式化工具需要 percent');
+assert.match(srcHtmlSource, /export\s+const\s+TKHtml/, '路线二 M1 需要提供共享 HTML ESM 导出');
+assert.match(srcFormatSource, /export\s+const\s+TKFormat/, '路线二 M1 需要提供共享格式化 ESM 导出');
 
 assert.match(
   indexSource,
@@ -39,4 +43,17 @@ assert.strictEqual(sandbox.TKFormat.integer(12345.6), '12,346', 'integer 需要�
 assert.strictEqual(sandbox.TKFormat.yen(12345.2), '12,345 円', 'yen 需要格式化日元');
 assert.strictEqual(sandbox.TKFormat.percent(0.1234, 1), '12.3%', 'percent 需要按小数转百分比');
 
-console.log('shared utils contract ok');
+(async () => {
+  const htmlModule = await import(`file://${path.join(root, 'src', 'shared', 'html.mjs')}`);
+  const formatModule = await import(`file://${path.join(root, 'src', 'shared', 'format.mjs')}`);
+
+  assert.strictEqual(htmlModule.TKHtml.escape('<b>'), '&lt;b&gt;', '共享 HTML ESM 模块需要可被直接 import');
+  assert.strictEqual(htmlModule.shorten('abcdefghijkl', 8), 'abcdefgh...', '共享 HTML ESM 模块需要导出 shorten');
+  assert.strictEqual(formatModule.TKFormat.yen(1200), '1,200 円', '共享格式化 ESM 模块需要可被直接 import');
+  assert.strictEqual(formatModule.percent(0.456, 1), '45.6%', '共享格式化 ESM 模块需要导出 percent');
+
+  console.log('shared utils contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

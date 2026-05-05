@@ -393,7 +393,7 @@ git diff --check
 
 ## 8. 路线二：标准模块化，3-5 天
 
-标准模块化是下一阶段，不是当前阶段。
+标准模块化已在本地分支 `route-2-esm-m1` 启动，当前只执行低风险的 M1 纯工具迁移。
 
 ### 8.1 触发条件
 
@@ -445,6 +445,8 @@ src/
 
 #### M1：迁移纯工具
 
+当前状态：本地进行中，第一步已完成并通过验证。
+
 先迁移：
 
 - `shared/html`
@@ -453,6 +455,23 @@ src/
 - analytics parser/analyzer
 
 这些没有 DOM 或副作用，风险最低。
+
+已完成：
+
+- 新增 `src/shared/html.mjs`，提供 `TKHtml`、`escape`、`shorten` 的 ESM 导出。
+- 新增 `src/shared/format.mjs`，提供 `TKFormat`、`integer`、`yen`、`percent` 的 ESM 导出。
+- 新增 `src/analytics/parser.mjs`，提供 `TKAnalyticsParser` 和解析纯函数 ESM 导出。
+- 新增 `src/analytics/analyzer.mjs`，通过 `import { CHANNELS } from './parser.mjs'` 读取 parser 元信息，并提供 `TKAnalyticsAnalyzer` 和分析纯函数 ESM 导出。
+- `tests/shared-utils.test.js` 和 `tests/analytics-module.test.js` 已新增动态 `import()` 断言，确认 M1 模块可被 Node 直接作为 ESM 导入。
+- 旧 `js/` 浏览器脚本链暂未替换，页面仍走原有 `<script defer>` 和 `window.Xxx` 全局兼容路径。
+
+当前已验证通过：
+
+```bash
+node tests/shared-utils.test.js
+node tests/analytics-module.test.js
+npm run release:check
+```
 
 #### M2：迁移数据分析
 

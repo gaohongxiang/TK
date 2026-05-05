@@ -6,6 +6,8 @@ const vm = require('vm');
 const root = path.join(__dirname, '..');
 const parserSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'parser.js'), 'utf8');
 const analyzerSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'analyzer.js'), 'utf8');
+const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'parser.mjs'), 'utf8');
+const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'analyzer.mjs'), 'utf8');
 const analyticsSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'index.js'), 'utf8');
 const configSource = fs.readFileSync(path.join(root, 'js', 'app-config.js'), 'utf8');
 const appSource = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
@@ -89,6 +91,18 @@ assert.match(
   analyzerSource,
   /function analyze\(records, period\)/,
   '数据分析 analyzer 需要暴露分析逻辑'
+);
+
+assert.match(
+  srcParserSource,
+  /export\s+\{[\s\S]*parseRows[\s\S]*\}/,
+  '路线二 M1 需要提供 analytics parser ESM 导出'
+);
+
+assert.match(
+  srcAnalyzerSource,
+  /import\s+\{\s*CHANNELS\s*\}\s+from\s+'\.\/parser\.mjs'/,
+  '路线二 M1 analytics analyzer 需要通过 import 读取 parser 元信息'
 );
 
 assert.match(
@@ -269,3 +283,21 @@ assert.ok(
   analysis.records.some(record => record.diagnosis.label === '爆品放大'),
   '需要给高 GMV 商品生成运营诊断'
 );
+
+(async () => {
+  const parserModule = await import(`file://${path.join(root, 'src', 'analytics', 'parser.mjs')}`);
+  const analyzerModule = await import(`file://${path.join(root, 'src', 'analytics', 'analyzer.mjs')}`);
+
+  const parsedByModule = parserModule.parseRows(rows);
+  assert.strictEqual(parsedByModule.records[0].gmv, 70036, 'analytics parser ESM 模块需要可被直接 import');
+  assert.strictEqual(parserModule.TKAnalyticsParser.normalizePercent('12%'), 0.12, 'analytics parser ESM 模块需要保留命名空间导出');
+
+  const analysisByModule = analyzerModule.analyze(parsedByModule.records, parsedByModule.period);
+  assert.strictEqual(analysisByModule.kpis.totalOrders, 51, 'analytics analyzer ESM 模块需要可被直接 import');
+  assert.strictEqual(typeof analyzerModule.TKAnalyticsAnalyzer.diagnoseProduct, 'function', 'analytics analyzer ESM 模块需要保留命名空间导出');
+
+  console.log('analytics module contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

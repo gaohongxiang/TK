@@ -180,6 +180,12 @@ assert.match(
 );
 
 assert.match(
+  htmlSource,
+  /<script type="module" src="\/src\/calc\/index\.mjs"><\/script>/,
+  '路线二 M3 利润计算器入口需要由 Vite ESM 模块加载'
+);
+
+assert.match(
   privacySource,
   /<link rel="canonical" href="https:\/\/tk-evu\.pages\.dev\/privacy\.html" \/>[\s\S]*property="og:title" content="隐私与数据边界 · TK 电商工具箱"[\s\S]*property="og:url" content="https:\/\/tk-evu\.pages\.dev\/privacy\.html"[\s\S]*name="twitter:image" content="https:\/\/tk-evu\.pages\.dev\/logo\.png"[\s\S]*name="theme-color" content="#ffffff"[\s\S]*<link rel="stylesheet" href="\/site-page\.css" \/>[\s\S]*商品、SKU、账号[\s\S]*你自己的 Firebase Firestore[\s\S]*商品流量 Excel[\s\S]*当前浏览器内存[\s\S]*href="\/terms\.html"[\s\S]*查看使用条款/,
   '隐私页需要提供 canonical、社交分享元信息、使用条款入口，并说明商品订单和 Excel 的数据保存位置'

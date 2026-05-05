@@ -1412,7 +1412,7 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- JS 模块（defer 保证顺序加载：路由 → 利润计算器 → 商品管理 / 订单管理） -->
+  <!-- JS 模块（路由 → 共享基础 → 业务模块；calc/analytics 已由 Vite ESM 入口加载） -->
   <script src="js/app-config.js" defer></script>
   <script src="js/app.js" defer></script>
   <script src="js/global-settings.js" defer></script>
@@ -1422,11 +1422,7 @@
   <script src="js/shared/html.js" defer></script>
   <script src="js/shared/format.js" defer></script>
   <script src="js/firestore-connection.js" defer></script>
-  <script src="js/calc/shared.js" defer></script>
-  <script src="js/calc/shipping.js" defer></script>
-  <script src="js/calc/legacy.js" defer></script>
-  <script src="js/calc/pricing.js" defer></script>
-  <script src="js/calc/index.js" defer></script>
+  <script type="module" src="/src/calc/index.mjs"></script>
   <script src="js/data-sources/registry.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore-compat.js" defer></script>

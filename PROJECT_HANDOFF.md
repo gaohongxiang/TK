@@ -514,7 +514,7 @@ npm run release:check
 
 #### M3：迁移利润计算器
 
-当前状态：进行中，已完成 `CalcShared`、共享运费核心、`CalcShipping` 运费壳层、利润公式层、`CalcLegacyPricing` 和 `CalcPricing` 壳层的 ESM 迁移。
+当前状态：已完成利润计算器 ESM 入口切换。`index.html` 现在通过 `/src/calc/index.mjs` 加载利润计算器；旧 `js/calc/*.js` 文件暂时保留为历史参考和回退，不再进入主页面加载链。
 
 利润计算器数据依赖较少，适合第二批。
 
@@ -539,11 +539,15 @@ npm run release:check
 - `tests/calc-formulas.test.js` 已覆盖 legacy ESM 壳层和旧 `CalcLegacyPricing` 的计算结果一致。
 - 新增 `src/calc/pricing.mjs`，提供 `CalcPricing` 和 `create` 的 ESM 导出，并通过 `src/calc/formulas.mjs` 复用定价新和利润复盘公式。
 - `tests/calc-formulas.test.js` 已覆盖 pricing ESM 壳层和旧 `CalcPricing` 的公式输出一致；`tests/calc-pricing-sync.test.js` 已覆盖 pricing ESM 壳层的定价新/利润复盘采购价双向同步。
-- 主页面仍保留旧 `js/calc/*.js` 普通脚本加载，未切利润计算器入口。
+- 新增 `src/global-settings.mjs`，提供全局设置的 ESM 导出，并保持从旧利润计算器存储迁移汇率。
+- 新增 `src/calc/index.mjs`，通过 `import` 串起 `TKGlobalSettings`、`CalcShared`、`CalcShipping`、`CalcLegacyPricing` 和 `CalcPricing`。
+- `index.html` 已移除旧 `js/calc/shared.js`、`js/calc/shipping.js`、`js/calc/legacy.js`、`js/calc/pricing.js`、`js/calc/index.js` 的页面加载，改为 `<script type="module" src="/src/calc/index.mjs"></script>`。
+- `js/global-settings.js` 和 `js/shipping-core.js` 仍保留在页面加载链里，供尚未迁移的订单/商品模块继续读取全局设置和运费核心。
 
 当前已验证通过：
 
 ```bash
+node tests/global-settings-module.test.js
 node tests/calc-module-split.test.js
 node tests/calc-formulas.test.js
 node tests/calc-pricing-sync.test.js
@@ -554,9 +558,8 @@ npm run release:check
 
 下一步：
 
-- 再评估是否迁移利润计算器主入口 `src/calc/index.mjs`。
-- 主入口迁移时需要同时处理 `TKGlobalSettings`、`CalcShared`、`CalcShipping`、`CalcLegacyPricing`、`CalcPricing` 的浏览器挂载和旧全局兼容。
-- 暂时不要删除旧 `js/calc/*.js`，等 `index.html` 实际切到 ESM 且 release check 稳定后再考虑。
+- 进入 M4 商品管理迁移。
+- 暂时不要删除旧 `js/calc/*.js`，等商品/订单依赖边界更清楚且线上稳定后再统一清理。
 
 #### M4：迁移商品管理
 

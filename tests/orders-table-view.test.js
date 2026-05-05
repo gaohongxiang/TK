@@ -37,8 +37,8 @@ assert.match(
 
 assert.match(
   esmSource,
-  /export \{[\s\S]*OrderTableView[\s\S]*deriveDisplayedOrders[\s\S]*derivePurchaseSummary[\s\S]*getProfitCellToneClass[\s\S]*\}/,
-  'ESM 订单表格模块需要导出表格命名空间和关键纯函数'
+  /export \{[\s\S]*OrderTableView[\s\S]*deriveDisplayedOrders[\s\S]*derivePurchaseSummary[\s\S]*getProfitCellToneClass[\s\S]*render[\s\S]*\}/,
+  'ESM 订单表格模块需要导出表格命名空间、关键纯函数和渲染壳'
 );
 
 assert.match(
@@ -223,14 +223,26 @@ assert.match(
 
 assert.match(
   ordersSource,
+  /import \{ OrderTableView \} from '\.\/table\.mjs'/,
+  '订单 ESM 入口需要直接导入表格视图 ESM'
+);
+
+assert.match(
+  ordersSource,
   /tableView\.render\(/,
   '订单 ESM 入口需要把表格渲染委托给表格视图模块'
 );
 
 assert.match(
   indexSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先通过 ESM 主入口挂载共享控件，再保留 table.js -> sync.js -> crud.js -> ESM index 的订单加载边界'
+  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要先通过 ESM 主入口挂载共享控件，再保留 sync.js -> crud.js -> ESM index 的订单加载边界'
+);
+
+assert.doesNotMatch(
+  indexSource,
+  /<script src="js\/orders\/table\.js" defer><\/script>/,
+  'index.html 不应再加载旧订单 table 普通脚本'
 );
 
 assert.match(
@@ -308,6 +320,12 @@ function toPlain(value) {
     }, 'company', 'compact'),
     '共2家',
     'ESM 订单表格应保留多明细快递紧凑展示口径'
+  );
+
+  assert.equal(
+    typeof tableModule.OrderTableView.render,
+    'function',
+    'ESM 订单表格需要暴露 render 壳'
   );
 
   console.log('orders table view contract ok');

@@ -352,6 +352,12 @@ assert.match(
 
 assert.doesNotMatch(
   htmlSource,
+  /<script src="js\/orders\/table\.js" defer><\/script>/,
+  'index.html 不应再加载旧订单 table 普通脚本'
+);
+
+assert.doesNotMatch(
+  htmlSource,
   /<script src="js\/orders\/shared\.js" defer><\/script>/,
   'index.html 不应再加载旧订单共享 helper 普通脚本'
 );

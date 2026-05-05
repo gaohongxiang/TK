@@ -642,7 +642,7 @@ npm run release:check
 - 新增 `src/orders/shared.mjs`，提供 `OrderTrackerShared`、`create` 以及订单归一化、旧结构迁移/清洗、快递识别、金额/佣金/利润计算等关键纯函数 ESM 导出。
 - `src/orders/shared.mjs` 保留旧 `OrderTrackerShared.create()` 返回接口，并让原来依赖 `window` / `document` 的读取点可注入，方便 Node 测试和后续入口迁移。
 - `tests/orders-shared-module.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/shared.js` 验证账号去重、汇率读取、利润计算、快递识别、多明细订单归一化和旧订单结构清洗输出一致。
-- 新增 `src/orders/table.mjs`，提供订单表格筛选排序、日期型搜索判断、退款/达人识别、快递汇总、金额格式化、利润颜色和采购/销售/运费/达人佣金/利润摘要统计等 ESM 纯函数导出。
+- 新增 `src/orders/table.mjs`，提供订单表格筛选排序、日期型搜索判断、退款/达人识别、快递汇总、金额格式化、利润颜色、采购/销售/运费/达人佣金/利润摘要统计和表格渲染壳等 ESM 导出。
 - `tests/orders-table-view.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证搜索筛选、达人搜索、稳定排序、利润颜色和多明细快递紧凑展示口径一致。
 - `tests/orders-summary-ui.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证摘要统计、摘要金额格式化和当前筛选标题一致。
 - 新增 `src/orders/export.mjs`，提供导出账号选项、导出文件名、CSV 转义、CSV 行构造、订单筛选和 CSV 字符串生成等 ESM 纯函数导出，并保留 `OrderTrackerExport.create()` 兼容壳。
@@ -668,8 +668,8 @@ npm run release:check
 - `tests/orders-form-utils-module.test.js` 已新增动态 `import()` 断言，确认订单表单纯函数 ESM 输出和旧 `OrderTrackerFormUtils` 一致。
 - `src/orders/provider-firestore.mjs` 已直接注册 `TKDataSourceRegistry.registerProvider('orders', ...)`，旧 `js/orders/provider-firestore.js` 不再负责页面运行链路。
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载，改为 `<script type="module" src="/src/orders/index.mjs"></script>`。
-- `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js` 页面加载；旧文件暂时保留为历史参考和回退。
-- `index.html` 仍保留 `js/orders/table.js`、`js/orders/sync.js`、`js/orders/crud.js`，因为这些仍承载完整页面渲染、同步状态机或弹窗行为。
+- `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js`、`js/orders/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 仍保留 `js/orders/sync.js`、`js/orders/crud.js`，因为这些仍承载同步状态机或弹窗行为。
 - 新增 `tests/orders-index-module.test.js`，验证订单 ESM 入口可直接 import、懒初始化、挂回全局，以及旧订单 index 普通脚本不再由主页面加载。
 
 当前已验证通过：
@@ -1414,12 +1414,12 @@ js/orders/index.js
 js/orders/session.js
 js/orders/sync.js
 js/orders/crud.js
-js/orders/table.js
 js/orders/tabs.js
 js/orders/export.js
 js/orders/shared.js
 src/orders/firestore-rules.mjs
 src/orders/form-utils.mjs
+src/orders/table.mjs
 ```
 
 ### 商品

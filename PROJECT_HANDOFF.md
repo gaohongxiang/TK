@@ -631,6 +631,8 @@ npm run release:check
 - `tests/orders-export-module.test.js` 已新增动态 `import()` 断言，验证 ESM 导出模块的账号选项、文件名、CSV 表头、CSV 双引号转义、未关联账号筛选，以及达人佣金/预估利润按当前汇率计算。
 - 新增 `src/orders/tabs.mjs`，提供订单账号归并、账号订单数统计、激活账号兜底、标签 HTML 和删除账号提示文案等 ESM 纯函数导出，并保留 `OrderTrackerTabs.create()` 兼容壳。
 - `tests/orders-tabs-module.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/tabs.js` 验证账号归并，并覆盖账号计数、激活账号兜底、标签 HTML 和删除提示文案。
+- 新增 `src/orders/crud.mjs`，先拆出 CRUD 弹窗里稳定的工具规则：快递选项、商品/SKU 选项、明细草稿缓存合并、明细数量/商品摘要/总重量汇总、快递自动识别状态、达人佣金和预估利润计算。旧 `js/orders/crud.js` 页面入口暂不切换。
+- `tests/orders-crud-module.test.js` 已新增动态 `import()` 断言，验证 ESM CRUD 工具的商品/SKU 选项、明细汇总、达人佣金/预估利润计算和明细快递识别规则。
 
 当前已验证通过：
 
@@ -640,6 +642,7 @@ node tests/orders-table-view.test.js
 node tests/orders-summary-ui.test.js
 node tests/orders-export-module.test.js
 node tests/orders-tabs-module.test.js
+node tests/orders-crud-module.test.js
 npm test
 npm run build
 git diff --check
@@ -648,7 +651,7 @@ npm run release:check
 
 下一步：
 
-- 继续按顺序拆 `orders/crud`。
+- 继续按顺序拆 `orders/session`。
 - 暂时不要改 `orders/sync.js`。
 
 ### 8.5 标准模块化期间的构建变化

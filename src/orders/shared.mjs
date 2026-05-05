@@ -324,6 +324,10 @@ function computeWarning(order) {
   return { text: '已超期', cls: 'danger' };
 }
 
+function normalizeAccountName(account) {
+  return String(account || '').trim();
+}
+
 function createOrderNormalizer({ constants = {}, nextUid = uid } = {}) {
   const safeConstants = { ...DEFAULT_CONSTANTS, ...(constants || {}) };
   const itemOptions = { nextUid };
@@ -682,10 +686,6 @@ function create({
     };
   }
 
-  function normalizeAccountName(account) {
-    return String(account || '').trim();
-  }
-
   function toAccountSlot(account) {
     const normalized = normalizeAccountName(account);
     return normalized || safeConstants.UNASSIGNED_ACCOUNT_SLOT;
@@ -844,6 +844,7 @@ export {
   hasLegacyOrderStructure,
   isOrderRefunded,
   migrateOrderToCurrentShape,
+  normalizeAccountName,
   normalizeOrderItem,
   normalizeOrderItems,
   normalizeOrderSeq,

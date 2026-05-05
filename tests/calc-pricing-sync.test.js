@@ -5,6 +5,13 @@ const vm = require('vm');
 
 const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shared.js'), 'utf8');
 const pricingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'pricing.js'), 'utf8');
+const srcPricingSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'pricing.mjs'), 'utf8');
+
+assert.match(
+  srcPricingSource,
+  /function bindPricing\(\)[\s\S]*bindNumber\(els\.costReview, 'costNew'\)[\s\S]*bindNumber\(els\.costNew, 'costNew'\)/,
+  'pricing ESM 壳层需要保留定价新和利润复盘输入双向同步绑定'
+);
 
 function createFakeElement(tag = 'div') {
   return {
@@ -169,4 +176,52 @@ els.costReview.dispatch('input');
 assert.equal(String(els.costNew.value), '31.5', '利润复盘采购价变更后也需要回填到定价新');
 assert.equal(String(els.totalCostNew.value), '33.50', '利润复盘采购价变更后需要同步定价新总费用');
 
-console.log('calc pricing sync ok');
+(async () => {
+  const sharedModule = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'shared.mjs')}`);
+  const pricingModule = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'pricing.mjs')}`);
+  const esmHelpers = sharedModule.CalcShared.create({
+    storageKey: 'tk.profit.v1',
+    defaults: {}
+  });
+  const esmState = { ...state };
+  const esmEls = Object.fromEntries(Object.entries(els).map(([key, value]) => [
+    key,
+    Array.isArray(value) ? value.slice() : createFakeElement(value.tagName || 'div')
+  ]));
+  esmEls.calcTabs = [];
+  esmEls.calcPanels = {};
+
+  const esmPricing = pricingModule.CalcPricing.create({
+    state: esmState,
+    els: esmEls,
+    helpers: esmHelpers,
+    shipping: {
+      getShippingMultiplierNew: () => Math.max(1, esmState.shippingMultiplierNew || 1),
+      applyCalculatedShippingCostNew: () => null,
+      computeTotalCostNew: () => esmState.costNew + esmState.overseasShippingNew,
+      computePricingNewShipping: () => ({}),
+      renderPricingNewShipping: () => { },
+      renderShippingCalc: () => { }
+    },
+    save: () => { },
+    document: sandbox.document
+  });
+
+  esmPricing.syncInputsFromState();
+  esmPricing.bindPricing();
+
+  esmEls.costNew.value = '25';
+  esmEls.costNew.dispatch('input');
+  assert.equal(String(esmEls.costReview.value), '25', 'pricing ESM 壳层需要同步定价新采购价到利润复盘');
+  assert.equal(String(esmEls.totalCostReview.value), '27.00', 'pricing ESM 壳层需要同步利润复盘总费用');
+
+  esmEls.costReview.value = '31.5';
+  esmEls.costReview.dispatch('input');
+  assert.equal(String(esmEls.costNew.value), '31.5', 'pricing ESM 壳层需要同步利润复盘采购价到定价新');
+  assert.equal(String(esmEls.totalCostNew.value), '33.50', 'pricing ESM 壳层需要同步定价新总费用');
+
+  console.log('calc pricing sync ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

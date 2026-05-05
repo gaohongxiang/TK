@@ -3,6 +3,7 @@ import { OrderTrackerProviderFirestore } from './provider-firestore.mjs';
 import { OrderTrackerSession } from './session.mjs';
 import { OrderTrackerShared } from './shared.mjs';
 import { OrderTrackerTabs } from './tabs.mjs';
+import '../products/provider-firestore.mjs';
 
 const LS_KEY = 'tk.orders.cfg.v1';
 const LS_ACC_KEY = 'tk.orders.accounts.v1';

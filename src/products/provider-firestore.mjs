@@ -1,3 +1,5 @@
+import { TKDataSourceRegistry } from '../data-sources/registry.mjs';
+
 function toPlainObject(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   return value;
@@ -183,6 +185,116 @@ function buildProductDoc(product, { nowIso = () => new Date().toISOString() } = 
   };
 }
 
+function create({ state = {}, helpers = {}, window: rootWindow = globalThis.window } = {}) {
+  const nowIso = helpers.nowIso || (() => new Date().toISOString());
+  let app = null;
+  let db = null;
+
+  async function requireDb() {
+    if (!db) throw new Error('Firestore 尚未初始化');
+    return db;
+  }
+
+  async function init(rawConfig = state) {
+    const next = hydrateConfig(rawConfig);
+    if (!next.config) throw new Error('请先填写有效的 firebaseConfig');
+
+    const firebaseNs = rootWindow?.firebase || null;
+    if (!firebaseNs?.initializeApp) throw new Error('Firebase SDK 尚未加载');
+
+    const appName = `tk-products-${next.projectId}`;
+    app = (firebaseNs.apps || []).find(item => item.name === appName) || firebaseNs.initializeApp(next.config, appName);
+    db = app.firestore();
+    if (!app.__tkProductsFirestoreConfigured) {
+      if (typeof db.settings === 'function') {
+        try {
+          db.settings({ ignoreUndefinedProperties: true });
+        } catch (error) {
+          const message = String(error?.message || '');
+          if (!/settings can no longer be changed|already been started/i.test(message)) throw error;
+        }
+      }
+      if (typeof db.enablePersistence === 'function') {
+        try {
+          await db.enablePersistence({ synchronizeTabs: true });
+        } catch (error) {}
+      }
+      app.__tkProductsFirestoreConfigured = true;
+    }
+    state.firestoreConfigText = next.configText;
+    state.firestoreProjectId = next.projectId;
+    state.user = next.user;
+    return next;
+  }
+
+  async function pullProducts() {
+    const currentDb = await requireDb();
+    const [snapshot, accountsSnapshot] = await Promise.all([
+      currentDb.collection('products').orderBy('updatedAt', 'desc').get(),
+      currentDb.collection('order_accounts').get()
+    ]);
+    const accounts = accountsSnapshot.docs
+      .map(doc => doc.data() || {})
+      .filter(row => !row.deletedAt)
+      .map(row => String(row.name || '').trim())
+      .filter(Boolean)
+      .sort((left, right) => left.localeCompare(right));
+    return {
+      products: snapshot.docs.map(doc => normalizePulledProduct(doc.data())),
+      accounts,
+      lastRemoteUpdatedAt: snapshot.docs.map(doc => doc.data()?.updatedAt || '').filter(Boolean).sort().slice(-1)[0] || ''
+    };
+  }
+
+  function trackWritePromise(promise, label, { waitForCommit = true } = {}) {
+    const commitPromise = Promise.resolve(promise);
+    if (!waitForCommit) commitPromise.catch(error => console.error(label, error));
+    return commitPromise;
+  }
+
+  async function upsertProduct(product, { waitForCommit = true } = {}) {
+    const currentDb = await requireDb();
+    const doc = buildProductDoc(product, { nowIso });
+    if (!doc.tkId) throw new Error('商品 TK ID 不能为空');
+    const commitPromise = trackWritePromise(
+      currentDb.collection('products').doc(doc.tkId).set(doc, { merge: true }),
+      'Firestore product local queue write failed',
+      { waitForCommit }
+    );
+    if (waitForCommit) await commitPromise;
+    const saved = normalizePulledProduct(doc);
+    return waitForCommit ? saved : { product: saved, commitPromise };
+  }
+
+  async function deleteProduct(tkId, { waitForCommit = true } = {}) {
+    const currentDb = await requireDb();
+    const id = String(tkId || '').trim();
+    if (!id) throw new Error('商品 TK ID 不能为空');
+    const commitPromise = trackWritePromise(
+      currentDb.collection('products').doc(id).delete(),
+      'Firestore product delete local queue write failed',
+      { waitForCommit }
+    );
+    if (waitForCommit) await commitPromise;
+    return waitForCommit ? true : { deleted: true, commitPromise };
+  }
+
+  return {
+    key: 'firestore',
+    parseConfigInput,
+    hydrateConfig,
+    getDisplayName: (config = state) => getDisplayName(config),
+    init,
+    pullProducts,
+    upsertProduct,
+    deleteProduct
+  };
+}
+
+const ProductLibraryProviderFirestore = {
+  create
+};
+
 const ProductLibraryProviderFirestoreUtils = {
   buildProductDefaultsDoc,
   buildProductDoc,
@@ -200,8 +312,24 @@ const ProductLibraryProviderFirestoreUtils = {
   toNullableText
 };
 
+if (typeof window !== 'undefined') {
+  window.ProductLibraryProviderFirestore = ProductLibraryProviderFirestore;
+}
+
+TKDataSourceRegistry.registerProvider('products', {
+  key: 'firestore',
+  label: 'Firebase Firestore',
+  module: ProductLibraryProviderFirestore,
+  ownership: 'user-owned',
+  storesUserData: false,
+  localFirst: true,
+  offline: 'firestore-persistence'
+});
+
 export {
+  ProductLibraryProviderFirestore,
   ProductLibraryProviderFirestoreUtils,
+  create,
   parseConfigInput,
   normalizePulledProduct,
   buildProductDefaultsDoc,

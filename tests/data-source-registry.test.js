@@ -10,6 +10,7 @@ const srcMainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8'
 const orderFirestoreSource = fs.readFileSync(path.join(root, 'js', 'orders', 'provider-firestore.js'), 'utf8');
 const srcOrderFirestoreSource = fs.readFileSync(path.join(root, 'src', 'orders', 'provider-firestore.mjs'), 'utf8');
 const productFirestoreSource = fs.readFileSync(path.join(root, 'js', 'products', 'provider-firestore.js'), 'utf8');
+const srcProductFirestoreSource = fs.readFileSync(path.join(root, 'src', 'products', 'provider-firestore.mjs'), 'utf8');
 const analyticsSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'index.js'), 'utf8');
 const orderIndexSource = fs.readFileSync(path.join(root, 'js', 'orders', 'index.js'), 'utf8');
 const productIndexSource = fs.readFileSync(path.join(root, 'js', 'products', 'index.js'), 'utf8');
@@ -67,6 +68,12 @@ assert.match(
   productFirestoreSource,
   /TKDataSourceRegistry\.registerProvider\('products'[\s\S]*key:\s*'firestore'[\s\S]*storesUserData:\s*false[\s\S]*localFirst:\s*true/,
   '商品 Firestore provider 需要登记为用户自有、本地优先的数据源'
+);
+
+assert.match(
+  srcProductFirestoreSource,
+  /TKDataSourceRegistry\.registerProvider\('products'[\s\S]*key:\s*'firestore'[\s\S]*storesUserData:\s*false[\s\S]*localFirst:\s*true/,
+  '商品 Firestore ESM provider 需要登记为用户自有、本地优先的数据源'
 );
 
 assert.match(

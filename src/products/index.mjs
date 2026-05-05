@@ -1,3 +1,5 @@
+import { ProductLibraryProviderFirestore } from './provider-firestore.mjs';
+
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
 

@@ -57,9 +57,21 @@ assert.doesNotMatch(
 );
 
 assert.match(
+  indexSource,
+  /import '\.\.\/products\/provider-firestore\.mjs'/,
+  '订单 ESM 入口需要导入商品 Firestore provider ESM，供商品桥接读取全局 provider'
+);
+
+assert.match(
   htmlSource,
-  /<script src="js\/products\/provider-firestore\.js" defer><\/script>[\s\S]*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先加载商品 Firestore provider 和订单商品桥接模块，再加载订单入口'
+  /<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要先加载订单商品桥接模块，再由订单 ESM 入口导入商品 provider'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script src="js\/products\/provider-firestore\.js" defer><\/script>/,
+  'index.html 不应再加载旧商品 Firestore provider 普通脚本'
 );
 
 const sandbox = {

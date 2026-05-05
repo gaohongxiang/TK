@@ -5,6 +5,7 @@ const vm = require('vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'provider-firestore.js'), 'utf8');
 const srcSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'provider-firestore.mjs'), 'utf8');
+const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
   source,
@@ -20,8 +21,20 @@ assert.match(
 
 assert.match(
   srcSource,
-  /export\s+\{[\s\S]*ProductLibraryProviderFirestoreUtils[\s\S]*parseConfigInput[\s\S]*normalizePulledProduct[\s\S]*buildProductDoc[\s\S]*\}/,
-  '路线二 M4 需要提供商品 Firestore provider 纯函数 ESM 导出'
+  /export\s+\{[\s\S]*ProductLibraryProviderFirestore[\s\S]*ProductLibraryProviderFirestoreUtils[\s\S]*create[\s\S]*parseConfigInput[\s\S]*normalizePulledProduct[\s\S]*buildProductDoc[\s\S]*\}/,
+  '路线二 M4 需要提供商品 Firestore provider ESM 导出和 create 工厂'
+);
+
+assert.match(
+  srcSource,
+  /window\.ProductLibraryProviderFirestore = ProductLibraryProviderFirestore/,
+  '商品 Firestore provider ESM 需要挂回旧全局命名空间'
+);
+
+assert.match(
+  srcSource,
+  /TKDataSourceRegistry\.registerProvider\('products'[\s\S]*module:\s*ProductLibraryProviderFirestore[\s\S]*localFirst:\s*true/,
+  '商品 Firestore provider ESM 需要登记为商品 Firestore 数据源'
 );
 
 assert.match(
@@ -120,6 +133,12 @@ assert.equal(typeof provider.pullProducts, 'function', '商品库 Firestore prov
 assert.equal(typeof provider.upsertProduct, 'function', '商品库 Firestore provider 需要暴露 upsertProduct');
 assert.equal(typeof provider.deleteProduct, 'function', '商品库 Firestore provider 需要暴露 deleteProduct');
 
+assert.doesNotMatch(
+  htmlSource,
+  /<script src="js\/products\/provider-firestore\.js" defer><\/script>/,
+  'index.html 不应再加载旧商品 Firestore provider 普通脚本'
+);
+
 const parsed = provider.parseConfigInput(`const firebaseConfig = {
   apiKey: "AIza",
   authDomain: "demo.firebaseapp.com",
@@ -142,6 +161,27 @@ provider.init({ configText })
     const module = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'provider-firestore.mjs')}`);
     const esmParsed = module.parseConfigInput(configText);
     assert.deepStrictEqual(esmParsed, { ...parsed }, '商品 provider ESM 配置解析需要和旧 provider 一致');
+
+    const esmProviderState = {
+      firestoreConfigText: '',
+      firestoreProjectId: '',
+      user: ''
+    };
+    const esmProvider = module.ProductLibraryProviderFirestore.create({
+      state: esmProviderState,
+      helpers: {
+        nowIso: () => '2026-04-24T10:00:00.000Z'
+      },
+      window: sandbox.window
+    });
+
+    assert.equal(esmProvider.key, 'firestore', '商品 provider ESM 需要暴露 firestore key');
+    assert.equal(typeof esmProvider.init, 'function', '商品 provider ESM 需要暴露 init');
+    assert.equal(typeof esmProvider.pullProducts, 'function', '商品 provider ESM 需要暴露 pullProducts');
+    assert.equal(typeof esmProvider.upsertProduct, 'function', '商品 provider ESM 需要暴露 upsertProduct');
+    assert.equal(typeof esmProvider.deleteProduct, 'function', '商品 provider ESM 需要暴露 deleteProduct');
+    await esmProvider.init({ configText });
+    assert.equal(esmProviderState.firestoreProjectId, 'demo', '商品 provider ESM init 需要写回项目 ID');
 
     assert.equal(
       module.ProductLibraryProviderFirestoreUtils.getDisplayName({ configText, user: '运营A' }),

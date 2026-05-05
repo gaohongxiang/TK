@@ -334,8 +334,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script src="js\/global-settings\.js" defer><\/script>[\s\S]*<script src="js\/orders\/form-utils\.js" defer><\/script>[\s\S]*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要在订单 ESM 入口前先加载全局设置模块、form-utils.js、shared.js 和 products.js'
+  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/form-utils\.js" defer><\/script>[\s\S]*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要先加载 ESM 主入口挂载基础全局，再加载订单旧 helper 和订单 ESM 入口'
 );
 
 function toPlain(value) {

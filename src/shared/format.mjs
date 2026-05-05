@@ -17,6 +17,10 @@ export const TKFormat = {
   percent
 };
 
+if (typeof window !== 'undefined') {
+  window.TKFormat = TKFormat;
+}
+
 export {
   integer,
   yen,

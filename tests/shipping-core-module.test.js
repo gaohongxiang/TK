@@ -6,6 +6,8 @@ const vm = require('vm');
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'js', 'shipping-core.js'), 'utf8');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'shipping-core.mjs'), 'utf8');
+const mainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
+const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
   source,
@@ -33,6 +35,9 @@ assert.match(
 assert.match(srcSource, /\bTKShippingCore\b/, '共享运费核心 ESM 导出需要保留命名空间');
 assert.match(srcSource, /\bcomputeShippingQuote\b/, '共享运费核心 ESM 导出需要提供 computeShippingQuote');
 assert.match(srcSource, /\bcomputeCalculatedShippingCost\b/, '共享运费核心 ESM 导出需要提供 computeCalculatedShippingCost');
+assert.match(srcSource, /window\.TKShippingCore = TKShippingCore/, '共享运费核心 ESM 模块需要在浏览器里挂回旧全局命名空间');
+assert.match(mainSource, /import '\.\/shipping-core\.mjs'/, 'ESM 主入口需要先导入共享运费核心');
+assert.doesNotMatch(htmlSource, /<script src="js\/shipping-core\.js" defer><\/script>/, 'index.html 不应再加载旧共享运费核心普通脚本');
 
 const sandbox = {};
 vm.createContext(sandbox);

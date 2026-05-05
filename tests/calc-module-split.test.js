@@ -6,6 +6,7 @@ const globalSettingsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'g
 const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shared.js'), 'utf8');
 const srcSharedSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'shared.mjs'), 'utf8');
 const srcIndexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'index.mjs'), 'utf8');
+const srcMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 const shippingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shipping.js'), 'utf8');
 const legacySource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'legacy.js'), 'utf8');
 const pricingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'pricing.js'), 'utf8');
@@ -21,6 +22,7 @@ assert.match(srcIndexSource, /import\s+\{\s*CalcShipping\s*\}\s+from\s+'\.\/ship
 assert.match(srcIndexSource, /import\s+\{\s*CalcLegacyPricing\s*\}\s+from\s+'\.\/legacy\.mjs'/, 'calc ESM 入口需要复用 CalcLegacyPricing ESM 模块');
 assert.match(srcIndexSource, /import\s+\{\s*CalcPricing\s*\}\s+from\s+'\.\/pricing\.mjs'/, 'calc ESM 入口需要复用 CalcPricing ESM 模块');
 assert.match(srcIndexSource, /export\s+\{[\s\S]*DEFAULTS[\s\S]*initCalc[\s\S]*\}/, 'calc ESM 入口需要导出 initCalc 以便测试和后续迁移复用');
+assert.match(srcMainSource, /import '\.\/global-settings\.mjs'[\s\S]*import '\.\/shipping-core\.mjs'[\s\S]*import '\.\/shared\/html\.mjs'[\s\S]*import '\.\/shared\/format\.mjs'/, 'ESM 主入口需要先导入基础全局工具');
 assert.match(shippingSource, /const CalcShipping = \(function \(\) \{/, '需要新的 calc shipping 模块');
 assert.match(legacySource, /const CalcLegacyPricing = \(function \(\) \{/, '需要新的 calc legacy 模块');
 assert.match(pricingSource, /const CalcPricing = \(function \(\) \{/, '需要新的 calc pricing 模块');
@@ -32,8 +34,8 @@ assert.doesNotMatch(htmlSource, /<script src="js\/calc\.js" defer><\/script>/, '
 assert.doesNotMatch(htmlSource, /<script src="js\/calc\/(?:shared|shipping|legacy|pricing|index)\.js" defer><\/script>/, 'index.html 不应再加载旧 calc 普通脚本链');
 assert.match(
   htmlSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>\s*<script src="js\/global-settings\.js" defer><\/script>[\s\S]*<script src="js\/shipping-core\.js" defer><\/script>\s*<script src="js\/shared\/html\.js" defer><\/script>\s*<script src="js\/shared\/format\.js" defer><\/script>\s*<script src="js\/firestore-connection\.js" defer><\/script>\s*<script type="module" src="\/src\/calc\/index\.mjs"><\/script>/,
-  'index.html 需要先加载仍供 orders/products 使用的全局基础脚本，再通过 Vite ESM 入口加载利润计算器'
+  /<script type="module" src="\/src\/main\.mjs"><\/script>\s*<script src="js\/firestore-connection\.js" defer><\/script>\s*<script type="module" src="\/src\/calc\/index\.mjs"><\/script>/,
+  'index.html 需要先加载 ESM 主入口和仍保留的 Firestore helper，再通过 Vite ESM 入口加载利润计算器'
 );
 
 (async () => {

@@ -542,7 +542,11 @@ npm run release:check
 - 新增 `src/global-settings.mjs`，提供全局设置的 ESM 导出，并保持从旧利润计算器存储迁移汇率。
 - 新增 `src/calc/index.mjs`，通过 `import` 串起 `TKGlobalSettings`、`CalcShared`、`CalcShipping`、`CalcLegacyPricing` 和 `CalcPricing`。
 - `index.html` 已移除旧 `js/calc/shared.js`、`js/calc/shipping.js`、`js/calc/legacy.js`、`js/calc/pricing.js`、`js/calc/index.js` 的页面加载，改为 `<script type="module" src="/src/calc/index.mjs"></script>`。
-- `js/global-settings.js` 和 `js/shipping-core.js` 仍保留在页面加载链里，供尚未迁移的订单/商品模块继续读取全局设置和运费核心。
+- `src/global-settings.mjs` 已在浏览器里挂回 `window.TKGlobalSettings` 并初始化 `window.__tkGlobalSettingsStore`。
+- `src/shipping-core.mjs` 已在浏览器里挂回 `window.TKShippingCore`。
+- `src/shared/html.mjs` 和 `src/shared/format.mjs` 已在浏览器里挂回 `window.TKHtml`、`window.TKFormat`。
+- `src/main.mjs` 已统一导入 `global-settings`、`shipping-core`、`shared/html`、`shared/format`、`table-controls`、`searchable-select`、`data-sources/registry` 这些基础 ESM。
+- `index.html` 已移除旧 `js/global-settings.js`、`js/shipping-core.js`、`js/shared/html.js`、`js/shared/format.js` 页面加载；旧文件暂时保留为历史参考和回退。
 
 当前已验证通过：
 

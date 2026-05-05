@@ -98,6 +98,7 @@ function ensureGlobalSettingsStore(targetWindow = globalThis.window) {
 }
 
 if (typeof window !== 'undefined') {
+  window.TKGlobalSettings = TKGlobalSettings;
   ensureGlobalSettingsStore(window);
 }
 

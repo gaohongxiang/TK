@@ -9,6 +9,7 @@ const esmPath = path.join(__dirname, '..', 'src', 'orders', 'table.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const ordersSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const mainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 
 assert.match(
   source,
@@ -228,8 +229,14 @@ assert.match(
 
 assert.match(
   indexSource,
-  /<script src="js\/table-controls\.js" defer><\/script>[\s\S]*<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先加载 table-controls.js，再按 table.js -> sync.js -> export.js -> tabs.js -> form-utils.js -> crud.js -> session.js -> shared.js -> products.js -> ESM index 的顺序加载订单模块'
+  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script src="js\/orders\/table\.js" defer><\/script>\s*<script src="js\/orders\/sync\.js" defer><\/script>\s*<script src="js\/orders\/export\.js" defer><\/script>\s*<script src="js\/orders\/tabs\.js" defer><\/script>\s*<script src="js\/orders\/form-utils\.js" defer><\/script>\s*<script src="js\/orders\/crud\.js" defer><\/script>\s*<script src="js\/orders\/session\.js" defer><\/script>\s*<script src="js\/orders\/shared\.js" defer><\/script>\s*<script src="js\/orders\/products\.js" defer><\/script>\s*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要先通过 ESM 主入口挂载共享控件，再按 table.js -> sync.js -> export.js -> tabs.js -> form-utils.js -> crud.js -> session.js -> shared.js -> products.js -> ESM index 的顺序加载订单模块'
+);
+
+assert.match(
+  mainSource,
+  /import '\.\/table-controls\.mjs'/,
+  'ESM 主入口需要先导入表格控件以挂回 TKTableControls 全局'
 );
 
 assert.match(

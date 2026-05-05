@@ -1,4 +1,6 @@
 import { TKAppConfig } from './app-config.mjs';
+import './table-controls.mjs';
+import './data-sources/registry.mjs';
 
 const FALLBACK_MODULES = Object.freeze([
   Object.freeze({ key: 'calc' }),

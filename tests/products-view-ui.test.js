@@ -231,9 +231,9 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  indexSource,
-  /<script src="js\/table-controls\.js" defer><\/script>/,
-  '页面需要预先加载表格搜索/分页共用控件'
+  appSource,
+  /import '\.\/table-controls\.mjs'/,
+  '页面需要通过 ESM 主入口预先加载表格搜索/分页共用控件'
 );
 
 assert.match(

@@ -5,6 +5,8 @@ const vm = require('vm');
 
 const root = path.join(__dirname, '..');
 const registrySource = fs.readFileSync(path.join(root, 'js', 'data-sources', 'registry.js'), 'utf8');
+const srcRegistrySource = fs.readFileSync(path.join(root, 'src', 'data-sources', 'registry.mjs'), 'utf8');
+const srcMainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
 const orderFirestoreSource = fs.readFileSync(path.join(root, 'js', 'orders', 'provider-firestore.js'), 'utf8');
 const productFirestoreSource = fs.readFileSync(path.join(root, 'js', 'products', 'provider-firestore.js'), 'utf8');
 const analyticsSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'index.js'), 'utf8');
@@ -25,9 +27,21 @@ assert.match(
 );
 
 assert.match(
+  srcRegistrySource,
+  /const TKDataSourceRegistry = \{[\s\S]*registerProvider[\s\S]*getProvider[\s\S]*listProviders/,
+  '路线二需要提供数据源注册表 ESM 导出'
+);
+
+assert.match(
+  srcMainSource,
+  /import '\.\/data-sources\/registry\.mjs'/,
+  'ESM 主入口需要先导入数据源注册表以挂回全局'
+);
+
+assert.doesNotMatch(
   indexHtml,
-  /<script src="js\/data-sources\/registry\.js" defer><\/script>[\s\S]*<script src="js\/orders\/provider-firestore\.js" defer><\/script>/,
-  '数据源注册表需要在业务 provider 前加载'
+  /<script src="js\/data-sources\/registry\.js" defer><\/script>/,
+  'index.html 不应再加载旧数据源注册表普通脚本'
 );
 
 assert.doesNotMatch(
@@ -95,4 +109,23 @@ assert.strictEqual(
   '需要能列出某个数据域下的 provider'
 );
 
-console.log('data source registry contract ok');
+(async () => {
+  const registryModule = await import(`file://${path.join(root, 'src', 'data-sources', 'registry.mjs')}`);
+  registryModule.clear();
+  const esmProvider = registryModule.registerProvider('products', {
+    key: 'firestore',
+    label: 'Firebase Firestore'
+  });
+  assert.strictEqual(esmProvider.ownership, 'user-owned', 'ESM 数据源默认归属应是用户自有');
+  assert.strictEqual(
+    registryModule.getProvider('products', 'firestore').label,
+    'Firebase Firestore',
+    'ESM 数据源注册表需要能按域和 key 取回 provider'
+  );
+  assert.strictEqual(registryModule.listProviders('products').length, 1, 'ESM 数据源注册表需要能列出 provider');
+
+  console.log('data source registry contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

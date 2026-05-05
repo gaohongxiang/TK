@@ -52,6 +52,12 @@ assert.match(
 
 assert.match(
   source,
+  /import \{ OrderTrackerSync \} from '\.\/sync\.mjs'/,
+  '订单 ESM 入口需要直接导入同步 helper ESM'
+);
+
+assert.match(
+  source,
   /import \{ OrderTrackerSession \} from '\.\/session\.mjs'/,
   '订单 ESM 入口需要直接导入会话 helper ESM'
 );
@@ -76,7 +82,7 @@ assert.doesNotMatch(
 
 assert.doesNotMatch(
   htmlSource,
-  /<script src="js\/orders\/(?:provider-firestore|export|tabs|session|shared|products)\.js" defer><\/script>/,
+  /<script src="js\/orders\/(?:provider-firestore|export|tabs|session|shared|products|sync)\.js" defer><\/script>/,
   'index.html 不应再加载已由订单 ESM 入口接管的订单 helper 普通脚本'
 );
 

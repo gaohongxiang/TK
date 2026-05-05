@@ -3,6 +3,7 @@ import { OrderTrackerProviderFirestore } from './provider-firestore.mjs';
 import { OrderTrackerProducts } from './products.mjs';
 import { OrderTrackerSession } from './session.mjs';
 import { OrderTrackerShared } from './shared.mjs';
+import { OrderTrackerSync } from './sync.mjs';
 import { OrderTableView } from './table.mjs';
 import { OrderTrackerTabs } from './tabs.mjs';
 

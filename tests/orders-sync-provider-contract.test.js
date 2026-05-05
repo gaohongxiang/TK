@@ -4,7 +4,7 @@ const assert = require('assert');
 const vm = require('vm');
 
 const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'shared.js'), 'utf8');
-const syncSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'sync.js'), 'utf8');
+const syncSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'sync.mjs'), 'utf8');
 
 assert.match(
   syncSource,

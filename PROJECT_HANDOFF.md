@@ -514,7 +514,7 @@ npm run release:check
 
 #### M3：迁移利润计算器
 
-当前状态：进行中，已完成 `CalcShared`、共享运费核心、`CalcShipping` 运费壳层和利润公式层的 ESM 迁移。
+当前状态：进行中，已完成 `CalcShared`、共享运费核心、`CalcShipping` 运费壳层、利润公式层和 `CalcLegacyPricing` 壳层的 ESM 迁移。
 
 利润计算器数据依赖较少，适合第二批。
 
@@ -535,6 +535,8 @@ npm run release:check
 - `tests/calc-shipping-quote.test.js` 已新增动态 `import()` 断言，确认 calc shipping ESM 模块能计算 quote、最终人民币运费、回填计算运费和安全处理缺失 DOM 容器。
 - 新增 `src/calc/formulas.mjs`，提供旧定价、定价新和利润复盘的纯公式导出：`calcLegacyRow`、`deriveLegacyOrigPrice`、`calcPricingRow`、`derivePricingOrigPrice`、`calcSalePrice`。
 - `tests/calc-formulas.test.js` 已新增动态 `import()` 断言，用旧 `CalcLegacyPricing` / `CalcPricing` 的结果对照 ESM 公式输出。
+- 新增 `src/calc/legacy.mjs`，提供 `CalcLegacyPricing` 和 `create` 的 ESM 导出，并通过 `src/calc/formulas.mjs` 复用旧定价行计算和原价反推公式。
+- `tests/calc-formulas.test.js` 已覆盖 legacy ESM 壳层和旧 `CalcLegacyPricing` 的计算结果一致。
 - 主页面仍保留旧 `js/calc/*.js` 普通脚本加载，未切利润计算器入口。
 
 当前已验证通过：
@@ -550,8 +552,8 @@ npm run release:check
 
 下一步：
 
-- 再评估是否迁移 `CalcLegacyPricing` / `CalcPricing` 壳层。
-- 如果继续，应先让旧 `js/calc/legacy.js` 和 `js/calc/pricing.js` 调用 `src/calc/formulas.mjs` 或等价 shim，避免两套公式长期并存。
+- 再评估是否迁移 `CalcPricing` 壳层。
+- 如果继续，应让 `src/calc/pricing.mjs` 复用 `src/calc/formulas.mjs`，避免两套公式长期并存。
 - 暂时不要切利润计算器主入口，等 pricing/legacy/index 都有 ESM 版本和覆盖后再考虑。
 
 #### M4：迁移商品管理

@@ -7,6 +7,7 @@ const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 's
 const legacySource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'legacy.js'), 'utf8');
 const pricingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'pricing.js'), 'utf8');
 const formulasSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'formulas.mjs'), 'utf8');
+const srcLegacySource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'legacy.mjs'), 'utf8');
 
 assert.match(
   formulasSource,
@@ -18,6 +19,12 @@ assert.match(formulasSource, /\bderiveLegacyOrigPrice\b/, 'calc 纯公式 ESM �
 assert.match(formulasSource, /\bcalcPricingRow\b/, 'calc 纯公式 ESM 模块需要导出 calcPricingRow');
 assert.match(formulasSource, /\bderivePricingOrigPrice\b/, 'calc 纯公式 ESM 模块需要导出 derivePricingOrigPrice');
 assert.match(formulasSource, /\bcalcSalePrice\b/, 'calc 纯公式 ESM 模块需要导出 calcSalePrice');
+assert.match(
+  srcLegacySource,
+  /import\s+\{[\s\S]*calcLegacyRow as calcLegacyRowFormula[\s\S]*deriveLegacyOrigPrice as deriveLegacyOrigPriceFormula[\s\S]*\}\s+from\s+'\.\/formulas\.mjs'/,
+  '路线二 M3 legacy ESM 壳层需要复用公式模块'
+);
+assert.match(srcLegacySource, /export\s+\{[\s\S]*CalcLegacyPricing[\s\S]*create[\s\S]*\}/, '路线二 M3 需要提供 legacy ESM 壳层导出');
 
 const sandbox = {
   document: {
@@ -126,6 +133,7 @@ approxEqual(sale.margin, 1.125, '利润复盘利润率公式不正确');
 
 (async () => {
   const formulas = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'formulas.mjs')}`);
+  const legacyModule = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'legacy.mjs')}`);
 
   approxRow(
     formulas.calcLegacyRow(legacyState, 1000, 0.5),
@@ -137,6 +145,24 @@ approxEqual(sale.margin, 1.125, '利润复盘利润率公式不正确');
     formulas.deriveLegacyOrigPrice(legacyState),
     legacy.deriveLegacyOrigPrice(),
     'calc 公式 ESM 模块需要和旧定价原价反推一致'
+  );
+
+  const legacyEsm = legacyModule.CalcLegacyPricing.create({
+    state: { ...legacyState },
+    els: {},
+    helpers,
+    save: () => {}
+  });
+  approxRow(
+    legacyEsm.calcLegacyRow(1000, 0.5),
+    legacyRow,
+    ['discount', 'jpyPrice', 'cnyNet', 'creatorCommission', 'margin'],
+    'legacy ESM 壳层需要和旧定价行公式一致'
+  );
+  approxEqual(
+    legacyEsm.deriveLegacyOrigPrice(),
+    legacy.deriveLegacyOrigPrice(),
+    'legacy ESM 壳层需要和旧定价原价反推一致'
   );
 
   approxRow(

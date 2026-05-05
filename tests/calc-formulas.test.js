@@ -6,6 +6,18 @@ const vm = require('vm');
 const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shared.js'), 'utf8');
 const legacySource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'legacy.js'), 'utf8');
 const pricingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'pricing.js'), 'utf8');
+const formulasSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'formulas.mjs'), 'utf8');
+
+assert.match(
+  formulasSource,
+  /export\s+\{/,
+  '路线二 M3 需要提供 calc 纯公式 ESM 导出'
+);
+assert.match(formulasSource, /\bcalcLegacyRow\b/, 'calc 纯公式 ESM 模块需要导出 calcLegacyRow');
+assert.match(formulasSource, /\bderiveLegacyOrigPrice\b/, 'calc 纯公式 ESM 模块需要导出 deriveLegacyOrigPrice');
+assert.match(formulasSource, /\bcalcPricingRow\b/, 'calc 纯公式 ESM 模块需要导出 calcPricingRow');
+assert.match(formulasSource, /\bderivePricingOrigPrice\b/, 'calc 纯公式 ESM 模块需要导出 derivePricingOrigPrice');
+assert.match(formulasSource, /\bcalcSalePrice\b/, 'calc 纯公式 ESM 模块需要导出 calcSalePrice');
 
 const sandbox = {
   document: {
@@ -26,6 +38,10 @@ vm.runInContext(
 
 function approxEqual(actual, expected, message) {
   assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: expected ${expected}, got ${actual}`);
+}
+
+function approxRow(actual, expected, fields, message) {
+  fields.forEach(field => approxEqual(actual[field], expected[field], `${message}.${field}`));
 }
 
 const helpers = sandbox.CalcShared.create({
@@ -108,4 +124,52 @@ approxEqual(sale.creatorCommission, 1.5, '利润复盘达人佣金公式不正�
 approxEqual(sale.profit, 1.5, '利润复盘利润公式不正确');
 approxEqual(sale.margin, 1.125, '利润复盘利润率公式不正确');
 
-console.log('calc formulas ok');
+(async () => {
+  const formulas = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'formulas.mjs')}`);
+
+  approxRow(
+    formulas.calcLegacyRow(legacyState, 1000, 0.5),
+    legacyRow,
+    ['discount', 'jpyPrice', 'cnyNet', 'creatorCommission', 'margin'],
+    'calc 公式 ESM 模块需要和旧定价行公式一致'
+  );
+  approxEqual(
+    formulas.deriveLegacyOrigPrice(legacyState),
+    legacy.deriveLegacyOrigPrice(),
+    'calc 公式 ESM 模块需要和旧定价原价反推一致'
+  );
+
+  approxRow(
+    formulas.calcPricingRow({
+      state: pricingState,
+      totalCost: pricingState.costNew + pricingState.overseasShippingNew,
+      origPrice: 800,
+      discount: 0.5
+    }),
+    pricingRow,
+    ['discount', 'jpyPrice', 'cnyNet', 'creatorCommission', 'profit', 'margin'],
+    'calc 公式 ESM 模块需要和定价新行公式一致'
+  );
+  approxEqual(
+    formulas.derivePricingOrigPrice({
+      state: pricingState,
+      totalCost: pricingState.costNew + pricingState.overseasShippingNew
+    }),
+    pricing.deriveOrigPrice('pricingNew'),
+    'calc 公式 ESM 模块需要和定价新原价反推一致'
+  );
+  approxRow(
+    formulas.calcSalePrice({
+      state: pricingState,
+      totalCost: pricingState.costNew + pricingState.overseasShippingNew
+    }),
+    sale,
+    ['cnyNet', 'creatorCommission', 'profit', 'margin'],
+    'calc 公式 ESM 模块需要和利润复盘公式一致'
+  );
+
+  console.log('calc formulas ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

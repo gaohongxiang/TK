@@ -10,8 +10,8 @@ const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'par
 const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'analyzer.mjs'), 'utf8');
 const srcAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
 const analyticsSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'index.js'), 'utf8');
-const configSource = fs.readFileSync(path.join(root, 'js', 'app-config.js'), 'utf8');
-const appSource = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
+const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
+const appSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const styleSource = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
 const readmeSource = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
@@ -24,13 +24,13 @@ assert.match(
 
 assert.match(
   appSource,
-  /TKAppConfig\.modules/,
+  /config\.modules/,
   '全局路由需要从项目配置读取模块列表'
 );
 
 assert.match(
   appSource,
-  /key === 'analytics'[\s\S]*TKAnalytics\.onEnter\(\)/,
+  /resolvedKey === 'analytics'[\s\S]*windowRef\.TKAnalytics\?\.onEnter/,
   '进入数据分析页时需要初始化 TKAnalytics'
 );
 

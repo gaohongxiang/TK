@@ -32,7 +32,7 @@ assert.doesNotMatch(htmlSource, /<script src="js\/calc\.js" defer><\/script>/, '
 assert.doesNotMatch(htmlSource, /<script src="js\/calc\/(?:shared|shipping|legacy|pricing|index)\.js" defer><\/script>/, 'index.html 不应再加载旧 calc 普通脚本链');
 assert.match(
   htmlSource,
-  /<script src="js\/app-config\.js" defer><\/script>\s*<script src="js\/app\.js" defer><\/script>[\s\S]*<script src="js\/global-settings\.js" defer><\/script>[\s\S]*<script src="js\/shipping-core\.js" defer><\/script>\s*<script src="js\/shared\/html\.js" defer><\/script>\s*<script src="js\/shared\/format\.js" defer><\/script>\s*<script src="js\/firestore-connection\.js" defer><\/script>\s*<script type="module" src="\/src\/calc\/index\.mjs"><\/script>/,
+  /<script type="module" src="\/src\/main\.mjs"><\/script>\s*<script src="js\/global-settings\.js" defer><\/script>[\s\S]*<script src="js\/shipping-core\.js" defer><\/script>\s*<script src="js\/shared\/html\.js" defer><\/script>\s*<script src="js\/shared\/format\.js" defer><\/script>\s*<script src="js\/firestore-connection\.js" defer><\/script>\s*<script type="module" src="\/src\/calc\/index\.mjs"><\/script>/,
   'index.html 需要先加载仍供 orders/products 使用的全局基础脚本，再通过 Vite ESM 入口加载利润计算器'
 );
 

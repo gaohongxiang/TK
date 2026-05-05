@@ -150,8 +150,8 @@ assert.match(
 );
 
 assert.match(
-  fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8'),
-  /a\.setAttribute\('aria-current', 'page'\)[\s\S]*a\.removeAttribute\('aria-current'\)/,
+  fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8'),
+  /anchor\.setAttribute\('aria-current', 'page'\)[\s\S]*anchor\.removeAttribute\('aria-current'\)/,
   'hash 路由切换时需要同步导航 aria-current'
 );
 
@@ -171,6 +171,18 @@ assert.match(
   htmlSource,
   /<link rel="manifest" href="\/manifest\.webmanifest" \/>/,
   '主站需要链接 Web App manifest'
+);
+
+assert.match(
+  htmlSource,
+  /<script type="module" src="\/src\/main\.mjs"><\/script>/,
+  '路线二主站壳层入口需要由 Vite ESM 模块加载'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script src="js\/app-config\.js" defer><\/script>|<script src="js\/app\.js" defer><\/script>/,
+  '主站不应再加载旧 app-config.js 或 app.js 普通脚本'
 );
 
 assert.match(

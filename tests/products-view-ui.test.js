@@ -10,8 +10,8 @@ const accountsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'product
 const exportSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'export.js'), 'utf8');
 const crudSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'crud.js'), 'utf8');
 const productsIndexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'index.js'), 'utf8');
-const configSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-config.js'), 'utf8');
-const appSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'app.js'), 'utf8');
+const configSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'app-config.mjs'), 'utf8');
+const appSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -70,13 +70,13 @@ assert.match(
 
 assert.match(
   appSource,
-  /TKAppConfig\.modules/,
+  /config\.modules/,
   '全局路由需要从项目配置读取模块列表'
 );
 
 assert.match(
   appSource,
-  /DOMContentLoaded[\s\S]*switchView\(\(location\.hash \|\| '#calc'\)\.slice\(1\)\)/,
+  /DOMContentLoaded[\s\S]*windowRef\?\.addEventListener\?\.\('hashchange', route\)[\s\S]*route\(\)/,
   '初始路由需要等所有模块脚本加载完后再执行，避免商品库刷新后漏掉 onEnter'
 );
 

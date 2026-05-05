@@ -670,17 +670,22 @@ npm run release:check
 
 ### 8.5 标准模块化期间的构建变化
 
-当前：
+当前状态：主站壳层入口已完成 ESM 切换。
 
 ```html
-<script src="js/app.js" defer></script>
+<script type="module" src="/src/main.mjs"></script>
 ```
 
-目标：
+已完成：
 
-```html
-<script type="module" src="/src/main.js"></script>
-```
+- 新增 `src/app-config.mjs`，提供 `TKAppConfig` ESM 导出，并在浏览器里继续挂回 `window.TKAppConfig`。
+- 新增 `src/main.mjs`，负责年份、文档链接、模块配置表、hash 路由、`aria-current` 同步，以及进入 orders/products/analytics 时调用对应全局入口。
+- `src/main.mjs` 保持 `DOMContentLoaded` 后再执行初始路由，避免 ESM 与旧 `defer` helper 混合期间漏掉业务入口挂载。
+- `index.html` 已移除旧 `js/app-config.js` 和 `js/app.js` 页面加载，改为 `/src/main.mjs`。
+- 旧 `js/app-config.js` 和 `js/app.js` 暂时保留为历史参考和回退，不再由主页面加载。
+- `tests/app-config.test.js`、`tests/main-build-contract.test.js`、`scripts/preview-smoke.mjs` 已更新为覆盖 ESM 主入口和 Vite build 产物。
+
+当前仍保留大量旧 helper 普通脚本，主要供订单/商品入口使用。不要一次删除旧 `js/`。
 
 迁移中不要同时维护两套入口太久。
 

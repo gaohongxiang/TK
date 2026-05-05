@@ -1412,9 +1412,8 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- JS 模块（路由 → 共享基础 → 业务模块；calc/analytics 已由 Vite ESM 入口加载） -->
-  <script src="js/app-config.js" defer></script>
-  <script src="js/app.js" defer></script>
+  <!-- JS 模块（路由 → 共享基础 → 业务模块；主路由和部分业务入口已由 Vite ESM 加载） -->
+  <script type="module" src="/src/main.mjs"></script>
   <script src="js/global-settings.js" defer></script>
   <script src="js/table-controls.js" defer></script>
   <script src="js/searchable-select.js" defer></script>

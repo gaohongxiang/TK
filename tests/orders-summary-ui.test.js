@@ -2,14 +2,23 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 const vm = require('vm');
+const { pathToFileURL } = require('url');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'table.js'), 'utf8');
+const esmPath = path.join(__dirname, '..', 'src', 'orders', 'table.mjs');
+const esmSource = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
   source,
   /function derivePurchaseSummary\(/,
   '订单表格视图模块需要暴露采购金额统计纯函数'
+);
+
+assert.match(
+  esmSource,
+  /function derivePurchaseSummary\(/,
+  'ESM 订单表格模块需要暴露采购金额统计纯函数'
 );
 
 assert.match(
@@ -257,4 +266,41 @@ assert.equal(
   '摘要区总利润应扣除达人佣金'
 );
 
-console.log('orders summary ui contract ok');
+function toPlain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+(async () => {
+  const tableModule = await import(pathToFileURL(esmPath).href);
+  const esmSummary = tableModule.OrderTableView.derivePurchaseSummary({
+    orders,
+    activeAccount: 'B',
+    searchQuery: '蓝色',
+    exchangeRate: 20,
+    currentPage: 2,
+    pageSize: 1
+  });
+
+  assert.deepEqual(
+    toPlain(esmSummary),
+    toPlain(summary),
+    'ESM 订单表格摘要统计应和旧模块一致'
+  );
+
+  assert.equal(
+    tableModule.formatSummaryMetric(creatorCommissionSummary.allCreatorCommissionMetric),
+    '¥ 5.00',
+    'ESM 订单表格应保留摘要金额格式化'
+  );
+
+  assert.equal(
+    tableModule.buildCurrentFilterTitle('B', '蓝色'),
+    '当前筛选 · 账号：B · 搜索：蓝色',
+    'ESM 订单表格应保留当前筛选标题'
+  );
+
+  console.log('orders summary ui contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

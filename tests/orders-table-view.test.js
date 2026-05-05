@@ -2,8 +2,11 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 const vm = require('vm');
+const { pathToFileURL } = require('url');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'table.js'), 'utf8');
+const esmPath = path.join(__dirname, '..', 'src', 'orders', 'table.mjs');
+const esmSource = fs.readFileSync(esmPath, 'utf8');
 const ordersSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'index.js'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
@@ -17,6 +20,24 @@ assert.match(
   source,
   /function deriveDisplayedOrders\(/,
   '需要暴露纯函数 deriveDisplayedOrders'
+);
+
+assert.match(
+  esmSource,
+  /const OrderTableView = \{/,
+  'ESM 订单表格模块需要保留 OrderTableView 命名导出'
+);
+
+assert.match(
+  esmSource,
+  /function deriveDisplayedOrders\(/,
+  'ESM 订单表格模块需要暴露纯函数 deriveDisplayedOrders'
+);
+
+assert.match(
+  esmSource,
+  /export \{[\s\S]*OrderTableView[\s\S]*deriveDisplayedOrders[\s\S]*derivePurchaseSummary[\s\S]*getProfitCellToneClass[\s\S]*\}/,
+  'ESM 订单表格模块需要导出表格命名空间和关键纯函数'
 );
 
 assert.match(
@@ -217,4 +238,73 @@ assert.match(
   '搜索提示文案需要明确包含下单时间'
 );
 
-console.log('orders table view contract ok');
+function toPlain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+(async () => {
+  const tableModule = await import(pathToFileURL(esmPath).href);
+
+  assert.deepEqual(
+    toPlain(tableModule.OrderTableView.deriveDisplayedOrders({
+      orders,
+      activeAccount: '__all__',
+      searchQuery: '红色',
+      sortOrder: 'asc'
+    })),
+    toPlain(result),
+    'ESM 订单表格筛选结果应和旧模块一致'
+  );
+
+  const esmCreatorSearchResult = tableModule.deriveDisplayedOrders({
+    orders: [
+      { id: 'creator-1', '账号': 'A', '订单号': 'AA-1', '达人佣金率': '10' },
+      { id: 'creator-2', '账号': 'A', '订单号': 'AA-2', '达人佣金率': '' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '达人',
+    sortOrder: 'asc'
+  });
+
+  assert.deepEqual(
+    toPlain(esmCreatorSearchResult),
+    toPlain(creatorSearchResult),
+    'ESM 订单表格达人搜索结果应和旧模块一致'
+  );
+
+  assert.deepEqual(
+    toPlain(tableModule.deriveDisplayedOrders({
+      orders: [
+        { id: 'newer', createdAt: '2026-04-22T10:00:00.000Z', '账号': 'A' },
+        { id: 'older', createdAt: '2026-04-20T10:00:00.000Z', '账号': 'A' }
+      ],
+      activeAccount: '__all__',
+      searchQuery: '',
+      sortOrder: 'asc'
+    })),
+    toPlain(stableSortResult),
+    'ESM 订单表格稳定排序结果应和旧模块一致'
+  );
+
+  assert.equal(
+    tableModule.getProfitCellToneClass(-3.2),
+    'profit-negative',
+    'ESM 订单表格应保留利润颜色判断'
+  );
+
+  assert.equal(
+    tableModule.buildOrderCourierSummary({
+      items: [
+        { courierCompany: '顺丰快递', trackingNo: 'SF123' },
+        { courierCompany: '中通快递', trackingNo: 'ZT456' }
+      ]
+    }, 'company', 'compact'),
+    '共2家',
+    'ESM 订单表格应保留多明细快递紧凑展示口径'
+  );
+
+  console.log('orders table view contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

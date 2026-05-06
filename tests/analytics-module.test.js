@@ -235,8 +235,14 @@ assert.doesNotMatch(
 
 assert.match(
   reactMainSource,
-  /import\s+\{\s*mountAnalyticsReact\s*\}[\s\S]*function mountReactApps\(/,
-  'React 入口需要挂载数据分析模块'
+  /import\('\.\/features\/analytics\/mountAnalytics'\)[\s\S]*mountAnalyticsWhenNeeded/,
+  'React 入口需要按需加载数据分析模块'
+);
+
+assert.doesNotMatch(
+  reactMainSource,
+  /from '\.\/features\/analytics\/mountAnalytics'/,
+  'React 首屏入口不应静态引入数据分析模块，避免提前加载 ECharts'
 );
 
 assert.match(
@@ -247,8 +253,14 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /import ReactECharts from 'echarts-for-react'/,
-  'React 数据分析需要使用 ECharts React 封装渲染图表'
+  /echarts\/core[\s\S]*echarts\.use\(\[[\s\S]*CanvasRenderer[\s\S]*FunnelChart[\s\S]*PieChart[\s\S]*ScatterChart[\s\S]*TooltipComponent/,
+  'React 数据分析需要通过 ECharts core 按需注册实际使用的图表'
+);
+
+assert.doesNotMatch(
+  reactAnalyticsSource,
+  /from 'echarts-for-react';|from 'echarts';/,
+  'React 数据分析不应引入完整 ECharts 包'
 );
 
 assert.match(

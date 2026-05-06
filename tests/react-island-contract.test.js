@@ -47,6 +47,12 @@ assert.match(
   'Vite 配置需要接入 React 插件'
 );
 
+assert.match(
+  viteConfig,
+  /chunkSizeWarningLimit:\s*550[\s\S]*manualChunks[\s\S]*echarts-core[\s\S]*echarts-react/,
+  'Vite 构建需要把 ECharts 懒加载依赖拆成独立缓存 chunk，并设置明确包体告警线'
+);
+
 assert.strictEqual(tsconfig.compilerOptions.jsx, 'react-jsx', 'TypeScript 需要启用 React JSX transform');
 assert.strictEqual(tsconfig.compilerOptions.strict, false, 'React 迁移初期不要一步开启 strict');
 assert.deepStrictEqual(tsconfig.compilerOptions.paths['@/*'], ['src/react/*'], 'React 代码需要配置 @ alias');
@@ -70,7 +76,13 @@ assert.match(
 assert.match(
   reactMain,
   /getElementById\('react-island-root'\)[\s\S]*dataset\.reactMounted[\s\S]*createRoot\(root\)\.render[\s\S]*mountReactApps/,
-  'React 入口需要只挂载独立 island，且避免重复挂载'
+  'React 入口需要挂载独立 island，且避免重复挂载'
+);
+
+assert.match(
+  reactMain,
+  /import\('\.\/features\/analytics\/mountAnalytics'\)[\s\S]*hashchange/,
+  'React 数据分析应按路由懒加载，避免首屏提前加载图表库'
 );
 
 assert.match(

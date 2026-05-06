@@ -1,9 +1,19 @@
-import ReactECharts from 'echarts-for-react';
+import ReactEChartsCore from 'echarts-for-react/lib/core';
+import * as echarts from 'echarts/core';
+import { FunnelChart, PieChart, ScatterChart } from 'echarts/charts';
+import { GridComponent, LegendComponent, TitleComponent, TooltipComponent } from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
 import { Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsRecord } from './types';
 import { buildFunnelStages, buildOpportunityScatterOption, buildOverviewOption, DIAGNOSIS_COLORS } from './chartOptions';
 import { formatInteger, formatPercent, formatYen, shortenText } from './format';
+
+echarts.use([CanvasRenderer, FunnelChart, GridComponent, LegendComponent, PieChart, ScatterChart, TitleComponent, TooltipComponent]);
+
+function ReactECharts(props: { className?: string; option: any }) {
+  return <ReactEChartsCore echarts={echarts} {...props} />;
+}
 
 type AnalyticsAppProps = {
   parser: AnalyticsParser;

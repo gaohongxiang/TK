@@ -52,7 +52,7 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 
 暂时不要做完整 React/TypeScript 迁移。
 
-当前优先策略：
+此前阶段策略：
 
 - 保持普通 JS。
 - 保持 `<script defer>` 加载方式。
@@ -60,6 +60,8 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - 不强制把所有文件改成 ES Module。
 - 先拆纯函数、配置、provider 元信息、解析逻辑。
 - 每次只改一小块，测试通过后再继续。
+
+当前状态：该轻模块化策略已经进入路线二标准 ESM 模块化收尾阶段；主页面加载链已切到 `/src/*.mjs`，但仍然不做 React/TypeScript 大迁移。
 
 暂不做：
 
@@ -148,7 +150,7 @@ docs/node_modules/
 
 ### 5.1 主站
 
-主站已经接入 Vite，但业务脚本仍保持普通 JS。
+主站已经接入 Vite，页面入口已经切到 `/src/*.mjs` ESM 模块。旧 `js/` 目录只作为历史参考和对照保留，不再由 `index.html` 加载，也不再复制到构建产物。
 
 本地安装：
 
@@ -703,7 +705,7 @@ npm run release:check
 
 ### 8.5 标准模块化期间的构建变化
 
-当前状态：主站壳层入口已完成 ESM 切换。
+当前状态：主站页面入口已完成 ESM 切换，构建产物不再发布旧业务 `js/` 目录。
 
 ```html
 <script type="module" src="/src/main.mjs"></script>
@@ -725,7 +727,13 @@ npm run release:check
 - `index.html` 已移除旧 `js/searchable-select.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `tests/shared-utils.test.js` 和 `tests/orders-crud-module.test.js` 已覆盖可搜索下拉框 ESM 导出、入口挂载和旧页面加载移除。
 
-当前仍保留大量旧 helper 普通脚本，主要供订单/商品入口使用。不要一次删除旧 `js/`。
+- 利润计算器、商品管理、订单管理、数据分析、Firestore 连接和基础共享工具都已由 `/src/*.mjs` 加载。
+- `index.html` 已不再列本地 `js/*.js` 普通脚本。
+- `scripts/copy-main-assets.mjs` 不再复制旧 `js/` 到 `dist/js/`，只补充正式站点需要稳定访问的 `/logo.png`。
+- `public/_headers` 已移除旧 `/js/*` 缓存规则。
+- `scripts/preview-smoke.mjs` 会确认 `/logo.png` 可访问，并确认旧 `/js/app.js`、`/js/orders/provider-supabase.js` 不在构建产物中。
+
+当前仍保留旧 `js/` 源文件作为历史参考和回退对照。不要在没有单独清理计划时一次删除旧 `js/`。
 
 迁移中不要同时维护两套入口太久。
 
@@ -767,11 +775,11 @@ git diff --check
 
 完成时应满足：
 
-- 主站入口为 `src/main.js`。
-- 大多数业务模块使用 `import/export`。
-- `index.html` 不再列大量 `js/*.js` 脚本。
-- 旧 `js/` 要么删除，要么只剩兼容 shim。
-- `scripts/copy-main-assets.mjs` 不再需要复制业务 `js/`。
+- 主站入口为 `src/main.mjs`。已完成。
+- 大多数业务模块使用 `import/export`。已完成。
+- `index.html` 不再列大量 `js/*.js` 脚本。已完成。
+- 旧 `js/` 不再进入构建产物，当前只作为历史参考保留。已完成。
+- `scripts/copy-main-assets.mjs` 不再复制业务 `js/`。已完成。
 - `npm test` 通过。
 - `npm run build` 通过。
 

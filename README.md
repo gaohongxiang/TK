@@ -32,12 +32,15 @@
 
 - `index.html`
 - `css/`
+- `src/`
+- `public/`
 - `js/`
+- `logo.png`
 - `package.json`
 - `vite.config.mjs`
 - `wrangler.toml`
 
-当前主站已经接入 Vite 构建，但业务脚本仍保持原来的普通 `<script defer>` 加载方式。这样可以先获得标准构建、预览和 Cloudflare Pages 输出目录，同时不打乱现有订单/商品模块的加载顺序。
+当前主站使用 Vite 构建，页面入口已经切到 `/src/*.mjs` ESM 模块。旧 `js/` 目录暂时保留为历史参考和对照，不再由 `index.html` 加载，也不再复制到 `dist/js/`。
 
 ### 2. 文档站
 
@@ -64,11 +67,12 @@
 
 - 使用 Vite 统一构建工具主站。已完成。
 - Cloudflare Pages 主站构建输出改为 `dist/`。已完成。
-- 保留现有普通 JS 模块加载顺序，构建后复制 `js/` 到 `dist/js/`。已完成。
+- 主站入口切到 `/src/*.mjs` ESM 模块，构建产物不再发布旧 `dist/js/`。已完成。
+- 构建后补充稳定 `/logo.png`，用于 Open Graph、Twitter Card、manifest 和独立静态页。已完成。
 - 将利润计算、商品、订单、数据分析拆成独立模块目录。已基本完成。
 - 商品管理已拆出 `accounts` 和 `export` 子模块，入口文件只保留连接、加载、渲染编排。已完成。
 - 数据分析已拆成 `parser`、`analyzer`、`index` 三层，Excel 解析和汇总诊断不依赖 DOM。已完成。
-- 已新增 `js/shared/html.js` 和 `js/shared/format.js`，先服务数据分析和商品管理渲染层。已完成。
+- 已新增共享 HTML、格式化、表格控件、可搜索下拉框等 ESM 工具模块，服务数据分析、商品和订单渲染层。已完成。
 - 引入类型定义，约束订单、商品、SKU、分析行数据结构。
 - 将通用表格、弹窗、Toast、连接状态抽成共享组件。
 - 保留 Cloudflare 部署，构建产物仍然是静态文件。
@@ -240,8 +244,10 @@ npm install
 
 只需要推源码：
 
-- 主站源码：根目录的 `index.html`、`css/`、`js/`
+- 主站源码：根目录的 `index.html`、`css/`、`src/`
+- 旧脚本参考：`js/`
 - 主站静态发布文件：`public/`
+- 主站公开图片：`logo.png`
 - 主站构建配置：`package.json`、`package-lock.json`、`vite.config.mjs`、`wrangler.toml`
 - 构建辅助脚本：`scripts/`
 - 文档源码：`docs/`

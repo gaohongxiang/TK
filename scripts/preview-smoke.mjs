@@ -73,6 +73,11 @@ try {
   await assertText('/manifest.webmanifest', /"name":\s*"TK 电商工具箱"[\s\S]*"display":\s*"standalone"/);
   await assertText('/_headers', /\/index\.html[\s\S]*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/logo\.png[\s\S]*Cache-Control:\s*public, max-age=86400, must-revalidate[\s\S]*\/robots\.txt[\s\S]*Content-Type:\s*text\/plain; charset=utf-8[\s\S]*\/sitemap\.xml[\s\S]*Content-Type:\s*application\/xml; charset=utf-8/);
   await assertText('/', /<script type="module" crossorigin src="\/assets\/index-[^"]+\.js"><\/script>/);
+  const logoResponse = await fetchText('/logo.png');
+  if (!/image\/png/.test(logoResponse.contentType)) {
+    throw new Error(`/logo.png returned unexpected content-type: ${logoResponse.contentType}`);
+  }
+  await fetchText('/js/app.js', 404);
   await fetchText('/js/orders/provider-supabase.js', 404);
 
   const { contentType } = await fetchText('/manifest.webmanifest');

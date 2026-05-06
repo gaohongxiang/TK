@@ -16,9 +16,6 @@
 /logo.png
   Cache-Control: public, max-age=86400, must-revalidate
 
-/js/*
-  Cache-Control: public, max-age=300, must-revalidate
-
 /site-page.css
   Content-Type: text/css; charset=utf-8
   Cache-Control: public, max-age=300, must-revalidate

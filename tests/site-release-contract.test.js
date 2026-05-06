@@ -112,8 +112,14 @@ assert.match(
 
 assert.match(
   headers,
-  /X-Frame-Options:\s*DENY[\s\S]*\/index\.html[\s\S]*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/logo\.png[\s\S]*Cache-Control:\s*public, max-age=86400, must-revalidate[\s\S]*\/site-page\.css[\s\S]*Content-Type:\s*text\/css; charset=utf-8[\s\S]*\/terms\.html[\s\S]*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/robots\.txt[\s\S]*Content-Type:\s*text\/plain; charset=utf-8[\s\S]*\/sitemap\.xml[\s\S]*Content-Type:\s*application\/xml; charset=utf-8[\s\S]*\/manifest\.webmanifest[\s\S]*Content-Type:\s*application\/manifest\+json/,
+  /X-Frame-Options:\s*DENY[\s\S]*\/index\.html[\s\S]*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/assets\/\*[\s\S]*Cache-Control:\s*public, max-age=31536000, immutable[\s\S]*\/logo\.png[\s\S]*Cache-Control:\s*public, max-age=86400, must-revalidate[\s\S]*\/site-page\.css[\s\S]*Content-Type:\s*text\/css; charset=utf-8[\s\S]*\/terms\.html[\s\S]*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/robots\.txt[\s\S]*Content-Type:\s*text\/plain; charset=utf-8[\s\S]*\/sitemap\.xml[\s\S]*Content-Type:\s*application\/xml; charset=utf-8[\s\S]*\/manifest\.webmanifest[\s\S]*Content-Type:\s*application\/manifest\+json/,
   'Cloudflare headers 需要包含基础安全头、首页/logo 缓存、条款页缓存、搜索引擎文件类型和 manifest 类型'
+);
+
+assert.doesNotMatch(
+  headers,
+  /\/js\/\*/,
+  '标准模块化后 Cloudflare headers 不应再保留旧 js 目录规则'
 );
 
 assert.match(

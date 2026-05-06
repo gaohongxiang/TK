@@ -1,4 +1,4 @@
-import { cp, mkdir, rm, stat } from 'node:fs/promises';
+import { cp, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,11 +14,10 @@ async function assertExists(target) {
 }
 
 await assertExists(path.join(distDir, 'index.html'));
-await mkdir(path.join(distDir, 'js'), { recursive: true });
-await cp(path.join(root, 'js'), path.join(distDir, 'js'), {
-  recursive: true,
+await assertExists(path.join(root, 'logo.png'));
+
+await cp(path.join(root, 'logo.png'), path.join(distDir, 'logo.png'), {
   force: true
 });
-await rm(path.join(distDir, 'js', 'orders', 'provider-supabase.js'), {
-  force: true
-});
+
+await assertExists(path.join(distDir, 'logo.png'));

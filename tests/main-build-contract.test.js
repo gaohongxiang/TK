@@ -32,7 +32,7 @@ assert.notStrictEqual(
 assert.strictEqual(
   packageJson.scripts.build,
   'vite build && node scripts/copy-main-assets.mjs',
-  '主站 build 需要先跑 Vite，再复制当前传统 JS 模块'
+  '主站 build 需要先跑 Vite，再补充稳定静态资源'
 );
 
 assert.strictEqual(
@@ -73,20 +73,20 @@ assert.match(
 
 assert.match(
   copyScript,
-  /cp\(path\.join\(root, 'js'\), path\.join\(distDir, 'js'\)[\s\S]*recursive:\s*true/,
-  '构建后需要把现有非 module JS 目录复制到 dist/js'
+  /assertExists\(path\.join\(distDir, 'index\.html'\)\)[\s\S]*cp\(path\.join\(root, 'logo\.png'\), path\.join\(distDir, 'logo\.png'\)[\s\S]*assertExists\(path\.join\(distDir, 'logo\.png'\)\)/,
+  '构建后需要补充公开分享和 manifest 依赖的稳定 logo.png'
 );
 
-assert.match(
+assert.doesNotMatch(
   copyScript,
-  /rm\(path\.join\(distDir, 'js', 'orders', 'provider-supabase\.js'\)[\s\S]*force:\s*true/,
-  '构建产物不应包含未启用的 Supabase provider'
+  /path\.join\(root, 'js'\)|path\.join\(distDir, 'js'\)/,
+  '标准模块化后构建脚本不应再复制旧业务 js 目录'
 );
 
 assert.match(
   smokeScript,
-  /vite\.js'[\s\S]*'preview'[\s\S]*\/privacy\.html[\s\S]*\/terms\.html[\s\S]*\/manifest\.webmanifest[\s\S]*\/_headers[\s\S]*\/js\/orders\/provider-supabase\.js/,
-  'smoke 脚本需要启动 Vite preview 并检查核心静态路径、条款页、Cloudflare headers 文件和 Supabase provider 不在产物中'
+  /vite\.js'[\s\S]*'preview'[\s\S]*\/privacy\.html[\s\S]*\/terms\.html[\s\S]*\/manifest\.webmanifest[\s\S]*\/_headers[\s\S]*\/logo\.png[\s\S]*\/js\/app\.js[\s\S]*\/js\/orders\/provider-supabase\.js/,
+  'smoke 脚本需要启动 Vite preview 并检查核心静态路径、logo、Cloudflare headers 文件，以及旧业务 js 不在产物中'
 );
 
 assert.match(
@@ -270,8 +270,14 @@ assert.match(
 
 assert.match(
   headersSource,
-  /\/\s*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/index\.html[\s\S]*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/assets\/\*[\s\S]*Cache-Control:\s*public, max-age=31536000, immutable[\s\S]*\/logo\.png[\s\S]*Cache-Control:\s*public, max-age=86400, must-revalidate[\s\S]*\/js\/\*[\s\S]*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/site-page\.css[\s\S]*Content-Type:\s*text\/css; charset=utf-8[\s\S]*\/robots\.txt[\s\S]*Content-Type:\s*text\/plain; charset=utf-8[\s\S]*\/sitemap\.xml[\s\S]*Content-Type:\s*application\/xml; charset=utf-8/,
-  'Cloudflare Pages 需要区分带 hash 的 assets、传统 js 目录和搜索引擎文件的缓存/类型策略'
+  /\/\s*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/index\.html[\s\S]*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/assets\/\*[\s\S]*Cache-Control:\s*public, max-age=31536000, immutable[\s\S]*\/logo\.png[\s\S]*Cache-Control:\s*public, max-age=86400, must-revalidate[\s\S]*\/site-page\.css[\s\S]*Content-Type:\s*text\/css; charset=utf-8[\s\S]*\/robots\.txt[\s\S]*Content-Type:\s*text\/plain; charset=utf-8[\s\S]*\/sitemap\.xml[\s\S]*Content-Type:\s*application\/xml; charset=utf-8/,
+  'Cloudflare Pages 需要区分带 hash 的 assets、稳定 logo 和搜索引擎文件的缓存/类型策略'
+);
+
+assert.doesNotMatch(
+  headersSource,
+  /\/js\/\*/,
+  '标准模块化后 Cloudflare headers 不应再保留旧 js 目录规则'
 );
 
 assert.match(

@@ -118,66 +118,7 @@
     <!-- ============================================================
        VIEW 3 · 商品管理
        ============================================================ -->
-    <div id="view-products" class="view">
-      <div class="module-hero page-hero page-hero-products">
-        <div class="module-hero-copy">
-          <div class="module-hero-title-row">
-            <h2>商品管理</h2>
-            <div class="module-kicker">商品资料 / 预估运费 / 采购链接</div>
-          </div>
-          <p>沉淀商品资料、预估运费和采购链接，录一次基础资料，后续订单直接复用。</p>
-        </div>
-      </div>
-      <section class="card ot-setup" id="pl-disconnected">
-        <div class="ot-empty">
-          <div style="font-size:15px;margin-bottom:6px">尚未连接 Firebase 数据源</div>
-          <div style="font-size:12.5px;margin-bottom:14px">
-            商品管理和订单管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。
-          </div>
-          <button id="pl-open-connection" class="btn primary">连接 Firebase</button>
-        </div>
-      </section>
-
-      <section class="card" id="pl-main" style="display:none">
-        <div class="ot-header-row">
-          <div class="ot-bar">
-            <div class="left">
-              <span class="workspace-chip workspace-chip-connection" id="pl-user">未连接</span>
-              <span class="sync workspace-chip workspace-chip-sync" id="pl-sync">未连接</span>
-              <button id="pl-refresh" type="button" class="calc-help-icon ot-refresh-inline" aria-label="刷新商品管理数据"
-                title="刷新商品管理数据">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M18.5 8.5A7 7 0 0 0 7.2 6.2" />
-                  <path d="M18.5 8.5V4.8" />
-                  <path d="M18.5 8.5H14.8" />
-                  <path d="M5.5 15.5A7 7 0 0 0 16.8 17.8" />
-                  <path d="M5.5 15.5v3.7" />
-                  <path d="M5.5 15.5h3.7" />
-                </svg>
-              </button>
-            </div>
-            <div class="right">
-              <button id="pl-export" type="button" class="btn sm">导出 CSV</button>
-              <button id="pl-disconnect-firestore" type="button" class="btn sm danger" data-firestore-disconnect>退出数据库</button>
-            </div>
-          </div>
-        </div>
-        <div class="ot-header-row ot-header-accounts-row">
-          <div class="ot-acc-tabs ot-acc-shell" id="pl-acc-tabs">
-            <div class="ot-acc-tabs-all" id="pl-acc-tabs-all"></div>
-            <div class="ot-acc-tabs-scroll" id="pl-acc-tabs-scroll"></div>
-            <div class="ot-acc-actions" id="pl-acc-actions">
-              <button id="pl-add" class="btn primary">+ 新增商品</button>
-            </div>
-          </div>
-        </div>
-        <div id="pl-toolbar"></div>
-        <div class="ot-table-wrap">
-          <div id="pl-table-container"></div>
-        </div>
-        <div id="pl-table-footer-toolbar-container"></div>
-      </section>
-    </div>
+    <div id="view-products" class="view"></div>
 
     <!-- ============================================================
        VIEW 4 · 数据分析

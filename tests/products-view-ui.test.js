@@ -8,7 +8,9 @@ const srcAccountsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'pro
 const srcExportSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'export.mjs'), 'utf8');
 const srcCrudSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'crud.mjs'), 'utf8');
 const reactProductsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsTable.tsx'), 'utf8');
+const reactProductsPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const reactProductsMountSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'mountProductsTable.tsx'), 'utf8');
+const reactMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppShellSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
 const reactButtonSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
 const reactTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'table.tsx'), 'utf8');
@@ -108,19 +110,19 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-main"/,
-  '商品库需要提供主列表容器'
+  '商品库 React 页面需要提供主列表容器'
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-acc-tabs"/,
-  '商品库需要提供按账号区分的标签区域'
+  '商品库 React 页面需要提供按账号区分的标签区域'
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-acc-actions"[\s\S]*id="pl-add"/,
   '商品库新增商品按钮需要放在账号标签同一行'
 );
@@ -186,13 +188,13 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-refresh"[\s\S]*ot-refresh-inline/,
   '商品库刷新按钮需要复用订单页的图标样式与位置语义'
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-export"[\s\S]*导出 CSV/,
   '商品库已连接状态条需要提供导出 CSV 按钮'
 );
@@ -204,13 +206,13 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-disconnected"/,
   '商品库在未连接时需要提供轻量空态容器'
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-open-connection"/,
   '商品库在未连接时需要提供打开全局连接弹层的按钮'
 );
@@ -228,7 +230,7 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-table-footer-toolbar-container"/,
   '商品库需要提供底部分页容器'
 );
@@ -411,6 +413,18 @@ assert.match(
   reactProductsSource,
   /data-react-products-table-ready="true"/,
   'React 商品表格需要提供可测试的挂载完成标记'
+);
+
+assert.match(
+  reactProductsPageSource,
+  /data-react-products-page-ready="true"/,
+  'React 商品页面外壳需要提供可测试的挂载完成标记'
+);
+
+assert.match(
+  reactMainSource,
+  /import \{ flushSync \} from 'react-dom'[\s\S]*import \{ ProductsPage \}[\s\S]*getElementById\('view-products'\)[\s\S]*flushSync\(\(\) => \{[\s\S]*<ProductsPage \/>/,
+  'React 入口需要同步把商品页面外壳挂载到 view-products，避免旧商品逻辑找不到节点'
 );
 
 assert.match(

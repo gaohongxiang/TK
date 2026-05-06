@@ -6,17 +6,17 @@ import { cn } from '@/lib/utils';
 const buttonVariants = cva('', {
   variants: {
     variant: {
-      default: 'btn',
-      primary: 'btn primary',
-      danger: 'btn danger',
-      accentSoft: 'btn accent-soft',
+      default: 'btn border border-[var(--border)] bg-[var(--panel2)] text-[var(--text)] hover:border-[var(--accent)] hover:text-[var(--accent)]',
+      primary: 'btn primary border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_18%,transparent)] text-[var(--text)]',
+      danger: 'btn danger border-[var(--danger)] text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white',
+      accentSoft: 'btn accent-soft border-[color-mix(in_srgb,var(--accent)_28%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_12%,var(--panel))]',
       plain: ''
     },
     size: {
       default: '',
-      sm: 'sm',
-      icon: 'icon-btn',
-      smIcon: 'sm icon-btn'
+      sm: 'sm text-[12.5px]',
+      icon: 'icon-btn inline-flex items-center justify-center',
+      smIcon: 'sm icon-btn inline-flex items-center justify-center'
     }
   },
   defaultVariants: {

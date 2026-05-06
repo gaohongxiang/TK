@@ -12,12 +12,12 @@ const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const reactMain = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactIsland = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
 const utilsSource = fs.readFileSync(path.join(root, 'src', 'react', 'lib', 'utils.ts'), 'utf8');
+const reactStyles = fs.readFileSync(path.join(root, 'src', 'react', 'styles.css'), 'utf8');
 
 [
   'react',
   'react-dom',
   '@radix-ui/react-slot',
-  '@tanstack/react-table',
   'echarts',
   'echarts-for-react',
   'lucide-react',
@@ -29,10 +29,16 @@ const utilsSource = fs.readFileSync(path.join(root, 'src', 'react', 'lib', 'util
   assert.ok(packageJson.dependencies[name], `React 迁移依赖需要包含 ${name}`);
 });
 
+assert.ok(
+  !packageJson.dependencies['@tanstack/react-table'],
+  '商品表格当前不应把 TanStack Table 作为运行时依赖'
+);
+
 [
   'typescript',
   '@types/react',
   '@types/react-dom',
+  '@tailwindcss/vite',
   '@vitejs/plugin-react',
   'tailwindcss',
   'postcss',
@@ -43,8 +49,8 @@ const utilsSource = fs.readFileSync(path.join(root, 'src', 'react', 'lib', 'util
 
 assert.match(
   viteConfig,
-  /import react from '@vitejs\/plugin-react'[\s\S]*plugins:\s*\[react\(\)\]/,
-  'Vite 配置需要接入 React 插件'
+  /import react from '@vitejs\/plugin-react'[\s\S]*import tailwindcss from '@tailwindcss\/vite'[\s\S]*plugins:\s*\[react\(\), tailwindcss\(\)\]/,
+  'Vite 配置需要同时接入 React 和 Tailwind 插件'
 );
 
 assert.match(
@@ -67,6 +73,18 @@ assert.match(
   tailwindConfig,
   /content:\s*\['\.\/index\.html', '\.\/src\/react\/\*\*\/\*\.\{ts,tsx\}'\]/,
   'Tailwind 只应先扫描 React 迁移目录和 index.html'
+);
+
+assert.match(
+  reactMain,
+  /import '\.\/styles\.css'/,
+  'React 入口需要加载 React 专用 Tailwind 样式入口'
+);
+
+assert.match(
+  reactStyles,
+  /tailwindcss\/theme[\s\S]*tailwindcss\/utilities[\s\S]*@source "\.\/\*\*\/\*\.\{ts,tsx\}"/,
+  'React Tailwind 样式入口应只引入 theme/utilities，避免 preflight reset 影响旧页面'
 );
 
 assert.strictEqual(componentsJson.rsc, false, 'shadcn 配置需要关闭 RSC');

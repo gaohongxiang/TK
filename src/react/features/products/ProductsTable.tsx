@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/table';
 import { Copy, ExternalLink, Pencil, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { cn } from '@/lib/utils';
 import type { ProductRecord, ProductSku, ProductsTableRenderOptions } from './types';
 
 function getProductKey(product: ProductRecord) {
@@ -37,7 +38,7 @@ function ProductPager({
   compact?: boolean;
 }) {
   return (
-    <div className={`ot-table-pagination products-react-pager${compact ? ' is-compact' : ''}`}>
+    <div className={cn('ot-table-pagination products-react-pager inline-flex items-center gap-2 flex-wrap', compact ? 'is-compact' : '')}>
       <label className="ot-page-size">
         <span>每页</span>
         <span className="ot-page-size-control">
@@ -67,10 +68,10 @@ function ProductToolbar({
 }: ProductsTableRenderOptions & { currentPage: number; totalPages: number; pageSize: number }) {
   const [composing, setComposing] = useState(false);
   return (
-    <div className="ot-table-toolbar ot-sticky-controls pl-sticky-controls products-react-toolbar">
-      <div className="ot-sticky-controls-inner products-react-toolbar-inner">
+    <div className="ot-table-toolbar ot-sticky-controls pl-sticky-controls products-react-toolbar mt-[14px]">
+      <div className="ot-sticky-controls-inner products-react-toolbar-inner gap-3 max-[640px]:gap-2.5 max-[900px]:items-start">
         <div className="ot-table-toolbar-left">
-          <label className="ot-table-search products-react-search">
+          <label className="ot-table-search products-react-search w-full max-w-[520px]">
             <span className="ot-table-search-icon" aria-hidden="true"><Search size={15} strokeWidth={2} /></span>
             <input
               id="pl-table-search-input"
@@ -107,7 +108,7 @@ function ProductToolbar({
 
 function ProductFooterToolbar(props: ProductsTableRenderOptions & { currentPage: number; totalPages: number; pageSize: number }) {
   return (
-    <div className="ot-table-toolbar ot-table-toolbar-bottom products-react-footer-toolbar">
+    <div className="ot-table-toolbar ot-table-toolbar-bottom products-react-footer-toolbar mt-3">
       <div className="ot-sticky-controls-inner">
         <div />
         <div className="ot-table-toolbar-right">
@@ -139,9 +140,9 @@ function ProductEmptyState({
       ? `账号「${activeAccount}」下还没有商品`
       : '还没有商品资料';
   return (
-    <div className="ot-empty products-react-empty">
-      <div>{message}</div>
-      <span>{hasQuery ? '试试更换关键词' : '点击右上角「+ 新增商品」开始记录'}</span>
+    <div className="ot-empty products-react-empty min-h-[180px]">
+      <div className="mb-1.5 text-[15px]">{message}</div>
+      <span className="text-[12.5px] text-[var(--muted)]">{hasQuery ? '试试更换关键词' : '点击右上角「+ 新增商品」开始记录'}</span>
     </div>
   );
 }
@@ -229,7 +230,11 @@ function ProductTableBody({
         return (
           <TableBody key={tkId || index}>
             <TableRow
-              className={`pl-product-row products-react-row${isExpandable ? ' is-expandable' : ''}${isExpanded ? ' is-expanded' : ''}`}
+              className={cn(
+                'pl-product-row products-react-row bg-[color-mix(in_srgb,var(--panel)_98%,white)]',
+                isExpandable ? 'is-expandable' : '',
+                isExpanded ? 'is-expanded' : ''
+              )}
               data-toggle-expand={isExpandable ? tkId : undefined}
               onClick={event => {
                 if (!isExpandable) return;
@@ -245,9 +250,13 @@ function ProductTableBody({
               </TableCell>
               <TableCell className="pl-image-cell"><ProductImage product={product} /></TableCell>
               {showAccount ? <TableCell><span className="chip muted products-react-account-chip">{helpers.formatText(product?.accountName)}</span></TableCell> : null}
-              <TableCell className="mono products-react-id">{helpers.formatText(product?.tkId)}</TableCell>
-              <TableCell className="products-react-name-cell"><div>{helpers.formatText(product?.name)}</div></TableCell>
-              <TableCell><span className="products-react-cargo">{helpers.getCargoTypeLabel(helpers.getProductDefaults(product)?.cargoType)}</span></TableCell>
+              <TableCell className="mono products-react-id min-w-[150px] max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap text-center font-normal">{helpers.formatText(product?.tkId)}</TableCell>
+              <TableCell className="products-react-name-cell">
+                <div className="mx-auto w-max max-w-[clamp(240px,30vw,420px)] overflow-hidden text-ellipsis whitespace-nowrap text-center font-normal text-[var(--text)]">
+                  {helpers.formatText(product?.name)}
+                </div>
+              </TableCell>
+              <TableCell><span className="products-react-cargo inline-flex min-h-[26px] items-center whitespace-nowrap rounded-full border border-[color-mix(in_srgb,var(--border)_86%,white)] bg-[color-mix(in_srgb,var(--panel2)_76%,white)] px-[9px] text-xs text-[var(--muted)]">{helpers.getCargoTypeLabel(helpers.getProductDefaults(product)?.cargoType)}</span></TableCell>
               <TableCell>
                 <span className={`pl-sku-count-pill${isExpandable ? ' is-expandable' : ''}`} title={isExpandable ? '点击展开 SKU 明细' : undefined}>
                   {helpers.formatSkuCount(product)}
@@ -255,7 +264,7 @@ function ProductTableBody({
               </TableCell>
               <TableCell>
                 {link1688 ? (
-                  <div className="pl-link-actions products-react-link-actions">
+                  <div className="pl-link-actions products-react-link-actions min-w-max justify-center">
                     <Button asChild size="smIcon" title="打开 1688 链接" aria-label="打开 1688 链接">
                       <a href={link1688} target="_blank" rel="noreferrer">
                         <ExternalLink size={14} strokeWidth={2} />
@@ -268,7 +277,7 @@ function ProductTableBody({
                 ) : '-'}
               </TableCell>
               <TableCell>
-                <div className="products-react-actions">
+                <div className="products-react-actions flex items-center justify-center gap-1.5">
                   <Button size="smIcon" data-edit={tkId} title="编辑商品" aria-label="编辑商品" onClick={() => onEdit?.(tkId)}>
                     <Pencil size={14} strokeWidth={2} />
                   </Button>
@@ -319,12 +328,12 @@ function ProductsTable(options: ProductsTableRenderOptions) {
   const hasQuery = String(searchQuery || '').trim().length > 0;
 
   return (
-    <div className="products-react-table-shell" data-react-products-table-ready="true">
+    <div className="products-react-table-shell min-w-0" data-react-products-table-ready="true">
       {!displayed.length ? (
         <ProductEmptyState hasQuery={hasQuery} activeAccount={activeAccount} />
       ) : (
-        <div className="ot-table-inner products-react-table-inner">
-          <Table className={`pl-table products-react-table${showAccount ? ' is-all-accounts' : ' is-account-scoped'}`}>
+        <div className="ot-table-inner products-react-table-inner rounded-none border-0 bg-transparent">
+          <Table className={`pl-table products-react-table table-auto${showAccount ? ' is-all-accounts' : ' is-account-scoped'}`}>
             <TableHeader>
               <TableRow>
                 <TableHead>

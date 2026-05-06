@@ -73,8 +73,8 @@ assert.match(
 
 assert.match(
   viteConfig,
-  /@vitejs\/plugin-react[\s\S]*plugins:\s*\[react\(\)\]/,
-  'React 渐进迁移阶段需要通过 Vite React 插件接入 TSX'
+  /@vitejs\/plugin-react[\s\S]*@tailwindcss\/vite[\s\S]*plugins:\s*\[react\(\), tailwindcss\(\)\]/,
+  'React 渐进迁移阶段需要通过 Vite React 插件接入 TSX，并接入 Tailwind utilities'
 );
 
 assert.match(

@@ -418,6 +418,19 @@ assert.match(
   'React 商品表格需要使用本地 shadcn 风格 UI primitives，而不是继续手写基础标签'
 );
 
+[
+  /table-auto/,
+  /max-w-\[clamp\(240px,30vw,420px\)\]/,
+  /min-w-\[150px\]/,
+  /inline-flex/
+].forEach(pattern => {
+  assert.match(
+    reactProductsSource,
+    pattern,
+    'React 商品表格的布局样式需要迁到 Tailwind/shadcn class，而不是继续主要依赖旧 CSS'
+  );
+});
+
 assert.doesNotMatch(
   reactProductsSource,
   /@tanstack\/react-table|useReactTable|getCoreRowModel/,
@@ -426,14 +439,20 @@ assert.doesNotMatch(
 
 assert.match(
   reactButtonSource,
-  /@radix-ui\/react-slot[\s\S]*class-variance-authority[\s\S]*default:\s*'btn'[\s\S]*plain:\s*''[\s\S]*buttonVariants/,
-  '本地 Button primitive 需要使用 shadcn 风格 variants，并沿用现有 btn 样式避免改变显示'
+  /@radix-ui\/react-slot[\s\S]*class-variance-authority[\s\S]*border-\[var\(--border\)\][\s\S]*buttonVariants/,
+  '本地 Button primitive 需要使用 shadcn/Tailwind 风格 variants，并沿用现有 btn 样式避免显示大变'
 );
 
 assert.match(
   reactTableSource,
-  /function Table[\s\S]*cn\('ot', className\)[\s\S]*function TableHead[\s\S]*function TableCell/,
-  '本地 Table primitive 需要保留现有 ot 表格 class 并提供表格子组件'
+  /function Table[\s\S]*cn\('ot text-\[13px\]', className\)[\s\S]*bg-transparent font-semibold[\s\S]*font-normal/,
+  '本地 Table primitive 需要用 Tailwind class 表达基础样式，同时保留现有 ot 表格 class'
+);
+
+assert.doesNotMatch(
+  styleSource,
+  /\.products-react-table\s*\{[\s\S]*\.products-react-empty\s*\{/,
+  '商品 React 表格样式不应继续集中写在旧 css/style.css'
 );
 
 assert.match(
@@ -460,11 +479,17 @@ assert.doesNotMatch(
   'React 商品表格只能做 UI 渲染，不应直接访问远端或持久化数据'
 );
 
-assert.match(
-  styleSource,
-  /\.products-react-table-shell[\s\S]*\.products-react-actions[\s\S]*\.products-react-empty/,
-  'React 商品表格需要有独立的稳定布局样式'
-);
+[
+  /products-react-table-shell/,
+  /products-react-actions/,
+  /products-react-empty/
+].forEach(pattern => {
+  assert.match(
+    reactProductsSource,
+    pattern,
+    'React 商品表格需要在 React/Tailwind 层保留独立的稳定布局标记'
+  );
+});
 
 assert.match(
   srcTableSource,

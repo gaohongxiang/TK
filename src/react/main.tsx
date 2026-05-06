@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { ReactIsland } from './app/ReactIsland';
+import './styles.css';
 
 type AnalyticsMountModule = typeof import('./features/analytics/mountAnalytics');
 

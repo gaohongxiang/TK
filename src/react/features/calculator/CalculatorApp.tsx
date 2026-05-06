@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import { calcLegacyRow, calcPricingRow, calcSalePrice, deriveLegacyOrigPrice, derivePricingOrigPrice } from '../../../calc/formulas.mjs';
 import { ensureGlobalSettingsStore } from '../../../global-settings.mjs';
 import { DEFAULT_CONSTANTS, SHIPPING_RULES, computeCalculatedShippingCost, computeShippingQuote } from '../../../shipping-core.mjs';
+import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 
 const LS_KEY = 'tk.profit.v1';
 
@@ -174,9 +178,8 @@ function Field({
   return (
     <div className={`field ${className}`.trim()}>
       <label htmlFor={id}>{label}</label>
-      <input
+      <Input
         id={id}
-        type="text"
         inputMode="decimal"
         autoComplete="off"
         value={value}
@@ -221,10 +224,10 @@ function ShippingInline({
       <div className="pricing-ship-inline-inputs">
         <div className="field">
           <label htmlFor={cargoId}>货物类型</label>
-          <select id={cargoId} value={state.shipCargoTypeNew} onChange={event => onCargo(event.target.value as CargoType)}>
+          <Select id={cargoId} value={state.shipCargoTypeNew} onChange={event => onCargo(event.target.value as CargoType)}>
             <option value="general">普货</option>
             <option value="special">特货</option>
-          </select>
+          </Select>
         </div>
         <Field id={weightId} label="实重（g）" value={state.shipActualWeightNew} onChange={value => onNumber('shipActualWeightNew', value)} />
         <Field id={lengthId} label="长（cm）" value={state.shipLengthNew} onChange={value => onNumber('shipLengthNew', value)} />
@@ -258,7 +261,7 @@ function ShippingInline({
         <div className="pricing-ship-inline-summary-fields">
           <div className="field">
             <label htmlFor={`shipBand${suffix}`}>命中价卡区间</label>
-            <input id={`shipBand${suffix}`} type="text" value={quote.band?.range || '-'} readOnly />
+            <Input id={`shipBand${suffix}`} value={quote.band?.range || '-'} readOnly />
           </div>
           <Field id={`shippingMultiplier${suffix}`} label="运费倍率" value={state.shippingMultiplierNew} onChange={value => onNumber('shippingMultiplierNew', value)} />
           <Field id={`labelFee${suffix}`} label="贴单费 ¥" value={state.labelFeeNew} onChange={value => onNumber('labelFeeNew', value)} />
@@ -312,14 +315,14 @@ function PricingNewPanel({
   return (
     <div className="calc-panel active" id="calc-panel-pricing-new">
       <div className="grid">
-        <section className="card">
+        <Card>
           <h2>定价输入</h2>
           <div className="row triple">
             <Field id="costNew" label="采购价 ¥" className="expense-field" value={state.costNew} onChange={value => updateNumber('costNew', value)} />
             <Field id="overseasShippingNew" label="海外运费 ¥" className="expense-field" value={state.overseasShippingNew} onChange={value => updateNumber('overseasShippingNew', value)} />
             <div className="field expense-field">
               <label htmlFor="totalCostNew">总费用 ¥<span className="var">采购价+海外运费</span></label>
-              <input id="totalCostNew" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
+              <Input id="totalCostNew" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
             </div>
           </div>
           <ShippingInline state={state} onNumber={updateNumber} onCargo={updateCargo} onImport={importShipping} />
@@ -332,17 +335,16 @@ function PricingNewPanel({
             <div className="row pricing-anchor-row" style={{ marginTop: 18 }}>
               <div className="field">
                 <label htmlFor="anchorNew">基准折扣档位</label>
-                <select id="anchorNew" value={anchor} onChange={event => updateNumber('anchorNew', event.target.value)}>
+                <Select id="anchorNew" value={anchor} onChange={event => updateNumber('anchorNew', event.target.value)}>
                   {discounts.map(discount => <option value={discount} key={discount}>{formatDiscount(discount)}</option>)}
-                </select>
+                </Select>
                 <div className="hint">用于按该折扣反推原价</div>
               </div>
               <Field id="targetMarginNew" label="目标利润率（倍）" value={state.targetMarginNew} hint="总费用倍数" onChange={value => updateNumber('targetMarginNew', value)} />
               <div className="field">
                 <label htmlFor="discountsNew">折扣档位（逗号分隔）</label>
-                <input
+                <Input
                   id="discountsNew"
-                  type="text"
                   value={state.discountsNew.join(',')}
                   onChange={event => setState(prev => ({ ...prev, discountsNew: parseDiscounts(event.target.value) }))}
                 />
@@ -351,10 +353,10 @@ function PricingNewPanel({
             </div>
           </div>
           <div hidden aria-hidden="true">
-            <input id="origPriceNew" type="text" inputMode="decimal" autoComplete="off" value={Math.round(origPrice)} readOnly />
+            <Input id="origPriceNew" inputMode="decimal" autoComplete="off" value={Math.round(origPrice)} readOnly />
           </div>
-        </section>
-        <section className="card">
+        </Card>
+        <Card>
           <h2>各折扣档位定价 / 利润一览</h2>
           <table className="mono calc-result-table">
             <thead>
@@ -401,7 +403,7 @@ function PricingNewPanel({
               <div>利润率 = 人民币到手 ÷ 总费用</div>
             </div>
           </div>
-        </section>
+        </Card>
       </div>
     </div>
   );
@@ -416,7 +418,7 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
   return (
     <div className="calc-panel active" id="calc-panel-pricing">
       <div className="grid">
-        <section className="card">
+        <Card>
           <h2>核心输入</h2>
           <div className="row">
             <Field id="cost" label="采购价（人民币 ¥）" className="primary" value={state.cost} onChange={value => updateNumber('cost', value)} />
@@ -425,9 +427,9 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
           <div className="row">
             <div className="field">
               <label htmlFor="anchor">基准折扣档位</label>
-              <select id="anchor" value={anchor} onChange={event => updateNumber('anchor', event.target.value)}>
+              <Select id="anchor" value={anchor} onChange={event => updateNumber('anchor', event.target.value)}>
                 {discounts.map(discount => <option value={discount} key={discount}>{formatDiscount(discount)}</option>)}
-              </select>
+              </Select>
               <div className="hint">以该档位为目标利润率的基准来反推原价</div>
             </div>
             <Field id="origPrice" label="商品原价（円）" className="readonly" value={Math.round(origPrice)} readOnly />
@@ -441,8 +443,8 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
               <Field id="creatorRate" label="达人佣金率（%）" value={state.creatorRate} onChange={value => updateNumber('creatorRate', value)} />
             </div>
           </details>
-        </section>
-        <section className="card">
+        </Card>
+        <Card>
           <h2>各折扣档位定价 / 利润一览</h2>
           <table className="mono calc-result-table">
             <thead>
@@ -464,7 +466,7 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
               ))}
             </tbody>
           </table>
-        </section>
+        </Card>
       </div>
     </div>
   );
@@ -483,13 +485,13 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
   return (
     <div className="calc-panel active" id="calc-panel-review">
       <div className="grid">
-        <section className="card">
+        <Card>
           <h2>成交输入</h2>
           <div className="row">
             <Field id="salePrice" label="实际售价（円）" className="success" value={state.salePrice || ''} onChange={value => updateNumber('salePrice', value)} />
             <div className="field expense-field">
               <label htmlFor="totalCostReview">总费用 ¥<span className="var">采购价+海外运费</span></label>
-              <input id="totalCostReview" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
+              <Input id="totalCostReview" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
             </div>
           </div>
           <div style={{ marginTop: 18 }}>
@@ -507,8 +509,8 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
           <div style={{ marginTop: 18 }}>
             <ShippingInline state={state} onNumber={updateNumber} onCargo={value => setState(prev => ({ ...prev, shipCargoTypeNew: value }))} onImport={importShipping} prefix="Review" />
           </div>
-        </section>
-        <section className="card">
+        </Card>
+        <Card>
           <h2>利润复盘</h2>
           <div className="known-sale-grid review-metrics">
             <div className="known-sale-item">
@@ -531,7 +533,7 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
             <div>利润 = 人民币到手 − 总费用</div>
             <div>利润率 = 人民币到手 ÷ 总费用</div>
           </div>
-        </section>
+        </Card>
       </div>
     </div>
   );
@@ -542,7 +544,7 @@ function ReferenceCards() {
   const special = SHIPPING_RULES.special.bands;
   return (
     <>
-      <section className="card ship-calc">
+      <Card className="ship-calc">
         <h2>新版海外运费参考表</h2>
         <div className="ship-meta">
           <span><b>使用新规</b> 2026/04/24 00:00（GMT+8）起生效</span>
@@ -576,8 +578,8 @@ function ReferenceCards() {
             </tbody>
           </table>
         </div>
-      </section>
-      <section className="card commission-ref">
+      </Card>
+      <Card className="commission-ref">
         <h2>TK 佣金费率参考表</h2>
         <div className="ship-meta">
           <span><b>类目佣金率参考</b> 用于达人佣金率和类目判断</span>
@@ -597,7 +599,7 @@ function ReferenceCards() {
             </div>
           ))}
         </div>
-      </section>
+      </Card>
     </>
   );
 }
@@ -675,11 +677,9 @@ function CalculatorApp() {
       </div>
       {activePanel}
       <ReferenceCards />
-      <div id="calc-help-modal" className={`modal-mask ${helpOpen ? 'show' : ''}`.trim()} role="dialog" aria-modal="true" aria-labelledby="calc-help-title" onClick={event => {
-        if (event.target === event.currentTarget) setHelpOpen(false);
-      }}>
-        <div className="modal" style={{ maxWidth: 560 }}>
-          <h3 id="calc-help-title">定价旧 / 定价新 / 利润复盘有什么区别？</h3>
+      <Dialog id="calc-help-modal" open={helpOpen} titleId="calc-help-title" onOpenChange={setHelpOpen}>
+        <DialogContent style={{ maxWidth: 560 }}>
+          <DialogTitle id="calc-help-title">定价旧 / 定价新 / 利润复盘有什么区别？</DialogTitle>
           <div className="calc-help-copy">
             <div className="calc-help-item"><div className="k">定价旧</div><div className="v">按旧口径快速反推原价、各折扣售价和利润率，适合粗算、对比和保留原来的计算习惯。</div></div>
             <div className="calc-help-item"><div className="k">定价新</div><div className="v">以目标利润率为核心，根据采购价、海外运费、平台手续费、达人佣金率、汇率和折扣档位反推原价。</div></div>
@@ -688,8 +688,8 @@ function CalculatorApp() {
           <div className="actions">
             <button id="calc-help-close" type="button" className="btn primary" onClick={() => setHelpOpen(false)}>知道了</button>
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

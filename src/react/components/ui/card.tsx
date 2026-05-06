@@ -1,0 +1,20 @@
+import type { HTMLAttributes } from 'react';
+import { cn } from '@/lib/utils';
+
+function Card({ className, ...props }: HTMLAttributes<HTMLElement>) {
+  return <section className={cn('card', className)} {...props} />;
+}
+
+function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('mb-4 flex items-center justify-between gap-3', className)} {...props} />;
+}
+
+function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+  return <h2 className={cn('m-0 text-[14px] font-semibold text-[var(--muted)]', className)} {...props} />;
+}
+
+function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn(className)} {...props} />;
+}
+
+export { Card, CardContent, CardHeader, CardTitle };

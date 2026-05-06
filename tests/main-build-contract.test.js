@@ -203,10 +203,10 @@ assert.doesNotMatch(
   '主站不应再加载旧 app-config.js 或 app.js 普通脚本'
 );
 
-assert.match(
+assert.doesNotMatch(
   htmlSource,
   /<script type="module" src="\/src\/analytics\/index\.mjs"><\/script>/,
-  '路线二 M2 数据分析入口需要由 Vite ESM 模块加载'
+  '现代 React SPA 阶段数据分析页不应再加载旧 DOM 入口'
 );
 
 assert.match(

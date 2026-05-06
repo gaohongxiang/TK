@@ -49,9 +49,9 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
-  /id="analytics-react-root"/,
-  '数据分析页需要提供 React 挂载容器'
+  reactAnalyticsMountSource,
+  /getElementById\('view-analytics'\)[\s\S]*createRoot\(root\)[\s\S]*<AnalyticsApp/,
+  '数据分析页需要由 React 直接挂载到 view-analytics'
 );
 
 assert.match(
@@ -68,8 +68,14 @@ assert.match(
 
 assert.match(
   indexSource,
-  /xlsx\.full\.min\.js[\s\S]*<script type="module" src="\/src\/analytics\/index\.mjs"><\/script>/,
-  '数据分析需要在 SheetJS 后加载 ESM 入口'
+  /xlsx\.full\.min\.js/,
+  '数据分析需要继续加载浏览器端 SheetJS 解析库'
+);
+
+assert.doesNotMatch(
+  indexSource,
+  /<script type="module" src="\/src\/analytics\/index\.mjs"><\/script>/,
+  '现代 React SPA 阶段数据分析页不应再加载旧 DOM 入口'
 );
 
 assert.match(
@@ -236,7 +242,7 @@ assert.doesNotMatch(
 
 assert.match(
   reactMainSource,
-  /import\('\.\/features\/analytics\/mountAnalytics'\)[\s\S]*setAnalyticsFallback[\s\S]*mountAnalyticsWhenNeeded/,
+  /import\('\.\/features\/analytics\/mountAnalytics'\)[\s\S]*getElementById\('view-analytics'\)[\s\S]*setAnalyticsFallback[\s\S]*mountAnalyticsWhenNeeded/,
   'React 入口需要按需加载数据分析模块，并在加载期间提供轻量状态'
 );
 
@@ -260,8 +266,8 @@ assert.match(
 
 assert.match(
   reactAnalyticsMountSource,
-  /getElementById\('analytics-react-root'\)[\s\S]*createRoot\(root\)[\s\S]*<AnalyticsApp/,
-  'React 数据分析需要挂载到独立根节点'
+  /getElementById\('view-analytics'\)[\s\S]*createRoot\(root\)[\s\S]*<AnalyticsApp/,
+  'React 数据分析需要挂载到数据分析视图根节点'
 );
 
 assert.match(

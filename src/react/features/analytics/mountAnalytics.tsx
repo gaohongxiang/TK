@@ -23,7 +23,7 @@ function showToast(message: string, type: 'ok' | 'error' = 'ok') {
 showToast.timer = 0;
 
 function mountAnalyticsReact(documentRef: Document = document) {
-  const root = documentRef.getElementById('analytics-react-root');
+  const root = documentRef.getElementById('view-analytics');
   if (!root) return false;
   if (!analyticsRoot) analyticsRoot = createRoot(root);
   analyticsRoot.render(

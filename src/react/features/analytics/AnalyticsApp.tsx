@@ -271,7 +271,16 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
   }
 
   return (
-    <div className="analytics-react-shell">
+    <div className="analytics-react-shell" id="analytics-react-root">
+      <div className="module-hero page-hero page-hero-analytics">
+        <div className="module-hero-copy">
+          <div className="module-hero-title-row">
+            <h2>数据分析</h2>
+            <div className="module-kicker">Excel 导入 / 流量诊断 / 商品动作</div>
+          </div>
+          <p>本地解析 TikTok Shop 商品流量导出表，生成渠道表现、商品排行和运营诊断；数据不上传到本站服务器。</p>
+        </div>
+      </div>
       <section className="card analytics-upload-card analytics-react-upload-card">
         <div className="analytics-upload-grid">
           <div className="analytics-upload-copy">

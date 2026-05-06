@@ -65,7 +65,7 @@ function setAnalyticsFallback(root: HTMLElement, state: 'loading' | 'error') {
 }
 
 async function mountAnalyticsWhenNeeded(documentRef: Document = document) {
-  const root = documentRef.getElementById('analytics-react-root');
+  const root = documentRef.getElementById('view-analytics');
   if (!root || root.dataset.reactMounted === 'true' || !isAnalyticsRoute(documentRef)) return false;
   root.dataset.reactLoading = 'true';
   setAnalyticsFallback(root, 'loading');

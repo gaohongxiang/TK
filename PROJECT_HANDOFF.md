@@ -97,7 +97,7 @@ route-2-esm-m1
 - `index.html` 通过 `/src/*.mjs` 加载主站、利润计算器、商品管理、订单管理、数据分析和 Firestore 连接。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前以 `src/*.mjs` 作为唯一主站业务源码。
-- 当前阶段建议进入真实 Firebase 数据手动验收，不要继续扩大架构改造。
+- 真实 Firebase 数据手动验收已完成，未发现大问题。当前阶段不要继续扩大架构改造。
 
 最近已验证通过：
 
@@ -1531,7 +1531,7 @@ npm run release:check
 
 ### 13.1 当前真实数据手动验收清单
 
-自动测试已覆盖离线 fixtures 和 production preview。当前建议用真实 Firebase 配置补一轮手动验收：
+自动测试已覆盖离线 fixtures 和 production preview。用户已用真实 Firebase 配置完成一轮手动验收，未发现大问题。已覆盖：
 
 - 本地启动：`npm run dev`，打开 Vite 提供的本地地址。
 - 商品管理：连接 Firestore，新增商品，新增/编辑 SKU，刷新页面后确认仍能读回。
@@ -1541,7 +1541,7 @@ npm run release:check
 - 数据分析：导入一份 TikTok Shop 商品流量 Excel，确认渠道表现、Top 商品、漏斗和诊断标签能正常生成。
 - 静态页：打开 `/privacy.html`、`/terms.html`、`/404.html`，确认样式和链接正常。
 
-手动验收通过后，才考虑上线或继续后续轻量优化。
+当前可以准备上线，或继续做后续轻量优化；不要在这个阶段混入 TypeScript、React/Vue 重写或大规模共享组件抽象。
 
 ## 14. 风险清单
 
@@ -1664,9 +1664,9 @@ local/release-prep-static-site
 
 建议下一步：
 
-1. 先用真实 Firebase 配置按 13.1 手动验收商品、订单、同步状态和数据分析。
-2. 不要 push 当前本地提交，除非明确准备让线上版本更新。
-3. 需要上线前，重新跑 `npm run release:check`。
-4. 准备上线时，再解除本机 push 防护：`TK_ALLOW_PUSH=1 git push`。
-5. 部署到 Cloudflare Pages 后，按 `docs/guide/deploy.md` 做线上手动验收。
-6. 线上稳定后，再单独评估 TypeScript 或共享 UI 组件，不要和当前验收期混在一起做。
+1. 不要 push 当前本地提交，除非明确准备让线上版本更新。
+2. 需要上线前，重新跑 `npm run release:check`。
+3. 准备上线时，再解除本机 push 防护：`TK_ALLOW_PUSH=1 git push`。
+4. 部署到 Cloudflare Pages 后，按 `docs/guide/deploy.md` 做线上手动验收。
+5. 如果继续开发，优先做轻量网站体验优化和真实使用中暴露的小问题。
+6. 线上稳定后，再单独评估 TypeScript 或共享 UI 组件，不要和当前收尾期混在一起做。

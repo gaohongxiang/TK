@@ -26,44 +26,8 @@
 </head>
 
 <body>
-  <a class="skip-link" href="#main-content">跳到主要内容</a>
-  <div class="wrap">
+  <div id="root"></div>
 
-    <div id="react-app-shell-root"></div>
-
-    <main id="main-content" class="app-main" tabindex="-1">
-    <div id="view-calc" class="view active"></div>
-
-    <!-- ============================================================
-       VIEW 2 · 订单管理
-       ============================================================ -->
-    <div id="view-orders" class="view"></div>
-
-    <!-- ============================================================
-       VIEW 3 · 商品管理
-       ============================================================ -->
-    <div id="view-products" class="view"></div>
-
-    <!-- ============================================================
-       VIEW 4 · 数据分析
-       ============================================================ -->
-    <div id="view-analytics" class="view"></div>
-    </main>
-
-    <footer>
-      <span>本地参数保存在浏览器（localStorage），订单与商品资料同步到你自己的 Firebase Firestore，并使用 Firestore 自带的离线缓存</span>
-      <span class="footer-links">
-        <a href="/privacy.html">隐私与数据边界</a>
-        <a href="/terms.html">使用条款</a>
-        <a href="https://tk-evu-docs.pages.dev/guide/database" target="_blank" rel="noopener">数据库说明</a>
-      </span>
-      <span>TK 电商工具箱 © <span id="yr"></span></span>
-    </footer>
-  </div>
-
-  <div id="react-island-root"></div>
-
-  <!-- JS 模块（路由 → 共享基础 → 业务模块；主路由和部分业务入口已由 Vite ESM 加载） -->
   <script type="module" src="/src/react/main.tsx"></script>
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore-compat.js" defer></script>

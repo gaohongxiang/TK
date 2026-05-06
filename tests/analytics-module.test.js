@@ -5,12 +5,11 @@ const assert = require('assert');
 const root = path.join(__dirname, '..');
 const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'parser.mjs'), 'utf8');
 const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'analyzer.mjs'), 'utf8');
-const srcAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
-const srcChartsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'charts.mjs'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
+const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const reactAppShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
 const reactAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'AnalyticsApp.tsx'), 'utf8');
-const reactAnalyticsMountSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'mountAnalytics.tsx'), 'utf8');
+const reactAnalyticsRouteSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'AnalyticsRoute.tsx'), 'utf8');
 const reactChartOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'chartOptions.ts'), 'utf8');
 const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
@@ -24,7 +23,7 @@ assert.match(
 );
 
 assert.match(
-  reactMainSource,
+  reactAppSource,
   /config\.modules/,
   'React SPA 路由需要从项目配置读取模块列表'
 );
@@ -42,15 +41,15 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  reactAppSource,
   /id="view-analytics"/,
-  '页面需要提供数据分析视图容器'
+  'React App 需要提供数据分析视图容器'
 );
 
 assert.match(
-  reactAnalyticsMountSource,
-  /getElementById\('view-analytics'\)[\s\S]*createRoot\(root\)[\s\S]*<AnalyticsApp/,
-  '数据分析页需要由 React 直接挂载到 view-analytics'
+  reactAppSource,
+  /id="view-analytics"[\s\S]*<AnalyticsPane active=\{active === 'analytics'\} \/>/,
+  '数据分析页需要由 React App 路由直接渲染'
 );
 
 assert.match(
@@ -149,105 +148,36 @@ assert.match(
   '路线二 M1 analytics analyzer 需要通过 import 读取 parser 元信息'
 );
 
-assert.match(
-  srcAnalyticsSource,
-  /import\s+\{\s*TKAnalyticsAnalyzer\s*\}\s+from\s+'\.\/analyzer\.mjs'/,
-  '路线二 M2 需要提供 analytics index ESM 入口'
-);
+assert.ok(!fs.existsSync(path.join(root, 'src', 'analytics', 'index.mjs')), '完整 React SPA 重建后旧 analytics DOM 入口应删除');
+assert.ok(!fs.existsSync(path.join(root, 'src', 'analytics', 'charts.mjs')), '完整 React SPA 重建后旧 SVG 图表 helper 应删除');
 
 assert.match(
-  srcAnalyticsSource,
-  /import\s+\{\s*TKAnalyticsCharts\s*\}\s+from\s+'\.\/charts\.mjs'/,
-  '数据分析入口需要接入独立图表渲染模块'
-);
-
-assert.match(
-  srcChartsSource,
-  /function buildChannelDonutMarkup\(/,
-  '数据分析图表模块需要提供渠道环形图渲染函数'
-);
-
-assert.match(
-  srcChartsSource,
-  /function buildBubbleChartMarkup\(/,
-  '数据分析图表模块需要提供商品机会气泡图渲染函数'
-);
-
-assert.match(
-  srcChartsSource,
-  /function separateBubblePoints\(/,
-  '商品机会气泡图需要对圆点做碰撞避让'
-);
-
-assert.doesNotMatch(
-  srcChartsSource,
-  /class="analytics-bubble-label"/,
-  '商品机会气泡图不应在 SVG 内常驻商品名，避免文字重叠'
-);
-
-assert.match(
-  srcChartsSource,
-  /analytics-bubble-highlights/,
-  '商品机会气泡图需要把重点商品名称放到图下方列表'
-);
-
-assert.match(
-  srcChartsSource,
-  /const TKAnalyticsCharts = \{/,
-  '数据分析图表模块需要提供命名空间导出'
-);
-
-assert.match(
-  srcAnalyticsSource,
-  /function createAnalyticsModule\(options = \{\}\)/,
-  '路线二 M2 analytics ESM 入口需要导出可注入依赖的创建函数'
-);
-
-assert.match(
-  srcAnalyticsSource,
-  /function registerAnalyticsProvider\(registry = globalThis\.TKDataSourceRegistry/,
-  '路线二 M2 analytics ESM 入口需要保留数据源注册入口'
-);
-
-assert.match(
-  srcAnalyticsSource,
-  /const TKAnalytics = createAnalyticsModule\(\)/,
-  '数据分析 DOM 入口需要保留独立命名空间导出'
-);
-
-assert.match(
-  srcAnalyticsSource,
-  /function hasReactAnalyticsRoot\(\)[\s\S]*bindEvents\(\)[\s\S]*hasReactAnalyticsRoot\(\)/,
-  'React 数据分析接管页面后，旧 ESM 入口不应重复绑定 DOM 事件'
-);
-
-assert.match(
-  srcAnalyticsSource,
+  reactAnalyticsSource,
   /file\.arrayBuffer\(\)/,
   'Excel 文件应在浏览器本地读取'
 );
 
 assert.match(
-  srcAnalyticsSource,
-  /rootWindow\.XLSX\.read\(buffer,\s*\{\s*type:\s*'array'\s*\}\)/,
+  reactAnalyticsSource,
+  /xlsx\.read\(buffer,\s*\{\s*type:\s*'array'\s*\}\)/,
   'Excel 解析应使用本地 buffer，不依赖远程上传'
 );
 
 assert.doesNotMatch(
-  [srcParserSource, srcAnalyzerSource, srcAnalyticsSource, srcChartsSource, reactAnalyticsSource, reactAnalyticsMountSource, reactChartOptionsSource].join('\n'),
-  /\bfetch\s*\(|XMLHttpRequest|sendBeacon|firebase|Firestore|localStorage\.setItem/,
+  [srcParserSource, srcAnalyzerSource, reactAnalyticsSource, reactAnalyticsRouteSource, reactChartOptionsSource].join('\n'),
+  /\bfetch\s*\(|XMLHttpRequest|sendBeacon|firebase|localStorage\.setItem/,
   '数据分析相关模块不应上传或持久化用户 Excel 数据'
 );
 
 assert.match(
-  reactMainSource,
-  /import\('\.\/features\/analytics\/mountAnalytics'\)[\s\S]*getElementById\('view-analytics'\)[\s\S]*setAnalyticsFallback[\s\S]*mountAnalyticsWhenNeeded/,
+  reactAppSource,
+  /import\('\.\.\/features\/analytics\/AnalyticsRoute'\)[\s\S]*AnalyticsStatus[\s\S]*AnalyticsPane/,
   'React 入口需要按需加载数据分析模块，并在加载期间提供轻量状态'
 );
 
 assert.doesNotMatch(
   reactMainSource,
-  /from '\.\/features\/analytics\/mountAnalytics'/,
+  /from '\.\/features\/analytics\/AnalyticsRoute'/,
   'React 首屏入口不应静态引入数据分析模块，避免提前加载 ECharts'
 );
 
@@ -258,15 +188,15 @@ assert.match(
 );
 
 assert.match(
-  reactMainSource,
-  /data-analytics-lazy-state="\$\{state\}"/,
+  reactAppSource,
+  /data-analytics-lazy-state=\{state\}/,
   'React 数据分析懒加载状态需要提供可测试状态标记'
 );
 
 assert.match(
-  reactAnalyticsMountSource,
-  /getElementById\('view-analytics'\)[\s\S]*createRoot\(root\)[\s\S]*<AnalyticsApp/,
-  'React 数据分析需要挂载到数据分析视图根节点'
+  reactAnalyticsRouteSource,
+  /<AnalyticsApp[\s\S]*analyzer=\{TKAnalyticsAnalyzer\}[\s\S]*parser=\{TKAnalyticsParser\}/,
+  'React 数据分析需要通过路由组件挂载 parser/analyzer'
 );
 
 assert.match(
@@ -420,9 +350,6 @@ const rows = [
 (async () => {
   const parserModule = await import(`file://${path.join(root, 'src', 'analytics', 'parser.mjs')}`);
   const analyzerModule = await import(`file://${path.join(root, 'src', 'analytics', 'analyzer.mjs')}`);
-  const chartsModule = await import(`file://${path.join(root, 'src', 'analytics', 'charts.mjs')}`);
-  const analyticsModule = await import(`file://${path.join(root, 'src', 'analytics', 'index.mjs')}`);
-
   const parsedByModule = parserModule.parseRows(rows);
   assert.strictEqual(parsedByModule.period, '2026-04-27 ~ 2026-05-03', '需要读取导出周期');
   assert.strictEqual(parsedByModule.records.length, 2, '需要读取商品数据行');
@@ -436,62 +363,12 @@ const rows = [
   assert.strictEqual(analysisByModule.kpis.totalOrders, 51, 'analytics analyzer ESM 模块需要可被直接 import');
   assert.strictEqual(analysisByModule.kpis.productCount, 2, '需要汇总商品数');
   assert.strictEqual(analysisByModule.channelTotals.find(channel => channel.key === 'video').gmv, 50000, '需要按渠道汇总 GMV');
-  assert.ok(
-    chartsModule.buildShareSlices(analysisByModule.channelTotals, 'gmv').some(slice => slice.key === 'video' && slice.share > 0.7),
-    '渠道环形图需要能计算各渠道 GMV 占比'
-  );
-  assert.ok(
-    chartsModule.buildChannelDonutMarkup({
-      analysis: analysisByModule,
-      metric: 'gmv',
-      id: 'test-donut',
-      title: '渠道 GMV 占比',
-      totalLabel: 'GMV',
-      totalValue: '70,036 円'
-    }).includes('analytics-donut-segment'),
-    '渠道环形图需要输出 SVG 分段'
-  );
-  assert.ok(
-    chartsModule.buildBubbleChartMarkup({
-      records: analysisByModule.records,
-      formatValue: value => `${value}`,
-      formatInteger: value => `${value}`,
-      formatPercent: value => `${value}`,
-      shortenText: value => value,
-      escapeHtml: value => String(value)
-    }).includes('analytics-bubble-point'),
-    '商品机会气泡图需要输出商品气泡'
-  );
-  assert.ok(
-    chartsModule.buildBubbleChartMarkup({
-      records: analysisByModule.records,
-      formatValue: value => `${value}`,
-      formatInteger: value => `${value}`,
-      formatPercent: value => `${value}`,
-      shortenText: value => value,
-      escapeHtml: value => String(value)
-    }).includes('analytics-bubble-highlights'),
-    '商品机会气泡图需要输出图下方重点商品列表'
-  );
+  assert.match(reactChartOptionsSource, /type:\s*'pie'[\s\S]*type:\s*'funnel'[\s\S]*type:\s*'scatter'/, 'React ECharts 配置需要覆盖渠道、漏斗和商品机会图');
   assert.ok(
     analysisByModule.records.some(record => record.diagnosis.label === '爆品放大'),
     '需要给高 GMV 商品生成运营诊断'
   );
   assert.strictEqual(typeof analyzerModule.TKAnalyticsAnalyzer.diagnoseProduct, 'function', 'analytics analyzer ESM 模块需要保留命名空间导出');
-
-  const analyticsByModule = analyticsModule.createAnalyticsModule();
-  assert.strictEqual(analyticsByModule.parseRows(rows).records[0].gmv, 70036, 'analytics index ESM 入口需要可创建模块');
-  assert.strictEqual(analyticsByModule.analyze(parsedByModule.records, parsedByModule.period).kpis.totalOrders, 51, 'analytics index ESM 入口需要接入 analyzer');
-
-  let registeredProvider = null;
-  analyticsModule.registerAnalyticsProvider({
-    registerProvider(key, provider) {
-      registeredProvider = { key, provider };
-    }
-  }, analyticsByModule);
-  assert.strictEqual(registeredProvider.key, 'analytics', 'analytics index ESM 入口需要保留 provider 注册');
-  assert.strictEqual(registeredProvider.provider.module, analyticsByModule, 'analytics index ESM 入口需要注册传入模块');
-  assert.strictEqual(registeredProvider.provider.storesUserData, false, 'analytics index ESM 入口仍应声明不保存用户数据');
 
   console.log('analytics module contract ok');
 })().catch(error => {

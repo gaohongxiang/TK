@@ -3,10 +3,9 @@ const path = require('path');
 const assert = require('assert');
 
 const srcSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'global-settings.mjs'), 'utf8');
-const ordersSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
-const productsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'index.mjs'), 'utf8');
 const reactCalculatorSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'calculator', 'CalculatorApp.tsx'), 'utf8');
 const reactOrdersSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
+const reactProductsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -46,9 +45,9 @@ assert.match(
 );
 
 assert.match(
-  productsSource,
-  /import '\.\.\/global-settings\.mjs'/,
-  '商品入口需要显式导入全局设置模块'
+  reactProductsSource,
+  /from '\.\.\/\.\.\/\.\.\/global-settings\.mjs'/,
+  'React 商品页需要显式导入全局设置模块'
 );
 
 assert.match(

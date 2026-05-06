@@ -1,32 +1,24 @@
-import { useEffect, useState } from 'react';
-
 type ModuleItem = {
   key: string;
   label: string;
 };
 
-const modules: ModuleItem[] = [
+const fallbackModules: ModuleItem[] = [
   { key: 'calc', label: '利润计算器' },
   { key: 'products', label: '商品管理' },
   { key: 'orders', label: '订单管理' },
   { key: 'analytics', label: '数据分析' }
 ];
 
-function getCurrentRoute() {
-  const hash = globalThis.location?.hash?.replace(/^#/, '') || '';
-  return modules.some(module => module.key === hash) ? hash : 'calc';
-}
-
-function AppShell() {
-  const [active, setActive] = useState(getCurrentRoute);
-
-  useEffect(() => {
-    const syncRoute = () => setActive(getCurrentRoute());
-    syncRoute();
-    window.addEventListener('hashchange', syncRoute);
-    return () => window.removeEventListener('hashchange', syncRoute);
-  }, []);
-
+function AppShell({
+  active = 'calc',
+  docsUrl = 'https://tk-evu-docs.pages.dev/',
+  modules = fallbackModules
+}: {
+  active?: string;
+  docsUrl?: string;
+  modules?: ModuleItem[];
+}) {
   return (
     <header className="app-header" data-react-app-shell-ready="true">
       <div className="app-brand">
@@ -52,7 +44,7 @@ function AppShell() {
             );
           })}
         </nav>
-        <a href="https://tk-evu-docs.pages.dev/" target="_blank" rel="noopener" className="app-doc-link">文档</a>
+        <a href={docsUrl} target="_blank" rel="noopener" className="app-doc-link">文档</a>
       </div>
     </header>
   );

@@ -5,6 +5,7 @@ const assert = require('assert');
 const root = path.join(__dirname, '..');
 const srcConfigSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
+const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -50,14 +51,14 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  reactMainSource,
-  /Object\.fromEntries[\s\S]*config\.modules/,
+  reactAppSource,
+  /function getModules\(config = TKAppConfig\)[\s\S]*config\.modules[\s\S]*function getModuleMap\(config = TKAppConfig\)[\s\S]*Object\.fromEntries\(getModules\(config\)/,
   'React SPA 路由模块列表需要从项目配置生成'
 );
 
 assert.match(
-  reactMainSource,
-  /\.app-doc-link[\s\S]*config\?\.docsUrl/,
+  reactAppSource,
+  /<AppShell modules=\{modules\} active=\{active\} docsUrl=\{config\.docsUrl\}/,
   'React SPA 文档链接需要接入项目配置'
 );
 
@@ -69,7 +70,6 @@ assert.doesNotMatch(
 
 (async () => {
   const module = await import(`file://${path.join(root, 'src', 'app-config.mjs')}`);
-  const mainModule = await import(`file://${path.join(root, 'src', 'main.mjs')}`);
 
   assert.strictEqual(module.TKAppConfig.docsUrl, 'https://tk-evu-docs.pages.dev/', '需要保留当前文档站地址');
   assert.strictEqual(module.TKAppConfig.officialDataSource, 'firestore', '正式数据源应为 Firestore');
@@ -79,12 +79,8 @@ assert.doesNotMatch(
     ['calc', 'products', 'orders', 'analytics'],
     '模块顺序需要和导航一致'
   );
-  assert.deepStrictEqual(
-    Object.keys(mainModule.getModuleMap(module.TKAppConfig)),
-    ['calc', 'products', 'orders', 'analytics'],
-    '旧 ESM 主入口保留给历史导入时仍需要按配置生成模块表'
-  );
-  assert.equal(typeof mainModule.switchView, 'function', '旧 ESM 主入口需要保留 switchView 导出直到源码清理阶段');
+  assert.match(reactMainSource, /getElementById\('root'\)[\s\S]*<App \/>/, 'React 主入口需要只挂载单一 SPA root');
+  assert.ok(!fs.existsSync(path.join(root, 'src', 'main.mjs')), '完整 React SPA 重建后旧 src/main.mjs 入口应删除');
 
   console.log('app config contract ok');
 })().catch(error => {

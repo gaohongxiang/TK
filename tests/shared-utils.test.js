@@ -7,10 +7,9 @@ const srcHtmlSource = fs.readFileSync(path.join(root, 'src', 'shared', 'html.mjs
 const srcFormatSource = fs.readFileSync(path.join(root, 'src', 'shared', 'format.mjs'), 'utf8');
 const srcTableControlsSource = fs.readFileSync(path.join(root, 'src', 'table-controls.mjs'), 'utf8');
 const srcSearchSelectSource = fs.readFileSync(path.join(root, 'src', 'searchable-select.mjs'), 'utf8');
-const srcOrdersSource = fs.readFileSync(path.join(root, 'src', 'orders', 'index.mjs'), 'utf8');
 const reactOrdersSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const srcProductsTableSource = fs.readFileSync(path.join(root, 'src', 'products', 'table.mjs'), 'utf8');
-const analyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
+const reactAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'AnalyticsApp.tsx'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(srcHtmlSource, /export\s+const\s+TKHtml/, '路线二 M1 需要提供共享 HTML ESM 导出');
@@ -23,7 +22,7 @@ assert.match(srcFormatSource, /function percent\(value,\s*digits = 2\)/, '共享
 assert.match(srcHtmlSource, /window\.TKHtml = TKHtml/, '共享 HTML ESM 模块需要在浏览器里挂回旧全局命名空间');
 assert.match(srcFormatSource, /window\.TKFormat = TKFormat/, '共享格式化 ESM 模块需要在浏览器里挂回旧全局命名空间');
 assert.match(srcTableControlsSource, /export\s+\{[\s\S]*TKTableControls[\s\S]*buildTableToolbarMarkup[\s\S]*clampPage[\s\S]*\}/, '路线二需要提供表格控件 ESM 导出');
-assert.match(srcProductsTableSource, /import \{ TKTableControls \} from '\.\.\/table-controls\.mjs'/, '商品表格需要显式导入表格控件');
+assert.doesNotMatch(srcProductsTableSource, /TKTableControls/, '商品 React 表格迁移后商品表格 helper 不应继续依赖 DOM 表格控件');
 assert.match(reactOrdersSource, /function SearchableCombo\(/, 'React 订单页需要提供可搜索下拉框');
 assert.match(srcSearchSelectSource, /export\s+\{[\s\S]*TKSearchSelect[\s\S]*create[\s\S]*normalizeText[\s\S]*\}/, '路线二需要提供可搜索下拉框 ESM 导出');
 
@@ -44,9 +43,9 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  analyticsSource,
-  /import \{ TKFormat \}[\s\S]*import \{ TKHtml \}[\s\S]*html\.escape[\s\S]*format\.integer[\s\S]*format\.yen[\s\S]*format\.percent[\s\S]*html\.shorten/,
-  'analytics 渲染层需要使用共享 HTML/format 工具'
+  reactAnalyticsSource,
+  /formatInteger[\s\S]*formatPercent[\s\S]*formatYen[\s\S]*shortenText/,
+  'React analytics 渲染层需要使用共享格式化 helper'
 );
 
 (async () => {

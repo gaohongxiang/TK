@@ -10,6 +10,7 @@ const tailwindConfig = fs.readFileSync(path.join(root, 'tailwind.config.ts'), 'u
 const componentsJson = JSON.parse(fs.readFileSync(path.join(root, 'components.json'), 'utf8'));
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const reactMain = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
+const reactApp = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const reactIsland = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
 const appShell = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
 const utilsSource = fs.readFileSync(path.join(root, 'src', 'react', 'lib', 'utils.ts'), 'utf8');
@@ -94,14 +95,14 @@ assert.strictEqual(componentsJson.aliases.components, '@/components', 'shadcn co
 
 assert.match(
   indexSource,
-  /<div id="react-app-shell-root"><\/div>[\s\S]*<div id="react-island-root"><\/div>[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
-  '首页需要提供 React AppShell、React island mount 容器和入口'
+  /<div id="root"><\/div>[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
+  '首页需要只提供单一 React SPA mount 容器和入口'
 );
 
 assert.match(
   reactMain,
-  /getElementById\('react-app-shell-root'\)[\s\S]*createRoot\(root\)\.render\(<AppShell \/>[\s\S]*getElementById\('react-island-root'\)[\s\S]*mountReactApps/,
-  'React 入口需要挂载 AppShell 和独立 island，且避免重复挂载'
+  /getElementById\('root'\)[\s\S]*createRoot\(root\)\.render\(<App \/>/,
+  'React 入口需要只挂载单一 App root，且避免重复挂载'
 );
 
 assert.match(
@@ -111,15 +112,15 @@ assert.match(
 );
 
 assert.match(
-  reactMain,
-  /import\('\.\/features\/analytics\/mountAnalytics'\)[\s\S]*hashchange/,
+  reactApp,
+  /import\('\.\.\/features\/analytics\/AnalyticsRoute'\)[\s\S]*AnalyticsPane/,
   'React 数据分析应按路由懒加载，避免首屏提前加载图表库'
 );
 
 assert.match(
   reactIsland,
   /data-react-island-ready="true"[\s\S]*id="app-firestore-modal"[\s\S]*id="app-firestore-rules-modal"[\s\S]*id="app-firestore-disconnect-modal"[\s\S]*id="toast"/,
-  'React island 需要接管全局 Firestore 弹窗和 Toast'
+  'React App 内的全局运行层需要接管 Firestore 弹窗和 Toast'
 );
 
 assert.match(

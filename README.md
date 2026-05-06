@@ -41,6 +41,14 @@
 
 当前主站使用 Vite 构建，页面入口已经切到 `/src/*.mjs` ESM 模块。旧 `js/` 源目录已清理，主站源码以 `src/*.mjs` 为准，构建产物也不发布 `dist/js/`。
 
+`modern-react-spa` 分支上，主站已重建为完整 Vite React SPA：
+
+- `index.html` 只保留单根 `#root`、`/src/react/main.tsx`、Firebase compat SDK 和 SheetJS。
+- `src/react/app/App.tsx` 接管 App Shell、hash 路由、页脚和四个主视图。
+- 利润计算器、商品管理、订单管理、数据分析都由 React 页面渲染。
+- `src/*.mjs` 继续作为业务纯函数、Firestore provider、解析器和导出逻辑来源。
+- 已删除旧 DOM 入口和旧 React island 二次挂载入口，构建产物不发布旧 `dist/js/`。
+
 ### 2. 文档站
 
 文档源码在：
@@ -62,15 +70,15 @@
 
 ### 第二阶段：工程化改造
 
-当前已完成主站构建入口，后续再逐步迁移到 TypeScript。
+当前已完成主站构建入口，并在 `modern-react-spa` 分支完成完整 React SPA 第一轮重建。
 
 - 使用 Vite 统一构建工具主站。已完成。
 - Cloudflare Pages 主站构建输出改为 `dist/`。已完成。
-- 主站入口切到 `/src/*.mjs` ESM 模块，构建产物不再发布旧 `dist/js/`。已完成。
+- 主站入口切到 `/src/react/main.tsx` 单根 React SPA，构建产物不再发布旧 `dist/js/`。已完成。
 - 构建后补充稳定 `/logo.png`，用于 Open Graph、Twitter Card、manifest 和独立静态页。已完成。
 - 将利润计算、商品、订单、数据分析拆成独立模块目录。已基本完成。
-- 商品管理已拆出 `accounts` 和 `export` 子模块，入口文件只保留连接、加载、渲染编排。已完成。
-- 数据分析已拆成 `parser`、`analyzer`、`index` 三层，Excel 解析和汇总诊断不依赖 DOM。已完成。
+- 商品管理已迁到 React 页面，继续复用 `accounts`、`export`、`table`、`form-utils` 和 Firestore provider 纯逻辑。已完成。
+- 数据分析已迁到 React + ECharts，继续复用 `parser`、`analyzer` 纯逻辑，Excel 解析和汇总诊断不依赖 DOM。已完成。
 - 已新增共享 HTML、格式化、表格控件、可搜索下拉框等 ESM 工具模块，服务数据分析、商品和订单渲染层。已完成。
 - 引入类型定义，约束订单、商品、SKU、分析行数据结构。
 - 将通用表格、弹窗、Toast、连接状态抽成共享组件。

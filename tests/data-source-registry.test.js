@@ -6,9 +6,9 @@ const root = path.join(__dirname, '..');
 const srcRegistrySource = fs.readFileSync(path.join(root, 'src', 'data-sources', 'registry.mjs'), 'utf8');
 const srcOrderFirestoreSource = fs.readFileSync(path.join(root, 'src', 'orders', 'provider-firestore.mjs'), 'utf8');
 const srcProductFirestoreSource = fs.readFileSync(path.join(root, 'src', 'products', 'provider-firestore.mjs'), 'utf8');
-const analyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
-const orderIndexSource = fs.readFileSync(path.join(root, 'src', 'orders', 'index.mjs'), 'utf8');
-const productIndexSource = fs.readFileSync(path.join(root, 'src', 'products', 'index.mjs'), 'utf8');
+const reactAnalyticsRouteSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'AnalyticsRoute.tsx'), 'utf8');
+const reactOrdersSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
+const reactProductsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const indexHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -54,27 +54,27 @@ assert.match(
 );
 
 assert.match(
-  analyticsSource,
-  /registerProvider\('analytics'[\s\S]*key:\s*'browser-excel'[\s\S]*storesUserData:\s*false[\s\S]*offline:\s*'memory-only'/,
-  '数据分析 Excel provider 需要登记为只在浏览器内存处理'
+  reactAnalyticsRouteSource,
+  /TKAnalyticsAnalyzer[\s\S]*TKAnalyticsParser[\s\S]*getXlsx=\{\(\) => window\.XLSX\}/,
+  'React 数据分析需要直接接入本地 Excel parser/analyzer，不通过旧 DOM provider'
 );
 
 assert.match(
-  orderIndexSource,
-  /registry\?\.getProvider\?\.\('orders', mode\)[\s\S]*mode === 'firestore'/,
-  '订单模块选择 Firestore provider 时需要接入数据源注册表'
+  reactOrdersSource,
+  /OrderTrackerProviderFirestore/,
+  'React 订单页需要直接使用 Firestore provider'
 );
 
 assert.doesNotMatch(
-  orderIndexSource,
+  reactOrdersSource,
   /OrderTrackerProviderSupabase|providerSupabase|mode === 'supabase'/,
   '订单模块正式路径不应创建或选择 Supabase provider'
 );
 
 assert.match(
-  productIndexSource,
-  /registry\?\.getProvider\?\.\('products', provider\.key\)/,
-  '商品模块需要从数据源注册表读取 provider 元信息'
+  reactProductsSource,
+  /ProductLibraryProviderFirestore/,
+  'React 商品页需要直接使用 Firestore provider'
 );
 
 (async () => {

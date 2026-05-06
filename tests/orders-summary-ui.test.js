@@ -39,9 +39,9 @@ assert.match(
 );
 
 assert.match(
-  esmSource,
-  /ot-th-help/,
-  '订单表头需要包含帮助提示图标结构'
+  ordersPageSource,
+  /<th>总售价\(円\)<\/th>[\s\S]*<th>总采购额\(¥\)<\/th>[\s\S]*<th>预估总海外运费\(¥\)<\/th>[\s\S]*<th>预估总利润\(¥\)<\/th>/,
+  '订单表头需要保留销售、采购、运费、利润金额列'
 );
 
 assert.match(
@@ -76,32 +76,32 @@ const orders = [
 ];
 
 assert.match(
-  esmSource,
-  /return `采购 \$\{purchaseText\} · 运费 \$\{shippingText\} · 达人 \$\{creatorText\}`;/,
+  ordersPageSource,
+  /filteredCreatorCommissionTotal[\s\S]*allCreatorCommissionTotal[\s\S]*采购 · 运费 · 达人/,
   '统计卡片需要按收入和支出组织汇总信息，并把达人佣金计入支出'
 );
 
 assert.match(
-  esmSource,
-  /销售 \$\{grossText\} - 退款 \$\{refundText\}/,
+  ordersPageSource,
+  /销售 \$\{formatSummaryMetric\(grossMetric\)\} - 退款 \$\{formatSummaryMetric\(refundMetric\)\}/,
   '有退款时，收入说明需要写成总销售额减总退款额'
 );
 
 assert.match(
-  esmSource,
+  ordersPageSource,
   /含 \$\{refundMetric\.count\} 条退款/,
   '统计说明需要补充退款订单条数'
 );
 
 assert.match(
-  esmSource,
+  ordersPageSource,
   /ot-summary-hero[\s\S]*预估总利润/,
   '统计卡片需要把预估利润总额放进独立主区'
 );
 
 assert.match(
-  esmSource,
-  /formatSummaryMetric\(summary\.filteredProfitMetric\)[\s\S]*formatSummaryMetric\(summary\.filteredSaleMetric\)/,
+  ordersPageSource,
+  /formatSummaryMetric\(profitMetric\)[\s\S]*formatSummaryMetric\(saleMetric\)[\s\S]*summary\.filteredProfitMetric[\s\S]*summary\.filteredSaleMetric/,
   '统计卡片中的预估总利润和总销售额应直接按有效数据渲染'
 );
 

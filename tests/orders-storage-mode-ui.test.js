@@ -18,7 +18,7 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  indexSource,
+  reactIslandSource,
   /Firebase Firestore/,
   '页面需要保留 Firebase Firestore 作为唯一云端数据源'
 );

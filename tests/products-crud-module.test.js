@@ -4,7 +4,7 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'products', 'crud.mjs'), 'utf8');
-const srcIndexSource = fs.readFileSync(path.join(root, 'src', 'products', 'index.mjs'), 'utf8');
+const reactProductsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -32,9 +32,9 @@ assert.match(
 );
 
 assert.match(
-  srcIndexSource,
-  /import \{ ProductLibraryCrud \} from '\.\/crud\.mjs'/,
-  '商品 ESM 入口需要直接导入商品 CRUD 模块'
+  reactProductsSource,
+  /buildBatchSkuDrafts[\s\S]*buildEstimatedShippingSnapshot[\s\S]*id="pl-modal"/,
+  'React 商品页需要直接接管商品表单和 SKU 纯函数'
 );
 
 assert.doesNotMatch(
@@ -42,6 +42,8 @@ assert.doesNotMatch(
   /<script src="js\/products\/crud\.js" defer><\/script>/,
   'index.html 不应再加载旧商品 CRUD 普通脚本'
 );
+
+assert.ok(!fs.existsSync(path.join(root, 'src', 'products', 'index.mjs')), '完整 React SPA 重建后旧商品 DOM 入口应删除');
 
 assert.match(
   srcSource,

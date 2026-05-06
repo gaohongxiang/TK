@@ -5,7 +5,6 @@ const { pathToFileURL } = require('url');
 
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'table.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
-const ordersSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
@@ -23,14 +22,8 @@ assert.match(
 
 assert.match(
   esmSource,
-  /export \{[\s\S]*OrderTableView[\s\S]*deriveDisplayedOrders[\s\S]*derivePurchaseSummary[\s\S]*getProfitCellToneClass[\s\S]*render[\s\S]*\}/,
-  'ESM 订单表格模块需要导出表格命名空间、关键纯函数和渲染壳'
-);
-
-assert.match(
-  esmSource,
-  /function render\(/,
-  '需要暴露 render 入口'
+  /export \{[\s\S]*OrderTableView[\s\S]*deriveDisplayedOrders[\s\S]*derivePurchaseSummary[\s\S]*getProfitCellToneClass[\s\S]*\}/,
+  'ESM 订单表格模块需要导出表格命名空间和关键纯函数'
 );
 
 const orders = [
@@ -53,14 +46,14 @@ const orders = [
 ];
 
 assert.match(
-  esmSource,
+  ordersPageSource,
   /<th>总售价\(円\)<\/th>[\s\S]*<th>总采购额\(¥\)<\/th>[\s\S]*<th>预估总海外运费\(¥\)<\/th>[\s\S]*<th>预估总利润\(¥\)<\/th>/,
   '表格需要按订单总额口径展示金额列，并保持售价在采购额前面'
 );
 
 assert.match(
-  esmSource,
-  /ot-profit-value[\s\S]*getProfitCellToneClass\(resolvedProfit\)/,
+  ordersPageSource,
+  /ot-profit-value[\s\S]*getProfitCellToneClass\(profit\)/,
   '预估利润列需要按正负利润套用颜色样式'
 );
 
@@ -78,13 +71,19 @@ assert.match(
 
 assert.match(
   esmSource,
-  /ot-order-tag ot-order-tag-creator"[\s\S]*?>达人</,
-  '订单号列需要在达人带货订单后显示达人标记'
+  /ot-order-tag ot-order-tag-creator"[\s\S]*>达人<\/span>/,
+  '订单号纯函数需要在达人带货订单后显示达人标记'
 );
 
 assert.match(
-  esmSource,
-  /<tr class="\$\{isOrderRefunded\(order\) \? 'is-refunded' : ''\}">/,
+  ordersPageSource,
+  /dangerouslySetInnerHTML=\{\{ __html: buildOrderNoCellMarkup\(order\) \}\}/,
+  'React 订单号列需要复用订单号纯函数渲染达人和退款标记'
+);
+
+assert.match(
+  ordersPageSource,
+  /className=\{isOrderRefunded\(order\) \? 'is-refunded' : undefined\}/,
   '退款订单行需要挂上淡红提示样式'
 );
 
@@ -113,13 +112,13 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  esmSource,
-  /import \{ TKTableControls \} from '\.\.\/table-controls\.mjs'/,
-  '订单表格模块需要显式导入表格控件'
+  ordersPageSource,
+  /id="ot-table-toolbar-container"[\s\S]*id="ot-table-search-input"/,
+  'React 订单页需要直接渲染搜索和分页控制'
 );
 
 assert.match(
-  esmSource,
+  ordersPageSource,
   /搜索下单时间 \/ 订单号 \/ 产品 \/ 快递/,
   '搜索提示文案需要明确包含下单时间'
 );
@@ -289,11 +288,19 @@ function toPlain(value) {
     'ESM 订单表格应保留多明细快递紧凑展示口径'
   );
 
-  assert.equal(
-    typeof tableModule.OrderTableView.render,
-    'function',
-    'ESM 订单表格需要暴露 render 壳'
+  assert.match(
+    tableModule.buildOrderNoCellMarkup({ '订单号': 'AA-1', '达人佣金率': '10' }),
+    /ot-order-tag ot-order-tag-creator[\s\S]*>达人</,
+    'ESM 订单号纯函数应保留达人标记'
   );
+
+  assert.match(
+    tableModule.buildOrderNoCellMarkup({ '订单号': 'AA-2', '是否退款': '1' }),
+    /ot-order-tag ot-order-tag-creator[\s\S]*>退款</,
+    'ESM 订单号纯函数应保留退款标记'
+  );
+
+  assert.equal(tableModule.OrderTableView.render, undefined, '完整 React SPA 重建后订单表格 helper 不再暴露 DOM render 壳');
 
   console.log('orders table view contract ok');
 })().catch(error => {

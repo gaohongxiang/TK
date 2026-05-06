@@ -63,7 +63,7 @@ async function assertText(pathname, pattern, expectedStatus = 200) {
 try {
   await waitForServer();
 
-  await assertText('/', /TK 电商工具箱[\s\S]*data-view="analytics"[\s\S]*隐私与数据边界/);
+  await assertText('/', /<title>TK 电商工具箱<\/title>[\s\S]*<div id="root"><\/div>[\s\S]*firebase-firestore-compat\.js[\s\S]*xlsx\.full\.min\.js/);
   await assertText('/privacy.html', /隐私与数据边界[\s\S]*你自己的 Firebase Firestore[\s\S]*当前浏览器内存/);
   await assertText('/terms.html', /使用条款与免责声明[\s\S]*工具结果仅供参考[\s\S]*用户自有数据责任/);
   await assertText('/404.html', /页面不存在[\s\S]*返回工具首页/);
@@ -73,6 +73,7 @@ try {
   await assertText('/manifest.webmanifest', /"name":\s*"TK 电商工具箱"[\s\S]*"display":\s*"standalone"/);
   await assertText('/_headers', /\/index\.html[\s\S]*Cache-Control:\s*public, max-age=300, must-revalidate[\s\S]*\/logo\.png[\s\S]*Cache-Control:\s*public, max-age=86400, must-revalidate[\s\S]*\/robots\.txt[\s\S]*Content-Type:\s*text\/plain; charset=utf-8[\s\S]*\/sitemap\.xml[\s\S]*Content-Type:\s*application\/xml; charset=utf-8/);
   await assertText('/', /<script type="module" crossorigin src="\/assets\/index-[^"]+\.js"><\/script>/);
+  await assertText('/', /<link rel="canonical" href="https:\/\/tk-evu\.pages\.dev\/"[\s\S]*property="og:title" content="TK 电商工具箱"[\s\S]*name="twitter:image" content="https:\/\/tk-evu\.pages\.dev\/logo\.png"/);
   const logoResponse = await fetchText('/logo.png');
   if (!/image\/png/.test(logoResponse.contentType)) {
     throw new Error(`/logo.png returned unexpected content-type: ${logoResponse.contentType}`);

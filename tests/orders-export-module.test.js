@@ -5,7 +5,6 @@ const { pathToFileURL } = require('url');
 
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'export.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
@@ -57,17 +56,7 @@ assert.match(
   'CSV 导出需要按当前汇率重新计算达人佣金和人民币预估利润，不能直接信任旧存量字段'
 );
 
-assert.match(
-  indexSource,
-  /exportFactory\.create\(/,
-  '订单 ESM 入口需要通过导出模块工厂接入导出模块'
-);
-
-assert.match(
-  indexSource,
-  /import \{ OrderTrackerExport \} from '\.\/export\.mjs'/,
-  '订单 ESM 入口需要直接导入导出 ESM helper'
-);
+assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs')), '完整 React SPA 重建后旧订单 DOM 入口应删除');
 
 assert.doesNotMatch(
   htmlSource,

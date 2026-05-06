@@ -3,7 +3,9 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
+import { ProductLibraryExport, csvEscape } from '../../../products/export.mjs';
 import {
   buildBatchSkuDrafts,
   buildEstimatedShippingSnapshot,
@@ -109,59 +111,6 @@ function uniqueAccounts(values: unknown[] = []) {
   return result;
 }
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function csvEscape(value: unknown) {
-  return `"${String(value ?? '').replace(/"/g, '""')}"`;
-}
-
-function toNumber(value: unknown) {
-  const text = String(value ?? '').trim();
-  if (!text) return null;
-  const parsed = Number.parseFloat(text);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function formatSizeText(record: Record<string, unknown> = {}) {
-  const direct = String(record?.sizeText || '').trim();
-  if (direct) return direct.replace(/\*/g, '×');
-  const values = [record?.lengthCm, record?.widthCm, record?.heightCm]
-    .map(toNumber)
-    .filter(value => value !== null);
-  return values.length === 3 ? values.join('×') : '';
-}
-
-function getProductDefaults(product: ProductRecord = {}) {
-  return product?.defaults && typeof product.defaults === 'object'
-    ? product.defaults
-    : product;
-}
-
-function getProductSkus(product: ProductRecord = {}) {
-  return Array.isArray(product?.skus)
-    ? product.skus.filter(sku => String(sku?.skuId || sku?.skuName || '').trim())
-    : [];
-}
-
-function mergeProductSku(product: ProductRecord = {}, sku: ProductSku = {}) {
-  const defaults = getProductDefaults(product);
-  if (!skuUsesProductDefaults(sku)) return sku;
-  return {
-    ...defaults,
-    ...sku,
-    weightG: sku?.weightG || defaults?.weightG || '',
-    lengthCm: sku?.lengthCm || defaults?.lengthCm || '',
-    widthCm: sku?.widthCm || defaults?.widthCm || '',
-    heightCm: sku?.heightCm || defaults?.heightCm || '',
-    estimatedShippingFee: sku?.estimatedShippingFee || defaults?.estimatedShippingFee || '',
-    chargeWeightKg: sku?.chargeWeightKg || defaults?.chargeWeightKg || '',
-    shippingNote: sku?.shippingNote || defaults?.shippingNote || '',
-    sizeText: sku?.sizeText || defaults?.sizeText || ''
-  };
-}
-
 function clampPage(currentPage: number, pageSize: number, totalItems: number) {
   const safePageSize = Math.max(1, Number(pageSize) || 50);
   const totalPages = Math.max(1, Math.ceil((totalItems || 0) / safePageSize));
@@ -183,50 +132,6 @@ function showToast(message: string, type: ToastType = 'ok') {
 }
 
 showToast.timer = 0;
-
-function buildProductExportRows(products: ProductRecord[], selectedSet: Set<string>) {
-  return products
-    .filter(product => selectedSet.has(toAccountSlot(product?.accountName)))
-    .flatMap(product => {
-      const defaults = getProductDefaults(product);
-      const skus = getProductSkus(product);
-      const base = [
-        product?.accountName || '',
-        product?.tkId || '',
-        product?.name || '',
-        defaults?.cargoType === 'special' ? '特货' : '普货'
-      ];
-      if (!skus.length) {
-        return [[
-          ...base,
-          '',
-          '',
-          defaults?.weightG || '',
-          formatSizeText(defaults),
-          defaults?.estimatedShippingFee || '',
-          product?.link1688 || '',
-          product?.imageUrl || '',
-          product?.createdAt || '',
-          product?.updatedAt || ''
-        ]];
-      }
-      return skus.map(sku => {
-        const record = mergeProductSku(product, sku);
-        return [
-          ...base,
-          sku?.skuName || '',
-          sku?.skuId || '',
-          record?.weightG || '',
-          formatSizeText(record),
-          record?.estimatedShippingFee || '',
-          product?.link1688 || '',
-          product?.imageUrl || '',
-          product?.createdAt || '',
-          product?.updatedAt || ''
-        ];
-      });
-    });
-}
 
 function ProductPager({
   pageSize,
@@ -382,7 +287,7 @@ function ProductsTableView({
         </div>
       </div>
 
-      <div className="ot-table-wrap products-react-table-wrap">
+      <div className="ot-table-wrap products-react-table-wrap products-react-table-shell">
         <div id="pl-table-container" data-react-products-table-ready="true">
           {!displayed.length ? (
             <div className="ot-empty products-react-empty min-h-[180px]">
@@ -399,24 +304,24 @@ function ProductsTableView({
             </div>
           ) : (
             <div className="ot-table-inner products-react-table-inner rounded-none border-0 bg-transparent">
-              <table className={cn('ot pl-table products-react-table table-auto', showAccount ? 'is-all-accounts' : 'is-account-scoped')}>
-              <thead>
-                <tr>
-                  <th>
+              <Table className={cn('pl-table products-react-table table-auto', showAccount ? 'is-all-accounts' : 'is-account-scoped')}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
                     <Button id="pl-sort-btn" variant="plain" className="products-react-sort" title={sortTitle} onClick={onSortToggle}>
                       # {sortIcon}
                     </Button>
-                  </th>
-                  <th>图片</th>
-                  {showAccount ? <th>账号</th> : null}
-                  <th>TK ID</th>
-                  <th>商品名称</th>
-                  <th>货物类型</th>
-                  <th>SKU数</th>
-                  <th>1688</th>
-                  <th className="products-react-actions-head">操作</th>
-                </tr>
-              </thead>
+                  </TableHead>
+                  <TableHead>图片</TableHead>
+                  {showAccount ? <TableHead>账号</TableHead> : null}
+                  <TableHead>TK ID</TableHead>
+                  <TableHead>商品名称</TableHead>
+                  <TableHead>货物类型</TableHead>
+                  <TableHead>SKU数</TableHead>
+                  <TableHead>1688</TableHead>
+                  <TableHead className="products-react-actions-head">操作</TableHead>
+                </TableRow>
+              </TableHeader>
               {paged.map((product, index) => {
                 const tkId = String(product?.tkId || '').trim();
                 const absoluteIndex = startIndex + index;
@@ -427,8 +332,8 @@ function ProductsTableView({
                 const link1688 = String(product?.link1688 || '').trim();
                 const defaults = ProductLibraryTable.getProductDefaults(product);
                 return (
-                  <tbody key={tkId || index}>
-                    <tr
+                  <TableBody key={tkId || index}>
+                    <TableRow
                       className={cn('pl-product-row products-react-row', isExpandable ? 'is-expandable' : '', isExpanded ? 'is-expanded' : '')}
                       data-toggle-expand={isExpandable ? tkId : undefined}
                       onClick={event => {
@@ -437,27 +342,27 @@ function ProductsTableView({
                         onToggleExpand(tkId);
                       }}
                     >
-                      <td className="mono">
+                      <TableCell className="mono">
                         <div className="pl-row-seq">
                           <span>{seqNum}</span>
                           {isExpandable ? <span className="pl-expand-caret" aria-hidden="true">{isExpanded ? '▾' : '▸'}</span> : null}
                         </div>
-                      </td>
-                      <td className="pl-image-cell">
+                      </TableCell>
+                      <TableCell className="pl-image-cell">
                         {product.imageUrl
                           ? <img src={String(product.imageUrl)} alt={String(product.name || product.tkId || '商品图片')} className="pl-image products-react-image" />
                           : <span className="pl-image-placeholder products-react-image-placeholder">-</span>}
-                      </td>
-                      {showAccount ? <td><span className="chip muted products-react-account-chip">{ProductLibraryTable.formatText(product.accountName)}</span></td> : null}
-                      <td className="mono products-react-id">{ProductLibraryTable.formatText(product.tkId)}</td>
-                      <td className="products-react-name-cell"><div>{ProductLibraryTable.formatText(product.name)}</div></td>
-                      <td>{ProductLibraryTable.getCargoTypeLabel(defaults?.cargoType)}</td>
-                      <td className="products-react-actions-cell">
+                      </TableCell>
+                      {showAccount ? <TableCell><span className="chip muted products-react-account-chip">{ProductLibraryTable.formatText(product.accountName)}</span></TableCell> : null}
+                      <TableCell className="mono products-react-id">{ProductLibraryTable.formatText(product.tkId)}</TableCell>
+                      <TableCell className="products-react-name-cell"><div>{ProductLibraryTable.formatText(product.name)}</div></TableCell>
+                      <TableCell>{ProductLibraryTable.getCargoTypeLabel(defaults?.cargoType)}</TableCell>
+                      <TableCell className="products-react-actions-cell">
                         <span className={cn('pl-sku-count-pill', isExpandable ? 'is-expandable' : '')} title={isExpandable ? '点击展开 SKU 明细' : undefined}>
                           {ProductLibraryTable.formatSkuCount(product)}
                         </span>
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         {link1688 ? (
                           <div className="pl-link-actions products-react-link-actions">
                             <Button asChild size="smIcon" title="打开 1688 链接" aria-label="打开 1688 链接">
@@ -468,8 +373,8 @@ function ProductsTableView({
                             </Button>
                           </div>
                         ) : '-'}
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         <div className="products-react-actions">
                           <Button size="smIcon" data-edit={tkId} title="编辑商品" aria-label="编辑商品" onClick={() => onEdit(tkId)}>
                             <Pencil size={14} strokeWidth={2} />
@@ -478,49 +383,49 @@ function ProductsTableView({
                             <Trash2 size={14} strokeWidth={2} />
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                     {isExpandable && isExpanded ? (
-                      <tr className="pl-sku-detail-row products-react-sku-detail-row">
-                        <td colSpan={columnCount}>
+                      <TableRow className="pl-sku-detail-row products-react-sku-detail-row">
+                        <TableCell colSpan={columnCount}>
                           <div className="pl-sku-expanded-surface products-react-sku-surface">
                             <div className="pl-sku-expanded-head">
                               <div className="pl-sku-expanded-title">SKU 规格明细</div>
                               <div className="pl-sku-expanded-copy">订单选择商品时会优先使用这里的 SKU 参数。</div>
                             </div>
                             <div className="pl-sku-expanded-table-wrap">
-                              <table className="pl-sku-expanded-table">
-                                <thead>
-                                  <tr>
-                                    <th>SKU</th>
-                                    <th>重量(g)</th>
-                                    <th>尺寸(cm)</th>
-                                    <th>预估海外运费</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
+                              <Table className="pl-sku-expanded-table">
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>SKU</TableHead>
+                                    <TableHead>重量(g)</TableHead>
+                                    <TableHead>尺寸(cm)</TableHead>
+                                    <TableHead>预估海外运费</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
                                   {skus.map(sku => {
                                     const merged = ProductLibraryTable.mergeProductSku(product, sku);
                                     return (
-                                      <tr key={String(sku.skuId || sku.skuName)}>
-                                        <td><div className="pl-sku-expanded-sku-main">{ProductLibraryTable.formatSkuLabel(sku)}</div></td>
-                                        <td>{ProductLibraryTable.formatWeight(merged?.weightG)}</td>
-                                        <td>{ProductLibraryTable.formatSize(merged)}</td>
-                                        <td>{ProductLibraryTable.formatSkuShippingFee(product, sku)}</td>
-                                      </tr>
+                                      <TableRow key={String(sku.skuId || sku.skuName)}>
+                                        <TableCell><div className="pl-sku-expanded-sku-main">{ProductLibraryTable.formatSkuLabel(sku)}</div></TableCell>
+                                        <TableCell>{ProductLibraryTable.formatWeight(merged?.weightG)}</TableCell>
+                                        <TableCell>{ProductLibraryTable.formatSize(merged)}</TableCell>
+                                        <TableCell>{ProductLibraryTable.formatSkuShippingFee(product, sku)}</TableCell>
+                                      </TableRow>
                                     );
                                   })}
-                                </tbody>
-                              </table>
+                                </TableBody>
+                              </Table>
                             </div>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ) : null}
-                  </tbody>
+                  </TableBody>
                 );
               })}
-              </table>
+              </Table>
             </div>
           )}
         </div>
@@ -928,7 +833,8 @@ function buildDraftFromProduct(product: ProductRecord | null, activeAccount: str
       skus: [createEmptySku()]
     };
   }
-  const defaults = getProductDefaults(product);
+  const defaults = ProductLibraryTable.getProductDefaults(product);
+  const skus = ProductLibraryTable.getProductSkus(product);
   return {
     accountName: String(product.accountName || ''),
     tkId: String(product.tkId || ''),
@@ -942,7 +848,7 @@ function buildDraftFromProduct(product: ProductRecord | null, activeAccount: str
     axisA: '',
     axisB: '',
     axisC: '',
-    skus: getProductSkus(product).length ? getProductSkus(product).map(sku => ({
+    skus: skus.length ? skus.map(sku => ({
       ...sku,
       sizeText: String(sku.sizeText || formatSizeInput(sku) || '')
     })) : [createEmptySku()]
@@ -981,23 +887,31 @@ function ProductsPage() {
     ...products.map(product => product.accountName)
   ]).sort((left, right) => left.localeCompare(right)), [accounts, products]);
 
-  const displayedAllProducts = useMemo(() => ProductLibraryTable.deriveDisplayedProducts({
-    products,
-    activeAccount: '__all__',
-    searchQuery: '',
-    sortOrder
-  }), [products, sortOrder]);
+  const productExporter = useMemo(() => ProductLibraryExport.create({
+    state: {
+      accounts: allAccounts,
+      activeAccount
+    },
+    helpers: {
+      getDisplayedProducts: (overrides: { activeAccount?: string } = {}) => ProductLibraryTable.deriveDisplayedProducts({
+        products,
+        activeAccount: overrides.activeAccount || activeAccount,
+        searchQuery,
+        sortOrder
+      }),
+      normalizeAccountName,
+      toAccountSlot,
+      uniqueAccounts
+    },
+    ui: {
+      toast: showToast
+    }
+  }), [activeAccount, allAccounts, products, searchQuery, sortOrder]);
 
-  const exportOptions = useMemo(() => {
-    const options = allAccounts.map(account => ({
-      key: account,
-      label: account,
-      count: displayedAllProducts.filter(product => normalizeAccountName(product?.accountName) === account).length
-    }));
-    const unassignedCount = displayedAllProducts.filter(product => !normalizeAccountName(product?.accountName)).length;
-    if (unassignedCount > 0) options.push({ key: UNASSIGNED_ACCOUNT_SLOT, label: '未关联', count: unassignedCount });
-    return options;
-  }, [allAccounts, displayedAllProducts]);
+  const exportOptions = useMemo(
+    () => productExporter.getProductExportAccountOptions(),
+    [productExporter]
+  );
 
   const notifyProductsChanged = useCallback((detail: Record<string, unknown> = {}) => {
     window.dispatchEvent(new CustomEvent('tk-products-changed', {
@@ -1346,7 +1260,7 @@ function ProductsPage() {
       showToast('请至少选择一个账号', 'error');
       return;
     }
-    const rows = buildProductExportRows(displayedAllProducts, exportSelected);
+    const rows = productExporter.buildProductExportRows(exportSelected);
     if (!rows.length) {
       showToast('当前选择下没有可导出的商品数据', 'error');
       return;
@@ -1354,13 +1268,11 @@ function ProductsPage() {
     const headers = ['账号', 'TK ID', '商品名称', '货物类型', 'SKU 名称', 'SKU ID', '重量(g)', '尺寸(cm)', '单件预估海外运费(元)', '1688 链接', '图片 URL', '创建时间', '更新时间'];
     const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
     const selectedOptions = exportOptions.filter(option => exportSelected.has(option.key));
-    const names = selectedOptions.map(option => option.label).filter(Boolean);
-    const suffix = names.length === 1 ? names[0] : names.length > 1 ? `${names[0]}等${names.length}个账号` : '空';
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `商品数据导出_${suffix}_${todayStr()}.csv`;
+    link.download = productExporter.buildProductExportFilename(selectedOptions);
     document.body.appendChild(link);
     link.click();
     link.remove();

@@ -5,7 +5,6 @@ const { pathToFileURL } = require('url');
 
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'session.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const syncSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'sync.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
@@ -82,17 +81,7 @@ assert.match(
   '订单同步在 Firestore 权限不足时需要触发全局规则更新提示'
 );
 
-assert.match(
-  indexSource,
-  /sessionFactory\.create\(/,
-  '订单 ESM 入口需要通过会话模块工厂接入会话模块'
-);
-
-assert.match(
-  indexSource,
-  /import \{ OrderTrackerSession \} from '\.\/session\.mjs'/,
-  '订单 ESM 入口需要直接导入会话 ESM helper'
-);
+assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs')), '完整 React SPA 重建后旧订单 DOM 入口应删除');
 
 assert.doesNotMatch(
   htmlSource,

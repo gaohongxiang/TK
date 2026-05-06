@@ -5,7 +5,6 @@ const { pathToFileURL } = require('url');
 
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'shared.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
@@ -106,17 +105,7 @@ const dirtyOrderInput = {
   ]
 };
 
-assert.match(
-  indexSource,
-  /sharedFactory\.create\(/,
-  '订单 ESM 入口需要通过共享 helper 工厂接入共享模块'
-);
-
-assert.match(
-  indexSource,
-  /import \{ OrderTrackerShared \} from '\.\/shared\.mjs'/,
-  '订单 ESM 入口需要直接导入共享 helper ESM'
-);
+assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs')), '完整 React SPA 重建后旧订单 DOM 入口应删除');
 
 assert.doesNotMatch(
   htmlSource,

@@ -14,6 +14,7 @@ const releaseWorkflow = fs.readFileSync(path.join(root, '.github', 'workflows', 
 const wrangler = fs.readFileSync(path.join(root, 'wrangler.toml'), 'utf8');
 const gitignore = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const privacySource = fs.readFileSync(path.join(root, 'public', 'privacy.html'), 'utf8');
 const termsSource = fs.readFileSync(path.join(root, 'public', 'terms.html'), 'utf8');
 const notFoundSource = fs.readFileSync(path.join(root, 'public', '404.html'), 'utf8');
@@ -96,6 +97,12 @@ assert.match(
 );
 
 assert.match(
+  smokeScript,
+  /<div id="root"><\\\/div>[\s\S]*firebase-firestore-compat\\\.js[\s\S]*xlsx\\\.full\\\.min\\\.js/,
+  '完整 React SPA 重建后 smoke 首页检查应按单根 React 入口和第三方运行时脚本校验'
+);
+
+assert.match(
   playwrightConfig,
   /testDir:\s*'\.\/tests\/e2e'[\s\S]*name:\s*'desktop-chromium'[\s\S]*name:\s*'mobile-chromium'[\s\S]*command:\s*'npm run build && npx vite preview --host 127\.0\.0\.1 --port 4174 --strictPort'/,
   'Playwright 需要基于构建产物启动 production preview，并覆盖桌面和移动浏览器项目'
@@ -138,15 +145,15 @@ assert.match(
 );
 
 assert.match(
-  htmlSource,
+  reactAppSource,
   /href="\/privacy\.html"[\s\S]*隐私与数据边界[\s\S]*href="\/terms\.html"[\s\S]*使用条款/,
-  '主站页脚需要提供隐私与数据边界和使用条款入口'
+  '主站 React App 页脚需要提供隐私与数据边界和使用条款入口'
 );
 
 assert.match(
-  htmlSource,
-  /<a class="skip-link" href="#main-content">跳到主要内容<\/a>[\s\S]*id="react-app-shell-root"[\s\S]*<main id="main-content" class="app-main" tabindex="-1">/,
-  '主站需要提供跳转主内容链接、React AppShell mount 和 main landmark'
+  reactAppSource,
+  /<a className="skip-link" href="#main-content">跳到主要内容<\/a>[\s\S]*<AppShell modules=\{modules\} active=\{active\} docsUrl=\{config\.docsUrl\} \/>[\s\S]*<main id="main-content" className="app-main" tabIndex=\{-1\}>/,
+  '主站需要由 React App 提供跳转主内容链接、AppShell 和 main landmark'
 );
 
 assert.match(
@@ -156,9 +163,9 @@ assert.match(
 );
 
 assert.match(
-  htmlSource,
-  /<main id="main-content" class="app-main" tabindex="-1">[\s\S]*id="view-calc"[\s\S]*id="view-orders"[\s\S]*id="view-products"[\s\S]*id="view-analytics"[\s\S]*<\/main>[\s\S]*<footer>/,
-  '主站核心工具视图需要放在 main landmark 内，footer 需要留在 main 之后'
+  reactAppSource,
+  /<main id="main-content" className="app-main"[\s\S]*id="view-calc"[\s\S]*id="view-orders"[\s\S]*id="view-products"[\s\S]*id="view-analytics"[\s\S]*<\/main>[\s\S]*<footer>/,
+  '主站核心工具视图需要由 React 放在 main landmark 内，footer 需要留在 main 之后'
 );
 
 assert.match(
@@ -193,8 +200,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /id="react-island-root"[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
-  'React SPA 入口需要挂载主站壳层和全局 React island'
+  /<div id="root"><\/div>[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
+  'React SPA 入口只应暴露单一 root 挂载点'
 );
 
 assert.doesNotMatch(
@@ -222,9 +229,9 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  htmlSource,
-  /id="view-calc" class="view active"><\/div>[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
-  '现代 React SPA 阶段利润计算器需要由 React 入口挂载'
+  reactAppSource,
+  /id="view-calc"[\s\S]*<CalculatorApp \/>/,
+  '现代 React SPA 阶段利润计算器需要由 React App 直接渲染'
 );
 
 assert.doesNotMatch(

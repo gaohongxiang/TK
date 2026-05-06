@@ -12,6 +12,7 @@ import {
   computeOrderEstimatedProfit,
   computeWarning,
   detectCourierCompany,
+  isOrderRefunded,
   normalizeOrderItems,
   normalizeOrderRecord,
   parseOrderMoneyValue,
@@ -817,7 +818,21 @@ function OrdersSummary({
   const expenseValue = (summary.filteredTotal || 0) + (summary.filteredShippingTotal || 0) + (summary.filteredCreatorCommissionTotal || 0);
   const allExpenseValue = (summary.allTotal || 0) + (summary.allShippingTotal || 0) + (summary.allCreatorCommissionTotal || 0);
 
-  function card(title: string, profitMetric: any, saleMetric: any, expenseTotal: number, count: number, meta: string) {
+  function buildIncomeNote(grossMetric: any, refundMetric: any) {
+    if (!refundMetric?.count) return '销售';
+    return `销售 ${formatSummaryMetric(grossMetric)} - 退款 ${formatSummaryMetric(refundMetric)} · 含 ${refundMetric.count} 条退款`;
+  }
+
+  function card(
+    title: string,
+    profitMetric: any,
+    saleMetric: any,
+    grossMetric: any,
+    refundMetric: any,
+    expenseTotal: number,
+    count: number,
+    meta: string
+  ) {
     return (
       <section className="ot-summary-section">
         <div className="ot-summary-head">
@@ -832,7 +847,7 @@ function OrdersSummary({
           <div className="ot-summary-ledger-item is-income">
             <span className="ot-summary-ledger-label">收入</span>
             <strong className="ot-summary-ledger-value">{formatSummaryMetric(saleMetric)}</strong>
-            <span className="ot-summary-ledger-note">销售</span>
+            <span className="ot-summary-ledger-note">{buildIncomeNote(grossMetric, refundMetric)}</span>
           </div>
           <div className="ot-summary-ledger-item is-expense">
             <span className="ot-summary-ledger-label">支出</span>
@@ -851,11 +866,22 @@ function OrdersSummary({
           activeAccount !== '__all__' || searchQuery ? `当前筛选${activeAccount !== '__all__' ? ` · 账号：${activeAccount}` : ''}${searchQuery ? ` · 搜索：${searchQuery}` : ''}` : '当前筛选',
           summary.filteredProfitMetric,
           summary.filteredSaleMetric,
+          summary.filteredGrossSaleMetric,
+          summary.filteredRefundMetric,
           expenseValue,
           summary.filteredCount,
           `受账号标签和搜索影响 · 共 ${summary.filteredCount} 条`
         )}
-        {card('全部订单', summary.allProfitMetric, summary.allSaleMetric, allExpenseValue, summary.allCount, `不受账号、搜索、分页影响 · 共 ${summary.allCount} 条`)}
+        {card(
+          '全部订单',
+          summary.allProfitMetric,
+          summary.allSaleMetric,
+          summary.allGrossSaleMetric,
+          summary.allRefundMetric,
+          allExpenseValue,
+          summary.allCount,
+          `不受账号、搜索、分页影响 · 共 ${summary.allCount} 条`
+        )}
       </div>
     </div>
   );
@@ -972,7 +998,7 @@ function OrdersTable({
                     const courierSummary = buildOrderCourierSummary(order, 'company', 'full');
                     const trackingSummary = buildOrderCourierSummary(order, 'tracking', 'full');
                     return (
-                      <tr key={String(order.id)} className={String(order['是否退款'] || '').trim() === '1' ? 'is-refunded' : ''}>
+                      <tr key={String(order.id)} className={isOrderRefunded(order) ? 'is-refunded' : undefined}>
                         <td style={{ color: 'var(--muted)' }}>{seqNum}</td>
                         {isAll ? <td><span className="chip muted">{formatTableCellValue(order['账号'])}</span></td> : null}
                         <td>{formatTableCellValue(order['下单时间'])}</td>

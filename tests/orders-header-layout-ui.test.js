@@ -5,6 +5,7 @@ const assert = require('assert');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'main.tsx'), 'utf8');
+const reactAppSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const tabsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'tabs.mjs'), 'utf8');
 const tableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'table.mjs'), 'utf8');
 const tableControlsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'table-controls.mjs'), 'utf8');
@@ -79,9 +80,9 @@ assert.match(
 );
 
 assert.match(
-  reactMainSource,
-  /import \{ OrdersPage \}[\s\S]*getElementById\('view-orders'\)[\s\S]*flushSync\(\(\) => \{[\s\S]*<OrdersPage \/>/,
-  'React 入口需要同步把订单页面外壳挂载到 view-orders，避免旧订单逻辑找不到节点'
+  reactAppSource,
+  /id="view-orders"[\s\S]*<OrdersPage \/>/,
+  'React App 需要直接渲染订单页面外壳'
 );
 
 assert.match(
@@ -103,9 +104,9 @@ assert.match(
 );
 
 assert.match(
-  tableSource,
-  /TKTableControls\.buildTableToolbarMarkup\(\{[\s\S]*prefix: 'ot'[\s\S]*includeSearch/,
-  '表格视图需要通过共用控件输出订单吸顶控制带'
+  ordersPageSource,
+  /id="ot-table-toolbar-container"[\s\S]*id="ot-table-search-input"[\s\S]*id="ot-table-footer-toolbar-container"/,
+  'React 订单页需要直接输出订单吸顶控制带和底部分页'
 );
 
 assert.match(

@@ -6,10 +6,9 @@ const srcTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'produc
 const srcAccountsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'accounts.mjs'), 'utf8');
 const srcExportSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'export.mjs'), 'utf8');
 const srcCrudSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'crud.mjs'), 'utf8');
-const reactProductsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsTable.tsx'), 'utf8');
 const reactProductsPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
-const reactProductsMountSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'mountProductsTable.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'main.tsx'), 'utf8');
+const reactAppSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const reactAppShellSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
 const reactIslandSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
 const reactButtonSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
@@ -26,26 +25,20 @@ assert.match(
 
 assert.match(
   srcTableSource,
-  /export\s+\{[\s\S]*ProductLibraryTable[\s\S]*ProductLibraryTableView[\s\S]*deriveDisplayedProducts[\s\S]*mergeProductSku[\s\S]*render[\s\S]*\}/,
-  '路线二 M4 需要提供商品表格 ESM 导出和渲染壳'
+  /export\s+\{[\s\S]*ProductLibraryTable[\s\S]*deriveDisplayedProducts[\s\S]*mergeProductSku[\s\S]*\}/,
+  '路线二 M4 需要提供商品表格纯函数 ESM 导出'
 );
 
-assert.match(
+assert.doesNotMatch(
   srcTableSource,
-  /window\.ProductLibraryTableView = ProductLibraryTableView/,
-  '商品表格 ESM 模块需要挂回旧全局命名空间'
+  /window\.ProductLibraryTableView|function render\(/,
+  '完整 React SPA 重建后商品表格 helper 不应再挂旧全局或暴露 DOM render'
 );
 
 assert.match(
   srcTableSource,
   /sortOrder = 'asc'/,
   '商品库表格 ESM 视图需要支持和订单页一致的排序方向状态'
-);
-
-assert.match(
-  srcTableSource,
-  /function render\(/,
-  '商品库表格 ESM 视图需要暴露 render'
 );
 
 assert.match(
@@ -61,7 +54,7 @@ assert.match(
 );
 
 assert.match(
-  reactMainSource,
+  reactAppSource,
   /config\.modules/,
   'React SPA 路由需要从项目配置读取模块列表'
 );
@@ -74,8 +67,8 @@ assert.match(
 
 assert.match(
   reactMainSource,
-  /const start = \(\) => \{[\s\S]*initSpaRouter\(\)/,
-  'React SPA 启动函数需要在挂载页面外壳后初始化路由'
+  /getElementById\('root'\)[\s\S]*<App \/>/,
+  'React SPA 启动函数需要挂载单一 App root'
 );
 
 assert.match(
@@ -85,9 +78,9 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
-  /id="view-products"/,
-  '页面需要新增商品库视图容器'
+  reactAppSource,
+  /id="view-products"[\s\S]*<ProductsPage \/>/,
+  'React App 需要新增商品库视图容器'
 );
 
 assert.match(
@@ -265,9 +258,9 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  srcTableSource,
-  /import \{ TKTableControls \} from '\.\.\/table-controls\.mjs'/,
-  '商品表格需要显式导入表格搜索/分页共用控件'
+  reactProductsPageSource,
+  /id="pl-toolbar"[\s\S]*id="pl-table-search-input"[\s\S]*id="pl-table-footer-toolbar-container"/,
+  'React 商品页需要直接渲染表格搜索和上下分页控件'
 );
 
 assert.match(
@@ -319,14 +312,14 @@ assert.match(
 );
 
 assert.match(
-  srcTableSource,
-  /TKTableControls\?\.buildTableToolbarMarkup[\s\S]*搜索 TK ID \/ 名称 \/ 1688 链接/,
+  reactProductsPageSource,
+  /搜索 TK ID \/ 名称 \/ 1688 链接/,
   '商品库搜索框需要通过共用表格控件复用订单页的搜索样式结构'
 );
 
 assert.match(
-  srcTableSource,
-  /TKTableControls\?\.buildTableToolbarMarkup[\s\S]*prefix: 'pl'[\s\S]*pageSizeOptions/,
+  reactProductsPageSource,
+  /PAGE_SIZE_OPTIONS[\s\S]*ProductPager[\s\S]*id="pl-table-footer-toolbar-container"/,
   '商品库需要通过共用表格控件复用订单页的上下双分页结构'
 );
 
@@ -337,63 +330,51 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  srcTableSource,
+  reactProductsPageSource,
   /data-copy-link/,
   '商品库的 1688 列需要同时提供打开和复制两个按钮'
 );
 
 assert.match(
-  srcTableSource,
+  reactProductsPageSource,
   /id="pl-sort-btn"/,
   '商品库表格需要提供和订单页一致的排序切换按钮'
 );
 
 assert.match(
-  srcTableSource,
-  /<th>SKU数<\/th>/,
+  reactProductsPageSource,
+  /<TableHead>SKU数<\/TableHead>/,
   '商品库主表需要提供 SKU 数量列'
 );
 
 assert.match(
-  srcTableSource,
-  /<th>商品名称<\/th>[\s\S]*<th>货物类型<\/th>[\s\S]*<th>SKU数<\/th>[\s\S]*<th>1688<\/th>/,
+  reactProductsPageSource,
+  /<TableHead>商品名称<\/TableHead>[\s\S]*<TableHead>货物类型<\/TableHead>[\s\S]*<TableHead>SKU数<\/TableHead>[\s\S]*<TableHead>1688<\/TableHead>/,
   '商品库主表应在货物类型后直接进入 SKU 数量与 1688 列'
 );
 
 assert.doesNotMatch(
-  srcTableSource,
-  /<th>更新时间<\/th>/,
+  reactProductsPageSource,
+  /<TableHead>更新时间<\/TableHead>|<th>更新时间<\/th>/,
   '商品库主表不应再展示更新时间列'
 );
 
 assert.match(
-  srcTableSource,
+  reactProductsPageSource,
   /data-toggle-expand=/,
   '多 SKU 商品行需要支持点击展开 SKU 明细'
 );
 
 assert.match(
-  srcTableSource,
+  reactProductsPageSource,
   /pl-sku-detail-row|pl-sku-expanded-surface/,
   '商品库需要为多 SKU 商品提供可展开的 SKU 明细层'
 );
 
-assert.match(
-  srcTableSource,
-  /import\('\.\.\/react\/features\/products\/mountProductsTable\.tsx'\)[\s\S]*tryRenderReactProductsTable/,
-  '商品库表格应渐进式动态加载 React 表格，不阻塞 ESM 纯函数 import'
-);
-
-assert.match(
-  reactProductsMountSource,
-  /createRoot[\s\S]*mountProductsTable[\s\S]*<ProductToolbar[\s\S]*<ProductsTable[\s\S]*<ProductFooterToolbar/,
-  'React 商品表格需要同时接管搜索、主表和底部分页'
-);
-
-assert.match(
-  reactProductsSource,
-  /data-react-products-table-ready="true"/,
-  'React 商品表格需要提供可测试的挂载完成标记'
+assert.ok(
+  !fs.existsSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsTable.tsx'))
+    && !fs.existsSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'mountProductsTable.tsx')),
+  '完整 React SPA 重建后商品表格不应再通过独立 React island 二次挂载'
 );
 
 assert.match(
@@ -403,32 +384,32 @@ assert.match(
 );
 
 assert.match(
-  reactMainSource,
-  /import \{ ProductsPage \}[\s\S]*getElementById\('view-products'\)[\s\S]*flushSync\(\(\) => \{[\s\S]*<ProductsPage \/>/,
-  'React 入口需要同步把商品页面挂载到 view-products'
+  reactAppSource,
+  /id="view-products"[\s\S]*<ProductsPage \/>/,
+  'React App 需要直接渲染商品页面'
 );
 
 assert.match(
-  reactProductsSource,
-  /from '@\/components\/ui\/button'[\s\S]*from '@\/components\/ui\/table'/,
+  reactProductsPageSource,
+  /from '@\/components\/ui\/button'[\s\S]*from '@\/components\/ui\/table'|from '@\/components\/ui\/table'[\s\S]*from '@\/components\/ui\/button'/,
   'React 商品表格需要使用本地 shadcn 风格 UI primitives，而不是继续手写基础标签'
 );
 
 [
   /table-auto/,
-  /max-w-\[clamp\(240px,30vw,420px\)\]/,
-  /min-w-\[150px\]/,
-  /inline-flex/
+  /products-react-search w-full max-w-\[520px\]/,
+  /inline-flex/,
+  /TableHead>SKU数<\/TableHead>/
 ].forEach(pattern => {
   assert.match(
-    reactProductsSource,
+    reactProductsPageSource,
     pattern,
     'React 商品表格的布局样式需要迁到 Tailwind/shadcn class，而不是继续主要依赖旧 CSS'
   );
 });
 
 assert.doesNotMatch(
-  reactProductsSource,
+  reactProductsPageSource,
   /@tanstack\/react-table|useReactTable|getCoreRowModel/,
   '商品表格当前不需要引入 TanStack Table，避免为了库重写数据逻辑'
 );
@@ -452,27 +433,27 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  reactProductsSource,
+  reactProductsPageSource,
   /data-copy-link=\{link1688\}/,
   'React 商品表格需要保留复制链接的数据属性'
 );
 
 assert.match(
-  reactProductsSource,
+  reactProductsPageSource,
   /data-edit=\{tkId\}[\s\S]*data-del=\{tkId\}/,
   'React 商品表格需要保留编辑和删除的数据属性'
 );
 
 assert.match(
-  reactProductsSource,
+  reactProductsPageSource,
   /onCompositionStart[\s\S]*onCompositionEnd[\s\S]*onSearchChange/,
   'React 商品搜索需要保留中文输入法 composition 保护'
 );
 
 assert.doesNotMatch(
-  reactProductsSource,
-  /firebase|Firestore|localStorage|fetch\(|XMLHttpRequest|sendBeacon/,
-  'React 商品表格只能做 UI 渲染，不应直接访问远端或持久化数据'
+  reactProductsPageSource,
+  /fetch\(|XMLHttpRequest|sendBeacon/,
+  'React 商品页不应上传用户数据到平台方接口'
 );
 
 [
@@ -481,21 +462,21 @@ assert.doesNotMatch(
   /products-react-empty/
 ].forEach(pattern => {
   assert.match(
-    reactProductsSource,
+    reactProductsPageSource,
     pattern,
     'React 商品表格需要在 React/Tailwind 层保留独立的稳定布局标记'
   );
 });
 
 assert.match(
-  srcTableSource,
-  />打开<\/a>/,
+  reactProductsPageSource,
+  /aria-label="打开 1688 链接"[\s\S]*<ExternalLink/,
   '商品库的 1688 列需要提供打开按钮'
 );
 
 assert.match(
-  srcTableSource,
-  />复制<\/button>/,
+  reactProductsPageSource,
+  /aria-label="复制 1688 链接"[\s\S]*<Copy/,
   '商品库的 1688 列需要提供复制按钮'
 );
 
@@ -519,8 +500,8 @@ const numericProducts = [
 
 (async () => {
   const tableModule = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'table.mjs')}`);
-  assert.equal(typeof tableModule.ProductLibraryTableView.render, 'function', '商品表格 ESM 模块需要保留渲染壳');
-  const result = tableModule.ProductLibraryTableView.deriveDisplayedProducts({
+  assert.equal(tableModule.ProductLibraryTable.render, undefined, '完整 React SPA 重建后商品表格 helper 不再暴露 DOM render 壳');
+  const result = tableModule.ProductLibraryTable.deriveDisplayedProducts({
     products: [
       { tkId: 'TK-002', name: '红色杯子', cargoType: 'general' },
       { tkId: 'TK-001', name: '蓝色盘子', cargoType: 'special' }
@@ -531,7 +512,7 @@ const numericProducts = [
   assert.equal(result.length, 1, '商品表格 ESM 搜索应支持按名称筛选');
   assert.equal(result[0].tkId, 'TK-001', '商品表格 ESM 搜索结果不正确');
 
-  const accountScoped = tableModule.ProductLibraryTableView.deriveDisplayedProducts({
+  const accountScoped = tableModule.ProductLibraryTable.deriveDisplayedProducts({
     products: [
       { tkId: 'TK-002', accountName: 'A', name: '红色杯子' },
       { tkId: 'TK-001', accountName: 'B', name: '蓝色盘子' }
@@ -543,7 +524,7 @@ const numericProducts = [
   assert.equal(accountScoped.length, 1, '商品表格 ESM 应支持按账号筛选');
   assert.equal(accountScoped[0].tkId, 'TK-001', '商品表格 ESM 账号筛选结果不正确');
 
-  const descSorted = tableModule.ProductLibraryTableView.deriveDisplayedProducts({
+  const descSorted = tableModule.ProductLibraryTable.deriveDisplayedProducts({
     products: numericProducts,
     sortOrder: 'desc'
   });

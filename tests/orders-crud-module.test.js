@@ -5,7 +5,6 @@ const { pathToFileURL } = require('url');
 
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'crud.mjs');
 const source = fs.readFileSync(esmPath, 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
@@ -143,23 +142,7 @@ assert.equal(typeof crudTools.bindEvents, 'function', 'CRUD 模块需要返回 b
   process.exit(1);
 });
 
-assert.match(
-  indexSource,
-  /crudFactory\.create\(/,
-  '订单 ESM 入口需要通过 CRUD 工厂接入 CRUD 模块'
-);
-
-assert.match(
-  indexSource,
-  /import \{ OrderTrackerCrud \} from '\.\/crud\.mjs'/,
-  '订单 ESM 入口需要直接导入 CRUD ESM helper'
-);
-
-assert.match(
-  indexSource,
-  /productsFactory\.create\([\s\S]*loadProductsForModal/,
-  '订单模块需要通过商品桥接模块为 CRUD 提供商品资料'
-);
+assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs')), '完整 React SPA 重建后旧订单 DOM 入口应删除');
 
 assert.doesNotMatch(
   htmlSource,

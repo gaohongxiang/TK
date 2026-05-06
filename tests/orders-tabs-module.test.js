@@ -5,7 +5,6 @@ const { pathToFileURL } = require('url');
 
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'tabs.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
@@ -33,17 +32,7 @@ assert.match(
   'ESM 订单账号标签栏模块需要挂回旧全局命名空间'
 );
 
-assert.match(
-  indexSource,
-  /tabsFactory\.create\(/,
-  '订单 ESM 入口需要通过账号标签栏工厂接入账号标签模块'
-);
-
-assert.match(
-  indexSource,
-  /import \{ OrderTrackerTabs \} from '\.\/tabs\.mjs'/,
-  '订单 ESM 入口需要直接导入账号标签 ESM helper'
-);
+assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs')), '完整 React SPA 重建后旧订单 DOM 入口应删除');
 
 assert.doesNotMatch(
   htmlSource,

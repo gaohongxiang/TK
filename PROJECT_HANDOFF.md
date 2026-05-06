@@ -101,12 +101,18 @@ modern-react-spa
 
 - 路线一轻模块化已完成。
 - 路线二标准 ESM 模块化主体已完成。
-- React SPA 基础壳层已接管主导航、hash 路由、年份、文档链接和四个主视图占位。
+- 完整 Vite React SPA 第一轮重建已完成，主站改为单根 `#root` 渲染。
+- `src/react/app/App.tsx` 已接管主导航、hash 路由、年份、文档链接、页脚和四个主视图。
 - 利润计算器已迁到 `src/react/features/calculator/CalculatorApp.tsx`，复用现有公式和运费核心。
-- 数据分析页已迁到 React + ECharts，并由 React 入口懒加载；`src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 仍作为纯函数来源复用。
+- 数据分析页已迁到 React + ECharts，并由 `src/react/features/analytics/AnalyticsRoute.tsx` 按需懒加载；`src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 仍作为纯函数来源复用。
 - 商品管理已迁到完整 React 页面：React 接管连接状态、账号筛选、表格、分页、新增/编辑商品弹窗、SKU 编辑、CSV 导出和商品变更广播；继续复用现有 Firestore provider、商品表格纯函数、SKU 表单纯函数和运费核心，不改变 Firestore 数据结构。
-- 订单管理的页面外壳已迁到 React；Firestore provider、CRUD、同步、表格纯函数和弹窗业务逻辑仍复用现有 `src/orders/*.mjs`。
-- `index.html` 当前只加载 `/src/react/main.tsx` 作为主站壳层入口，继续加载 Firestore 连接和订单 ESM 入口；不再加载 `/src/main.mjs`、`/src/analytics/index.mjs` 和 `/src/products/index.mjs`。
+- 订单管理已迁到完整 React 页面；继续复用现有 Firestore provider、订单共享计算、导出、表格筛选和同步纯函数，不改变 Firestore 数据结构。
+- `index.html` 当前只保留 `#root`、`/src/react/main.tsx`、Firebase compat SDK 和 SheetJS；不再加载旧 DOM 入口。
+- 已删除旧运行时入口和旧 React island 二次挂载文件：`src/main.mjs`、`src/calc/index.mjs`、`src/orders/index.mjs`、`src/products/index.mjs`、`src/analytics/index.mjs`、`src/analytics/charts.mjs`、`src/react/features/analytics/mountAnalytics.tsx`、`src/react/features/products/ProductsTable.tsx`、`src/react/features/products/mountProductsTable.tsx`。
+- `src/orders/table.mjs` 和 `src/products/table.mjs` 已收缩为纯 helper，不再暴露 DOM `render` 壳或挂旧全局表格视图。
+- 商品主表已使用本地 shadcn 风格 `Table` / `Button` primitives；商品导出弹层由 React 控制，CSV 行构建和文件名继续复用 `src/products/export.mjs`。
+- 订单摘要已保留收入、支出、利润、退款和达人佣金口径；退款订单行和订单号达人/退款标签仍由纯函数口径驱动。
+- `scripts/preview-smoke.mjs` 已适配完整 React SPA：首页 HTTP smoke 检查单根 React 入口、SEO meta、Firebase/SheetJS 脚本、构建产物和静态页面；运行后交互由 Playwright 覆盖。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前以 `src/*.mjs` 作为唯一主站业务源码。
 - 真实 Firebase 数据手动验收已完成，未发现大问题。
@@ -118,7 +124,9 @@ modern-react-spa
 npm test
 npm run build
 git diff --check
+npm run smoke
 npx playwright test tests/e2e/release.spec.js --project=desktop-chromium --project=mobile-chromium
+npm run release:check
 ```
 
 接手时仍应先跑 `git status --short` 看工作区是否干净；如果准备上线，重新跑 `npm run release:check`。

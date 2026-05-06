@@ -4,7 +4,7 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'products', 'export.mjs'), 'utf8');
-const srcIndexSource = fs.readFileSync(path.join(root, 'src', 'products', 'index.mjs'), 'utf8');
+const reactProductsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -32,9 +32,15 @@ assert.match(
 );
 
 assert.match(
-  srcIndexSource,
-  /exportFactory\.create\(/,
-  '商品 ESM 入口需要接入导出模块'
+  reactProductsSource,
+  /ProductLibraryExport\.create[\s\S]*buildProductExportRows/,
+  'React 商品页需要直接接管商品 CSV 导出弹层，并复用商品导出 ESM 纯逻辑'
+);
+
+assert.match(
+  reactProductsSource,
+  /id="pl-export-modal"[\s\S]*id="pl-export-options"[\s\S]*id="pl-export-confirm"/,
+  'React 商品页需要直接接管商品 CSV 导出弹层'
 );
 
 assert.match(
@@ -55,11 +61,7 @@ assert.match(
   '商品导出 ESM 模块需要导出导出工厂和纯函数'
 );
 
-assert.match(
-  srcIndexSource,
-  /import \{ ProductLibraryExport \} from '\.\/export\.mjs'/,
-  '商品 ESM 入口需要直接导入商品导出模块'
-);
+assert.ok(!fs.existsSync(path.join(root, 'src', 'products', 'index.mjs')), '完整 React SPA 重建后旧商品 DOM 入口应删除');
 
 assert.doesNotMatch(
   htmlSource,
@@ -68,9 +70,9 @@ assert.doesNotMatch(
 );
 
 assert.doesNotMatch(
-  srcIndexSource,
+  reactProductsSource,
   /function promptProductExportAccounts\(|function buildProductExportRows\(|function exportProductsCsv\(/,
-  '商品 ESM 入口不应继续内联 CSV 导出实现'
+  'React 商品页不应继续内联旧导出工厂实现'
 );
 
 const state = {

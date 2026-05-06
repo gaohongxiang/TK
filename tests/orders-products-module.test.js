@@ -5,7 +5,6 @@ const { pathToFileURL } = require('url');
 
 const root = path.join(__dirname, '..');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'orders', 'products.mjs'), 'utf8');
-const indexSource = fs.readFileSync(path.join(root, 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
@@ -70,9 +69,9 @@ assert.match(
 );
 
 assert.doesNotMatch(
-  indexSource,
+  ordersPageSource,
   /function getProductsForAccount\(|function getProductByTkId\(|async function loadProductsForModal\(/,
-  '订单入口不应继续内联商品读取桥接实现'
+  'React 订单页不应继续内联旧商品桥接工厂实现'
 );
 
 assert.match(

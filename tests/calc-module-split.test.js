@@ -4,7 +4,6 @@ const assert = require('assert');
 
 const srcSharedSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'shared.mjs'), 'utf8');
 const srcIndexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'index.mjs'), 'utf8');
-const srcMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 const srcShippingSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'shipping.mjs'), 'utf8');
 const srcLegacySource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'legacy.mjs'), 'utf8');
 const srcPricingSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'pricing.mjs'), 'utf8');
@@ -19,7 +18,7 @@ assert.match(srcIndexSource, /import\s+\{\s*CalcShipping\s*\}\s+from\s+'\.\/ship
 assert.match(srcIndexSource, /import\s+\{\s*CalcLegacyPricing\s*\}\s+from\s+'\.\/legacy\.mjs'/, 'calc ESM 入口需要复用 CalcLegacyPricing ESM 模块');
 assert.match(srcIndexSource, /import\s+\{\s*CalcPricing\s*\}\s+from\s+'\.\/pricing\.mjs'/, 'calc ESM 入口需要复用 CalcPricing ESM 模块');
 assert.match(srcIndexSource, /export\s+\{[\s\S]*DEFAULTS[\s\S]*initCalc[\s\S]*\}/, 'calc ESM 入口需要导出 initCalc 以便测试和后续迁移复用');
-assert.match(srcMainSource, /import '\.\/global-settings\.mjs'[\s\S]*import '\.\/shipping-core\.mjs'[\s\S]*import '\.\/shared\/html\.mjs'[\s\S]*import '\.\/shared\/format\.mjs'/, 'ESM 主入口需要先导入基础全局工具');
+assert.match(reactCalculatorSource, /import \{ ensureGlobalSettingsStore \}[\s\S]*from '\.\.\/\.\.\/\.\.\/global-settings\.mjs'[\s\S]*import \{ DEFAULT_CONSTANTS[\s\S]*from '\.\.\/\.\.\/\.\.\/shipping-core\.mjs'/, 'React 利润计算器需要显式导入全局设置和共享运费核心');
 assert.match(srcShippingSource, /const CalcShipping = \{[\s\S]*create/, 'calc shipping ESM 模块需要保留命名空间导出');
 assert.match(srcLegacySource, /const CalcLegacyPricing = \{[\s\S]*create/, 'calc legacy ESM 模块需要保留命名空间导出');
 assert.match(srcPricingSource, /const CalcPricing = \{[\s\S]*create/, 'calc pricing ESM 模块需要保留命名空间导出');

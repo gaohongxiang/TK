@@ -4,7 +4,9 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'shipping-core.mjs'), 'utf8');
-const mainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
+const ordersSource = fs.readFileSync(path.join(root, 'src', 'orders', 'index.mjs'), 'utf8');
+const productsSource = fs.readFileSync(path.join(root, 'src', 'products', 'index.mjs'), 'utf8');
+const reactCalculatorSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'calculator', 'CalculatorApp.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -28,7 +30,9 @@ assert.match(srcSource, /\bTKShippingCore\b/, '共享运费核心 ESM 导出需�
 assert.match(srcSource, /\bcomputeShippingQuote\b/, '共享运费核心 ESM 导出需要提供 computeShippingQuote');
 assert.match(srcSource, /\bcomputeCalculatedShippingCost\b/, '共享运费核心 ESM 导出需要提供 computeCalculatedShippingCost');
 assert.match(srcSource, /window\.TKShippingCore = TKShippingCore/, '共享运费核心 ESM 模块需要在浏览器里挂回旧全局命名空间');
-assert.match(mainSource, /import '\.\/shipping-core\.mjs'/, 'ESM 主入口需要先导入共享运费核心');
+assert.match(ordersSource, /import '\.\.\/shipping-core\.mjs'/, '订单入口需要显式导入共享运费核心');
+assert.match(productsSource, /import '\.\.\/shipping-core\.mjs'/, '商品入口需要显式导入共享运费核心');
+assert.match(reactCalculatorSource, /from '\.\.\/\.\.\/\.\.\/shipping-core\.mjs'/, 'React 利润计算器需要显式导入共享运费核心');
 assert.doesNotMatch(htmlSource, /<script src="js\/shipping-core\.js" defer><\/script>/, 'index.html 不应再加载旧共享运费核心普通脚本');
 
 (async () => {

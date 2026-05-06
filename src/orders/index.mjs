@@ -7,6 +7,9 @@ import { OrderTrackerShared } from './shared.mjs';
 import { OrderTrackerSync } from './sync.mjs';
 import { OrderTableView } from './table.mjs';
 import { OrderTrackerTabs } from './tabs.mjs';
+import '../global-settings.mjs';
+import '../shipping-core.mjs';
+import '../searchable-select.mjs';
 
 const LS_KEY = 'tk.orders.cfg.v1';
 const LS_ACC_KEY = 'tk.orders.accounts.v1';

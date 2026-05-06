@@ -7,7 +7,6 @@ const esmPath = path.join(__dirname, '..', 'src', 'orders', 'table.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const ordersSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const mainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 
 assert.match(
   esmSource,
@@ -102,8 +101,8 @@ assert.match(
 
 assert.match(
   indexSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>[\s\S]*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先通过 ESM 主入口挂载共享控件，再加载订单 ESM 入口'
+  /<script type="module" src="\/src\/react\/main\.tsx"><\/script>[\s\S]*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  'index.html 需要先加载 React SPA 壳层，再加载订单 ESM 入口'
 );
 
 assert.doesNotMatch(
@@ -113,9 +112,9 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  mainSource,
-  /import '\.\/table-controls\.mjs'/,
-  'ESM 主入口需要先导入表格控件以挂回 TKTableControls 全局'
+  esmSource,
+  /import \{ TKTableControls \} from '\.\.\/table-controls\.mjs'/,
+  '订单表格模块需要显式导入表格控件'
 );
 
 assert.match(

@@ -4,7 +4,6 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'orders', 'form-utils.mjs'), 'utf8');
-const mainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
 const crudSource = fs.readFileSync(path.join(root, 'src', 'orders', 'crud.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
@@ -54,12 +53,6 @@ assert.match(
   srcSource,
   /export\s+\{[\s\S]*OrderTrackerFormUtils[\s\S]*createOrderItemDraft[\s\S]*getOrderItemsFromOrder[\s\S]*parseSizeText[\s\S]*\}/,
   '订单表单纯函数 ESM 模块需要导出命名空间和关键纯函数'
-);
-
-assert.match(
-  mainSource,
-  /import '\.\/orders\/form-utils\.mjs'/,
-  'ESM 主入口需要先导入订单表单工具以挂回全局'
 );
 
 assert.doesNotMatch(

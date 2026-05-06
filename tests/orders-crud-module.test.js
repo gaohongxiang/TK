@@ -6,7 +6,6 @@ const { pathToFileURL } = require('url');
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'crud.mjs');
 const source = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
-const mainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -252,9 +251,9 @@ assert.match(
 );
 
 assert.match(
-  mainSource,
-  /import '\.\/searchable-select\.mjs'/,
-  'ESM 主入口需要预先加载共用的可搜索下拉组件'
+  indexSource,
+  /import '\.\.\/searchable-select\.mjs'/,
+  '订单入口需要显式加载共用的可搜索下拉组件'
 );
 
 assert.doesNotMatch(

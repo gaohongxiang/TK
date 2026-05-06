@@ -1,13 +1,4 @@
 import { TKAppConfig } from './app-config.mjs';
-import './global-settings.mjs';
-import './shipping-core.mjs';
-import './shared/html.mjs';
-import './shared/format.mjs';
-import './table-controls.mjs';
-import './searchable-select.mjs';
-import './data-sources/registry.mjs';
-import './orders/form-utils.mjs';
-
 const FALLBACK_MODULES = Object.freeze([
   Object.freeze({ key: 'calc' }),
   Object.freeze({ key: 'orders' }),
@@ -45,19 +36,8 @@ function switchView(key, options = {}) {
     view.classList.remove('active');
   });
   documentRef?.getElementById?.(`view-${resolvedKey}`)?.classList.add('active');
-  documentRef?.querySelectorAll?.('nav.modules a[data-view]')?.forEach(anchor => {
-    const isActive = anchor.dataset.view === resolvedKey;
-    anchor.classList.toggle('active', isActive);
-    if (isActive) {
-      anchor.setAttribute('aria-current', 'page');
-    } else {
-      anchor.removeAttribute('aria-current');
-    }
-  });
-
   if (resolvedKey === 'orders' && windowRef.OrderTracker?.onEnter) windowRef.OrderTracker.onEnter();
   if (resolvedKey === 'products' && windowRef.ProductLibrary?.onEnter) windowRef.ProductLibrary.onEnter();
-  if (resolvedKey === 'analytics' && windowRef.TKAnalytics?.onEnter) windowRef.TKAnalytics.onEnter();
   return resolvedKey;
 }
 
@@ -84,11 +64,6 @@ function initMain(options = {}) {
     windowRef?.addEventListener?.('hashchange', route);
     route();
   });
-}
-
-if (typeof window !== 'undefined' && window.document) {
-  window.switchView = key => switchView(key);
-  initMain({ window, document: window.document, location: window.location });
 }
 
 export {

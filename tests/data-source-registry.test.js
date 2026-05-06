@@ -4,7 +4,6 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const srcRegistrySource = fs.readFileSync(path.join(root, 'src', 'data-sources', 'registry.mjs'), 'utf8');
-const srcMainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
 const srcOrderFirestoreSource = fs.readFileSync(path.join(root, 'src', 'orders', 'provider-firestore.mjs'), 'utf8');
 const srcProductFirestoreSource = fs.readFileSync(path.join(root, 'src', 'products', 'provider-firestore.mjs'), 'utf8');
 const analyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
@@ -19,9 +18,15 @@ assert.match(
 );
 
 assert.match(
-  srcMainSource,
-  /import '\.\/data-sources\/registry\.mjs'/,
-  'ESM 主入口需要先导入数据源注册表以挂回全局'
+  srcOrderFirestoreSource,
+  /import \{ TKDataSourceRegistry \} from '\.\.\/data-sources\/registry\.mjs'/,
+  '订单 Firestore provider 需要显式导入数据源注册表'
+);
+
+assert.match(
+  srcProductFirestoreSource,
+  /import \{ TKDataSourceRegistry \} from '\.\.\/data-sources\/registry\.mjs'/,
+  '商品 Firestore provider 需要显式导入数据源注册表'
 );
 
 assert.doesNotMatch(

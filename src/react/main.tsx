@@ -5,12 +5,101 @@ import { CalculatorApp } from './features/calculator/CalculatorApp';
 import { OrdersPage } from './features/orders/OrdersPage';
 import { ProductsPage } from './features/products/ProductsPage';
 import { AppShell } from './layouts/AppShell';
+import { TKAppConfig } from '../app-config.mjs';
 import './styles.css';
 
 type AnalyticsMountModule = typeof import('./features/analytics/mountAnalytics');
 
+declare global {
+  interface Window {
+    OrderTracker?: { onEnter?: () => void | Promise<void> };
+    ProductLibrary?: { onEnter?: () => void | Promise<void> };
+  }
+}
+
 let analyticsMountPromise: Promise<AnalyticsMountModule> | null = null;
 let appShellMounted = false;
+
+const fallbackModules = Object.freeze([
+  Object.freeze({ key: 'calc' }),
+  Object.freeze({ key: 'products' }),
+  Object.freeze({ key: 'orders' }),
+  Object.freeze({ key: 'analytics' })
+]);
+
+function getModuleMap(config = TKAppConfig) {
+  return Object.fromEntries(
+    ((config && Array.isArray(config.modules)) ? config.modules : fallbackModules)
+      .map(module => [module.key, {}])
+  );
+}
+
+function getRouteKey(locationRef: Location | { hash?: string } = globalThis.location, config = TKAppConfig) {
+  const moduleMap = getModuleMap(config);
+  const key = String(locationRef?.hash || '#calc').replace(/^#/, '');
+  return moduleMap[key] ? key : 'calc';
+}
+
+function setCurrentYear(documentRef: Document = document, now = new Date()) {
+  const year = documentRef.getElementById('yr');
+  if (year) year.textContent = String(now.getFullYear());
+}
+
+function setDocLink(documentRef: Document = document, config = TKAppConfig) {
+  const docLink = documentRef.querySelector<HTMLAnchorElement>('.app-doc-link');
+  if (docLink && config?.docsUrl) docLink.href = config.docsUrl;
+}
+
+function enterModule(key: string, windowRef: Window & typeof globalThis = window) {
+  if (key === 'orders') void windowRef.OrderTracker?.onEnter?.();
+  if (key === 'products') void windowRef.ProductLibrary?.onEnter?.();
+}
+
+function switchView(key: string, options: {
+  document?: Document;
+  window?: Window & typeof globalThis;
+  config?: typeof TKAppConfig;
+} = {}) {
+  const documentRef = options.document ?? document;
+  const windowRef = options.window ?? window;
+  const config = options.config ?? TKAppConfig;
+  const moduleMap = getModuleMap(config);
+  const resolvedKey = moduleMap[key] ? key : 'calc';
+
+  documentRef.querySelectorAll('.view').forEach(view => {
+    view.classList.remove('active');
+  });
+  documentRef.getElementById(`view-${resolvedKey}`)?.classList.add('active');
+  enterModule(resolvedKey, windowRef);
+  return resolvedKey;
+}
+
+function initSpaRouter(options: {
+  document?: Document;
+  window?: Window & typeof globalThis;
+  location?: Location | { hash?: string };
+  config?: typeof TKAppConfig;
+  now?: Date;
+} = {}) {
+  const documentRef = options.document ?? document;
+  const windowRef = options.window ?? window;
+  const locationRef = options.location ?? windowRef.location;
+  const config = options.config ?? TKAppConfig;
+  setCurrentYear(documentRef, options.now ?? new Date());
+  setDocLink(documentRef, config);
+
+  const route = () => {
+    switchView(getRouteKey(locationRef, config), {
+      document: documentRef,
+      window: windowRef,
+      config
+    });
+  };
+
+  route();
+  windowRef.addEventListener('hashchange', route);
+  return route;
+}
 
 function mountCalculator(documentRef: Document = document) {
   const root = documentRef.getElementById('view-calc');
@@ -120,12 +209,32 @@ if (typeof document !== 'undefined') {
   const mountCurrentRoute = () => {
     void mountReactApps();
   };
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', mountCurrentRoute, { once: true });
-  } else {
+  const start = () => {
     mountCurrentRoute();
+    initSpaRouter();
+  };
+  if (document.readyState === 'complete') {
+    start();
+  } else {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
   }
   window.addEventListener('hashchange', mountCurrentRoute);
 }
 
-export { isAnalyticsRoute, loadAnalyticsMount, mountAnalyticsWhenNeeded, mountAppShell, mountCalculator, mountOrdersPage, mountProductsPage, mountReactApps, mountReactIsland };
+export {
+  getModuleMap,
+  getRouteKey,
+  initSpaRouter,
+  isAnalyticsRoute,
+  loadAnalyticsMount,
+  mountAnalyticsWhenNeeded,
+  mountAppShell,
+  mountCalculator,
+  mountOrdersPage,
+  mountProductsPage,
+  mountReactApps,
+  mountReactIsland,
+  setCurrentYear,
+  setDocLink,
+  switchView
+};

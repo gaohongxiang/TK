@@ -7,7 +7,8 @@ const srcHtmlSource = fs.readFileSync(path.join(root, 'src', 'shared', 'html.mjs
 const srcFormatSource = fs.readFileSync(path.join(root, 'src', 'shared', 'format.mjs'), 'utf8');
 const srcTableControlsSource = fs.readFileSync(path.join(root, 'src', 'table-controls.mjs'), 'utf8');
 const srcSearchSelectSource = fs.readFileSync(path.join(root, 'src', 'searchable-select.mjs'), 'utf8');
-const srcMainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
+const srcOrdersSource = fs.readFileSync(path.join(root, 'src', 'orders', 'index.mjs'), 'utf8');
+const srcProductsTableSource = fs.readFileSync(path.join(root, 'src', 'products', 'table.mjs'), 'utf8');
 const analyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
@@ -20,16 +21,14 @@ assert.match(srcFormatSource, /function yen\(value\)/, '共享格式化工具需
 assert.match(srcFormatSource, /function percent\(value,\s*digits = 2\)/, '共享格式化工具需要 percent');
 assert.match(srcHtmlSource, /window\.TKHtml = TKHtml/, '共享 HTML ESM 模块需要在浏览器里挂回旧全局命名空间');
 assert.match(srcFormatSource, /window\.TKFormat = TKFormat/, '共享格式化 ESM 模块需要在浏览器里挂回旧全局命名空间');
-assert.match(srcMainSource, /import '\.\/shared\/html\.mjs'/, 'ESM 主入口需要先导入共享 HTML 工具');
-assert.match(srcMainSource, /import '\.\/shared\/format\.mjs'/, 'ESM 主入口需要先导入共享格式化工具');
 assert.match(srcTableControlsSource, /export\s+\{[\s\S]*TKTableControls[\s\S]*buildTableToolbarMarkup[\s\S]*clampPage[\s\S]*\}/, '路线二需要提供表格控件 ESM 导出');
-assert.match(srcMainSource, /import '\.\/table-controls\.mjs'/, 'ESM 主入口需要先导入表格控件以挂回全局');
+assert.match(srcProductsTableSource, /import \{ TKTableControls \} from '\.\.\/table-controls\.mjs'/, '商品表格需要显式导入表格控件');
+assert.match(srcOrdersSource, /import '\.\.\/searchable-select\.mjs'/, '订单入口需要显式导入可搜索下拉框');
 assert.match(srcSearchSelectSource, /export\s+\{[\s\S]*TKSearchSelect[\s\S]*create[\s\S]*normalizeText[\s\S]*\}/, '路线二需要提供可搜索下拉框 ESM 导出');
-assert.match(srcMainSource, /import '\.\/searchable-select\.mjs'/, 'ESM 主入口需要先导入可搜索下拉框以挂回全局');
 
 assert.doesNotMatch(indexSource, /<script src="js\/shared\/html\.js" defer><\/script>/, 'index.html 不应再加载旧共享 HTML 普通脚本');
 assert.doesNotMatch(indexSource, /<script src="js\/shared\/format\.js" defer><\/script>/, 'index.html 不应再加载旧共享格式化普通脚本');
-assert.match(indexSource, /<script type="module" src="\/src\/main\.mjs"><\/script>\s*<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>/, '共享工具应由 ESM 主入口先挂载，再加载后续模块');
+assert.match(indexSource, /<script type="module" src="\/src\/react\/main\.tsx"><\/script>\s*<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>/, '主站壳层应由 React SPA 入口加载，共享工具由业务模块显式导入');
 
 assert.doesNotMatch(
   indexSource,

@@ -4,7 +4,7 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const srcConfigSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
-const srcMainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
+const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -39,8 +39,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>\s*<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>/,
-  'index.html 需要通过 Vite ESM 主入口加载主站壳层，再加载 Firestore 连接模块'
+  /<script type="module" src="\/src\/react\/main\.tsx"><\/script>\s*<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>/,
+  'index.html 需要通过 React SPA 入口加载主站壳层，再加载 Firestore 连接模块'
 );
 
 assert.doesNotMatch(
@@ -50,21 +50,21 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  srcMainSource,
+  reactMainSource,
   /Object\.fromEntries[\s\S]*config\.modules/,
-  'ESM 路由模块列表需要从项目配置生成'
+  'React SPA 路由模块列表需要从项目配置生成'
 );
 
 assert.match(
-  srcMainSource,
-  /querySelector\?\.\('\.app-doc-link'\)[\s\S]*config\?\.docsUrl/,
-  'ESM 文档链接需要接入项目配置'
+  reactMainSource,
+  /\.app-doc-link[\s\S]*config\?\.docsUrl/,
+  'React SPA 文档链接需要接入项目配置'
 );
 
-assert.match(
-  srcMainSource,
-  /window\.switchView = key => switchView\(key\)/,
-  'ESM 主入口需要暂时挂回 switchView 全局，兼容旧回退入口'
+assert.doesNotMatch(
+  htmlSource,
+  /<script type="module" src="\/src\/main\.mjs"><\/script>/,
+  '现代 React SPA 阶段不应再加载旧主站壳层入口'
 );
 
 (async () => {
@@ -82,9 +82,9 @@ assert.match(
   assert.deepStrictEqual(
     Object.keys(mainModule.getModuleMap(module.TKAppConfig)),
     ['calc', 'products', 'orders', 'analytics'],
-    'ESM 主入口需要按配置生成模块表'
+    '旧 ESM 主入口保留给历史导入时仍需要按配置生成模块表'
   );
-  assert.equal(typeof mainModule.switchView, 'function', 'ESM 主入口需要导出 switchView 供测试和后续迁移复用');
+  assert.equal(typeof mainModule.switchView, 'function', '旧 ESM 主入口需要保留 switchView 导出直到源码清理阶段');
 
   console.log('app config contract ok');
 })().catch(error => {

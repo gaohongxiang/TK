@@ -162,9 +162,9 @@ assert.match(
 );
 
 assert.match(
-  fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8'),
-  /anchor\.setAttribute\('aria-current', 'page'\)[\s\S]*anchor\.removeAttribute\('aria-current'\)/,
-  'hash 路由切换时需要同步导航 aria-current'
+  fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8'),
+  /aria-current=\{isActive \? 'page' : undefined\}/,
+  'hash 路由切换时需要通过 React AppShell 同步导航 aria-current'
 );
 
 assert.match(
@@ -187,14 +187,20 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script type="module" src="\/src\/main\.mjs"><\/script>/,
-  '路线二主站壳层入口需要由 Vite ESM 模块加载'
+  /<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
+  '现代 React SPA 阶段主站壳层入口需要由 React 入口加载'
 );
 
 assert.match(
   htmlSource,
-  /id="react-island-root"[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>[\s\S]*<script type="module" src="\/src\/main\.mjs"><\/script>/,
-  'React 渐进迁移阶段需要先新增独立 island 入口，且不替换现有主站入口'
+  /id="react-island-root"[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>[\s\S]*<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>/,
+  'React SPA 入口需要在业务连接模块之前挂载主站壳层'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script type="module" src="\/src\/main\.mjs"><\/script>/,
+  '现代 React SPA 阶段不应再加载旧主站壳层入口'
 );
 
 assert.doesNotMatch(

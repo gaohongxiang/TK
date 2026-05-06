@@ -3,7 +3,9 @@ const path = require('path');
 const assert = require('assert');
 
 const srcSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'global-settings.mjs'), 'utf8');
-const mainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
+const ordersSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
+const productsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'index.mjs'), 'utf8');
+const reactCalculatorSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'calculator', 'CalculatorApp.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -37,9 +39,21 @@ assert.match(
 );
 
 assert.match(
-  mainSource,
-  /import '\.\/global-settings\.mjs'/,
-  'ESM 主入口需要先导入全局设置模块'
+  ordersSource,
+  /import '\.\.\/global-settings\.mjs'/,
+  '订单入口需要显式导入全局设置模块'
+);
+
+assert.match(
+  productsSource,
+  /import '\.\.\/global-settings\.mjs'/,
+  '商品入口需要显式导入全局设置模块'
+);
+
+assert.match(
+  reactCalculatorSource,
+  /from '\.\.\/\.\.\/\.\.\/global-settings\.mjs'/,
+  'React 利润计算器需要显式导入全局设置模块'
 );
 
 const localStorageState = new Map([

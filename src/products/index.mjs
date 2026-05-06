@@ -3,6 +3,8 @@ import { ProductLibraryCrud } from './crud.mjs';
 import { ProductLibraryExport } from './export.mjs';
 import { ProductLibraryProviderFirestore } from './provider-firestore.mjs';
 import { ProductLibraryTableView } from './table.mjs';
+import '../global-settings.mjs';
+import '../shipping-core.mjs';
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';

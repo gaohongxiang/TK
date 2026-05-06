@@ -13,7 +13,6 @@ const reactAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'react', 'fe
 const reactAnalyticsMountSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'mountAnalytics.tsx'), 'utf8');
 const reactChartOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'chartOptions.ts'), 'utf8');
 const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
-const appSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const styleSource = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
 const readmeSource = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
@@ -25,15 +24,15 @@ assert.match(
 );
 
 assert.match(
-  appSource,
+  reactMainSource,
   /config\.modules/,
-  '全局路由需要从项目配置读取模块列表'
+  'React SPA 路由需要从项目配置读取模块列表'
 );
 
-assert.match(
-  appSource,
-  /resolvedKey === 'analytics'[\s\S]*windowRef\.TKAnalytics\?\.onEnter/,
-  '进入数据分析页时需要初始化 TKAnalytics'
+assert.doesNotMatch(
+  reactMainSource,
+  /TKAnalytics\?\.onEnter/,
+  '数据分析页已由 React 入口懒加载，不应再调用旧 TKAnalytics DOM 入口'
 );
 
 assert.match(

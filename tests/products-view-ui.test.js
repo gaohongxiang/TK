@@ -15,7 +15,6 @@ const reactAppShellSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'r
 const reactButtonSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
 const reactTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'table.tsx'), 'utf8');
 const configSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'app-config.mjs'), 'utf8');
-const appSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const styleSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
 
@@ -86,15 +85,21 @@ assert.match(
 );
 
 assert.match(
-  appSource,
+  reactMainSource,
   /config\.modules/,
-  '全局路由需要从项目配置读取模块列表'
+  'React SPA 路由需要从项目配置读取模块列表'
 );
 
 assert.match(
-  appSource,
-  /DOMContentLoaded[\s\S]*windowRef\?\.addEventListener\?\.\('hashchange', route\)[\s\S]*route\(\)/,
+  reactMainSource,
+  /DOMContentLoaded[\s\S]*start/,
   '初始路由需要等所有模块脚本加载完后再执行，避免商品库刷新后漏掉 onEnter'
+);
+
+assert.match(
+  reactMainSource,
+  /const start = \(\) => \{[\s\S]*initSpaRouter\(\)/,
+  'React SPA 启动函数需要在挂载页面外壳后初始化路由'
 );
 
 assert.match(
@@ -284,9 +289,9 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  appSource,
-  /import '\.\/table-controls\.mjs'/,
-  '页面需要通过 ESM 主入口预先加载表格搜索/分页共用控件'
+  srcTableSource,
+  /import \{ TKTableControls \} from '\.\.\/table-controls\.mjs'/,
+  '商品表格需要显式导入表格搜索/分页共用控件'
 );
 
 assert.match(

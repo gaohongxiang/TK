@@ -1567,10 +1567,10 @@ details[open] summary {
 }
 
 .products-react-table-inner {
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border) 90%, white);
-  background: color-mix(in srgb, var(--panel) 92%, white);
+  border-radius: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
 }
 
 .products-react-table {
@@ -1618,10 +1618,11 @@ details[open] summary {
 }
 
 .products-react-table th {
-  background: linear-gradient(180deg, rgba(110, 168, 255, .07), rgba(138, 255, 207, .04));
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
 }
 
-.products-react-table th,
 .products-react-table td {
   font-weight: 400;
 }

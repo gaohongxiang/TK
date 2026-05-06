@@ -1381,6 +1381,20 @@
     </div>
   </div>
 
+  <div id="app-firestore-disconnect-modal" class="modal-mask" role="dialog" aria-modal="true"
+    aria-labelledby="app-firestore-disconnect-title">
+    <div class="modal" style="max-width:460px">
+      <h3 id="app-firestore-disconnect-title">退出当前数据库？</h3>
+      <div class="modal-copy">
+        当前项目：<strong id="app-firestore-disconnect-project">-</strong>。退出后只会清除本浏览器保存的 Firebase 连接配置，不会删除 Firestore 里的商品和订单。
+      </div>
+      <div class="actions">
+        <button type="button" id="app-cancel-firestore-disconnect" class="btn">取消</button>
+        <button type="button" id="app-confirm-firestore-disconnect" class="btn danger">退出数据库</button>
+      </div>
+    </div>
+  </div>
+
   <div id="ot-storage-help-modal" class="modal-mask" role="dialog" aria-modal="true"
     aria-labelledby="ot-storage-help-title">
     <div class="modal" style="max-width:560px">

@@ -30,6 +30,12 @@ assert.match(
   '页面需要提供全局 Firestore 连接弹层'
 );
 
+assert.match(
+  indexSource,
+  /id="app-firestore-disconnect-modal"[\s\S]*退出当前数据库？[\s\S]*id="app-firestore-disconnect-project"[\s\S]*id="app-cancel-firestore-disconnect"[\s\S]*id="app-confirm-firestore-disconnect"/,
+  '退出数据库需要使用站内确认弹层，并展示当前 Firebase 项目'
+);
+
 assert.doesNotMatch(
   indexSource,
   /id="app-firestore-connection"|id="app-firestore-status"/,
@@ -172,6 +178,12 @@ assert.match(
   connectionSource,
   /tk-firestore-config-changed/,
   '全局 Firestore 连接模块需要在配置变更后广播事件'
+);
+
+assert.doesNotMatch(
+  connectionSource,
+  /windowRef\.confirm|\.confirm\?\.\(|\.confirm\(/,
+  '退出数据库不应使用浏览器默认 confirm 弹窗'
 );
 
 assert.match(

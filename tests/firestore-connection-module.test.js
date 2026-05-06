@@ -37,6 +37,24 @@ assert.match(
 
 assert.match(
   source,
+  /function requestDisconnect\([\s\S]*app-firestore-disconnect-modal[\s\S]*modal\.classList\.add\('show'\)/,
+  '退出数据库需要走站内确认弹层，再清除本地连接配置'
+);
+
+assert.match(
+  source,
+  /function applyDisconnect\([\s\S]*clearConfig\(\)[\s\S]*closeDisconnectConfirm\(\)/,
+  '确认退出数据库后需要清除本地连接配置并关闭站内确认弹层'
+);
+
+assert.doesNotMatch(
+  source,
+  /windowRef\.confirm|\.confirm\?\.\(|\.confirm\(/,
+  'Firestore 连接模块不应使用浏览器默认 confirm 弹窗'
+);
+
+assert.match(
+  source,
   /tk-firestore-config-changed/,
   '全局 Firestore 连接模块需要广播配置变化事件'
 );
@@ -54,6 +72,7 @@ assert.match(
   assert.equal(typeof module.TKFirestoreConnection.getConfig, 'function', 'Firestore 连接模块需要暴露 getConfig');
   assert.equal(typeof module.TKFirestoreConnection.clearConfig, 'function', 'Firestore 连接模块需要暴露 clearConfig');
   assert.equal(typeof module.TKFirestoreConnection.notifyRulesUpdateNeeded, 'function', 'Firestore 连接模块需要暴露 notifyRulesUpdateNeeded');
+  assert.equal(typeof module.TKFirestoreConnection.closeDisconnectConfirm, 'function', 'Firestore 连接模块需要暴露关闭退出确认弹层的方法');
   assert.equal(typeof module.parseConfigInput, 'function', 'Firestore 连接模块需要导出 parseConfigInput 供测试和后续迁移复用');
 
   const parsed = module.TKFirestoreConnection.parseConfigInput(`const firebaseConfig = {

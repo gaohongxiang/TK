@@ -398,6 +398,36 @@ test.describe('release browser smoke', () => {
     await activateFooterRoute(page, '/terms.html', '使用条款与免责声明');
   });
 
+  test('uses an in-page confirmation when disconnecting Firebase', async ({ page }) => {
+    const nativeDialogs = [];
+    page.on('dialog', async dialog => {
+      nativeDialogs.push(dialog.message());
+      await dialog.dismiss();
+    });
+
+    await page.goto('/#orders');
+    await expect(page.locator('#ot-main')).toBeVisible();
+    await expect(page.locator('#ot-sync')).toContainText('已同步');
+
+    await page.locator('#ot-disconnect-firestore').click();
+    await expect(page.locator('#app-firestore-disconnect-modal')).toHaveClass(/show/);
+    await expect(page.locator('#app-firestore-disconnect-project')).toHaveText('tk-e2e');
+    expect(nativeDialogs).toEqual([]);
+
+    await page.locator('#app-cancel-firestore-disconnect').click();
+    await expect(page.locator('#app-firestore-disconnect-modal')).not.toHaveClass(/show/);
+    await expect(page.evaluate(() => JSON.parse(localStorage.getItem('tk.firestore.cfg.v1') || '{}').projectId)).resolves.toBe('tk-e2e');
+    await expect(page.locator('#ot-main')).toBeVisible();
+
+    await page.locator('#ot-disconnect-firestore').click();
+    await page.locator('#app-confirm-firestore-disconnect').click();
+    await expect(page.locator('#app-firestore-disconnect-modal')).not.toHaveClass(/show/);
+    await expect(page.locator('#ot-setup')).toBeVisible();
+    await expect(page.locator('#ot-open-connection')).toBeVisible();
+    await expect(page.evaluate(() => localStorage.getItem('tk.firestore.cfg.v1'))).resolves.toBeNull();
+    expect(nativeDialogs).toEqual([]);
+  });
+
   test('serves privacy, terms, and 404 pages from the production preview', async ({ page }) => {
     await page.goto('/privacy.html');
     await expect(page.locator('h1')).toHaveText('隐私与数据边界');

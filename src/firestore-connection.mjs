@@ -225,6 +225,8 @@ function closeRulesNotice() {
   $('#app-firestore-rules-modal')?.classList.remove('show');
 }
 
+let pendingDisconnectOptions = null;
+
 function notifyRulesUpdateNeeded(message = '') {
   bind();
   const modal = $('#app-firestore-rules-modal');
@@ -243,16 +245,32 @@ function copyRules() {
   return copyText(getRulesSource());
 }
 
-function requestDisconnect({ closeModal = false } = {}) {
+function closeDisconnectConfirm() {
+  $('#app-firestore-disconnect-modal')?.classList.remove('show');
+  pendingDisconnectOptions = null;
+}
+
+function applyDisconnect() {
+  const options = pendingDisconnectOptions || {};
+  clearConfig();
+  closeDisconnectConfirm();
+  if (options.closeModal) close();
+}
+
+function requestDisconnect(options = {}) {
   const cfg = getConfig();
   if (!cfg?.projectId) return;
-  const windowRef = getWindowRef();
-  const confirmed = typeof windowRef.confirm === 'function'
-    ? windowRef.confirm(`确定退出当前 Firebase 数据库连接吗？\n当前项目：${cfg.projectId}`)
-    : true;
-  if (!confirmed) return;
-  clearConfig();
-  if (closeModal) close();
+  const modal = $('#app-firestore-disconnect-modal');
+  const project = $('#app-firestore-disconnect-project');
+  if (!modal) {
+    pendingDisconnectOptions = options;
+    applyDisconnect();
+    return;
+  }
+  pendingDisconnectOptions = options;
+  if (project) project.textContent = cfg.projectId;
+  modal.classList.add('show');
+  $('#app-cancel-firestore-disconnect')?.focus();
 }
 
 function bind() {
@@ -260,8 +278,11 @@ function bind() {
   const trigger = $('#app-firestore-connection');
   const modal = $('#app-firestore-modal');
   const rulesModal = $('#app-firestore-rules-modal');
+  const disconnectModal = $('#app-firestore-disconnect-modal');
   const closeBtn = $('#app-close-firestore-modal');
   const rulesCloseBtn = $('#app-close-firestore-rules-modal');
+  const disconnectCancelBtn = $('#app-cancel-firestore-disconnect');
+  const disconnectConfirmBtn = $('#app-confirm-firestore-disconnect');
   const consoleBtn = $('#app-open-firebase-console');
   const rulesConsoleBtn = $('#app-rules-open-firebase-console');
   const copyBtn = $('#app-copy-firestore-rules');
@@ -280,6 +301,11 @@ function bind() {
   rulesModal?.addEventListener('click', event => {
     if (event.target.id === 'app-firestore-rules-modal') closeRulesNotice();
   });
+  disconnectModal?.addEventListener('click', event => {
+    if (event.target.id === 'app-firestore-disconnect-modal') closeDisconnectConfirm();
+  });
+  disconnectCancelBtn?.addEventListener('click', closeDisconnectConfirm);
+  disconnectConfirmBtn?.addEventListener('click', applyDisconnect);
   consoleBtn?.addEventListener('click', openConsole);
   rulesConsoleBtn?.addEventListener('click', openConsole);
   copyBtn?.addEventListener('click', async () => {
@@ -347,6 +373,7 @@ const TKFirestoreConnection = {
   copyRules,
   notifyRulesUpdateNeeded,
   closeRulesNotice,
+  closeDisconnectConfirm,
   bind,
   updateStatus
 };
@@ -369,6 +396,7 @@ export {
   copyRules,
   notifyRulesUpdateNeeded,
   closeRulesNotice,
+  closeDisconnectConfirm,
   bind,
   updateStatus
 };

@@ -101,9 +101,11 @@ modern-react-spa
 
 - 路线一轻模块化已完成。
 - 路线二标准 ESM 模块化主体已完成。
-- React 基础设施已接入。
-- 数据分析页已迁到 React + ECharts，并完成首轮图表体验和懒加载优化；`src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 仍作为纯函数来源复用。
-- `index.html` 通过 `/src/*.mjs` 加载主站、利润计算器、商品管理、订单管理、数据分析和 Firestore 连接。
+- React SPA 基础壳层已接管主导航、hash 路由、年份、文档链接和四个主视图占位。
+- 利润计算器已迁到 `src/react/features/calculator/CalculatorApp.tsx`，复用现有公式和运费核心。
+- 数据分析页已迁到 React + ECharts，并由 React 入口懒加载；`src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 仍作为纯函数来源复用。
+- 商品管理和订单管理的页面外壳已迁到 React；Firestore provider、CRUD、同步、表格纯函数和弹窗业务逻辑仍复用现有 `src/products/*.mjs`、`src/orders/*.mjs`。
+- `index.html` 当前只加载 `/src/react/main.tsx` 作为主站壳层入口，继续加载 Firestore 连接、订单 ESM 入口和商品 ESM 入口；不再加载 `/src/main.mjs` 和 `/src/analytics/index.mjs`。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前以 `src/*.mjs` 作为唯一主站业务源码。
 - 真实 Firebase 数据手动验收已完成，未发现大问题。
@@ -114,8 +116,8 @@ modern-react-spa
 ```bash
 npm test
 npm run build
-npm run smoke
-npx playwright test tests/e2e/release.spec.js -g "covers calculator" --project=desktop-chromium --project=mobile-chromium
+git diff --check
+npx playwright test tests/e2e/release.spec.js --project=desktop-chromium --project=mobile-chromium
 ```
 
 接手时仍应先跑 `git status --short` 看工作区是否干净；如果准备上线，重新跑 `npm run release:check`。
@@ -147,7 +149,7 @@ docs/node_modules/
 
 ### 5.1 主站
 
-主站已经接入 Vite，页面入口已经切到 `/src/*.mjs` ESM 模块。旧 `js/` 源目录已清理，不再由 `index.html` 加载，也不再复制到构建产物。
+主站已经接入 Vite。当前在 `modern-react-spa` 分支中，页面壳层入口是 `/src/react/main.tsx`；订单和商品业务入口仍由 `/src/orders/index.mjs`、`/src/products/index.mjs` 加载。旧 `js/` 源目录已清理，不再由 `index.html` 加载，也不再复制到构建产物。
 
 本地安装：
 

@@ -314,17 +314,6 @@ function ProductsTable(options: ProductsTableRenderOptions) {
       ) : (
         <div className="ot-table-inner products-react-table-inner">
           <table className={`ot pl-table products-react-table${showAccount ? ' is-all-accounts' : ' is-account-scoped'}`}>
-            <colgroup>
-              <col className="products-react-col-seq" />
-              <col className="products-react-col-image" />
-              {showAccount ? <col className="products-react-col-account" /> : null}
-              <col className="products-react-col-id" />
-              <col className="products-react-col-name" />
-              <col className="products-react-col-cargo" />
-              <col className="products-react-col-sku" />
-              <col className="products-react-col-link" />
-              <col className="products-react-col-actions" />
-            </colgroup>
             <thead>
               <tr>
                 <th>

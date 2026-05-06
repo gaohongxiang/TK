@@ -1563,7 +1563,7 @@ details[open] summary {
 }
 
 .products-react-table-shell {
-  min-width: 1000px;
+  min-width: 0;
 }
 
 .products-react-table-inner {
@@ -1574,47 +1574,7 @@ details[open] summary {
 }
 
 .products-react-table {
-  table-layout: fixed;
-}
-
-.products-react-col-seq {
-  width: 56px;
-}
-
-.products-react-col-image {
-  width: 72px;
-}
-
-.products-react-col-account {
-  width: 104px;
-}
-
-.products-react-col-id {
-  width: 160px;
-}
-
-.products-react-col-name {
-  width: 28%;
-}
-
-.products-react-col-cargo {
-  width: 84px;
-}
-
-.products-react-col-sku {
-  width: 76px;
-}
-
-.products-react-col-link {
-  width: 90px;
-}
-
-.products-react-col-actions {
-  width: 90px;
-}
-
-.products-react-table.is-account-scoped .products-react-col-name {
-  width: 32%;
+  table-layout: auto;
 }
 
 .products-react-table th {
@@ -1632,8 +1592,8 @@ details[open] summary {
 }
 
 .products-react-name-cell div {
-  width: 100%;
-  max-width: 100%;
+  width: max-content;
+  max-width: clamp(240px, 30vw, 420px);
   margin: 0 auto;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1645,6 +1605,8 @@ details[open] summary {
 
 .products-react-id {
   font-weight: 400;
+  min-width: 150px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1667,7 +1629,7 @@ details[open] summary {
 .products-react-actions,
 .products-react-link-actions {
   justify-content: center;
-  width: 100%;
+  min-width: max-content;
 }
 
 .products-react-actions {
@@ -5074,7 +5036,7 @@ table.ship td.actual {
   }
 
   .products-react-table-shell {
-    min-width: 920px;
+    min-width: 0;
   }
 
   .products-react-toolbar-inner {

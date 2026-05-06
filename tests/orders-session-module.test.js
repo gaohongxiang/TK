@@ -8,6 +8,7 @@ const esmSource = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const syncSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'sync.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
 assert.match(
   esmSource,
@@ -93,10 +94,16 @@ assert.match(
   '订单 ESM 入口需要直接导入会话 ESM helper'
 );
 
-assert.match(
+assert.doesNotMatch(
   htmlSource,
   /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要通过订单 ESM 入口加载会话模块'
+  '完整 React SPA 重建后 index.html 不应再通过旧订单 ESM 入口加载会话模块'
+);
+
+assert.match(
+  ordersPageSource,
+  /tk-firestore-config-changed[\s\S]*id="ot-open-connection"[\s\S]*id="ot-refresh"/,
+  'React 订单页需要直接接管 Firestore 配置变化、连接按钮和刷新按钮'
 );
 
 assert.doesNotMatch(

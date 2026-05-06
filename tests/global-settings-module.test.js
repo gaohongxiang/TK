@@ -6,6 +6,7 @@ const srcSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'global-sett
 const ordersSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const productsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'index.mjs'), 'utf8');
 const reactCalculatorSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'calculator', 'CalculatorApp.tsx'), 'utf8');
+const reactOrdersSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
@@ -39,9 +40,9 @@ assert.match(
 );
 
 assert.match(
-  ordersSource,
-  /import '\.\.\/global-settings\.mjs'/,
-  '订单入口需要显式导入全局设置模块'
+  reactOrdersSource,
+  /from '\.\.\/\.\.\/\.\.\/global-settings\.mjs'/,
+  'React 订单页需要显式导入全局设置模块'
 );
 
 assert.match(

@@ -1,8 +1,1601 @@
-import { HelpCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { OrderTrackerProviderFirestore } from '../../../orders/provider-firestore.mjs';
+import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
+import {
+  addDays,
+  buildOrderItemsSummary,
+  computeOrderCreatorCommission,
+  computeOrderEstimatedProfit,
+  computeWarning,
+  detectCourierCompany,
+  normalizeOrderItems,
+  normalizeOrderRecord,
+  parseOrderMoneyValue,
+  todayStr
+} from '../../../orders/shared.mjs';
+import {
+  buildExportFilename,
+  buildExportRows,
+  buildOrdersCsv,
+  getExportAccountOptions
+} from '../../../orders/export.mjs';
+import {
+  buildOrderCourierSummary,
+  buildOrderNoCellMarkup,
+  buildSaleCellMarkup,
+  deriveDisplayedOrders,
+  derivePurchaseSummary,
+  formatSummaryMetric,
+  formatTableCellValue,
+  formatTableMoneyValue,
+  getProfitCellToneClass
+} from '../../../orders/table.mjs';
+import { ensureGlobalSettingsStore } from '../../../global-settings.mjs';
+import { TKShippingCore } from '../../../shipping-core.mjs';
+import { cn } from '@/lib/utils';
+import {
+  Copy,
+  FileDown,
+  HelpCircle,
+  Plus,
+  RefreshCw,
+  Search
+} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ProductRecord, ProductSku } from '../products/types';
+
+type OrderRecord = Record<string, any>;
+
+type OrderItemDraft = {
+  lineId: string;
+  productTkId: string;
+  productSkuId: string;
+  productSkuName: string;
+  productName: string;
+  quantity: string;
+  unitSalePrice: string;
+  unitPurchasePrice: string;
+  unitWeightG: string;
+  unitSizeText: string;
+  useOrderCourier: null;
+  courierCompany: string;
+  trackingNo: string;
+};
+
+type OrderDraft = {
+  accountName: string;
+  orderNo: string;
+  orderedAt: string;
+  purchaseDate: string;
+  latestWarehouseAt: string;
+  warningText: string;
+  isRefunded: boolean;
+  salePrice: string;
+  purchasePrice: string;
+  estimatedShippingFee: string;
+  estimatedProfit: string;
+  creatorCommissionRate: string;
+  creatorCommission: string;
+  orderStatus: string;
+  weightText: string;
+  sizeText: string;
+  items: OrderItemDraft[];
+};
+
+const LS_KEY = 'tk.orders.cfg.v1';
+const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
+const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
+const ORDER_STATUS_OPTIONS = ['未采购', '已采购', '在途', '已入仓', '已送达', '已完成', '订单取消'];
+const COURIER_AUTO_DETECTORS = [
+  { name: '顺丰快递', test: (value: string) => /^SF[0-9A-Z]+$/i.test(value) || /^SFP[0-9A-Z]+$/i.test(value) },
+  { name: '极兔快递', test: (value: string) => /^JT[0-9A-Z]+$/i.test(value) },
+  { name: '中通快递', test: (value: string) => /^ZTO[0-9A-Z]+$/i.test(value) },
+  { name: '圆通快递', test: (value: string) => /^YTO[0-9A-Z]+$/i.test(value) },
+  { name: '申通快递', test: (value: string) => /^STO[0-9A-Z]+$/i.test(value) },
+  { name: '韵达快递', test: (value: string) => /^YD[0-9A-Z]+$/i.test(value) },
+  { name: '安能物流', test: (value: string) => /^ANE[0-9A-Z]+$/i.test(value) },
+  { name: '邮政快递', test: (value: string) => /^EMS[0-9A-Z]+$/i.test(value) || /^[A-Z]{2}\d{9}CN$/i.test(value) }
+];
+const COURIER_OPTIONS = [
+  '',
+  '顺丰快递',
+  '极兔快递',
+  '中通快递',
+  '圆通快递',
+  '申通快递',
+  '韵达快递',
+  '邮政快递',
+  '安能物流',
+  '京东快递',
+  '德邦快递',
+  '百世快递',
+  '其他'
+];
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function normalizeAccountName(value: unknown) {
+  return String(value || '').trim();
+}
+
+function uniqueAccounts(values: unknown[] = []) {
+  return [...new Set(values.map(normalizeAccountName).filter(Boolean))];
+}
+
+function toAccountSlot(value: unknown) {
+  return normalizeAccountName(value) || UNASSIGNED_ACCOUNT_SLOT;
+}
+
+function readGlobalConfig() {
+  return window.TKFirestoreConnection?.getConfig?.() || null;
+}
+
+function showToast(message: string, type: 'ok' | 'error' = 'ok') {
+  const toast = document.querySelector('#toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.className = `toast show ${type}`;
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+showToast.timer = 0;
+
+function clampPage(currentPage: number, pageSize: number, totalItems: number) {
+  const safePageSize = Math.max(1, Number(pageSize) || 50);
+  const totalPages = Math.max(1, Math.ceil((totalItems || 0) / safePageSize));
+  const nextCurrentPage = Math.min(Math.max(1, Number(currentPage) || 1), totalPages);
+  return { currentPage: nextCurrentPage, totalPages, pageSize: safePageSize };
+}
+
+function formatNumericValue(value: unknown) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '';
+  return number.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function parseSizeText(value: unknown) {
+  const parts = String(value || '')
+    .replace(/[Xx＊*]/g, '×')
+    .match(/\d+(?:\.\d+)?/g) || [];
+  const [lengthCm, widthCm, heightCm] = parts.slice(0, 3);
+  return {
+    lengthCm: lengthCm || '',
+    widthCm: widthCm || '',
+    heightCm: heightCm || ''
+  };
+}
+
+function getProductDefaults(product: ProductRecord | null = {}) {
+  return product?.defaults && typeof product.defaults === 'object' ? product.defaults : product || {};
+}
+
+function getProductSkus(product: ProductRecord | null = {}) {
+  return Array.isArray(product?.skus)
+    ? product.skus.filter(sku => String(sku?.skuId || '').trim())
+    : [];
+}
+
+function skuUsesProductDefaults(sku: ProductSku = {}) {
+  if (sku.useProductDefaults === true) return true;
+  if (sku.useProductDefaults === false) return false;
+  return ![
+    sku.weightG,
+    sku.sizeText,
+    sku.lengthCm,
+    sku.widthCm,
+    sku.heightCm,
+    sku.estimatedShippingFee,
+    sku.chargeWeightKg,
+    sku.shippingNote
+  ].some(value => String(value || '').trim());
+}
+
+function resolveProductSnapshotSource(product: ProductRecord | null, sku: ProductSku | null = null) {
+  if (!product) return null;
+  const defaults = getProductDefaults(product);
+  if (!sku) return defaults;
+  if (!skuUsesProductDefaults(sku)) return sku;
+  return {
+    ...defaults,
+    ...sku,
+    weightG: sku.weightG || defaults.weightG || '',
+    lengthCm: sku.lengthCm || defaults.lengthCm || '',
+    widthCm: sku.widthCm || defaults.widthCm || '',
+    heightCm: sku.heightCm || defaults.heightCm || '',
+    estimatedShippingFee: sku.estimatedShippingFee || defaults.estimatedShippingFee || '',
+    chargeWeightKg: sku.chargeWeightKg || defaults.chargeWeightKg || '',
+    shippingNote: sku.shippingNote || defaults.shippingNote || ''
+  };
+}
+
+function formatProductSize(source: Record<string, any> | null) {
+  if (!source) return '';
+  const direct = String(source.sizeText || '').trim();
+  if (direct) return direct.replace(/\*/g, '×');
+  const values = [source.lengthCm, source.widthCm, source.heightCm].map(value => String(value || '').trim()).filter(Boolean);
+  return values.length === 3 ? values.join('×') : '';
+}
+
+type SearchOption = {
+  value: string;
+  label: string;
+  searchLabel?: string;
+};
+
+function SearchableCombo({
+  disabled = false,
+  hiddenField,
+  options,
+  placeholder,
+  role,
+  searchPlaceholder,
+  value,
+  onChange
+}: {
+  disabled?: boolean;
+  hiddenField: string;
+  options: SearchOption[];
+  placeholder: string;
+  role: string;
+  searchPlaceholder: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [panelStyle, setPanelStyle] = useState<Record<string, string>>({});
+  const selected = options.find(option => option.value === value) || null;
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return options;
+    return options.filter(option => String(option.searchLabel || option.label || option.value).toLowerCase().includes(needle));
+  }, [options, query]);
+
+  function positionPanel() {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const viewportGap = 12;
+    const width = Math.max(rect.width, 260);
+    const left = Math.min(Math.max(viewportGap, rect.left), Math.max(viewportGap, window.innerWidth - width - viewportGap));
+    const spaceBelow = window.innerHeight - rect.bottom - viewportGap;
+    const maxHeight = Math.max(180, Math.min(320, spaceBelow || 280));
+    setPanelStyle({
+      top: `${rect.bottom + 6}px`,
+      left: `${left}px`,
+      width: `${width}px`,
+      maxHeight: `${maxHeight}px`
+    });
+  }
+
+  useEffect(() => {
+    if (!open) return undefined;
+    positionPanel();
+    searchRef.current?.focus();
+    const closeOnPointer = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    const reposition = () => positionPanel();
+    document.addEventListener('mousedown', closeOnPointer);
+    document.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      document.removeEventListener('mousedown', closeOnPointer);
+      document.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className={cn('tk-search-select', open ? 'is-open' : '', disabled ? 'is-disabled' : '', !value ? 'is-empty' : '')} data-item-role={role}>
+      <input type="hidden" data-item-field={hiddenField} value={value} readOnly />
+      <button
+        ref={triggerRef}
+        type="button"
+        className="tk-search-select-trigger"
+        data-role="trigger"
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          setOpen(value => !value);
+        }}
+      >
+        <span className="tk-search-select-trigger-label" data-role="label">{selected?.label || (value ? `${value}（已不存在）` : placeholder)}</span>
+        <span className="tk-search-select-trigger-icon" aria-hidden="true">▾</span>
+      </button>
+      <div className="tk-search-select-panel" data-role="panel" style={panelStyle}>
+        <div className="tk-search-select-search">
+          <input ref={searchRef} type="text" data-role="search" placeholder={searchPlaceholder} value={query} onChange={event => setQuery(event.target.value)} />
+        </div>
+        <div className="tk-search-select-options" data-role="options">
+          <button
+            type="button"
+            className={cn('tk-search-select-option', !value ? 'is-active' : '')}
+            data-option-value=""
+            onClick={() => {
+              onChange('');
+              setQuery('');
+              setOpen(false);
+            }}
+          >
+            <span className="tk-search-select-option-label">{placeholder}</span>
+          </button>
+          {filtered.map(option => (
+            <button
+              type="button"
+              className={cn('tk-search-select-option', option.value === value ? 'is-active' : '')}
+              data-option-value={option.value}
+              key={option.value}
+              onClick={() => {
+                onChange(option.value);
+                setQuery('');
+                setOpen(false);
+              }}
+            >
+              <span className="tk-search-select-option-label">{option.label}</span>
+            </button>
+          ))}
+          {!filtered.length ? <div className="tk-search-select-empty">没有匹配项</div> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function createEmptyOrderItem(): OrderItemDraft {
+  return {
+    lineId: uid(),
+    productTkId: '',
+    productSkuId: '',
+    productSkuName: '',
+    productName: '',
+    quantity: '1',
+    unitSalePrice: '',
+    unitPurchasePrice: '',
+    unitWeightG: '',
+    unitSizeText: '',
+    useOrderCourier: null,
+    courierCompany: '',
+    trackingNo: ''
+  };
+}
+
+function normalizeDraftItem(item: Partial<OrderItemDraft> = {}): OrderItemDraft {
+  return {
+    ...createEmptyOrderItem(),
+    ...item,
+    lineId: String(item.lineId || '').trim() || uid(),
+    productTkId: String(item.productTkId || '').trim(),
+    productSkuId: String(item.productSkuId || '').trim(),
+    productSkuName: String(item.productSkuName || '').trim(),
+    productName: String(item.productName || '').trim(),
+    quantity: String(item.quantity || '1').trim() || '1',
+    unitSalePrice: String(item.unitSalePrice || '').trim(),
+    unitPurchasePrice: String(item.unitPurchasePrice || '').trim(),
+    unitWeightG: String(item.unitWeightG || '').trim(),
+    unitSizeText: String(item.unitSizeText || '').trim(),
+    useOrderCourier: null,
+    courierCompany: String(item.courierCompany || '').trim(),
+    trackingNo: String(item.trackingNo || '').trim()
+  };
+}
+
+function getOrderItemsFromOrder(order: OrderRecord | null): OrderItemDraft[] {
+  const items = normalizeOrderItems(order?.items || []);
+  if (items.length) {
+    return items.map(item => normalizeDraftItem({
+      lineId: item.lineId,
+      productTkId: item.productTkId,
+      productSkuId: item.productSkuId,
+      productSkuName: item.productSkuName,
+      productName: item.productName,
+      quantity: String(item.quantity || '1'),
+      unitSalePrice: item.unitSalePrice,
+      unitPurchasePrice: item.unitPurchasePrice,
+      unitWeightG: item.unitWeightG,
+      unitSizeText: item.unitSizeText,
+      courierCompany: item.courierCompany,
+      trackingNo: item.trackingNo
+    }));
+  }
+  if (!order) return [createEmptyOrderItem()];
+  return [normalizeDraftItem({
+    productTkId: order['商品TK ID'],
+    productSkuId: order['商品SKU ID'],
+    productSkuName: order['商品SKU名称'],
+    productName: order['产品名称'],
+    quantity: order['数量'],
+    unitSalePrice: order['售价'],
+    unitPurchasePrice: order['采购价格'],
+    unitWeightG: order['重量'],
+    unitSizeText: order['尺寸'],
+    courierCompany: order['快递公司'],
+    trackingNo: order['快递单号']
+  })];
+}
+
+function buildDraftFromOrder(order: OrderRecord | null, activeAccount: string, accounts: string[]): OrderDraft {
+  const orderedAt = String(order?.['下单时间'] || todayStr());
+  const status = String(order?.['订单状态'] || '').trim();
+  return {
+    accountName: String(order?.['账号'] || (activeAccount !== '__all__' ? activeAccount : accounts[0] || '')),
+    orderNo: String(order?.['订单号'] || ''),
+    orderedAt,
+    purchaseDate: String(order?.['采购日期'] || todayStr()),
+    latestWarehouseAt: String(order?.['最晚到仓时间'] || (orderedAt ? addDays(orderedAt, 6) : '')),
+    warningText: String(order?.['订单预警'] || ''),
+    isRefunded: String(order?.['是否退款'] || '').trim() === '1',
+    salePrice: String(order?.['售价'] || ''),
+    purchasePrice: String(order?.['采购价格'] || ''),
+    estimatedShippingFee: String(order?.['预估运费'] || ''),
+    estimatedProfit: String(order?.['预估利润'] || ''),
+    creatorCommissionRate: String(order?.['达人佣金率'] || ''),
+    creatorCommission: String(order?.['达人佣金'] || ''),
+    orderStatus: status,
+    weightText: String(order?.['重量'] || ''),
+    sizeText: String(order?.['尺寸'] || ''),
+    items: getOrderItemsFromOrder(order)
+  };
+}
+
+function computeItemTotals(items: OrderItemDraft[]) {
+  return items.reduce((acc, item) => {
+    const quantity = Number.parseInt(String(item.quantity || '').trim(), 10) || 0;
+    const unitPurchase = parseOrderMoneyValue(item.unitPurchasePrice) || 0;
+    const unitSale = parseOrderMoneyValue(item.unitSalePrice) || 0;
+    const unitWeight = parseOrderMoneyValue(item.unitWeightG) || 0;
+    return {
+      quantity: acc.quantity + quantity,
+      purchase: acc.purchase + unitPurchase * quantity,
+      sale: acc.sale + unitSale * quantity,
+      weight: acc.weight + unitWeight * quantity
+    };
+  }, { quantity: 0, purchase: 0, sale: 0, weight: 0 });
+}
+
+function findProduct(products: ProductRecord[], accountName: string, tkId: string) {
+  const normalizedTkId = String(tkId || '').trim();
+  if (!normalizedTkId) return null;
+  const normalizedAccount = normalizeAccountName(accountName);
+  return products.find(product => (
+    String(product.tkId || '').trim() === normalizedTkId
+    && (!normalizedAccount || normalizeAccountName(product.accountName) === normalizedAccount)
+  )) || products.find(product => String(product.tkId || '').trim() === normalizedTkId) || null;
+}
+
+function computeEstimatedShipping(draft: OrderDraft, products: ProductRecord[]) {
+  const pricingContext = ensureGlobalSettingsStore(window).getPricingContext();
+  if (!pricingContext?.rate) return '';
+  const actualWeight = parseOrderMoneyValue(draft.weightText);
+  if (actualWeight === null || actualWeight <= 0) return '';
+  const itemCargoTypes = draft.items.map(item => {
+    const product = findProduct(products, draft.accountName, item.productTkId);
+    const sku = product && item.productSkuId
+      ? getProductSkus(product).find(row => String(row.skuId || '').trim() === item.productSkuId) || null
+      : null;
+    const source = resolveProductSnapshotSource(product, sku);
+    return String(source?.cargoType || getProductDefaults(product || {})?.cargoType || '').trim();
+  }).filter(Boolean);
+  const cargoType = itemCargoTypes.includes('special') ? 'special' : 'general';
+  const size = parseSizeText(draft.sizeText);
+  const quote = TKShippingCore.computeShippingQuote({
+    cargoType,
+    actualWeight,
+    length: size.lengthCm,
+    width: size.widthCm,
+    height: size.heightCm,
+    rate: pricingContext.rate
+  });
+  const finalFee = TKShippingCore.computeCalculatedShippingCost({
+    quote,
+    multiplier: pricingContext.shippingMultiplier,
+    labelFee: pricingContext.labelFee
+  });
+  return finalFee === null ? '' : formatNumericValue(finalFee);
+}
+
+function computeAutoFields(draft: OrderDraft, products: ProductRecord[]) {
+  const items = draft.items.map(normalizeDraftItem);
+  const totals = computeItemTotals(items);
+  const latestWarehouseAt = draft.orderedAt ? addDays(draft.orderedAt, 6) : '';
+  const singleSize = items.length === 1 ? items[0].unitSizeText : '';
+  const weightText = totals.weight ? formatNumericValue(totals.weight) : draft.weightText;
+  const sizeText = singleSize || draft.sizeText;
+  const estimatedShippingFee = draft.estimatedShippingFee || computeEstimatedShipping({ ...draft, items, weightText, sizeText }, products);
+  const tempOrder = {
+    '下单时间': draft.orderedAt,
+    '最晚到仓时间': latestWarehouseAt,
+    '订单状态': draft.orderStatus
+  };
+  const warningText = computeWarning(tempOrder).text;
+  const commission = computeOrderCreatorCommission({
+    '售价': draft.salePrice,
+    '达人佣金率': draft.creatorCommissionRate,
+    '是否退款': draft.isRefunded ? '1' : ''
+  }, ensureGlobalSettingsStore(window).getExchangeRate());
+  const profit = computeOrderEstimatedProfit({
+    '售价': draft.salePrice,
+    '采购价格': draft.purchasePrice || (totals.purchase ? formatNumericValue(totals.purchase) : ''),
+    '预估运费': estimatedShippingFee,
+    '达人佣金率': draft.creatorCommissionRate,
+    '是否退款': draft.isRefunded ? '1' : ''
+  }, ensureGlobalSettingsStore(window).getExchangeRate());
+  return {
+    ...draft,
+    items,
+    latestWarehouseAt,
+    warningText,
+    purchasePrice: draft.purchasePrice || (totals.purchase ? formatNumericValue(totals.purchase) : ''),
+    salePrice: draft.salePrice || (totals.sale ? formatNumericValue(totals.sale) : ''),
+    weightText,
+    sizeText,
+    estimatedShippingFee,
+    creatorCommission: commission === null ? '' : formatNumericValue(commission),
+    estimatedProfit: profit === null ? '' : formatNumericValue(profit)
+  };
+}
+
+function ProductCombo({
+  value,
+  accountName,
+  products,
+  onChange
+}: {
+  value: string;
+  accountName: string;
+  products: ProductRecord[];
+  onChange: (value: string) => void;
+}) {
+  const filteredProducts = useMemo(() => {
+    const normalizedAccount = normalizeAccountName(accountName);
+    return products
+      .filter(product => !normalizedAccount || normalizeAccountName(product.accountName) === normalizedAccount)
+      .sort((left, right) => String(left.tkId || '').localeCompare(String(right.tkId || '')));
+  }, [accountName, products]);
+  const options = filteredProducts.map(product => {
+    const tkId = String(product.tkId || '').trim();
+    const name = String(product.name || '').trim() || '未命名商品';
+    return {
+      value: tkId,
+      label: `${tkId} · ${name}`,
+      searchLabel: `${tkId} ${name}`
+    };
+  }).filter(option => option.value);
+  if (value && !options.some(option => option.value === value)) {
+    options.push({ value, label: `${value}（已不存在）`, searchLabel: value });
+  }
+  return (
+    <SearchableCombo
+      hiddenField="productTkId"
+      options={options}
+      placeholder="- 不关联商品 -"
+      role="product-combobox"
+      searchPlaceholder="搜索商品ID / 名称"
+      value={value}
+      onChange={onChange}
+    />
+  );
+}
+
+function SkuCombo({
+  value,
+  product,
+  onChange
+}: {
+  value: string;
+  product: ProductRecord | null;
+  onChange: (value: string) => void;
+}) {
+  const skus = getProductSkus(product || {});
+  const options = skus.map(sku => {
+    const skuId = String(sku.skuId || '').trim();
+    const skuName = String(sku.skuName || '').trim() || skuId;
+    return {
+      value: skuId,
+      label: `${skuName} · ${skuId}`,
+      searchLabel: `${skuId} ${skuName}`
+    };
+  }).filter(option => option.value);
+  if (value && !options.some(option => option.value === value)) {
+    options.push({ value, label: `${value}（已不存在）`, searchLabel: value });
+  }
+  return (
+    <SearchableCombo
+      disabled={!product || !skus.length}
+      hiddenField="productSkuId"
+      options={options}
+      placeholder={product && !skus.length ? '- 该商品没有 SKU -' : '- 请选择 SKU -'}
+      role="sku-combobox"
+      searchPlaceholder="搜索SKU ID / 名称"
+      value={value}
+      onChange={onChange}
+    />
+  );
+}
+
+function OrderItemsEditor({
+  draft,
+  products,
+  onDraftChange
+}: {
+  draft: OrderDraft;
+  products: ProductRecord[];
+  onDraftChange: (draft: OrderDraft) => void;
+}) {
+  function updateItem(index: number, patch: Partial<OrderItemDraft>) {
+    const nextItems = draft.items.map((item, currentIndex) => (
+      currentIndex === index ? normalizeDraftItem({ ...item, ...patch }) : item
+    ));
+    onDraftChange(computeAutoFields({ ...draft, items: nextItems }, products));
+  }
+
+  function handleProductChange(index: number, productTkId: string) {
+    const product = findProduct(products, draft.accountName, productTkId);
+    updateItem(index, {
+      productTkId,
+      productSkuId: '',
+      productSkuName: '',
+      productName: product ? String(product.name || '').trim() : '',
+      unitWeightG: '',
+      unitSizeText: ''
+    });
+  }
+
+  function handleSkuChange(index: number, productTkId: string, skuId: string) {
+    const product = findProduct(products, draft.accountName, productTkId);
+    const sku = product ? getProductSkus(product).find(item => String(item.skuId || '').trim() === skuId) || null : null;
+    const source = resolveProductSnapshotSource(product, sku);
+    updateItem(index, {
+      productSkuId: skuId,
+      productSkuName: sku ? String(sku.skuName || '').trim() : '',
+      unitWeightG: source?.weightG ? String(source.weightG) : '',
+      unitSizeText: formatProductSize(source)
+    });
+  }
+
+  return (
+    <div className="ot-item-list" id="ot-item-list">
+      {draft.items.map((item, index) => {
+        const product = findProduct(products, draft.accountName, item.productTkId);
+        return (
+          <div className="ot-item-edit-row" data-line-id={item.lineId} key={item.lineId}>
+            <button
+              type="button"
+              className="ot-item-remove"
+              data-item-action="remove"
+              aria-label="删除明细"
+              title="删除明细"
+              onClick={() => {
+                const nextItems = draft.items.filter((_, currentIndex) => currentIndex !== index);
+                onDraftChange(computeAutoFields({ ...draft, items: nextItems.length ? nextItems : [createEmptyOrderItem()] }, products));
+              }}
+            >
+              ×
+            </button>
+            <div className="field ot-item-field ot-item-span-3">
+              <label>关联商品</label>
+              <ProductCombo value={item.productTkId} accountName={draft.accountName} products={products} onChange={value => handleProductChange(index, value)} />
+            </div>
+            <div className="field ot-item-field ot-item-span-3">
+              <label>关联SKU</label>
+              <SkuCombo value={item.productSkuId} product={product} onChange={value => handleSkuChange(index, item.productTkId, value)} />
+              <input type="hidden" data-item-field="productSkuName" value={item.productSkuName} readOnly />
+            </div>
+            <div className="field ot-item-field ot-item-span-3">
+              <label>商品名称</label>
+              <Input className="pl-sku-inline-input" data-item-field="productName" value={item.productName} onChange={event => updateItem(index, { productName: event.target.value })} />
+            </div>
+            <div className="field ot-item-field ot-item-span-3">
+              <label>快递公司</label>
+              <Select data-item-field="courierCompany" value={item.courierCompany} onChange={event => updateItem(index, { courierCompany: event.target.value })}>
+                {COURIER_OPTIONS.map(option => <option value={option} key={option}>{option || '- 未填写 -'}</option>)}
+              </Select>
+            </div>
+            <div className="field ot-item-field ot-item-span-3">
+              <label>数量</label>
+              <Input type="number" className="pl-sku-inline-input" data-item-field="quantity" min="1" step="1" value={item.quantity} onChange={event => updateItem(index, { quantity: event.target.value })} />
+            </div>
+            <div className="field ot-item-field ot-item-span-3">
+              <label>单件重量(g)</label>
+              <Input className="pl-sku-inline-input" data-item-field="unitWeightG" value={item.unitWeightG} onChange={event => updateItem(index, { unitWeightG: event.target.value })} />
+            </div>
+            <div className="field ot-item-field ot-item-span-3">
+              <label>单件尺寸(cm)</label>
+              <Input className="pl-sku-inline-input" data-item-field="unitSizeText" value={item.unitSizeText} placeholder="20×15×10" onChange={event => updateItem(index, { unitSizeText: event.target.value })} />
+            </div>
+            <div className="field ot-item-field ot-item-span-3">
+              <label>
+                快递单号
+                <span className="ot-item-inline-actions">
+                  <button
+                    type="button"
+                    className="ot-item-inline-btn ot-item-copy-btn"
+                    data-item-action="copy-tracking"
+                    aria-label="复制当前明细快递单号"
+                    title="复制当前明细快递单号"
+                    onClick={() => {
+                      if (!item.trackingNo) {
+                        showToast('这条明细还没有快递单号', 'error');
+                        return;
+                      }
+                      void window.TKFirestoreConnection?.copyText?.(item.trackingNo).then(() => showToast('已复制快递单号')).catch(() => showToast('复制失败，请手动复制', 'error'));
+                    }}
+                  >
+                    <Copy size={14} strokeWidth={2} />
+                  </button>
+                </span>
+              </label>
+              <Input
+                className="pl-sku-inline-input"
+                data-item-field="trackingNo"
+                value={item.trackingNo}
+                placeholder="填写这一条明细的单号"
+                onChange={event => {
+                  const trackingNo = event.target.value;
+                  const detected = detectCourierCompany(trackingNo, COURIER_AUTO_DETECTORS);
+                  updateItem(index, { trackingNo, courierCompany: detected || item.courierCompany });
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ProductPager({
+  pageSize,
+  currentPage,
+  totalPages,
+  onPageSizeChange,
+  onPageChange
+}: {
+  pageSize: number;
+  currentPage: number;
+  totalPages: number;
+  onPageSizeChange: (value: number) => void;
+  onPageChange: (delta: number) => void;
+}) {
+  return (
+    <div className="ot-table-pagination">
+      <label className="ot-page-size">
+        <span>每页</span>
+        <span className="ot-page-size-control">
+          <select value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}>
+            {PAGE_SIZE_OPTIONS.map(size => <option value={size} key={size}>{size}</option>)}
+          </select>
+        </span>
+      </label>
+      <Button size="sm" disabled={currentPage <= 1} onClick={() => onPageChange(-1)}>上一页</Button>
+      <span className="ot-page-indicator">{currentPage} / {totalPages}</span>
+      <Button size="sm" disabled={currentPage >= totalPages} onClick={() => onPageChange(1)}>下一页</Button>
+    </div>
+  );
+}
+
+function OrdersSummary({
+  orders,
+  activeAccount,
+  searchQuery,
+  sortOrder,
+  exchangeRate
+}: {
+  orders: OrderRecord[];
+  activeAccount: string;
+  searchQuery: string;
+  sortOrder: string;
+  exchangeRate: number | null;
+}) {
+  const summary = derivePurchaseSummary({
+    orders,
+    activeAccount,
+    searchQuery,
+    sortOrder,
+    exchangeRate,
+    computeOrderCreatorCommission,
+    computeOrderEstimatedProfit
+  });
+  const expenseValue = (summary.filteredTotal || 0) + (summary.filteredShippingTotal || 0) + (summary.filteredCreatorCommissionTotal || 0);
+  const allExpenseValue = (summary.allTotal || 0) + (summary.allShippingTotal || 0) + (summary.allCreatorCommissionTotal || 0);
+
+  function card(title: string, profitMetric: any, saleMetric: any, expenseTotal: number, count: number, meta: string) {
+    return (
+      <section className="ot-summary-section">
+        <div className="ot-summary-head">
+          <div className="ot-summary-label">{title}</div>
+          <div className="ot-summary-meta-inline">{meta}</div>
+        </div>
+        <div className={`ot-summary-hero is-${profitMetric?.total > 0 ? 'profit-positive' : profitMetric?.total < 0 ? 'profit-negative' : 'neutral'}`}>
+          <span className="ot-summary-hero-label">预估总利润</span>
+          <strong className="ot-summary-hero-value">{formatSummaryMetric(profitMetric)}</strong>
+        </div>
+        <div className="ot-summary-ledger">
+          <div className="ot-summary-ledger-item is-income">
+            <span className="ot-summary-ledger-label">收入</span>
+            <strong className="ot-summary-ledger-value">{formatSummaryMetric(saleMetric)}</strong>
+            <span className="ot-summary-ledger-note">销售</span>
+          </div>
+          <div className="ot-summary-ledger-item is-expense">
+            <span className="ot-summary-ledger-label">支出</span>
+            <strong className="ot-summary-ledger-value">{count ? `¥ ${expenseTotal.toFixed(2)}` : '-'}</strong>
+            <span className="ot-summary-ledger-note">采购 · 运费 · 达人</span>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <div className="ot-summary-surface">
+      <div className="ot-summary-grid">
+        {card(
+          activeAccount !== '__all__' || searchQuery ? `当前筛选${activeAccount !== '__all__' ? ` · 账号：${activeAccount}` : ''}${searchQuery ? ` · 搜索：${searchQuery}` : ''}` : '当前筛选',
+          summary.filteredProfitMetric,
+          summary.filteredSaleMetric,
+          expenseValue,
+          summary.filteredCount,
+          `受账号标签和搜索影响 · 共 ${summary.filteredCount} 条`
+        )}
+        {card('全部订单', summary.allProfitMetric, summary.allSaleMetric, allExpenseValue, summary.allCount, `不受账号、搜索、分页影响 · 共 ${summary.allCount} 条`)}
+      </div>
+    </div>
+  );
+}
+
+function OrdersTable({
+  orders,
+  activeAccount,
+  searchQuery,
+  sortOrder,
+  pageSize,
+  currentPage,
+  exchangeRate,
+  onSearchChange,
+  onPageSizeChange,
+  onPageChange,
+  onSortToggle,
+  onEdit,
+  onDelete
+}: {
+  orders: OrderRecord[];
+  activeAccount: string;
+  searchQuery: string;
+  sortOrder: string;
+  pageSize: number;
+  currentPage: number;
+  exchangeRate: number | null;
+  onSearchChange: (value: string) => void;
+  onPageSizeChange: (value: number) => void;
+  onPageChange: (delta: number) => void;
+  onSortToggle: () => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [composing, setComposing] = useState(false);
+  const { isAll, sorted } = useMemo(() => deriveDisplayedOrders({ orders, activeAccount, searchQuery, sortOrder }), [activeAccount, orders, searchQuery, sortOrder]);
+  const pageState = clampPage(currentPage, pageSize, sorted.length);
+  const startIndex = (pageState.currentPage - 1) * pageState.pageSize;
+  const paged = sorted.slice(startIndex, startIndex + pageState.pageSize);
+  const sortIcon = sortOrder === 'asc' ? '↑' : '↓';
+  const sortTitle = sortOrder === 'asc' ? '当前正序（最早在上），点击切换' : '当前倒序（最新在上），点击切换';
+
+  return (
+    <>
+      <div id="ot-table-toolbar-container">
+        <div className="ot-table-toolbar ot-sticky-controls">
+          <div className="ot-sticky-controls-inner">
+            <div className="ot-table-toolbar-left">
+              <label className="ot-table-search">
+                <span className="ot-table-search-icon" aria-hidden="true"><Search size={15} strokeWidth={2} /></span>
+                <input
+                  id="ot-table-search-input"
+                  type="text"
+                  placeholder=" "
+                  value={searchQuery}
+                  autoComplete="off"
+                  onCompositionStart={() => setComposing(true)}
+                  onCompositionEnd={event => {
+                    setComposing(false);
+                    onSearchChange(event.currentTarget.value);
+                  }}
+                  onChange={event => {
+                    if (!composing) onSearchChange(event.target.value);
+                  }}
+                />
+                <span className="ot-table-search-hint">搜索下单时间 / 订单号 / 产品 / 快递</span>
+              </label>
+            </div>
+            <div className="ot-table-toolbar-right">
+              <ProductPager pageSize={pageState.pageSize} currentPage={pageState.currentPage} totalPages={pageState.totalPages} onPageSizeChange={onPageSizeChange} onPageChange={onPageChange} />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="ot-table-wrap">
+        <div id="ot-table-container">
+          {!sorted.length ? (
+            <div className="ot-empty">
+              <div style={{ fontSize: 15, marginBottom: 6 }}>{searchQuery ? '没有匹配的订单' : activeAccount !== '__all__' ? `账号「${activeAccount}」下还没有订单` : '还没有订单'}</div>
+              <div style={{ fontSize: 12.5 }}>{searchQuery ? '试试更换关键词' : '点击右上角「+ 新增订单」开始记录'}</div>
+            </div>
+          ) : (
+            <div className="ot-table-inner">
+              <table className="ot orders-react-table">
+                <thead>
+                  <tr>
+                    <th><button type="button" id="ot-sort-btn" className="orders-react-sort" title={sortTitle} onClick={onSortToggle}># {sortIcon}</button></th>
+                    {isAll ? <th>账号</th> : null}
+                    <th>下单时间</th>
+                    <th>采购日期</th>
+                    <th>最晚到仓</th>
+                    <th>订单预警</th>
+                    <th>订单号</th>
+                    <th>产品名称</th>
+                    <th>数量</th>
+                    <th>总售价(円)</th>
+                    <th>总采购额(¥)</th>
+                    <th>预估总海外运费(¥)</th>
+                    <th>预估总利润(¥)</th>
+                    <th>总重量</th>
+                    <th>总尺寸</th>
+                    <th>订单状态</th>
+                    <th>快递公司</th>
+                    <th>快递单号</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.map((order, index) => {
+                    const absoluteIndex = startIndex + index;
+                    const seqNum = sortOrder === 'asc' ? absoluteIndex + 1 : sorted.length - absoluteIndex;
+                    const warn = computeWarning(order);
+                    const profit = computeOrderEstimatedProfit(order, exchangeRate);
+                    const courierSummary = buildOrderCourierSummary(order, 'company', 'full');
+                    const trackingSummary = buildOrderCourierSummary(order, 'tracking', 'full');
+                    return (
+                      <tr key={String(order.id)} className={String(order['是否退款'] || '').trim() === '1' ? 'is-refunded' : ''}>
+                        <td style={{ color: 'var(--muted)' }}>{seqNum}</td>
+                        {isAll ? <td><span className="chip muted">{formatTableCellValue(order['账号'])}</span></td> : null}
+                        <td>{formatTableCellValue(order['下单时间'])}</td>
+                        <td>{formatTableCellValue(order['采购日期'])}</td>
+                        <td>{formatTableCellValue(order['最晚到仓时间'])}</td>
+                        <td><span className={`chip ${warn.cls || ''}`}>{warn.text || '-'}</span></td>
+                        <td dangerouslySetInnerHTML={{ __html: buildOrderNoCellMarkup(order) }} />
+                        <td className="orders-react-product-cell" title={String(order['产品名称'] || '')}>{formatTableCellValue(order['产品名称'])}</td>
+                        <td>{formatTableCellValue(order['数量'])}</td>
+                        <td dangerouslySetInnerHTML={{ __html: buildSaleCellMarkup(order) }} />
+                        <td>{formatTableCellValue(order['采购价格'])}</td>
+                        <td>{formatTableCellValue(order['预估运费'])}</td>
+                        <td><span className={`ot-profit-value is-${getProfitCellToneClass(profit)}`}>{formatTableMoneyValue(profit) || '-'}</span></td>
+                        <td>{formatTableCellValue(order['重量'])}</td>
+                        <td>{formatTableCellValue(order['尺寸'])}</td>
+                        <td>{formatTableCellValue(order['订单状态'])}</td>
+                        <td title={courierSummary}>{formatTableCellValue(courierSummary)}</td>
+                        <td title={trackingSummary}>{formatTableCellValue(trackingSummary)}</td>
+                        <td>
+                          <Button size="sm" data-edit={String(order.id)} onClick={() => onEdit(String(order.id))}>编辑</Button>
+                          <Button size="sm" variant="danger" data-del={String(order.id)} onClick={() => onDelete(String(order.id))}>删除</Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+      <div id="ot-table-footer-toolbar-container">
+        <div className="ot-table-toolbar ot-table-toolbar-bottom">
+          <div className="ot-sticky-controls-inner">
+            <div />
+            <div className="ot-table-toolbar-right">
+              <ProductPager pageSize={pageState.pageSize} currentPage={pageState.currentPage} totalPages={pageState.totalPages} onPageSizeChange={onPageSizeChange} onPageChange={onPageChange} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function OrderModal({
+  open,
+  draft,
+  accounts,
+  products,
+  editingId,
+  onOpenChange,
+  onDraftChange,
+  onSubmit,
+  onAddAccount
+}: {
+  open: boolean;
+  draft: OrderDraft;
+  accounts: string[];
+  products: ProductRecord[];
+  editingId: string;
+  onOpenChange: (open: boolean) => void;
+  onDraftChange: (draft: OrderDraft) => void;
+  onSubmit: () => void;
+  onAddAccount: () => void;
+}) {
+  function updateDraft(patch: Partial<OrderDraft>, auto = true) {
+    const next = { ...draft, ...patch };
+    onDraftChange(auto ? computeAutoFields(next, products) : next);
+  }
+
+  return (
+    <Dialog id="ot-modal" open={open} onOpenChange={onOpenChange} titleId="ot-modal-title">
+      <DialogContent className="modal-order">
+        <DialogTitle id="ot-modal-title">{editingId ? '编辑订单' : '新增订单'}</DialogTitle>
+        <form id="ot-form" autoComplete="off" onSubmit={event => { event.preventDefault(); onSubmit(); }}>
+          <div className="row">
+            <div className="field">
+              <label>账号 *</label>
+              <Select name="账号" id="ot-acc-select" required value={draft.accountName} onChange={event => {
+                if (event.target.value === '__ADD__') {
+                  onAddAccount();
+                  return;
+                }
+                updateDraft({ accountName: event.target.value });
+              }}>
+                <option value="">- 请选择 -</option>
+                {accounts.map(account => <option value={account} key={account}>{account}</option>)}
+                <option value="__ADD__">+ 添加账号</option>
+              </Select>
+            </div>
+            <div className="field">
+              <label>订单号 *</label>
+              <Input name="订单号" required value={draft.orderNo} onChange={event => updateDraft({ orderNo: event.target.value }, false)} />
+            </div>
+          </div>
+          <div className="row triple">
+            <div className="field">
+              <label>下单时间 *</label>
+              <Input type="date" name="下单时间" required value={draft.orderedAt} onChange={event => updateDraft({ orderedAt: event.target.value })} />
+            </div>
+            <div className="field">
+              <label>采购日期</label>
+              <Input type="date" name="采购日期" value={draft.purchaseDate} onChange={event => updateDraft({ purchaseDate: event.target.value }, false)} />
+            </div>
+            <div className="field">
+              <label>最晚到仓时间 <span className="kbd">自动</span></label>
+              <Input type="date" name="最晚到仓时间" readOnly value={draft.latestWarehouseAt} />
+            </div>
+          </div>
+          <section className="ot-item-block">
+            <div className="ot-item-block-head">
+              <div>
+                <h4>订单明细</h4>
+                <div className="ot-item-block-copy">一个 TK 订单可以包含多个商品和多个 SKU；每条订单明细对应一个商品的一个 SKU。</div>
+              </div>
+              <Button id="ot-add-item-btn" onClick={() => onDraftChange(computeAutoFields({ ...draft, items: [...draft.items, createEmptyOrderItem()] }, products))}>+ 添加明细</Button>
+            </div>
+            <OrderItemsEditor draft={draft} products={products} onDraftChange={onDraftChange} />
+            <input type="hidden" name="商品TK ID" id="ot-product-select" value={draft.items.length === 1 ? draft.items[0].productTkId : ''} readOnly />
+            <input type="hidden" name="商品SKU ID" id="ot-sku-select" value={draft.items.length === 1 ? draft.items[0].productSkuId : ''} readOnly />
+            <input type="hidden" name="商品SKU名称" id="ot-sku-name" value={draft.items.length === 1 ? draft.items[0].productSkuName : ''} readOnly />
+            <input type="hidden" name="产品名称" id="ot-product-name-hidden" value={buildOrderItemsSummary(draft.items)} readOnly />
+            <input type="hidden" name="数量" id="ot-total-quantity-hidden" value={computeItemTotals(draft.items).quantity || ''} readOnly />
+          </section>
+          <div className="row triple">
+            <div className="field">
+              <label>总件数</label>
+              <Input id="ot-total-quantity" readOnly value={computeItemTotals(draft.items).quantity || ''} />
+            </div>
+            <div className="field">
+              <label>总重量(g) <span className="ot-inline-hint" id="ot-weight-hint">{computeItemTotals(draft.items).quantity > 1 ? '已按各 SKU 单件重量 × 数量汇总' : ''}</span></label>
+              <Input name="重量" value={draft.weightText} onChange={event => updateDraft({ weightText: event.target.value })} />
+            </div>
+            <div className="field">
+              <label>总尺寸(cm) <span className="ot-inline-hint">多个订单明细时请自行调整尺寸</span></label>
+              <Input name="尺寸" value={draft.sizeText} onChange={event => updateDraft({ sizeText: event.target.value })} />
+            </div>
+          </div>
+          <div className="row quint ot-money-row-top">
+            <div className="field ot-refund-field">
+              <label>是否退款</label>
+              <label className="ot-refund-toggle">
+                <input type="checkbox" id="ot-is-refunded" name="是否退款" value="1" checked={draft.isRefunded} onChange={event => updateDraft({ isRefunded: event.target.checked })} />
+                <span className="ot-refund-toggle-knob" aria-hidden="true"></span>
+              </label>
+            </div>
+            <div className={cn('field ot-sale-field', draft.isRefunded ? 'is-refunded' : '')}>
+              <label>总售价（日元）</label>
+              <div className="ot-sale-input-wrap">
+                <Input type="number" id="ot-total-sale" name="售价" min="0" step="0.01" readOnly={draft.isRefunded} value={draft.salePrice} onChange={event => updateDraft({ salePrice: event.target.value })} />
+                <div className="ot-sale-input-refund" aria-hidden="true">
+                  <span className="ot-sale-input-original">{draft.salePrice || '-'}</span>
+                  <span className="ot-sale-input-zero">0</span>
+                </div>
+              </div>
+            </div>
+            <div className="field">
+              <label>总采购额（元）</label>
+              <Input type="number" id="ot-total-purchase" name="采购价格" min="0" step="0.01" value={draft.purchasePrice} onChange={event => updateDraft({ purchasePrice: event.target.value })} />
+            </div>
+            <div className="field">
+              <label>预估总海外运费（元）</label>
+              <Input type="number" name="预估运费" min="0" step="0.01" value={draft.estimatedShippingFee} onChange={event => updateDraft({ estimatedShippingFee: event.target.value })} />
+            </div>
+            <div className="field">
+              <label>预估利润（人民币） <span className="kbd">自动</span></label>
+              <Input type="number" name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
+            </div>
+          </div>
+          <div className="row quad ot-meta-row">
+            <div className="field">
+              <label>达人佣金率（%）</label>
+              <Input type="number" name="达人佣金率" min="0" step="0.01" value={draft.creatorCommissionRate} onChange={event => updateDraft({ creatorCommissionRate: event.target.value })} />
+            </div>
+            <div className="field">
+              <label>达人佣金（元） <span className="kbd">自动</span></label>
+              <Input type="number" name="达人佣金" step="0.01" readOnly value={draft.creatorCommission} />
+            </div>
+            <div className="field">
+              <label>订单状态</label>
+              <Select name="订单状态" value={draft.orderStatus} onChange={event => updateDraft({ orderStatus: event.target.value })}>
+                <option value="">- 请选择 -</option>
+                {ORDER_STATUS_OPTIONS.map(status => <option value={status} key={status}>{status}</option>)}
+              </Select>
+            </div>
+            <div className="field">
+              <label>订单预警 <span className="kbd">自动</span></label>
+              <Input name="订单预警" readOnly value={draft.warningText} />
+            </div>
+          </div>
+          <div className="actions">
+            <Button id="ot-cancel" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button type="submit" variant="primary">保存</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddAccountModal({
+  open,
+  value,
+  onValueChange,
+  onOpenChange,
+  onConfirm
+}: {
+  open: boolean;
+  value: string;
+  onValueChange: (value: string) => void;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog id="ot-add-acc-modal" open={open} onOpenChange={onOpenChange}>
+      <DialogContent style={{ maxWidth: 400 }}>
+        <DialogTitle>添加新账号</DialogTitle>
+        <form id="ot-add-acc-form" autoComplete="off" onSubmit={event => { event.preventDefault(); onConfirm(); }}>
+          <div className="row">
+            <div className="field full" style={{ gridColumn: '1/-1' }}>
+              <label>新账号名称</label>
+              <Input id="ot-new-acc-input" value={value} placeholder="例如：US-TK-01" required onChange={event => onValueChange(event.target.value)} />
+            </div>
+          </div>
+          <div className="actions" style={{ marginTop: 20 }}>
+            <Button id="ot-add-acc-cancel" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button type="submit" variant="primary">确定</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ExportModal({
+  open,
+  options,
+  selected,
+  onSelectedChange,
+  onOpenChange,
+  onConfirm
+}: {
+  open: boolean;
+  options: { key: string; label: string; count: number }[];
+  selected: Set<string>;
+  onSelectedChange: (value: Set<string>) => void;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+}) {
+  const allChecked = options.length > 0 && options.every(option => selected.has(option.key));
+  return (
+    <Dialog id="ot-export-modal" open={open} titleId="ot-export-title" onOpenChange={onOpenChange}>
+      <DialogContent style={{ maxWidth: 460 }}>
+        <DialogTitle id="ot-export-title">选择要导出的账号</DialogTitle>
+        <div className="modal-copy" style={{ marginBottom: 16 }}>可勾选一个或多个账号；如果有未关联订单，也可以单独导出。</div>
+        <div className="ot-export-selectors">
+          <label className="ot-export-option ot-export-option-all">
+            <span className="ot-export-option-main">
+              <input id="ot-export-all" type="checkbox" checked={allChecked} onChange={event => onSelectedChange(event.target.checked ? new Set(options.map(option => option.key)) : new Set())} />
+              <span>全部账号</span>
+            </span>
+          </label>
+          <div id="ot-export-options" className="ot-export-options">
+            {options.map(option => (
+              <label className="ot-export-option" key={option.key}>
+                <span className="ot-export-option-main">
+                  <input
+                    type="checkbox"
+                    className="ot-export-checkbox"
+                    value={option.key}
+                    checked={selected.has(option.key)}
+                    onChange={event => {
+                      const next = new Set(selected);
+                      if (event.target.checked) next.add(option.key);
+                      else next.delete(option.key);
+                      onSelectedChange(next);
+                    }}
+                  />
+                  <span className="ot-export-option-name">{option.label}</span>
+                </span>
+                <span className="ot-export-option-count">{option.count} 条</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="actions">
+          <Button id="ot-export-cancel" onClick={() => onOpenChange(false)}>取消</Button>
+          <Button id="ot-export-confirm" variant="primary" onClick={onConfirm}>导出 CSV</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function StorageHelpModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  return (
+    <Dialog id="ot-storage-help-modal" open={open} titleId="ot-storage-help-title" onOpenChange={onOpenChange}>
+      <DialogContent style={{ maxWidth: 560 }}>
+        <DialogTitle id="ot-storage-help-title">数据存储说明</DialogTitle>
+        <div className="calc-help-copy">
+          <div className="calc-help-item"><div className="k">本地优先</div><div className="v">订单管理和商品管理都会先使用 Firestore 自带的离线缓存，再同步到你自己的 Firebase Firestore 项目。</div></div>
+          <div className="calc-help-item"><div className="k">可选远端</div><div className="v">当前只支持 Firebase Firestore。工具本身不会把订单或商品资料存到我的数据库里。</div></div>
+          <div className="calc-help-item"><div className="k">恢复方式</div><div className="v">请保存好自己的 <code>firebaseConfig</code>。换浏览器或换设备后，用同一套远端配置即可恢复。</div></div>
+          <div className="calc-help-item"><div className="k">团队共用</div><div className="v">同一个 Firebase 项目可以给团队成员共用，但当前方案没有成员级权限隔离。</div></div>
+        </div>
+        <div className="actions">
+          <Button id="ot-storage-help-close" variant="primary" onClick={() => onOpenChange(false)}>知道了</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function OrdersPage() {
+  const providerRef = useRef(OrderTrackerProviderFirestore.create({
+    state: {},
+    helpers: {
+      nowIso,
+      normalizeOrderList: (list: OrderRecord[]) => Array.isArray(list) ? list.map(order => normalizeOrderRecord(order)) : [],
+      uniqueAccounts
+    }
+  }));
+  const productProviderRef = useRef(ProductLibraryProviderFirestore.create({
+    state: {},
+    helpers: { nowIso }
+  }));
+  const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [syncText, setSyncText] = useState('未连接');
+  const [syncClass, setSyncClass] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [accounts, setAccounts] = useState<string[]>([]);
+  const [products, setProducts] = useState<ProductRecord[]>([]);
+  const [activeAccount, setActiveAccount] = useState('__all__');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [pageSize, setPageSize] = useState(50);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState('');
+  const [draft, setDraft] = useState<OrderDraft>(() => buildDraftFromOrder(null, '__all__', []));
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [newAccountName, setNewAccountName] = useState('');
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportSelected, setExportSelected] = useState<Set<string>>(new Set());
+  const [storageHelpOpen, setStorageHelpOpen] = useState(false);
+  const exchangeRate = ensureGlobalSettingsStore(window).getExchangeRate();
+
+  const allAccounts = useMemo(() => uniqueAccounts([...accounts, ...orders.map(order => order['账号'])]).sort((left, right) => left.localeCompare(right)), [accounts, orders]);
+  const exportOptions = useMemo(() => getExportAccountOptions({ accounts: allAccounts, orders, constants: { UNASSIGNED_ACCOUNT_SLOT } }), [allAccounts, orders]);
+
+  const formatFirestoreError = useCallback((error: unknown, fallback = '订单管理操作失败') => {
+    const err = error as { code?: string; message?: string };
+    const message = String(err?.message || '').trim();
+    if (String(err?.code || '').includes('permission-denied') || /Missing or insufficient permissions/i.test(message)) {
+      const next = '当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则，确保 orders、order_accounts、sync_state 和 products 都已放行。';
+      window.TKFirestoreConnection?.notifyRulesUpdateNeeded?.(next);
+      return next;
+    }
+    return message || fallback;
+  }, []);
+
+  const loadProducts = useCallback(async () => {
+    const cfg = readGlobalConfig();
+    if (!cfg?.configText) {
+      setProducts([]);
+      return [];
+    }
+    try {
+      await productProviderRef.current.init({ configText: cfg.configText });
+      const result = await productProviderRef.current.pullProducts();
+      const nextProducts = Array.isArray(result.products) ? result.products : [];
+      setProducts(nextProducts);
+      return nextProducts;
+    } catch (error) {
+      setProducts([]);
+      showToast(formatFirestoreError(error, '商品资料加载失败'), 'error');
+      return [];
+    }
+  }, [formatFirestoreError]);
+
+  const connectUsingGlobalConfig = useCallback(async () => {
+    const cfg = readGlobalConfig();
+    if (!cfg?.configText) {
+      setConnected(false);
+      setSyncText('未连接');
+      setSyncClass('');
+      return false;
+    }
+    setLoading(true);
+    setSyncText('正在刷新云端数据…');
+    setSyncClass('saving');
+    try {
+      await providerRef.current.init({ configText: cfg.configText });
+      const [snapshot] = await Promise.all([
+        providerRef.current.pullSnapshot({ cursor: '' }),
+        loadProducts()
+      ]);
+      setOrders(snapshot.orders || []);
+      setAccounts(uniqueAccounts([...(snapshot.accounts || []), ...(snapshot.orders || []).map((order: OrderRecord) => order['账号'])]));
+      setProjectId(cfg.projectId || '');
+      setConnected(true);
+      setSyncText(`已同步 · ${(snapshot.orders || []).length} 条`);
+      setSyncClass('saved');
+      return true;
+    } catch (error) {
+      setConnected(false);
+      setSyncText('加载失败');
+      setSyncClass('error');
+      showToast(formatFirestoreError(error, '恢复连接失败'), 'error');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [formatFirestoreError, loadProducts]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+      if (!saved?.clientId) localStorage.setItem(LS_KEY, JSON.stringify({ clientId: uid() }));
+    } catch (error) {}
+    void connectUsingGlobalConfig();
+  }, [connectUsingGlobalConfig]);
+
+  useEffect(() => {
+    const handleConnectionChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ connected?: boolean }>).detail || {};
+      if (detail.connected === false || !readGlobalConfig()?.configText) {
+        setConnected(false);
+        setOrders([]);
+        setProducts([]);
+        setProjectId('');
+        setSyncText('未连接');
+        setSyncClass('');
+        return;
+      }
+      void connectUsingGlobalConfig();
+    };
+    const handleProductsChanged = () => {
+      void loadProducts();
+    };
+    window.addEventListener('tk-firestore-config-changed', handleConnectionChange);
+    window.addEventListener('tk-products-changed', handleProductsChanged);
+    return () => {
+      window.removeEventListener('tk-firestore-config-changed', handleConnectionChange);
+      window.removeEventListener('tk-products-changed', handleProductsChanged);
+    };
+  }, [connectUsingGlobalConfig, loadProducts]);
+
+  function openOrderModal(id = '') {
+    const order = id ? orders.find(item => String(item.id) === id) || null : null;
+    setEditingId(id);
+    setDraft(computeAutoFields(buildDraftFromOrder(order, activeAccount, allAccounts), products));
+    setModalOpen(true);
+    void loadProducts();
+  }
+
+  async function persistOrders(nextOrders: OrderRecord[], nextAccounts = allAccounts, statusText = '已保存到 Firestore 本地队列…') {
+    setOrders(nextOrders);
+    setAccounts(nextAccounts);
+    setSyncText(statusText);
+    setSyncClass('saving');
+    const cfg = readGlobalConfig();
+    if (!cfg?.configText) return;
+    const remote = await providerRef.current.pullSnapshot({ cursor: '' }).catch(() => ({ orders: [], accounts: [] }));
+    const remoteMap = new Map((remote.orders || []).map((order: OrderRecord) => [String(order.id), order]));
+    const nextMap = new Map(nextOrders.map(order => [String(order.id), order]));
+    const upserts = nextOrders.filter(order => JSON.stringify(order) !== JSON.stringify(remoteMap.get(String(order.id)) || null));
+    const deletions = (remote.orders || []).filter((order: OrderRecord) => !nextMap.has(String(order.id))).map((order: OrderRecord) => ({
+      id: order.id,
+      accountName: order['账号'] || '',
+      deletedAt: nowIso()
+    }));
+    const nextAccountSet = new Set(nextAccounts);
+    const remoteAccountSet = new Set(remote.accounts || []);
+    const accountUpserts = nextAccounts.filter(account => !remoteAccountSet.has(account));
+    const accountDeletions = (remote.accounts || []).filter((account: string) => !nextAccountSet.has(account));
+    const result = await providerRef.current.pushChanges({
+      upserts,
+      deletions,
+      accountUpserts,
+      accountDeletions,
+      clientId: '',
+      assignSeq: true,
+      waitForCommit: false
+    });
+    result?.commitPromise?.then(() => {
+      setSyncText(`已同步 · ${nextOrders.length} 条`);
+      setSyncClass('saved');
+    }).catch(error => {
+      setSyncText('Firestore 写入失败，已保留本地视图');
+      setSyncClass('error');
+      showToast(formatFirestoreError(error, '写入失败'), 'error');
+    });
+  }
+
+  async function submitOrder() {
+    const autoDraft = computeAutoFields(draft, products);
+    if (!autoDraft.items.length) {
+      showToast('请至少添加一条订单明细', 'error');
+      return;
+    }
+    if (!autoDraft.orderNo.trim()) {
+      showToast('请填写订单号', 'error');
+      return;
+    }
+    for (const item of autoDraft.items) {
+      const product = findProduct(products, autoDraft.accountName, item.productTkId);
+      const relatedSkus = getProductSkus(product);
+      if (!item.productTkId && !item.productName) {
+        showToast('请填写每条明细的商品名称，或先关联商品', 'error');
+        return;
+      }
+      if (product && relatedSkus.length && !item.productSkuId) {
+        showToast(`商品「${product.name || item.productTkId}」有多个 SKU，请先选择具体规格`, 'error');
+        return;
+      }
+    }
+    const uniqueCompanies = Array.from(new Set(autoDraft.items.map(item => item.courierCompany).filter(Boolean)));
+    const uniqueTrackings = Array.from(new Set(autoDraft.items.map(item => item.trackingNo).filter(Boolean)));
+    const previous = editingId ? orders.find(order => String(order.id) === editingId) : null;
+    const id = previous?.id || uid();
+    const createdAt = previous?.createdAt || nowIso();
+    const payload = normalizeOrderRecord({
+      ...previous,
+      id,
+      createdAt,
+      updatedAt: nowIso(),
+      '账号': autoDraft.accountName,
+      '下单时间': autoDraft.orderedAt,
+      '采购日期': autoDraft.purchaseDate,
+      '最晚到仓时间': autoDraft.latestWarehouseAt,
+      '订单预警': autoDraft.warningText,
+      '订单号': autoDraft.orderNo,
+      '产品名称': buildOrderItemsSummary(autoDraft.items),
+      '数量': String(computeItemTotals(autoDraft.items).quantity || ''),
+      '是否退款': autoDraft.isRefunded ? '1' : '',
+      '达人佣金率': autoDraft.creatorCommissionRate,
+      '达人佣金': autoDraft.creatorCommission,
+      '采购价格': autoDraft.purchasePrice,
+      '售价': autoDraft.salePrice,
+      '预估运费': autoDraft.estimatedShippingFee,
+      '预估利润': autoDraft.estimatedProfit,
+      '重量': autoDraft.weightText,
+      '尺寸': autoDraft.sizeText,
+      '订单状态': autoDraft.orderStatus,
+      '快递公司': uniqueCompanies.length === 1 ? uniqueCompanies[0] : '',
+      '快递单号': uniqueTrackings.length === 1 ? uniqueTrackings[0] : '',
+      items: autoDraft.items
+    });
+    const nextOrders = editingId
+      ? orders.map(order => String(order.id) === editingId ? payload : order)
+      : [payload, ...orders];
+    const nextAccounts = uniqueAccounts([...allAccounts, payload['账号']]);
+    setModalOpen(false);
+    setEditingId('');
+    await persistOrders(nextOrders, nextAccounts, '已保存到 Firestore 本地队列…');
+    showToast('已保存到本地');
+  }
+
+  async function deleteOrder(id: string) {
+    if (!window.confirm('确定删除这条订单？删除后如需恢复，需要从你的 Firestore 历史记录或备份手动恢复。')) return;
+    const nextOrders = orders.filter(order => String(order.id) !== id);
+    await persistOrders(nextOrders, allAccounts, '已删除，本地已更新，等待同步…');
+    showToast('已删除');
+  }
+
+  function addAccount() {
+    const name = newAccountName.trim();
+    if (!name) return;
+    if (allAccounts.includes(name)) {
+      showToast('该账号已存在', 'error');
+      return;
+    }
+    const nextAccounts = uniqueAccounts([name, ...allAccounts]);
+    setAccounts(nextAccounts);
+    setDraft(previous => ({ ...previous, accountName: name }));
+    setNewAccountName('');
+    setAccountModalOpen(false);
+  }
+
+  function openExportModal() {
+    if (!orders.length) {
+      showToast('当前没有可导出的订单数据', 'error');
+      return;
+    }
+    const selected = activeAccount !== '__all__'
+      ? new Set([activeAccount])
+      : new Set(exportOptions.map(option => option.key));
+    setExportSelected(selected);
+    setExportOpen(true);
+  }
+
+  function confirmExport() {
+    if (!exportSelected.size) {
+      showToast('请至少选择一个账号', 'error');
+      return;
+    }
+    const selectedKeys = [...exportSelected];
+    const rowsSource = orders.filter(order => selectedKeys.includes(toAccountSlot(order['账号'])));
+    if (!rowsSource.length) {
+      showToast('当前选择下没有可导出的订单数据', 'error');
+      return;
+    }
+    const rows = buildExportRows({ orders: rowsSource, exchangeRate, computeOrderCreatorCommissionFn: computeOrderCreatorCommission, computeOrderEstimatedProfitFn: computeOrderEstimatedProfit });
+    const csv = buildOrdersCsv({ rows, includeBom: true });
+    const selectedOptions = exportOptions.filter(option => exportSelected.has(option.key));
+    const filename = buildExportFilename(selectedOptions);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setExportOpen(false);
+    showToast('CSV 已开始导出');
+  }
+
   return (
     <>
       <div className="module-hero page-hero page-hero-orders" data-react-orders-page-ready="true">
@@ -15,72 +1608,91 @@ function OrdersPage() {
         </div>
       </div>
 
-      <Card className="ot-setup" id="ot-setup">
+      <Card className="ot-setup" id="ot-setup" style={{ display: connected ? 'none' : undefined }}>
         <div className="ot-empty">
           <div style={{ fontSize: 15, marginBottom: 6 }}>尚未连接 Firebase 数据源</div>
-          <div style={{ fontSize: 12.5, marginBottom: 14 }}>
-            订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。
-          </div>
-          <Button id="ot-open-connection" variant="primary">连接 Firebase</Button>
+          <div style={{ fontSize: 12.5, marginBottom: 14 }}>订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。</div>
+          <Button id="ot-open-connection" variant="primary" onClick={() => window.TKFirestoreConnection?.open?.()}>连接 Firebase</Button>
         </div>
       </Card>
 
-      <Card id="ot-main" style={{ display: 'none' }}>
+      <Card id="ot-main" style={{ display: connected ? undefined : 'none' }}>
         <div id="ot-header-status-row" className="ot-header-row ot-header-status-row">
           <div className="ot-bar">
             <div className="left">
-              <span className="workspace-chip workspace-chip-connection" id="ot-user">未连接</span>
-              <span className="sync workspace-chip workspace-chip-sync" id="ot-sync">就绪</span>
-              <Button
-                id="ot-refresh"
-                variant="plain"
-                className="calc-help-icon ot-refresh-inline"
-                aria-label="刷新订单数据"
-                title="刷新订单数据"
-              >
-                <RefreshCw size={15} strokeWidth={2} aria-hidden="true" />
+              <span className="workspace-chip workspace-chip-connection" id="ot-user">已连接 · {projectId || 'Firebase Firestore'}</span>
+              <span className={`sync workspace-chip workspace-chip-sync ${syncClass}`} id="ot-sync">{syncText}</span>
+              <Button id="ot-refresh" variant="plain" className="calc-help-icon ot-refresh-inline" aria-label="刷新订单数据" title="刷新订单数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void connectUsingGlobalConfig()}>
+                <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
               </Button>
-              <Button
-                id="ot-storage-help-btn"
-                variant="plain"
-                className="calc-help-icon ot-storage-help-btn"
-                aria-controls="ot-storage-help-modal"
-                aria-haspopup="dialog"
-                aria-label="数据存储说明"
-                title="数据存储说明"
-              >
+              <Button id="ot-storage-help-btn" variant="plain" className="calc-help-icon ot-storage-help-btn" aria-controls="ot-storage-help-modal" aria-haspopup="dialog" aria-label="数据存储说明" title="数据存储说明" onClick={() => setStorageHelpOpen(true)}>
                 <HelpCircle size={15} strokeWidth={2} aria-hidden="true" />
               </Button>
             </div>
             <div className="right">
-              <Button id="ot-export" size="sm">导出 CSV</Button>
-              <Button id="ot-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect>退出数据库</Button>
+              <Button id="ot-export" size="sm" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
+              <Button id="ot-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => window.TKFirestoreConnection?.requestDisconnect?.()}>退出数据库</Button>
             </div>
           </div>
         </div>
-
         <div id="ot-header-summary-row" className="ot-header-row ot-header-summary-row">
-          <div id="ot-summary-container" />
+          <div id="ot-summary-container">
+            <OrdersSummary orders={orders} activeAccount={activeAccount} searchQuery={searchQuery} sortOrder={sortOrder} exchangeRate={exchangeRate} />
+          </div>
         </div>
         <div id="ot-header-accounts-row" className="ot-header-row ot-header-accounts-row">
           <div className="ot-acc-tabs ot-acc-shell" id="ot-acc-tabs">
-            <div className="ot-acc-tabs-all" id="ot-acc-tabs-all" />
+            <div className="ot-acc-tabs-all" id="ot-acc-tabs-all">
+              <button type="button" className={cn('tab', activeAccount === '__all__' ? 'active' : '')} onClick={() => { setActiveAccount('__all__'); setCurrentPage(1); }}>
+                全部<span className="tab-count">({orders.length})</span>
+              </button>
+            </div>
             <div className="ot-acc-tabs-scroll" id="ot-acc-tabs-scroll">
-              <button className="tab-add" id="ot-tab-add" title="添加账号" type="button">+</button>
+              <div className="ot-acc-tabs-scroll-inner">
+                {allAccounts.map(account => (
+                  <button type="button" className={cn('tab', activeAccount === account ? 'active' : '')} key={account} onClick={() => { setActiveAccount(account); setCurrentPage(1); }}>
+                    {account}<span className="tab-count">({orders.filter(order => normalizeAccountName(order['账号']) === account).length})</span>
+                  </button>
+                ))}
+                <button className="tab-add" id="ot-tab-add" title="添加账号" type="button" onClick={() => setAccountModalOpen(true)}>+</button>
+              </div>
             </div>
             <div className="ot-acc-actions" id="ot-acc-actions">
-              <Button id="ot-add" variant="primary">+ 新增订单</Button>
+              <Button id="ot-add" variant="primary" onClick={() => openOrderModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增订单</Button>
             </div>
           </div>
         </div>
-        <div id="ot-header-controls-row" className="ot-header-row ot-header-controls-row">
-          <div id="ot-table-toolbar-container" />
-        </div>
-        <div className="ot-table-wrap">
-          <div id="ot-table-container" />
-        </div>
-        <div id="ot-table-footer-toolbar-container" />
+        <OrdersTable
+          orders={orders}
+          activeAccount={activeAccount}
+          searchQuery={searchQuery}
+          sortOrder={sortOrder}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          exchangeRate={exchangeRate}
+          onSearchChange={value => { setSearchQuery(value); setCurrentPage(1); }}
+          onPageSizeChange={value => { setPageSize(Math.max(1, Number(value) || 50)); setCurrentPage(1); }}
+          onPageChange={delta => setCurrentPage(page => Math.max(1, page + delta))}
+          onSortToggle={() => { setSortOrder(value => value === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}
+          onEdit={openOrderModal}
+          onDelete={deleteOrder}
+        />
       </Card>
+
+      <OrderModal
+        open={modalOpen}
+        draft={draft}
+        accounts={allAccounts}
+        products={products}
+        editingId={editingId}
+        onOpenChange={open => { setModalOpen(open); if (!open) setEditingId(''); }}
+        onDraftChange={setDraft}
+        onSubmit={submitOrder}
+        onAddAccount={() => setAccountModalOpen(true)}
+      />
+      <AddAccountModal open={accountModalOpen} value={newAccountName} onValueChange={setNewAccountName} onOpenChange={setAccountModalOpen} onConfirm={addAccount} />
+      <ExportModal open={exportOpen} options={exportOptions} selected={exportSelected} onSelectedChange={setExportSelected} onOpenChange={setExportOpen} onConfirm={confirmExport} />
+      <StorageHelpModal open={storageHelpOpen} onOpenChange={setStorageHelpOpen} />
     </>
   );
 }

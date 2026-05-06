@@ -7,6 +7,7 @@ const esmPath = path.join(__dirname, '..', 'src', 'orders', 'table.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const ordersSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
 assert.match(
   esmSource,
@@ -88,21 +89,21 @@ assert.match(
 );
 
 assert.match(
-  ordersSource,
-  /import \{ OrderTableView \} from '\.\/table\.mjs'/,
-  '订单 ESM 入口需要直接导入表格视图 ESM'
+  ordersPageSource,
+  /deriveDisplayedOrders[\s\S]*derivePurchaseSummary[\s\S]*getProfitCellToneClass/,
+  'React 订单页需要直接复用订单表格筛选、摘要和利润颜色 helper'
 );
 
 assert.match(
-  ordersSource,
-  /tableView\.render\(/,
-  '订单 ESM 入口需要把表格渲染委托给表格视图模块'
+  ordersPageSource,
+  /function OrdersTable\([\s\S]*id="ot-table-container"[\s\S]*orders-react-table/,
+  'React 订单页需要直接渲染订单表格'
 );
 
-assert.match(
+assert.doesNotMatch(
   indexSource,
-  /<script type="module" src="\/src\/react\/main\.tsx"><\/script>[\s\S]*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先加载 React SPA 壳层，再加载订单 ESM 入口'
+  /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  '完整 React SPA 重建后 index.html 不应再加载旧订单 ESM 入口'
 );
 
 assert.doesNotMatch(

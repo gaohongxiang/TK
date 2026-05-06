@@ -12,8 +12,14 @@ const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css')
 
 assert.match(
   ordersPageSource,
-  /id="ot-header-status-row"[\s\S]*id="ot-header-summary-row"[\s\S]*id="ot-header-accounts-row"[\s\S]*id="ot-header-controls-row"/,
-  '订单主面板顶部需要拆成状态、统计、账号、控制四层'
+  /id="ot-header-status-row"[\s\S]*id="ot-header-summary-row"[\s\S]*id="ot-header-accounts-row"/,
+  '订单主面板顶部需要拆成状态、统计、账号三层'
+);
+
+assert.match(
+  ordersPageSource,
+  /id="ot-table-toolbar-container"[\s\S]*id="ot-table-footer-toolbar-container"/,
+  'React 订单表格需要提供上下两处搜索和分页控制带'
 );
 
 assert.match(

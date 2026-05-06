@@ -221,9 +221,9 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  ordersPageSource,
   /同一个 Firebase 项目可以给团队成员共用/,
-  'Firestore 引导里需要说明团队可共用同一个 Firebase 项目'
+  '订单数据存储说明里需要说明团队可共用同一个 Firebase 项目'
 );
 
 console.log('orders storage mode ui contract ok');

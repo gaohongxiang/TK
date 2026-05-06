@@ -7,6 +7,7 @@ const esmPath = path.join(__dirname, '..', 'src', 'orders', 'shared.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
 assert.match(
   esmSource,
@@ -117,10 +118,16 @@ assert.match(
   '订单 ESM 入口需要直接导入共享 helper ESM'
 );
 
-assert.match(
+assert.doesNotMatch(
   htmlSource,
-  /<script type="module" src="\/src\/react\/main\.tsx"><\/script>[\s\S]*<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要先加载 React SPA 壳层，再加载订单 ESM 入口'
+  /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
+  '完整 React SPA 重建后 index.html 不应再加载旧订单 ESM 入口'
+);
+
+assert.match(
+  ordersPageSource,
+  /normalizeOrderRecord[\s\S]*computeOrderEstimatedProfit[\s\S]*computeOrderCreatorCommission/,
+  'React 订单页需要直接复用订单共享计算和归一化 helper'
 );
 
 assert.doesNotMatch(

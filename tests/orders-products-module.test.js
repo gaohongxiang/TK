@@ -7,6 +7,7 @@ const root = path.join(__dirname, '..');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'orders', 'products.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
 assert.match(
   srcSource,
@@ -39,9 +40,9 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
-  /productsFactory\.create\(/,
-  '订单入口需要通过 OrderTrackerProducts.create 接入商品桥接模块'
+  ordersPageSource,
+  /ProductLibraryProviderFirestore[\s\S]*pullProducts[\s\S]*tk-products-changed/,
+  'React 订单页需要直接读取商品资料并监听商品变更事件'
 );
 
 assert.match(
@@ -75,9 +76,9 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  indexSource,
-  /import \{ OrderTrackerProducts \} from '\.\/products\.mjs'/,
-  '订单 ESM 入口需要直接导入商品桥接 ESM 模块'
+  ordersPageSource,
+  /ProductLibraryProviderFirestore/,
+  'React 订单页需要直接导入商品 Firestore provider'
 );
 
 assert.doesNotMatch(

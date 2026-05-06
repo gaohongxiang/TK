@@ -150,7 +150,7 @@ docs/node_modules/
 
 ### 5.1 主站
 
-主站已经接入 Vite。当前在 `modern-react-spa` 分支中，页面壳层入口是 `/src/react/main.tsx`；商品管理已由 React 页面直接接管，订单管理业务入口仍由 `/src/orders/index.mjs` 加载。旧 `js/` 源目录已清理，不再由 `index.html` 加载，也不再复制到构建产物。
+主站已经接入 Vite。当前在 `modern-react-spa` 分支中，页面壳层入口是 `/src/react/main.tsx`；商品管理和订单管理都已由 React 页面直接接管，不再通过 `/src/products/index.mjs` 或 `/src/orders/index.mjs` 作为运行入口。旧 `js/` 源目录已清理，不再由 `index.html` 加载，也不再复制到构建产物。
 
 本地安装：
 
@@ -624,7 +624,7 @@ npm run release:check
 
 订单最复杂，最后迁移。
 
-当前状态：M5 已完成主入口切换。订单页面现在通过 `/src/orders/index.mjs` 加载订单入口；旧 `js/orders/index.js` 暂时保留为历史参考和回退，不再由主页面加载。订单同步和弹窗 CRUD 运行链路已分别由 `src/orders/sync.mjs`、`src/orders/crud.mjs` 接管。
+当前状态：M5 已继续推进到 React SPA 运行入口。订单页面现在由 `src/react/features/orders/OrdersPage.tsx` 直接接管 Firestore 连接、商品关联、表格、账号标签、订单弹窗、账号弹窗、CSV 导出和数据存储说明弹窗；`index.html` 不再加载 `/src/orders/index.mjs`，旧订单 ESM 模块暂时保留为已测试的业务 helper、历史参考和回退材料。
 
 顺序：
 
@@ -672,7 +672,7 @@ npm run release:check
 - 新增 `src/firestore-connection.mjs`，提供全局 Firestore 连接弹窗、配置解析、本地存储迁移、复制规则和配置变更广播等 ESM 导出，并在浏览器里继续挂回 `window.TKFirestoreConnection`。
 - `tests/firestore-connection-module.test.js` 已改为动态 `import()` 断言，确认 Firestore 连接 ESM 模块可直接导入、可解析 `firebaseConfig`，并保留旧全局 API。
 - `src/orders/provider-firestore.mjs` 已直接注册 `TKDataSourceRegistry.registerProvider('orders', ...)`，旧 `js/orders/provider-firestore.js` 不再负责页面运行链路。
-- `index.html` 已移除旧 `js/orders/index.js` 的页面加载，改为 `<script type="module" src="/src/orders/index.mjs"></script>`。
+- `index.html` 已移除旧 `js/orders/index.js` 的页面加载；React SPA 阶段也已移除 `<script type="module" src="/src/orders/index.mjs"></script>`，订单运行入口改为 `src/react/features/orders/OrdersPage.tsx`。
 - `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js`、`js/orders/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `index.html` 已移除旧 `js/orders/sync.js` 的页面加载，订单入口直接 import `src/orders/sync.mjs`。
 - `index.html` 已移除旧 `js/orders/crud.js` 的页面加载，订单入口直接 import `src/orders/crud.mjs`。

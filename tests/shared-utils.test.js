@@ -8,6 +8,7 @@ const srcFormatSource = fs.readFileSync(path.join(root, 'src', 'shared', 'format
 const srcTableControlsSource = fs.readFileSync(path.join(root, 'src', 'table-controls.mjs'), 'utf8');
 const srcSearchSelectSource = fs.readFileSync(path.join(root, 'src', 'searchable-select.mjs'), 'utf8');
 const srcOrdersSource = fs.readFileSync(path.join(root, 'src', 'orders', 'index.mjs'), 'utf8');
+const reactOrdersSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const srcProductsTableSource = fs.readFileSync(path.join(root, 'src', 'products', 'table.mjs'), 'utf8');
 const analyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
@@ -23,7 +24,7 @@ assert.match(srcHtmlSource, /window\.TKHtml = TKHtml/, '共享 HTML ESM 模块�
 assert.match(srcFormatSource, /window\.TKFormat = TKFormat/, '共享格式化 ESM 模块需要在浏览器里挂回旧全局命名空间');
 assert.match(srcTableControlsSource, /export\s+\{[\s\S]*TKTableControls[\s\S]*buildTableToolbarMarkup[\s\S]*clampPage[\s\S]*\}/, '路线二需要提供表格控件 ESM 导出');
 assert.match(srcProductsTableSource, /import \{ TKTableControls \} from '\.\.\/table-controls\.mjs'/, '商品表格需要显式导入表格控件');
-assert.match(srcOrdersSource, /import '\.\.\/searchable-select\.mjs'/, '订单入口需要显式导入可搜索下拉框');
+assert.match(reactOrdersSource, /function SearchableCombo\(/, 'React 订单页需要提供可搜索下拉框');
 assert.match(srcSearchSelectSource, /export\s+\{[\s\S]*TKSearchSelect[\s\S]*create[\s\S]*normalizeText[\s\S]*\}/, '路线二需要提供可搜索下拉框 ESM 导出');
 
 assert.doesNotMatch(indexSource, /<script src="js\/shared\/html\.js" defer><\/script>/, 'index.html 不应再加载旧共享 HTML 普通脚本');

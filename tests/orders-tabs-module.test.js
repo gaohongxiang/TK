@@ -7,6 +7,7 @@ const esmPath = path.join(__dirname, '..', 'src', 'orders', 'tabs.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
 assert.match(
   esmSource,
@@ -44,10 +45,16 @@ assert.match(
   '订单 ESM 入口需要直接导入账号标签 ESM helper'
 );
 
-assert.match(
+assert.doesNotMatch(
   htmlSource,
   /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要通过订单 ESM 入口加载账号标签模块'
+  '完整 React SPA 重建后 index.html 不应再通过旧订单 ESM 入口加载账号标签模块'
+);
+
+assert.match(
+  ordersPageSource,
+  /id="ot-acc-tabs"[\s\S]*id="ot-tab-add"[\s\S]*id="ot-add"/,
+  'React 订单页需要直接渲染账号标签栏和新增订单入口'
 );
 
 assert.doesNotMatch(

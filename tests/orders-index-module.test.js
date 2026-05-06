@@ -7,6 +7,7 @@ const root = path.join(__dirname, '..');
 const sourcePath = path.join(root, 'src', 'orders', 'index.mjs');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
 assert.match(
   source,
@@ -80,10 +81,16 @@ assert.match(
   '商品管理新增或删除商品后，订单入口需要清理并强制刷新关联商品缓存'
 );
 
-assert.match(
+assert.doesNotMatch(
   htmlSource,
   /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要通过 ESM 入口加载订单管理'
+  '完整 React SPA 重建后 index.html 不应再加载旧订单 DOM 入口'
+);
+
+assert.match(
+  ordersPageSource,
+  /OrderTrackerProviderFirestore[\s\S]*deriveDisplayedOrders[\s\S]*id="ot-modal"[\s\S]*id="ot-add-acc-modal"[\s\S]*id="ot-export-modal"/,
+  '完整 React SPA 重建后订单页需要由 React 组件直接接管数据、表格和弹窗'
 );
 
 assert.doesNotMatch(

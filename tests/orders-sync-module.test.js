@@ -7,6 +7,7 @@ const esmPath = path.join(__dirname, '..', 'src', 'orders', 'sync.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
 assert.match(
   indexSource,
@@ -98,10 +99,16 @@ assert.match(
   '订单 ESM 入口需要通过同步模块工厂接入同步模块'
 );
 
-assert.match(
+assert.doesNotMatch(
   indexHtml,
   /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  'index.html 需要通过订单 ESM 入口加载同步模块'
+  '完整 React SPA 重建后 index.html 不应再通过旧订单 ESM 入口加载同步模块'
+);
+
+assert.match(
+  ordersPageSource,
+  /pushChanges\([\s\S]*waitForCommit:\s*false[\s\S]*commitPromise/,
+  'React 订单页需要直接投递 Firestore 本地写入队列并处理后台提交结果'
 );
 
 assert.doesNotMatch(

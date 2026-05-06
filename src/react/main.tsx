@@ -10,13 +10,6 @@ import './styles.css';
 
 type AnalyticsMountModule = typeof import('./features/analytics/mountAnalytics');
 
-declare global {
-  interface Window {
-    OrderTracker?: { onEnter?: () => void | Promise<void> };
-    ProductLibrary?: { onEnter?: () => void | Promise<void> };
-  }
-}
-
 let analyticsMountPromise: Promise<AnalyticsMountModule> | null = null;
 let appShellMounted = false;
 
@@ -50,11 +43,6 @@ function setDocLink(documentRef: Document = document, config = TKAppConfig) {
   if (docLink && config?.docsUrl) docLink.href = config.docsUrl;
 }
 
-function enterModule(key: string, windowRef: Window & typeof globalThis = window) {
-  if (key === 'orders') void windowRef.OrderTracker?.onEnter?.();
-  if (key === 'products') void windowRef.ProductLibrary?.onEnter?.();
-}
-
 function switchView(key: string, options: {
   document?: Document;
   window?: Window & typeof globalThis;
@@ -70,7 +58,7 @@ function switchView(key: string, options: {
     view.classList.remove('active');
   });
   documentRef.getElementById(`view-${resolvedKey}`)?.classList.add('active');
-  enterModule(resolvedKey, windowRef);
+  void windowRef;
   return resolvedKey;
 }
 

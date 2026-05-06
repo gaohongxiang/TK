@@ -56,10 +56,16 @@ assert.match(
   '订单主面板需要提供采购统计卡片容器'
 );
 
-assert.match(
+assert.doesNotMatch(
   indexSource,
   /id="ot-storage-help-modal"/,
-  '订单主面板需要提供数据存储说明弹窗'
+  '完整 React SPA 重建后订单数据存储说明弹窗不应留在静态 HTML'
+);
+
+assert.match(
+  ordersPageSource,
+  /id="ot-storage-help-modal"/,
+  '订单主面板需要由 React 提供数据存储说明弹窗'
 );
 
 const orders = [

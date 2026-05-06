@@ -227,10 +227,16 @@ assert.doesNotMatch(
   '完整 React SPA 重建后商品管理页面不应再加载旧 DOM 入口'
 );
 
-assert.match(
+assert.doesNotMatch(
   htmlSource,
   /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
-  '路线二 M5 订单管理入口需要由 Vite ESM 模块加载'
+  '完整 React SPA 重建后订单管理页面不应再加载旧 DOM 入口'
+);
+
+assert.match(
+  fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8'),
+  /OrderTrackerProviderFirestore[\s\S]*ProductLibraryProviderFirestore[\s\S]*id="ot-modal"[\s\S]*id="ot-export-modal"/,
+  '完整 React SPA 重建后订单管理页面需要由 React 直接接管 Firestore、弹窗和导出'
 );
 
 assert.match(

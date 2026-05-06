@@ -391,6 +391,8 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#analytics-channel-share .analytics-donut-segment')).toHaveCount(8);
     await expect(page.locator('#analytics-gmv-donut')).toContainText('视频');
     await expect(page.locator('#analytics-bubble-chart .analytics-bubble-point')).toHaveCount(2);
+    await expect(page.locator('#analytics-bubble-chart .analytics-bubble-label')).toHaveCount(0);
+    await expect(page.locator('#analytics-bubble-chart .analytics-bubble-highlight')).toHaveCount(2);
     await expect(page.locator('#analytics-diagnostics')).toContainText('爆品放大');
 
     await expect(page.locator('footer a[href="/privacy.html"]')).toHaveText('隐私与数据边界');

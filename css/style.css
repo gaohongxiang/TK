@@ -1904,7 +1904,6 @@ details[open] summary {
   stroke: #ff9aa8;
 }
 
-.analytics-bubble-label,
 .analytics-bubble-axis-label {
   fill: color-mix(in srgb, var(--text) 82%, var(--muted));
   font-size: 10px;
@@ -1920,6 +1919,62 @@ details[open] summary {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
+}
+
+.analytics-bubble-highlights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.analytics-bubble-highlight {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel2) 30%, transparent);
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.analytics-bubble-highlight span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--text) 82%, var(--muted));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-bubble-highlight strong {
+  color: var(--text);
+  font-size: 11.5px;
+}
+
+.analytics-bubble-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.analytics-bubble-dot.is-hero {
+  background: #13c2a3;
+}
+
+.analytics-bubble-dot.is-scale {
+  background: #3b82f6;
+}
+
+.analytics-bubble-dot.is-creative {
+  background: #f59e0b;
+}
+
+.analytics-bubble-dot.is-detail {
+  background: #ef476f;
 }
 
 .analytics-bar-row {
@@ -4834,6 +4889,10 @@ table.ship td.actual {
 
   .analytics-bubble-svg {
     min-height: 220px;
+  }
+
+  .analytics-bubble-highlights {
+    grid-template-columns: 1fr;
   }
 
   .analytics-upload-grid {

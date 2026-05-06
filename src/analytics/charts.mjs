@@ -10,6 +10,10 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, number));
 }
 
+function formatDefaultPercent(value) {
+  return `${Math.round((Number(value) || 0) * 100)}%`;
+}
+
 function polarToCartesian(cx, cy, radius, angle) {
   const radians = (angle - 90) * Math.PI / 180;
   return {
@@ -102,7 +106,36 @@ function buildDonutMarkup({ id, title, totalLabel, totalValue, slices, formatVal
   `;
 }
 
-function buildBubblePoints(records, limit = 18) {
+function separateBubblePoints(points, bounds) {
+  const next = points.map(point => ({ ...point }));
+  for (let iteration = 0; iteration < 42; iteration += 1) {
+    for (let i = 0; i < next.length; i += 1) {
+      for (let j = i + 1; j < next.length; j += 1) {
+        const a = next[i];
+        const b = next[j];
+        const dx = b.cx - a.cx;
+        const dy = b.cy - a.cy;
+        const distance = Math.sqrt(dx * dx + dy * dy) || 0.001;
+        const minDistance = a.r + b.r + 3;
+        if (distance >= minDistance) continue;
+        const push = (minDistance - distance) / 2;
+        const nx = dx / distance;
+        const ny = dy / distance;
+        a.cx -= nx * push;
+        a.cy -= ny * push;
+        b.cx += nx * push;
+        b.cy += ny * push;
+      }
+    }
+    next.forEach(point => {
+      point.cx = clamp(point.cx, bounds.left + point.r, bounds.right - point.r);
+      point.cy = clamp(point.cy, bounds.top + point.r, bounds.bottom - point.r);
+    });
+  }
+  return next;
+}
+
+function buildBubblePoints(records, limit = 16) {
   const rows = [...(records || [])]
     .filter(record => (Number(record.exposureTotal) || 0) > 0 || (Number(record.gmv) || 0) > 0)
     .sort((a, b) => (Number(b.gmv) || 0) - (Number(a.gmv) || 0))
@@ -112,7 +145,8 @@ function buildBubblePoints(records, limit = 18) {
   const maxExposure = Math.max(...rows.map(record => Number(record.exposureTotal) || 0), 1);
   const maxConversion = Math.max(...rows.map(record => Number(record.overallConversion) || 0), 0.01);
   const maxGmv = Math.max(...rows.map(record => Number(record.gmv) || 0), 1);
-  return rows.map(record => {
+  const bounds = { left: 34, right: 270, top: 38, bottom: 188 };
+  const points = rows.map(record => {
     const exposure = Number(record.exposureTotal) || 0;
     const conversion = Number(record.overallConversion) || 0;
     const gmv = Number(record.gmv) || 0;
@@ -123,25 +157,26 @@ function buildBubblePoints(records, limit = 18) {
       exposure,
       conversion,
       diagnosis: record.diagnosis,
-      cx: 36 + (maxExposure ? exposure / maxExposure : 0) * 228,
-      cy: 188 - (maxConversion ? conversion / maxConversion : 0) * 140,
-      r: 6 + Math.sqrt(gmv / maxGmv) * 18
+      cx: bounds.left + (maxExposure ? Math.log1p(exposure) / Math.log1p(maxExposure) : 0) * (bounds.right - bounds.left),
+      cy: bounds.bottom - (maxConversion ? Math.sqrt(conversion / maxConversion) : 0) * (bounds.bottom - bounds.top),
+      r: 5 + Math.sqrt(gmv / maxGmv) * 10
     };
   });
+  return separateBubblePoints(points, bounds);
 }
 
 function buildBubbleChartMarkup({ records, formatValue, formatInteger, formatPercent, shortenText, escapeHtml }) {
   const safeEscape = escapeHtml || (value => String(value ?? ''));
   const valueFormatter = formatValue || (value => String(value ?? ''));
   const integerFormatter = formatInteger || (value => String(value ?? ''));
-  const percentFormatter = formatPercent || (value => `${Math.round((Number(value) || 0) * 100)}%`);
+  const percentFormatter = formatPercent || formatDefaultPercent;
   const shortener = shortenText || (value => String(value ?? ''));
   const points = buildBubblePoints(records);
   if (!points.length) {
     return '<div class="analytics-empty-chart-copy">暂无足够数据绘制商品气泡图</div>';
   }
 
-  const labelPoints = [...points].sort((a, b) => b.gmv - a.gmv).slice(0, 4);
+  const highlightPoints = [...points].sort((a, b) => b.gmv - a.gmv).slice(0, 5);
   return `
     <div class="analytics-bubble-chart">
       <svg class="analytics-bubble-svg" viewBox="0 0 300 220" role="img" aria-label="商品曝光转化 GMV 气泡图">
@@ -157,13 +192,19 @@ function buildBubbleChartMarkup({ records, formatValue, formatInteger, formatPer
             <title>${safeEscape(`${point.name} · ${valueFormatter(point.gmv)} · 曝光 ${integerFormatter(point.exposure)} · 转化 ${percentFormatter(point.conversion)}`)}</title>
           </circle>
         `).join('')}
-        ${labelPoints.map(point => `
-          <text class="analytics-bubble-label" x="${clamp(point.cx + point.r + 4, 34, 236).toFixed(2)}" y="${clamp(point.cy + 4, 50, 188).toFixed(2)}">${safeEscape(shortener(point.name, 12))}</text>
-        `).join('')}
         <text class="analytics-bubble-axis-label" x="276" y="212">曝光</text>
         <text class="analytics-bubble-axis-label" x="10" y="40">转化</text>
       </svg>
-      <div class="analytics-bubble-note">圆越大 GMV 越高，越靠右曝光越高，越靠上转化越强。</div>
+      <div class="analytics-bubble-note">圆越大 GMV 越高，越靠右曝光越高，越靠上转化越强；商品名放在下方，避免遮挡数据点。</div>
+      <div class="analytics-bubble-highlights">
+        ${highlightPoints.map(point => `
+          <div class="analytics-bubble-highlight">
+            <span class="analytics-bubble-dot is-${safeEscape(point.diagnosis?.tone || 'normal')}"></span>
+            <span title="${safeEscape(point.name)}">${safeEscape(shortener(point.name, 18))}</span>
+            <strong>${safeEscape(valueFormatter(point.gmv))}</strong>
+          </div>
+        `).join('')}
+      </div>
     </div>
   `;
 }
@@ -186,6 +227,7 @@ const TKAnalyticsCharts = {
   buildShareSlices,
   buildChannelDonutMarkup,
   buildBubblePoints,
+  separateBubblePoints,
   buildBubbleChartMarkup
 };
 
@@ -195,5 +237,6 @@ export {
   buildShareSlices,
   buildChannelDonutMarkup,
   buildBubblePoints,
+  separateBubblePoints,
   buildBubbleChartMarkup
 };

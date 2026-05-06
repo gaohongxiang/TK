@@ -147,6 +147,24 @@ assert.match(
 
 assert.match(
   srcChartsSource,
+  /function separateBubblePoints\(/,
+  '商品机会气泡图需要对圆点做碰撞避让'
+);
+
+assert.doesNotMatch(
+  srcChartsSource,
+  /class="analytics-bubble-label"/,
+  '商品机会气泡图不应在 SVG 内常驻商品名，避免文字重叠'
+);
+
+assert.match(
+  srcChartsSource,
+  /analytics-bubble-highlights/,
+  '商品机会气泡图需要把重点商品名称放到图下方列表'
+);
+
+assert.match(
+  srcChartsSource,
   /const TKAnalyticsCharts = \{/,
   '数据分析图表模块需要提供命名空间导出'
 );
@@ -355,6 +373,17 @@ const rows = [
       escapeHtml: value => String(value)
     }).includes('analytics-bubble-point'),
     '商品机会气泡图需要输出商品气泡'
+  );
+  assert.ok(
+    chartsModule.buildBubbleChartMarkup({
+      records: analysisByModule.records,
+      formatValue: value => `${value}`,
+      formatInteger: value => `${value}`,
+      formatPercent: value => `${value}`,
+      shortenText: value => value,
+      escapeHtml: value => String(value)
+    }).includes('analytics-bubble-highlights'),
+    '商品机会气泡图需要输出图下方重点商品列表'
   );
   assert.ok(
     analysisByModule.records.some(record => record.diagnosis.label === '爆品放大'),

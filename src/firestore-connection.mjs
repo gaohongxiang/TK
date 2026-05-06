@@ -1,3 +1,5 @@
+import { ORDER_TRACKER_FIRESTORE_RULES } from './orders/firestore-rules.mjs';
+
 const LS_KEY = 'tk.firestore.cfg.v1';
 const LEGACY_ORDER_KEY = 'tk.orders.cfg.v1';
 
@@ -20,10 +22,6 @@ function getStorageRef() {
   return globalThis.localStorage || null;
 }
 
-function $(selector) {
-  return getDocumentRef()?.querySelector?.(selector) || null;
-}
-
 function createConfigChangedEvent(detail) {
   const windowRef = getWindowRef();
   const EventCtor = windowRef?.CustomEvent || globalThis.CustomEvent;
@@ -35,6 +33,13 @@ function createConfigChangedEvent(detail) {
 
 function dispatchConfigChanged(detail) {
   getWindowRef()?.dispatchEvent?.(createConfigChangedEvent(detail));
+}
+
+let uiController = null;
+
+function registerUI(controller) {
+  uiController = controller && typeof controller === 'object' ? controller : null;
+  return uiController;
 }
 
 function toPlainObject(value) {
@@ -147,14 +152,13 @@ function clearLegacyConfigs() {
 function clearConfig() {
   getStorageRef()?.removeItem?.(LS_KEY);
   clearLegacyConfigs();
-  updateStatus();
   dispatchConfigChanged({ connected: false, configText: '', projectId: '' });
 }
 
 function getRulesSource() {
-  const embedded = String(getWindowRef().ORDER_TRACKER_FIRESTORE_RULES || '').trim();
+  const embedded = String(getWindowRef().ORDER_TRACKER_FIRESTORE_RULES || ORDER_TRACKER_FIRESTORE_RULES || '').trim();
   if (embedded) return embedded;
-  const rulesUrl = $('#app-copy-firestore-rules')?.dataset.rulesUrl || '';
+  const rulesUrl = 'docs/firebase/order-tracker-firestore.rules';
   throw new Error(rulesUrl
     ? `页面内置 Firestore 规则未加载，请刷新页面后重试；如仍失败，可手动打开 ${rulesUrl}`
     : '页面内置 Firestore 规则未加载，请刷新页面后重试');
@@ -197,44 +201,24 @@ function copyText(text) {
   return legacyCopy();
 }
 
-function updateStatus() {
-  const documentRef = getDocumentRef();
-  const cfg = getConfig();
-  const textarea = $('#app-firestore-config');
-  if (textarea && documentRef?.activeElement !== textarea) {
-    textarea.value = cfg?.configText || '';
-  }
-  const clearBtn = $('#app-clear-firestore-config');
-  if (clearBtn) clearBtn.style.display = cfg?.projectId ? 'inline-flex' : 'none';
+function showToast(message, type = 'ok') {
+  uiController?.showToast?.(message, type);
 }
 
 function open() {
-  const modal = $('#app-firestore-modal');
-  if (!modal) return;
-  bind();
-  updateStatus();
-  modal.classList.add('show');
-  $('#app-firestore-config')?.focus();
+  uiController?.open?.();
 }
 
 function close() {
-  $('#app-firestore-modal')?.classList.remove('show');
+  uiController?.close?.();
 }
 
 function closeRulesNotice() {
-  $('#app-firestore-rules-modal')?.classList.remove('show');
+  uiController?.closeRulesNotice?.();
 }
 
-let pendingDisconnectOptions = null;
-
 function notifyRulesUpdateNeeded(message = '') {
-  bind();
-  const modal = $('#app-firestore-rules-modal');
-  const copy = $('#app-firestore-rules-copy');
-  if (copy) {
-    copy.textContent = String(message || '').trim() || '当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则。';
-  }
-  modal?.classList.add('show');
+  uiController?.notifyRulesUpdateNeeded?.(message);
 }
 
 function openConsole() {
@@ -246,137 +230,42 @@ function copyRules() {
 }
 
 function closeDisconnectConfirm() {
-  $('#app-firestore-disconnect-modal')?.classList.remove('show');
-  pendingDisconnectOptions = null;
-}
-
-function applyDisconnect() {
-  const options = pendingDisconnectOptions || {};
-  clearConfig();
-  closeDisconnectConfirm();
-  if (options.closeModal) close();
+  uiController?.closeDisconnectConfirm?.();
 }
 
 function requestDisconnect(options = {}) {
   const cfg = getConfig();
-  if (!cfg?.projectId) return;
-  const modal = $('#app-firestore-disconnect-modal');
-  const project = $('#app-firestore-disconnect-project');
-  if (!modal) {
-    pendingDisconnectOptions = options;
-    applyDisconnect();
-    return;
-  }
-  pendingDisconnectOptions = options;
-  if (project) project.textContent = cfg.projectId;
-  modal.classList.add('show');
-  $('#app-cancel-firestore-disconnect')?.focus();
+  if (!cfg?.projectId) return false;
+  const handled = uiController?.requestDisconnect?.(options);
+  if (handled) return true;
+  clearConfig();
+  if (options.closeModal) close();
+  return true;
 }
 
 function bind() {
-  const documentRef = getDocumentRef();
-  const trigger = $('#app-firestore-connection');
-  const modal = $('#app-firestore-modal');
-  const rulesModal = $('#app-firestore-rules-modal');
-  const disconnectModal = $('#app-firestore-disconnect-modal');
-  const closeBtn = $('#app-close-firestore-modal');
-  const rulesCloseBtn = $('#app-close-firestore-rules-modal');
-  const disconnectCancelBtn = $('#app-cancel-firestore-disconnect');
-  const disconnectConfirmBtn = $('#app-confirm-firestore-disconnect');
-  const consoleBtn = $('#app-open-firebase-console');
-  const rulesConsoleBtn = $('#app-rules-open-firebase-console');
-  const copyBtn = $('#app-copy-firestore-rules');
-  const rulesCopyBtn = $('#app-rules-copy-firestore-rules');
-  const saveBtn = $('#app-save-firestore-config');
-  const clearBtn = $('#app-clear-firestore-config');
-  const textarea = $('#app-firestore-config');
-  const disconnectButtons = documentRef?.querySelectorAll?.('[data-firestore-disconnect]') || [];
-  if (!modal || modal.dataset.bound === 'true') return;
-
-  trigger?.addEventListener('click', open);
-  closeBtn?.addEventListener('click', close);
-  modal.addEventListener('click', event => {
-    if (event.target.id === 'app-firestore-modal') close();
-  });
-  rulesModal?.addEventListener('click', event => {
-    if (event.target.id === 'app-firestore-rules-modal') closeRulesNotice();
-  });
-  disconnectModal?.addEventListener('click', event => {
-    if (event.target.id === 'app-firestore-disconnect-modal') closeDisconnectConfirm();
-  });
-  disconnectCancelBtn?.addEventListener('click', closeDisconnectConfirm);
-  disconnectConfirmBtn?.addEventListener('click', applyDisconnect);
-  consoleBtn?.addEventListener('click', openConsole);
-  rulesConsoleBtn?.addEventListener('click', openConsole);
-  copyBtn?.addEventListener('click', async () => {
-    const originalText = copyBtn.textContent;
-    copyBtn.disabled = true;
-    copyBtn.textContent = '复制中…';
-    try {
-      await copyRules();
-    } finally {
-      copyBtn.disabled = false;
-      copyBtn.textContent = originalText;
-    }
-  });
-  rulesCopyBtn?.addEventListener('click', async () => {
-    const originalText = rulesCopyBtn.textContent;
-    rulesCopyBtn.disabled = true;
-    rulesCopyBtn.textContent = '复制中…';
-    try {
-      await copyRules();
-    } finally {
-      rulesCopyBtn.disabled = false;
-      rulesCopyBtn.textContent = originalText;
-    }
-  });
-  saveBtn?.addEventListener('click', () => {
-    try {
-      const next = saveConfig(textarea?.value || '');
-      clearLegacyConfigs();
-      updateStatus();
-      close();
-      dispatchConfigChanged({ connected: true, ...next });
-    } catch (error) {
-      const toast = $('#toast');
-      if (toast) {
-        toast.textContent = error.message || '连接失败';
-        toast.className = 'toast show error';
-        clearTimeout(bind._toastTimer);
-        bind._toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
-      }
-    }
-  });
-  clearBtn?.addEventListener('click', () => requestDisconnect({ closeModal: true }));
-  rulesCloseBtn?.addEventListener('click', closeRulesNotice);
-  disconnectButtons.forEach(button => {
-    if (button.dataset.bound === 'true') return;
-    button.addEventListener('click', () => requestDisconnect());
-    button.dataset.bound = 'true';
-  });
-
-  if (trigger) trigger.dataset.bound = 'true';
-  modal.dataset.bound = 'true';
-  updateStatus();
+  return uiController;
 }
-
-getDocumentRef()?.addEventListener?.('DOMContentLoaded', bind);
 
 const TKFirestoreConnection = {
   parseConfigInput,
   normalizeConfigText,
   getConfig,
+  saveConfig,
+  clearLegacyConfigs,
   clearConfig,
+  dispatchConfigChanged,
+  registerUI,
   open,
   openConsole,
   copyText,
   copyRules,
+  showToast,
   notifyRulesUpdateNeeded,
   closeRulesNotice,
   closeDisconnectConfirm,
   requestDisconnect,
-  bind,
-  updateStatus
+  bind
 };
 
 if (typeof window !== 'undefined') {
@@ -390,15 +279,19 @@ export {
   parseConfigInput,
   normalizeConfigText,
   getConfig,
+  saveConfig,
+  clearLegacyConfigs,
   clearConfig,
+  dispatchConfigChanged,
+  registerUI,
   open,
   openConsole,
   copyText,
   copyRules,
+  showToast,
   notifyRulesUpdateNeeded,
   closeRulesNotice,
   closeDisconnectConfirm,
   requestDisconnect,
-  bind,
-  updateStatus
+  bind
 };

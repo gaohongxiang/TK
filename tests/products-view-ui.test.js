@@ -11,6 +11,7 @@ const reactProductsPageSource = fs.readFileSync(path.join(__dirname, '..', 'src'
 const reactProductsMountSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'mountProductsTable.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppShellSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
+const reactIslandSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
 const reactButtonSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
 const reactTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'table.tsx'), 'utf8');
 const configSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'app-config.mjs'), 'utf8');
@@ -198,9 +199,9 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  reactIslandSource,
   /id="app-firestore-rules-modal"/,
-  '页面需要提供全局 Firestore 规则更新提示弹层'
+  'React island 需要提供全局 Firestore 规则更新提示弹层'
 );
 
 assert.doesNotMatch(

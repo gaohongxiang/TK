@@ -193,8 +193,14 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /id="react-island-root"[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>[\s\S]*<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>/,
-  'React SPA 入口需要在业务连接模块之前挂载主站壳层'
+  /id="react-island-root"[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
+  'React SPA 入口需要挂载主站壳层和全局 React island'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>|<script type="module" src="\/src\/orders\/firestore-rules\.mjs"><\/script>/,
+  '完整 React SPA 重建后 Firestore 连接和规则模块应由 React 入口依赖图加载'
 );
 
 assert.doesNotMatch(

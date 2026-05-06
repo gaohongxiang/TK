@@ -39,8 +39,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script type="module" src="\/src\/react\/main\.tsx"><\/script>\s*<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>/,
-  'index.html 需要通过 React SPA 入口加载主站壳层，再加载 Firestore 连接模块'
+  /<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
+  'index.html 需要通过 React SPA 入口加载主站壳层和全局运行层'
 );
 
 assert.doesNotMatch(

@@ -8,6 +8,7 @@ const calculatorSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'reac
 const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const productsPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const connectionSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'firestore-connection.mjs'), 'utf8');
+const reactIslandSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
 
 assert.doesNotMatch(
@@ -29,15 +30,21 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  reactIslandSource,
   /id="app-firestore-modal"/,
-  '页面需要提供全局 Firestore 连接弹层'
+  'React island 需要提供全局 Firestore 连接弹层'
 );
 
 assert.match(
-  indexSource,
+  reactIslandSource,
   /id="app-firestore-disconnect-modal"[\s\S]*退出当前数据库？[\s\S]*id="app-firestore-disconnect-project"[\s\S]*id="app-cancel-firestore-disconnect"[\s\S]*id="app-confirm-firestore-disconnect"/,
-  '退出数据库需要使用站内确认弹层，并展示当前 Firebase 项目'
+  '退出数据库需要使用 React 站内确认弹层，并展示当前 Firebase 项目'
+);
+
+assert.doesNotMatch(
+  indexSource,
+  /id="app-firestore-modal"|id="app-firestore-disconnect-modal"|id="app-firestore-rules-modal"/,
+  '完整 React SPA 重建后全局 Firestore 弹层不应保留在静态 HTML'
 );
 
 assert.doesNotMatch(
@@ -47,27 +54,27 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  indexSource,
+  reactIslandSource,
   /id="app-firestore-config"/,
-  '全局 Firestore 连接弹层需要提供 firebaseConfig 输入框'
+  'React 全局 Firestore 连接弹层需要提供 firebaseConfig 输入框'
 );
 
 assert.match(
-  indexSource,
+  reactIslandSource,
   /apiKey[\s\S]*authDomain[\s\S]*projectId[\s\S]*appId/s,
-  '全局 Firestore 连接弹层需要提示常见配置字段'
+  'React 全局 Firestore 连接弹层需要提示常见配置字段'
 );
 
 assert.match(
-  indexSource,
+  reactIslandSource,
   /id="app-open-firebase-console"/,
-  '全局 Firestore 连接弹层需要提供打开 Firebase Console 按钮'
+  'React 全局 Firestore 连接弹层需要提供打开 Firebase Console 按钮'
 );
 
 assert.match(
-  indexSource,
+  reactIslandSource,
   /id="app-copy-firestore-rules"/,
-  '全局 Firestore 连接弹层需要提供复制 Firestore 规则按钮'
+  'React 全局 Firestore 连接弹层需要提供复制 Firestore 规则按钮'
 );
 
 assert.match(
@@ -191,15 +198,15 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  indexSource,
+  reactIslandSource,
   /data-rules-url="docs\/firebase\/order-tracker-firestore\.rules"/,
   '复制 Firestore 规则按钮需要指向文档里的规则文件'
 );
 
-assert.match(
+assert.doesNotMatch(
   indexSource,
   /<script type="module" src="\/src\/orders\/firestore-rules\.mjs"><\/script>/,
-  '页面需要通过 ESM 预加载内置 Firestore 规则文本'
+  '完整 React SPA 重建后页面不应再单独加载 Firestore 规则脚本'
 );
 
 assert.match(

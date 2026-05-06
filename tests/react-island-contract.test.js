@@ -94,7 +94,7 @@ assert.strictEqual(componentsJson.aliases.components, '@/components', 'shadcn co
 
 assert.match(
   indexSource,
-  /<div id="react-app-shell-root"><\/div>[\s\S]*<div id="react-island-root" hidden><\/div>[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
+  /<div id="react-app-shell-root"><\/div>[\s\S]*<div id="react-island-root"><\/div>[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
   '首页需要提供 React AppShell、React island mount 容器和入口'
 );
 
@@ -118,8 +118,8 @@ assert.match(
 
 assert.match(
   reactIsland,
-  /data-react-island-ready="true"[\s\S]*hidden/,
-  'React island 初期需要隐藏健康检查节点，避免影响现有页面'
+  /data-react-island-ready="true"[\s\S]*id="app-firestore-modal"[\s\S]*id="app-firestore-rules-modal"[\s\S]*id="app-firestore-disconnect-modal"[\s\S]*id="toast"/,
+  'React island 需要接管全局 Firestore 弹窗和 Toast'
 );
 
 assert.match(

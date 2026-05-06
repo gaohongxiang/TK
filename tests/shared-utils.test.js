@@ -29,7 +29,7 @@ assert.match(srcSearchSelectSource, /export\s+\{[\s\S]*TKSearchSelect[\s\S]*crea
 
 assert.doesNotMatch(indexSource, /<script src="js\/shared\/html\.js" defer><\/script>/, 'index.html 不应再加载旧共享 HTML 普通脚本');
 assert.doesNotMatch(indexSource, /<script src="js\/shared\/format\.js" defer><\/script>/, 'index.html 不应再加载旧共享格式化普通脚本');
-assert.match(indexSource, /<script type="module" src="\/src\/react\/main\.tsx"><\/script>\s*<script type="module" src="\/src\/firestore-connection\.mjs"><\/script>/, '主站壳层应由 React SPA 入口加载，共享工具由业务模块显式导入');
+assert.match(indexSource, /<script type="module" src="\/src\/react\/main\.tsx"><\/script>/, '主站壳层应由 React SPA 入口加载，共享工具由业务模块显式导入');
 
 assert.doesNotMatch(
   indexSource,

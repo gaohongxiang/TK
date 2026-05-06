@@ -61,79 +61,12 @@
     </footer>
   </div>
 
-  <div id="app-firestore-modal" class="modal-mask" role="dialog" aria-modal="true"
-    aria-labelledby="app-firestore-title">
-    <div class="modal" style="max-width:560px">
-      <h3 id="app-firestore-title">连接 Firebase Firestore</h3>
-      <div class="modal-copy">
-        订单管理和商品管理共用同一个 Firestore 项目。添加应用时选 <code>网页</code>，不用勾 Hosting；创建数据库时选 <code>区域级</code> 和
-        <code>生产模式</code>。如果这个项目之前只发布过旧规则，请重新复制并发布最新 Firestore 规则，把
-        <code>orders</code>、<code>order_accounts</code>、<code>sync_state</code> 和 <code>products</code> 一并放行。
-      </div>
-      <div class="row" style="margin-top:14px">
-        <div class="field full" style="grid-column:1/-1">
-          <label for="app-firestore-config">Firebase config</label>
-          <textarea id="app-firestore-config" rows="8" placeholder='{
-  "apiKey": "AIza...",
-  "authDomain": "your-project.firebaseapp.com",
-  "projectId": "your-project-id",
-  "appId": "1:1234567890:web:abcdef"
-}' autocomplete="off"></textarea>
-        </div>
-      </div>
-      <div class="ot-setup-guide-actions" style="margin-top:10px">
-        <button id="app-open-firebase-console" type="button" class="btn sm">打开 Firebase Console</button>
-        <button id="app-copy-firestore-rules" type="button" class="btn sm"
-          data-rules-url="docs/firebase/order-tracker-firestore.rules">复制 Firestore 规则</button>
-      </div>
-      <div class="actions">
-        <button type="button" id="app-close-firestore-modal" class="btn">取消</button>
-        <button type="button" id="app-clear-firestore-config" class="btn danger">退出数据库</button>
-        <button type="button" id="app-save-firestore-config" class="btn primary">连接并开始使用</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="app-firestore-rules-modal" class="modal-mask" role="dialog" aria-modal="true"
-    aria-labelledby="app-firestore-rules-title">
-    <div class="modal" style="max-width:520px">
-      <h3 id="app-firestore-rules-title">需要更新 Firestore 规则</h3>
-      <div class="modal-copy" id="app-firestore-rules-copy">
-        当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则。
-      </div>
-      <div class="ot-setup-guide-actions" style="margin-top:10px">
-        <button id="app-rules-open-firebase-console" type="button" class="btn sm">打开 Firebase Console</button>
-        <button id="app-rules-copy-firestore-rules" type="button" class="btn sm">复制 Firestore 规则</button>
-      </div>
-      <div class="actions">
-        <button type="button" id="app-close-firestore-rules-modal" class="btn primary">我知道了</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="app-firestore-disconnect-modal" class="modal-mask" role="dialog" aria-modal="true"
-    aria-labelledby="app-firestore-disconnect-title">
-    <div class="modal" style="max-width:460px">
-      <h3 id="app-firestore-disconnect-title">退出当前数据库？</h3>
-      <div class="modal-copy">
-        当前项目：<strong id="app-firestore-disconnect-project">-</strong>。退出后只会清除本浏览器保存的 Firebase 连接配置，不会删除 Firestore 里的商品和订单。
-      </div>
-      <div class="actions">
-        <button type="button" id="app-cancel-firestore-disconnect" class="btn">取消</button>
-        <button type="button" id="app-confirm-firestore-disconnect" class="btn danger">退出数据库</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="toast" class="toast"></div>
-  <div id="react-island-root" hidden></div>
+  <div id="react-island-root"></div>
 
   <!-- JS 模块（路由 → 共享基础 → 业务模块；主路由和部分业务入口已由 Vite ESM 加载） -->
   <script type="module" src="/src/react/main.tsx"></script>
-  <script type="module" src="/src/firestore-connection.mjs"></script>
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore-compat.js" defer></script>
-  <script type="module" src="/src/orders/firestore-rules.mjs"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 </body>
 

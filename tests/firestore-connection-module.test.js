@@ -4,6 +4,7 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'src', 'firestore-connection.mjs'), 'utf8');
+const reactIslandSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
 
 assert.match(
   source,
@@ -37,13 +38,13 @@ assert.match(
 
 assert.match(
   source,
-  /function requestDisconnect\([\s\S]*app-firestore-disconnect-modal[\s\S]*modal\.classList\.add\('show'\)/,
-  '退出数据库需要走站内确认弹层，再清除本地连接配置'
+  /function requestDisconnect\([\s\S]*uiController\?\.requestDisconnect\?\.\(options\)[\s\S]*clearConfig\(\)/,
+  '退出数据库需要优先交给 React 站内确认弹层，再兜底清除本地连接配置'
 );
 
 assert.match(
-  source,
-  /function applyDisconnect\([\s\S]*clearConfig\(\)[\s\S]*closeDisconnectConfirm\(\)/,
+  reactIslandSource,
+  /function applyDisconnect\([\s\S]*TKFirestoreConnection\.clearConfig\(\)[\s\S]*setDisconnectOpen\(false\)/,
   '确认退出数据库后需要清除本地连接配置并关闭站内确认弹层'
 );
 
@@ -71,6 +72,7 @@ assert.match(
   assert.equal(typeof module.TKFirestoreConnection.open, 'function', 'Firestore 连接模块需要暴露 open');
   assert.equal(typeof module.TKFirestoreConnection.getConfig, 'function', 'Firestore 连接模块需要暴露 getConfig');
   assert.equal(typeof module.TKFirestoreConnection.clearConfig, 'function', 'Firestore 连接模块需要暴露 clearConfig');
+  assert.equal(typeof module.TKFirestoreConnection.registerUI, 'function', 'Firestore 连接模块需要暴露 React UI 注册入口');
   assert.equal(typeof module.TKFirestoreConnection.notifyRulesUpdateNeeded, 'function', 'Firestore 连接模块需要暴露 notifyRulesUpdateNeeded');
   assert.equal(typeof module.TKFirestoreConnection.closeDisconnectConfirm, 'function', 'Firestore 连接模块需要暴露关闭退出确认弹层的方法');
   assert.equal(typeof module.parseConfigInput, 'function', 'Firestore 连接模块需要导出 parseConfigInput 供测试和后续迁移复用');

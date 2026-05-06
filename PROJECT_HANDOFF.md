@@ -26,7 +26,7 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - 工具站提供页面、计算、分析和本地交互能力。
 - 用户业务数据只进入用户自己的 Firebase Firestore。
 - 本站、Cloudflare Pages、未来可能的 Workers 都不保存用户业务数据。
-- 先保持当前原生 JS 体系稳定，再逐步轻模块化。
+- 当前保持原生 JS + Vite ESM 模块体系稳定；路线一轻模块化和路线二标准模块化主体已完成，暂不进入 TypeScript。
 
 ## 2. 当前硬性决策
 
@@ -84,44 +84,31 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 
 ## 3. 当前仓库状态
 
-当前工作区有一批未提交改动。
+当前工作分支：
 
-已完成但未提交：
-
-- 数据分析模块：
-  - `js/analytics/index.js`
-  - `tests/analytics-module.test.js`
-- 项目级配置：
-  - `js/app-config.js`
-  - `tests/app-config.test.js`
-- 首页接入数据分析：
-  - `index.html`
-  - `js/app.js`
-  - `css/style.css`
-- 主站 Vite 构建：
-  - `package.json`
-  - `package-lock.json`
-  - `vite.config.mjs`
-  - `wrangler.toml`
-  - `scripts/copy-main-assets.mjs`
-  - `tests/main-build-contract.test.js`
-- 数据源注册表基础：
-  - `js/data-sources/registry.js`
-  - `tests/data-source-registry.test.js`
-- README 更新：
-  - `README.md`
-- 忽略规则更新：
-  - `.gitignore`
-
-当前曾验证通过：
-
-```bash
-npm run build
-npm test
-git diff --check
+```text
+route-2-esm-m1
 ```
 
-接手时需要重新跑一遍，因为后续可能有新改动。
+当前状态：
+
+- 路线一轻模块化已完成。
+- 路线二标准 ESM 模块化主体已完成。
+- `index.html` 通过 `/src/*.mjs` 加载主站、利润计算器、商品管理、订单管理、数据分析和 Firestore 连接。
+- 构建产物不再发布旧 `dist/js/`。
+- 旧 `js/` 目录仍保留为历史参考和回退对照，不在主页面加载链，也不进入生产构建产物。
+- 当前阶段建议进入真实 Firebase 数据手动验收，不要继续扩大架构改造。
+
+最近已验证通过：
+
+```bash
+npm test
+npm run build
+npm run smoke
+npm run release:check
+```
+
+接手时仍应先跑 `git status --short` 看工作区是否干净；如果准备上线，重新跑 `npm run release:check`。
 
 ## 4. 当前本地文件注意事项
 
@@ -223,22 +210,22 @@ Build output directory: .vitepress/dist
 
 ## 6. 阶段规划总览
 
-这里分成三档路线。当前要执行的是第一档“轻模块化”；第二档和第三档先写入规划，暂不直接开工。
+这里分成三档路线。第一档“轻模块化”和第二档“标准模块化”主体已完成；第三档 TypeScript 仍暂不启动。
 
 ### 三档路线对比
 
 | 档位 | 周期估计 | 技术路线 | 当前是否执行 | 风险 | 收益 |
 | --- | --- | --- | --- | --- | --- |
-| 轻模块化 | 1-2 天 | 原生 JS + `<script defer>` + Vite 构建 | 立即执行 | 低 | 降低单文件压力，保持现有稳定性 |
-| 标准模块化 | 3-5 天 | Vite 原生 ES Modules + `import/export` | 暂不执行 | 中 | 依赖关系清晰，减少全局变量 |
+| 轻模块化 | 1-2 天 | 原生 JS + `<script defer>` + Vite 构建 | 已完成 | 低 | 降低单文件压力，保持现有稳定性 |
+| 标准模块化 | 3-5 天 | Vite 原生 ES Modules + `import/export` | 主体已完成，进入真实数据验收期 | 中 | 依赖关系清晰，减少全局变量 |
 | TypeScript 化 | 1-2 周 | ES Modules + TypeScript 类型系统 | 暂不执行 | 高 | 长期可维护性最好，数据结构更稳 |
 
 当前原则：
 
-- 先完成轻模块化。
-- 轻模块化完成且线上稳定后，再评估标准模块化。
-- 标准模块化稳定后，再考虑 TypeScript。
-- 不跳级，不一次性大迁移。
+- 先用真实 Firebase 配置手动验收当前 ESM 版本。
+- 不急着删除旧 `js/`，旧文件当前只作为历史参考保留。
+- 标准模块化在线上稳定后，再考虑单独做 legacy cleanup。
+- TypeScript 仍然放到后续路线，不和当前验收期混在一起做。
 
 ## 7. 路线一：轻模块化，1-2 天
 
@@ -1533,24 +1520,38 @@ npm run release:check
 
 - `npm test` 通过。
 - `npm run build` 通过。
+- `npm run smoke` 通过。
 - `git diff --check` 无输出。
 - `git status --short` 中没有用户数据文件。
 - `dist/` 和 `node_modules/` 仍被忽略。
-- 页面脚本加载顺序符合现有测试。
+- 页面入口符合 ESM 加载契约，`index.html` 不再列本地旧 `js/*.js` 普通脚本。
+- 构建产物包含稳定 `/logo.png`，不包含旧 `dist/js/`。
 - Firebase Firestore 是唯一正式远端数据源。
 - README 和本文件同步更新。
 
+### 13.1 当前真实数据手动验收清单
+
+自动测试已覆盖离线 fixtures 和 production preview。当前建议用真实 Firebase 配置补一轮手动验收：
+
+- 本地启动：`npm run dev`，打开 Vite 提供的本地地址。
+- 商品管理：连接 Firestore，新增商品，新增/编辑 SKU，刷新页面后确认仍能读回。
+- 订单管理：新增订单，选择商品/SKU，检查采购价、销售价、利润字段和状态自动填充。
+- 订单编辑：修改物流公司、物流单号、状态和利润相关字段，保存后刷新确认读回。
+- 同步状态：断网/恢复网络或刷新页面时，确认没有明显卡死、重复写入或错误弹窗。
+- 数据分析：导入一份 TikTok Shop 商品流量 Excel，确认渠道表现、Top 商品、漏斗和诊断标签能正常生成。
+- 静态页：打开 `/privacy.html`、`/terms.html`、`/404.html`，确认样式和链接正常。
+
+手动验收通过后，才考虑上线或继续做旧 `js/` 清理。
+
 ## 14. 风险清单
 
-### 14.1 脚本加载顺序
-
-当前项目还是普通 `<script defer>`。
+### 14.1 ESM 入口加载顺序
 
 风险：
 
-- 新脚本插入位置会破坏旧测试。
-- provider 必须在业务 index 前加载。
-- shared/table/crud/session 的顺序不能随便改。
+- 新 ESM import 顺序变化可能导致全局兼容挂载缺失。
+- provider 必须在业务入口初始化前完成注册。
+- shared/table/crud/session 的依赖关系不能随便改。
 
 处理：
 
@@ -1659,12 +1660,13 @@ local/release-prep-static-site
 
 ## 17. 推荐下一步
 
-当前第一轮轻模块化、Phase 7 文档补齐、正规网站基础项、可访问性基础语义、部署发布指南和浏览器级 Playwright smoke 都已完成并通过验证。
+当前第一轮轻模块化、Phase 7 文档补齐、正规网站基础项、可访问性基础语义、部署发布指南、浏览器级 Playwright smoke 和路线二标准 ESM 模块化主体都已完成并通过验证。
 
 建议下一步：
 
-1. 不要 push 当前本地提交，除非明确准备让线上版本更新。
-2. 需要上线前，先重新跑 `npm run release:check`。
-3. 准备上线时，再解除本机 push 防护：`TK_ALLOW_PUSH=1 git push`。
-4. 部署到 Cloudflare Pages 后，按 `docs/guide/deploy.md` 做线上手动验收。
-5. 线上稳定后，再评估路线二“标准模块化”，不要直接跳 TypeScript。
+1. 先用真实 Firebase 配置按 13.1 手动验收商品、订单、同步状态和数据分析。
+2. 不要 push 当前本地提交，除非明确准备让线上版本更新。
+3. 需要上线前，重新跑 `npm run release:check`。
+4. 准备上线时，再解除本机 push 防护：`TK_ALLOW_PUSH=1 git push`。
+5. 部署到 Cloudflare Pages 后，按 `docs/guide/deploy.md` 做线上手动验收。
+6. 线上稳定后，再单独评估旧 `js/` 清理或 TypeScript，不要把清理和类型化混在当前验收期做。

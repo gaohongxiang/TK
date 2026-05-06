@@ -26,7 +26,7 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - 工具站提供页面、计算、分析和本地交互能力。
 - 用户业务数据只进入用户自己的 Firebase Firestore。
 - 本站、Cloudflare Pages、未来可能的 Workers 都不保存用户业务数据。
-- 当前保持原生 JS + Vite ESM 模块体系稳定；路线一轻模块化和路线二标准模块化主体已完成，暂不进入 TypeScript。
+- 当前原生 JS + Vite ESM 模块体系已稳定；路线一轻模块化和路线二标准模块化主体已完成。下一阶段启动渐进式 React 迁移，先从数据分析页开始，不一次性重写商品/订单。
 
 ## 2. 当前硬性决策
 
@@ -48,28 +48,30 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - Supabase 不应作为 README 中的当前推荐数据源。
 - 如果保留 Supabase 代码，只能作为历史实验或未启用代码，不进入 UI 和注册表活跃路径。
 
-### 2.2 先轻模块化
+### 2.2 渐进式 React 迁移
 
-暂时不要做完整 React/TypeScript 迁移。
+用户已确认后续要提高 UI 和数据可视化质量，项目进入渐进式 React 迁移路线。
 
-此前阶段策略：
+技术选择：
 
-- 保持普通 JS。
-- 保持 `<script defer>` 加载方式。
-- 保持 Vite 构建。
-- 不强制把所有文件改成 ES Module。
-- 先拆纯函数、配置、provider 元信息、解析逻辑。
-- 每次只改一小块，测试通过后再继续。
+- Vite + React。
+- TypeScript。
+- Tailwind CSS。
+- shadcn/ui。
+- ECharts。
+- TanStack Table。
+- lucide-react。
 
-当前状态：该轻模块化策略已经进入路线二标准 ESM 模块化收尾阶段；主页面加载链已切到 `/src/*.mjs`，但仍然不做 React/TypeScript 大迁移。
+当前选择暂不使用 Next.js。原因是主站仍是静态工具站，用户业务数据在用户自己的 Firebase Firestore，数据分析 Excel 只在浏览器本地解析；当前不需要 SSR、Server Components 或后端 API 路由。先用 Vite React 保持部署边界简单。
 
-暂不做：
+迁移原则：
 
-- 全量 TypeScript。
-- 全量 React/Vue 重写。
-- 大规模文件移动。
+- 不做一次性全站重写。
+- 第一阶段只迁移数据分析页。
+- 商品管理和订单管理保持现有 ESM/Firebase 运行链路，等数据分析 React 版稳定后再迁。
+- 不改变 Firebase 数据结构。
 - 重写订单同步核心。
-- 重写 Firebase 数据结构。
+- 每完成一小步都跑测试和构建。
 
 ### 2.3 不保存用户数据
 
@@ -210,7 +212,7 @@ Build output directory: .vitepress/dist
 
 ## 6. 阶段规划总览
 
-这里分成三档路线。第一档“轻模块化”和第二档“标准模块化”主体已完成；第三档 TypeScript 仍暂不启动。
+这里分成三档路线。第一档“轻模块化”和第二档“标准模块化”主体已完成；第三档调整为 React 渐进迁移，先做数据分析页。
 
 ### 三档路线对比
 
@@ -218,14 +220,16 @@ Build output directory: .vitepress/dist
 | --- | --- | --- | --- | --- | --- |
 | 轻模块化 | 1-2 天 | 原生 JS + `<script defer>` + Vite 构建 | 已完成 | 低 | 降低单文件压力，保持现有稳定性 |
 | 标准模块化 | 3-5 天 | Vite 原生 ES Modules + `import/export` | 主体已完成，进入真实数据验收期 | 中 | 依赖关系清晰，减少全局变量 |
-| TypeScript 化 | 1-2 周 | ES Modules + TypeScript 类型系统 | 暂不执行 | 高 | 长期可维护性最好，数据结构更稳 |
+| React 渐进迁移 | 1-3 周 | Vite + React + TypeScript + Tailwind + shadcn/ui + ECharts + TanStack Table | 启动规划，先数据分析 | 中高 | UI 质感、图表、表格和长期维护性提升 |
 
 当前原则：
 
-- 先用真实 Firebase 配置手动验收当前 ESM 版本。
 - 旧 `js/` 已完成清理，后续不要恢复双入口。
-- 标准模块化后续以验收和小修为主，不再扩大架构改造。
-- TypeScript 仍然放到后续路线，不和当前验收期混在一起做。
+- 不使用 Next.js，继续保持静态工具站部署方式。
+- 不做全站一次性 React 重写。
+- 第一阶段只迁移数据分析页，因为它不写 Firebase，风险最低，且最需要图表和 UI 组件库。
+- 商品管理第二批，订单管理最后迁移。
+- 每个 React 迁移阶段都必须保留“不上传 Excel、不保存平台方用户数据”的边界。
 
 ## 7. 路线一：轻模块化，1-2 天
 
@@ -770,92 +774,167 @@ git diff --check
 - `npm test` 通过。
 - `npm run build` 通过。
 
-## 9. 路线三：TypeScript 化，1-2 周
+## 9. 路线三：React 渐进迁移，1-3 周
 
-TypeScript 是长期路线，不是当前阶段。
+路线三目标是提升主站 UI 质感、图表能力、复杂表格能力和长期维护性。当前不再把 TypeScript 单独作为最后一步，而是随 React 迁移一起引入。
 
-### 9.1 触发条件
+### 9.1 技术选型
 
-只有满足这些条件才开始：
+最终选择：
 
-- 标准模块化完成。
-- 业务模块已经基本走 `import/export`。
-- 核心测试稳定。
-- Firebase-only 数据结构稳定。
-- 用户确认可以接受较长工程化周期。
+```text
+Vite
+React
+TypeScript
+Tailwind CSS
+shadcn/ui
+ECharts
+TanStack Table
+lucide-react
+```
 
-### 9.2 目标
+暂不选择：
 
-给核心数据结构加类型，减少字段混乱和回归。
+- Next.js：当前主站是静态工具站，不需要 SSR、Server Components 或 API routes。
+- Ant Design：成型快，但视觉容易变成通用后台，和当前工具站的自定义体验不完全匹配。
+- 全量 Mantine/Bootstrap：先不引入整套外观，避免一次性改动过大。
 
-重点类型：
+图表统一使用 ECharts，不继续手写复杂 SVG 气泡图、环形图和图例逻辑。
 
-- 商品 Product
-- SKU ProductSku
-- 订单 Order
-- 订单明细 OrderItem
-- Firebase 配置 FirebaseConfig
-- Firestore 文档 ProductDoc / OrderDoc
-- 数据分析 Excel 行 AnalyticsRawRow
-- 数据分析标准记录 AnalyticsRecord
-- 数据源 Provider 接口
+### 9.2 触发条件
 
-### 9.3 推荐目录结构
+路线三已经由用户确认启动，但执行时必须满足：
+
+- 当前 ESM 版本可构建、可测试。
+- 不改变 Firebase 数据结构。
+- 不改变数据分析隐私边界。
+- 一次只迁一个页面或一个局部入口。
+- 每一步都能回退到上一版。
+
+### 9.3 目录规划
+
+新增 React 代码，不直接打散现有 `src/orders`、`src/products` 运行链路：
 
 ```text
 src/
-  main.ts
-  types/
-    firebase.ts
-    order.ts
-    product.ts
-    analytics.ts
-    data-source.ts
-  shared/
-  calc/
-  orders/
-  products/
-  analytics/
-  data-sources/
+  react/
+    main.tsx
+    app/
+      ReactIsland.tsx
+    components/
+      ui/
+      charts/
+      layout/
+    features/
+      analytics/
+        AnalyticsApp.tsx
+        AnalyticsDashboard.tsx
+        AnalyticsUpload.tsx
+        analytics-model.ts
+        analytics-charts.ts
+      products/
+      orders/
+    lib/
+      cn.ts
+      format.ts
 ```
 
-### 9.4 迁移顺序
+现有 `src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 先保留，React 数据分析页可先复用它们。后续稳定后，再把 analytics 纯函数迁到 TypeScript。
 
-#### T1：只加类型文件
+### 9.4 第一阶段：React 基础设施
 
-先新增 `src/types/*.ts`，不迁移业务逻辑。
+目标：让项目能同时运行现有 ESM 页面和 React island。
 
-#### T2：迁移 analytics
+需要新增依赖：
 
-数据分析最独立，先转 TS。
+```bash
+npm install react react-dom echarts echarts-for-react lucide-react clsx tailwind-merge class-variance-authority tailwindcss-animate
+npm install -D typescript @types/react @types/react-dom @vitejs/plugin-react tailwindcss postcss autoprefixer
+```
 
-#### T3：迁移 shared
-
-格式化、HTML escape、Firebase config parser。
-
-#### T4：迁移 products
-
-商品和 SKU 类型很适合 TS。
-
-#### T5：迁移 orders
-
-订单最后迁移。
-
-尤其谨慎：
-
-- `orders/sync`
-- `orders/provider-firestore`
-- `orders/crud`
-
-### 9.5 TypeScript 配置
-
-需要新增：
+需要新增/调整：
 
 ```text
 tsconfig.json
+tsconfig.node.json
+tailwind.config.ts
+postcss.config.js
+vite.config.mjs
+src/react/main.tsx
+src/react/app/ReactIsland.tsx
 ```
 
-建议先不要开最严格：
+原则：
+
+- `index.html` 仍保留现有模块 DOM。
+- 只新增一个 React mount 容器，例如 `#analytics-react-root`。
+- React mount 失败不能影响利润计算器、商品管理、订单管理。
+- 旧数据分析入口先保留，等 React 数据分析通过 e2e 后再隐藏或替换。
+
+### 9.5 第二阶段：迁移数据分析页
+
+目标：数据分析页改成 React + shadcn/ui + ECharts。
+
+范围：
+
+- Excel 上传组件。
+- KPI 卡片。
+- 渠道 GMV/成交件数环形图。
+- 商品机会散点/气泡图。
+- Top 商品排行。
+- 商品诊断卡片。
+- 商品明细表格。
+
+不做：
+
+- 不写入 Firebase。
+- 不保存 Excel 到 localStorage。
+- 不上传 Excel。
+- 不迁移商品/订单。
+
+ECharts 图表：
+
+- 渠道 GMV：`pie` + radius 做 donut。
+- 成交件数：`pie` + radius 做 donut。
+- 商品机会图：`scatter`，x=曝光，y=转化率，symbolSize=GMV，tooltip 展示商品名、GMV、订单、曝光、诊断。
+- 后续可加 visualMap 和象限线。
+
+### 9.6 第三阶段：商品管理 React 化
+
+触发条件：
+
+- React 数据分析页真实 Excel 验收通过。
+- 不再需要保留旧数据分析 UI。
+
+技术：
+
+- TanStack Table 处理商品表格、排序、搜索、分页。
+- shadcn Dialog/Form/Tabs/Button/Input/Select。
+- 保留现有 `src/products/provider-firestore.mjs` 和 Firestore 文档结构。
+
+### 9.7 第四阶段：订单管理 React 化
+
+订单最后迁移，因为它依赖：
+
+- Firestore 离线缓存。
+- 订单同步。
+- 商品/SKU 关联。
+- 快递识别。
+- 利润计算。
+- 多明细订单。
+
+迁移原则：
+
+- 先把订单表格迁到 React/TanStack Table。
+- 再迁订单弹窗。
+- 最后才考虑 sync/provider 类型化。
+- `src/orders/sync.mjs` 不在早期重写。
+
+### 9.8 TypeScript 策略
+
+TypeScript 不追求一步 strict。
+
+初始配置：
 
 ```json
 {
@@ -866,44 +945,52 @@ tsconfig.json
 }
 ```
 
-稳定后再逐步提高：
+先给 React 新代码上类型，再逐步把数据模型迁出：
 
-```json
-{
-  "strict": true,
-  "noImplicitAny": true
-}
+- AnalyticsRecord
+- AnalyticsChannel
+- Product / ProductSku
+- Order / OrderItem
+- FirebaseConfig
+
+### 9.9 测试要求
+
+每一步至少跑：
+
+```bash
+npm test
+npm run build
+git diff --check
 ```
 
-### 9.6 TypeScript 风险
+改数据分析 React 页后还要跑：
 
-主要风险：
+```bash
+npx playwright test tests/e2e/release.spec.js -g "covers calculator" --project=desktop-chromium --project=mobile-chromium
+```
 
-- 旧数据字段有中文 key，类型定义会比较复杂。
-- Firestore 历史兼容字段较多。
-- 空字符串、null、undefined 的现有行为不能随意改变。
-- 类型收紧可能导致大量小问题，影响节奏。
+准备上线前跑：
 
-处理原则：
+```bash
+npm run release:check
+```
 
-- 先类型描述现状，不顺手改行为。
-- 保留中文订单字段映射。
-- 不趁 TS 迁移重构数据结构。
-- 每迁移一个模块都跑完整测试。
+### 9.10 完成标准
 
-### 9.7 TypeScript 完成标准
+第一阶段完成标准：
 
-完成时应满足：
+- 项目能安装 React/TS/Tailwind 依赖。
+- Vite build 通过。
+- 旧页面功能不变。
+- 存在 React island，可独立挂载。
 
-- 主入口为 `src/main.ts`。
-- 核心数据结构有类型。
-- Provider 接口有类型。
-- Analytics parser/analyzer 有类型。
-- Products CRUD 有类型。
-- Orders 关键数据结构有类型。
-- `npm test` 通过。
-- `npm run build` 通过。
-- 线上 Firebase 老数据兼容。
+数据分析 React 化完成标准：
+
+- 真实 Excel 可导入。
+- ECharts 图表无明显重叠、tooltip 可读。
+- 数据仍只在浏览器内解析。
+- e2e 覆盖数据分析导入和图表渲染。
+- 旧手写复杂图表逻辑可删除或停止加载。
 
 ## 10. 当前执行阶段细化
 
@@ -1541,7 +1628,7 @@ npm run release:check
 - 数据分析：导入一份 TikTok Shop 商品流量 Excel，确认渠道表现、Top 商品、漏斗和诊断标签能正常生成。
 - 静态页：打开 `/privacy.html`、`/terms.html`、`/404.html`，确认样式和链接正常。
 
-当前可以准备上线，或继续做后续轻量优化；不要在这个阶段混入 TypeScript、React/Vue 重写或大规模共享组件抽象。
+当前已进入 React 渐进迁移规划期。不要一次性重写全站；第一阶段只允许新增 React 基础设施和迁移数据分析页。
 
 ## 14. 风险清单
 
@@ -1600,18 +1687,24 @@ Excel 必须本地解析。
 
 - 测试继续禁止 `fetch`、`XMLHttpRequest`、`sendBeacon`、`firebase`、`Firestore`、`localStorage.setItem` 出现在 analytics 模块。
 
-### 14.5 大规模模块化
+### 14.5 React 渐进迁移
 
 风险：
 
 - 一次改太多，测试难定位。
-- 上 TypeScript/ESM 会牵扯全局变量和加载顺序。
+- Tailwind/shadcn 全局样式可能影响现有原生 CSS。
+- React mount 时机可能和现有 hash 路由、`window.TKAnalytics` 入口冲突。
+- 数据分析迁移时误引入上传、缓存或远端保存逻辑。
+- 商品/订单过早 React 化可能碰到 Firestore 离线缓存和同步副作用。
 
 处理：
 
-- 先轻模块化。
-- 先纯函数。
-- 一次只拆一个模块。
+- 先做 React island，不替换全站入口。
+- Tailwind 样式作用域和现有 `css/style.css` 要重点检查。
+- 第一阶段只迁数据分析页。
+- ECharts 只在数据分析页使用。
+- 商品/订单保持现有 ESM 运行链路，等数据分析稳定后再迁。
+- 每一步跑 `npm test`、`npm run build`、相关 e2e。
 
 ## 15. 中断恢复流程
 
@@ -1660,13 +1753,13 @@ local/release-prep-static-site
 
 ## 17. 推荐下一步
 
-当前第一轮轻模块化、Phase 7 文档补齐、正规网站基础项、可访问性基础语义、部署发布指南、浏览器级 Playwright smoke 和路线二标准 ESM 模块化主体都已完成并通过验证。
+当前第一轮轻模块化、Phase 7 文档补齐、正规网站基础项、可访问性基础语义、部署发布指南、浏览器级 Playwright smoke 和路线二标准 ESM 模块化主体都已完成并通过验证。用户已确认下一阶段采用 React + TypeScript + Tailwind + shadcn/ui + ECharts + TanStack Table 渐进迁移。
 
 建议下一步：
 
-1. 不要 push 当前本地提交，除非明确准备让线上版本更新。
-2. 需要上线前，重新跑 `npm run release:check`。
-3. 准备上线时，再解除本机 push 防护：`TK_ALLOW_PUSH=1 git push`。
-4. 部署到 Cloudflare Pages 后，按 `docs/guide/deploy.md` 做线上手动验收。
-5. 如果继续开发，优先做轻量网站体验优化和真实使用中暴露的小问题。
-6. 线上稳定后，再单独评估 TypeScript 或共享 UI 组件，不要和当前收尾期混在一起做。
+1. 先提交本规划更新。
+2. 新建 React 迁移工作包：安装 React/TypeScript/Tailwind/shadcn/ECharts/TanStack 相关依赖。
+3. 新增 React island 基础设施，不改商品/订单。
+4. 第一批只迁数据分析页，用 ECharts 替换手写复杂 SVG 图表。
+5. 数据分析 React 版通过真实 Excel 和 e2e 后，再评估商品管理迁移。
+6. GitHub 推送仍受当前网络影响；如需推送，换网络/VPN 后执行 `TK_ALLOW_PUSH=1 git -c http.version=HTTP/1.1 push origin HEAD:main`。

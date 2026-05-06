@@ -28,7 +28,7 @@ function KpiGrid({ analysis }: { analysis: AnalyticsAnalysis }) {
     { label: 'GMV', value: formatYen(analysis.kpis.totalGmv), meta: analysis.period || '当前导入周期' },
     { label: '订单数', value: formatInteger(analysis.kpis.totalOrders), meta: `${formatInteger(analysis.kpis.totalUnits)} 件成交` },
     { label: '动销商品', value: `${analysis.kpis.soldProducts}/${analysis.kpis.productCount}`, meta: `${analysis.activeCount} 个 Active 商品` },
-    { label: '客单价', value: formatYen(analysis.kpis.aov), meta: `件均 ${formatYen(analysis.kpis.unitPrice)}` }
+    { label: '客单价', value: `${formatYen(analysis.kpis.aov)}/单`, meta: `件均 ${formatYen(analysis.kpis.unitPrice)}/件` }
   ];
   return (
     <div id="analytics-kpi-grid" className="analytics-kpi-grid">

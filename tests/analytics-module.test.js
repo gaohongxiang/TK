@@ -97,8 +97,8 @@ assert.match(
 
 assert.match(
   styleSource,
-  /\.analytics-react-donut-grid[\s\S]*grid-template-columns:\s*repeat\(2/,
-  'React 数据分析页需要提供 ECharts 双环形图布局'
+  /\.analytics-react-overview[\s\S]*height:\s*332px[\s\S]*\.analytics-react-funnel-summary/,
+  'React 数据分析页需要用一个总览图结合渠道结构和流量漏斗'
 );
 
 assert.match(
@@ -259,8 +259,8 @@ assert.match(
 
 assert.match(
   reactChartOptionsSource,
-  /type:\s*'pie'[\s\S]*type:\s*'scatter'/,
-  'React 数据分析需要用 ECharts 饼图和散点图替代旧手写气泡图'
+  /function buildOverviewOption\([\s\S]*type:\s*'pie'[\s\S]*type:\s*'funnel'[\s\S]*type:\s*'scatter'/,
+  'React 数据分析需要用少量 ECharts 图表覆盖渠道、漏斗和商品机会'
 );
 
 assert.match(

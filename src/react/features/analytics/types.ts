@@ -51,6 +51,16 @@ type AnalyticsAnalysis = {
   };
 };
 
+type AnalyticsFunnelStage = {
+  key: 'exposure' | 'pageViews' | 'customers' | 'units';
+  label: string;
+  value: number;
+  color: string;
+  caption: string;
+  rateFromPrevious: number;
+  rateFromExposure: number;
+};
+
 type AnalyticsParser = {
   parseRows(rows: unknown[][]): { period: string; records: AnalyticsRecord[] };
 };
@@ -65,6 +75,7 @@ export type {
   AnalyticsChannel,
   AnalyticsChannelKey,
   AnalyticsDiagnosis,
+  AnalyticsFunnelStage,
   AnalyticsParser,
   AnalyticsRecord
 };

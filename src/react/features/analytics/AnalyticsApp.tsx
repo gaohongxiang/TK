@@ -1,8 +1,8 @@
 import ReactECharts from 'echarts-for-react';
 import { Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsParser, AnalyticsRecord } from './types';
-import { buildDonutOption, buildOpportunityScatterOption, DIAGNOSIS_COLORS } from './chartOptions';
+import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsRecord } from './types';
+import { buildFunnelStages, buildOpportunityScatterOption, buildOverviewOption, DIAGNOSIS_COLORS } from './chartOptions';
 import { formatInteger, formatPercent, formatYen, shortenText } from './format';
 
 type AnalyticsAppProps = {
@@ -150,38 +150,49 @@ function ScatterLegend() {
 }
 
 function ChannelSummary({ analysis }: { analysis: AnalyticsAnalysis }) {
+  const funnelStages = buildFunnelStages(analysis);
   return (
-    <div className="analytics-react-readable-summary" aria-label="渠道结构摘要">
+    <div className="analytics-react-readable-summary" aria-label="运营总览摘要">
       {analysis.channelTotals.map(channel => `${channel.label} ${formatYen(channel.gmv)} ${formatInteger(channel.units)} 件`).join(' · ')}
+      {' · '}
+      {funnelStages.map(stage => `${stage.label} ${formatInteger(stage.value)}`).join(' · ')}
+    </div>
+  );
+}
+
+function FunnelSummary({ stages }: { stages: AnalyticsFunnelStage[] }) {
+  return (
+    <div id="analytics-funnel" className="analytics-react-funnel-summary">
+      {stages.map(stage => (
+        <div className="analytics-react-funnel-step" key={stage.key}>
+          <span className="analytics-react-funnel-dot" style={{ background: stage.color }} />
+          <div>
+            <strong>{stage.label}</strong>
+            <span>{formatInteger(stage.value)}</span>
+          </div>
+          <em>{stage.key === 'exposure' ? '100.00%' : formatPercent(stage.rateFromPrevious)}</em>
+        </div>
+      ))}
     </div>
   );
 }
 
 function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
+  const funnelStages = buildFunnelStages(analysis);
   return (
     <section className="analytics-main analytics-react-main" data-react-analytics-ready="true">
       <KpiGrid analysis={analysis} />
       <div className="analytics-insight-layout analytics-react-insight-layout">
-        <section className="card analytics-chart-card analytics-share-card">
+        <section className="card analytics-chart-card analytics-overview-card">
           <div className="analytics-section-head">
-            <h2>渠道结构</h2>
-            <span className="analytics-chip muted">ECharts</span>
+            <h2>运营总览</h2>
+            <span className="analytics-chip muted">渠道 GMV / 流量漏斗</span>
           </div>
-          <div id="analytics-channel-share" className="analytics-react-donut-grid">
+          <div id="analytics-channel-share" className="analytics-react-overview-chart">
             <ChannelSummary analysis={analysis} />
-            <ReactECharts className="analytics-react-chart analytics-react-donut" option={buildDonutOption({
-              title: 'GMV 占比',
-              channels: analysis.channelTotals,
-              metric: 'gmv',
-              formatter: formatYen
-            })} />
-            <ReactECharts className="analytics-react-chart analytics-react-donut" option={buildDonutOption({
-              title: '成交件数',
-              channels: analysis.channelTotals,
-              metric: 'units',
-              formatter: value => `${formatInteger(value)} 件`
-            })} />
+            <ReactECharts className="analytics-react-chart analytics-react-overview" option={buildOverviewOption(analysis)} />
           </div>
+          <FunnelSummary stages={funnelStages} />
         </section>
         <section className="card analytics-chart-card analytics-bubble-card">
           <div className="analytics-section-head">

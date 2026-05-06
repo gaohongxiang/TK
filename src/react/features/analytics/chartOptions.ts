@@ -1,5 +1,5 @@
 import type { EChartsOption } from 'echarts';
-import type { AnalyticsAnalysis, AnalyticsChannel, AnalyticsRecord } from './types';
+import type { AnalyticsAnalysis, AnalyticsChannel, AnalyticsFunnelStage, AnalyticsRecord } from './types';
 import { formatInteger, formatPercent, formatYen, shortenText } from './format';
 
 const CHANNEL_COLORS: Record<string, string> = {
@@ -16,6 +16,13 @@ const DIAGNOSIS_COLORS: Record<string, string> = {
   detail: '#ef476f',
   watch: '#8b93c2',
   normal: '#6ea8ff'
+};
+
+const FUNNEL_COLORS: Record<AnalyticsFunnelStage['key'], string> = {
+  exposure: '#3b82f6',
+  pageViews: '#13c2a3',
+  customers: '#f59e0b',
+  units: '#ef476f'
 };
 
 function sharedTextColor() {
@@ -73,6 +80,132 @@ function buildDonutOption({
         label: { show: false },
         labelLine: { show: false },
         data
+      }
+    ]
+  };
+}
+
+function buildFunnelStages(analysis: AnalyticsAnalysis): AnalyticsFunnelStage[] {
+  const exposure = analysis.kpis.totalExposure;
+  const pageViews = analysis.records.reduce((total, record) => total + record.pageViewsTotal, 0);
+  const customers = analysis.records.reduce((total, record) => total + record.customersTotal, 0);
+  const units = analysis.kpis.totalUnits;
+  const rows = [
+    { key: 'exposure', label: '曝光', value: exposure, caption: '进入商品流量池' },
+    { key: 'pageViews', label: '浏览', value: pageViews, caption: '点击进入详情页' },
+    { key: 'customers', label: '成交客户', value: customers, caption: '产生购买意向' },
+    { key: 'units', label: '成交件数', value: units, caption: '最终成交结果' }
+  ] as const;
+  return rows.map((row, index) => {
+    const previous = index === 0 ? row.value : rows[index - 1].value;
+    return {
+      ...row,
+      color: FUNNEL_COLORS[row.key],
+      rateFromPrevious: previous ? row.value / previous : 0,
+      rateFromExposure: exposure ? row.value / exposure : 0
+    };
+  });
+}
+
+function buildOverviewOption(analysis: AnalyticsAnalysis): EChartsOption {
+  const funnelStages = buildFunnelStages(analysis);
+  const channelData = analysis.channelTotals.map(channel => ({
+    name: channel.label,
+    value: channel.gmv,
+    itemStyle: { color: CHANNEL_COLORS[channel.key] || '#8b93c2' },
+    channel
+  }));
+  const funnelData = funnelStages.map(stage => ({
+    name: stage.label,
+    value: stage.value,
+    itemStyle: { color: stage.color },
+    stage
+  }));
+  return {
+    color: [...analysis.channelTotals.map(channel => CHANNEL_COLORS[channel.key] || '#8b93c2'), ...funnelStages.map(stage => stage.color)],
+    title: [
+      {
+        text: 'GMV 渠道',
+        left: '21%',
+        top: 4,
+        textAlign: 'center',
+        textStyle: { color: sharedTextColor(), fontSize: 13, fontWeight: 800 }
+      },
+      {
+        text: '流量漏斗',
+        left: '70%',
+        top: 4,
+        textAlign: 'center',
+        textStyle: { color: sharedTextColor(), fontSize: 13, fontWeight: 800 }
+      }
+    ],
+    tooltip: {
+      trigger: 'item',
+      formatter: params => {
+        const data = params.data as { channel?: AnalyticsChannel; stage?: AnalyticsFunnelStage };
+        if (data.channel) {
+          return [
+            `<strong>${data.channel.label}</strong>`,
+            `GMV：${formatYen(data.channel.gmv)}`,
+            `成交件数：${formatInteger(data.channel.units)} 件`,
+            `点击率：${formatPercent(data.channel.ctr)}`,
+            `转化率：${formatPercent(data.channel.conversion)}`
+          ].join('<br/>');
+        }
+        if (data.stage) {
+          return [
+            `<strong>${data.stage.label}</strong>`,
+            `数量：${formatInteger(data.stage.value)}`,
+            `较上一层：${data.stage.key === 'exposure' ? '100.00%' : formatPercent(data.stage.rateFromPrevious)}`,
+            `占曝光：${formatPercent(data.stage.rateFromExposure)}`
+          ].join('<br/>');
+        }
+        return '';
+      }
+    },
+    legend: {
+      bottom: 0,
+      left: 'center',
+      itemWidth: 9,
+      itemHeight: 9,
+      textStyle: { color: sharedMutedColor(), fontSize: 11 }
+    },
+    series: [
+      {
+        type: 'pie',
+        name: 'GMV 渠道',
+        radius: ['38%', '58%'],
+        center: ['22%', '51%'],
+        avoidLabelOverlap: true,
+        label: { show: false },
+        labelLine: { show: false },
+        data: channelData
+      },
+      {
+        type: 'funnel',
+        name: '流量漏斗',
+        left: '50%',
+        top: 34,
+        width: '44%',
+        height: '68%',
+        minSize: '26%',
+        maxSize: '100%',
+        sort: 'none',
+        gap: 5,
+        label: {
+          show: true,
+          position: 'inside',
+          color: '#ffffff',
+          fontSize: 12,
+          fontWeight: 800,
+          formatter: params => `${params.name}\n${formatInteger(Number(params.value) || 0)}`
+        },
+        labelLine: { show: false },
+        itemStyle: {
+          borderColor: 'rgba(255,255,255,.18)',
+          borderWidth: 1
+        },
+        data: funnelData
       }
     ]
   };
@@ -145,4 +278,12 @@ function buildOpportunityScatterOption(analysis: AnalyticsAnalysis): EChartsOpti
   };
 }
 
-export { CHANNEL_COLORS, DIAGNOSIS_COLORS, buildDonutOption, buildOpportunityScatterOption };
+export {
+  CHANNEL_COLORS,
+  DIAGNOSIS_COLORS,
+  FUNNEL_COLORS,
+  buildDonutOption,
+  buildFunnelStages,
+  buildOverviewOption,
+  buildOpportunityScatterOption
+};

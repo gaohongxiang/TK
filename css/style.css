@@ -1759,24 +1759,82 @@ details[open] summary {
   gap: 14px;
 }
 
-.analytics-react-donut-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
 .analytics-react-chart {
   min-width: 0;
 }
 
-.analytics-react-donut {
-  height: 278px;
+.analytics-react-overview-chart {
+  min-width: 0;
+}
+
+.analytics-react-overview {
+  height: 332px;
   padding: 10px 6px 4px;
   border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
   border-radius: 12px;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--panel2) 32%, transparent), transparent),
     color-mix(in srgb, var(--panel2) 18%, transparent);
+}
+
+.analytics-react-funnel-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.analytics-react-funnel-step {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--panel2) 30%, transparent);
+}
+
+.analytics-react-funnel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.analytics-react-funnel-step div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.analytics-react-funnel-step strong,
+.analytics-react-funnel-step span,
+.analytics-react-funnel-step em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-react-funnel-step strong {
+  color: var(--text);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.analytics-react-funnel-step span {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.analytics-react-funnel-step em {
+  color: color-mix(in srgb, var(--accent2) 74%, var(--text));
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .analytics-react-scatter-wrap {
@@ -4775,7 +4833,7 @@ table.ship td.actual {
   }
 
   .analytics-channel-share,
-  .analytics-react-donut-grid {
+  .analytics-react-funnel-summary {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -4948,7 +5006,7 @@ table.ship td.actual {
   }
 
   .analytics-channel-share,
-  .analytics-react-donut-grid {
+  .analytics-react-funnel-summary {
     grid-template-columns: 1fr;
   }
 
@@ -4981,7 +5039,7 @@ table.ship td.actual {
     min-height: 220px;
   }
 
-  .analytics-react-donut {
+  .analytics-react-overview {
     height: 250px;
   }
 

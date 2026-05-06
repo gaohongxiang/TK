@@ -58,6 +58,12 @@ assert.strictEqual(tsconfig.compilerOptions.strict, false, 'React 迁移初期�
 assert.deepStrictEqual(tsconfig.compilerOptions.paths['@/*'], ['src/react/*'], 'React 代码需要配置 @ alias');
 
 assert.match(
+  viteConfig,
+  /resolve:\s*\{[\s\S]*alias:\s*\{[\s\S]*'@':\s*'\/src\/react'/,
+  'Vite dev/build 需要同步配置 @ alias，否则 shadcn 组件导入无法解析'
+);
+
+assert.match(
   tailwindConfig,
   /content:\s*\['\.\/index\.html', '\.\/src\/react\/\*\*\/\*\.\{ts,tsx\}'\]/,
   'Tailwind 只应先扫描 React 迁移目录和 index.html'

@@ -4,6 +4,11 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   appType: 'mpa',
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': '/src/react'
+    }
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

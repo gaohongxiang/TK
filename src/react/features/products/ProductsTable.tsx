@@ -1,3 +1,12 @@
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { Copy, ExternalLink, Pencil, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { ProductRecord, ProductSku, ProductsTableRenderOptions } from './types';
@@ -39,9 +48,9 @@ function ProductPager({
           </select>
         </span>
       </label>
-      <button className="btn sm" type="button" disabled={currentPage <= 1} onClick={() => onPageChange?.(-1, totalPages)}>上一页</button>
+      <Button size="sm" disabled={currentPage <= 1} onClick={() => onPageChange?.(-1, totalPages)}>上一页</Button>
       <span className="ot-page-indicator">{currentPage} / {totalPages}</span>
-      <button className="btn sm" type="button" disabled={currentPage >= totalPages} onClick={() => onPageChange?.(1, totalPages)}>下一页</button>
+      <Button size="sm" disabled={currentPage >= totalPages} onClick={() => onPageChange?.(1, totalPages)}>下一页</Button>
     </div>
   );
 }
@@ -159,29 +168,29 @@ function SkuExpandedTable({
         <div className="pl-sku-expanded-copy">订单选择商品时会优先使用这里的 SKU 参数。</div>
       </div>
       <div className="pl-sku-expanded-table-wrap">
-        <table className="pl-sku-expanded-table">
-          <thead>
-            <tr>
-              <th>SKU</th>
-              <th>重量(g)</th>
-              <th>尺寸(cm)</th>
-              <th>预估海外运费</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table className="pl-sku-expanded-table">
+          <TableHeader>
+            <TableRow>
+              <TableHead>SKU</TableHead>
+              <TableHead>重量(g)</TableHead>
+              <TableHead>尺寸(cm)</TableHead>
+              <TableHead>预估海外运费</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {skus.map(sku => {
               const merged = helpers.mergeProductSku(product, sku);
               return (
-                <tr key={String(sku.skuId || sku.skuName || helpers.formatSkuLabel(sku))}>
-                  <td><div className="pl-sku-expanded-sku-main">{helpers.formatSkuLabel(sku)}</div></td>
-                  <td>{helpers.formatWeight(merged?.weightG)}</td>
-                  <td>{helpers.formatSize(merged)}</td>
-                  <td>{helpers.formatSkuShippingFee(product, sku)}</td>
-                </tr>
+                <TableRow key={String(sku.skuId || sku.skuName || helpers.formatSkuLabel(sku))}>
+                  <TableCell><div className="pl-sku-expanded-sku-main">{helpers.formatSkuLabel(sku)}</div></TableCell>
+                  <TableCell>{helpers.formatWeight(merged?.weightG)}</TableCell>
+                  <TableCell>{helpers.formatSize(merged)}</TableCell>
+                  <TableCell>{helpers.formatSkuShippingFee(product, sku)}</TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -218,8 +227,8 @@ function ProductTableBody({
         const isExpanded = !!expandedTkIds?.[tkId];
         const link1688 = String(product?.link1688 || '').trim();
         return (
-          <tbody key={tkId || index}>
-            <tr
+          <TableBody key={tkId || index}>
+            <TableRow
               className={`pl-product-row products-react-row${isExpandable ? ' is-expandable' : ''}${isExpanded ? ' is-expanded' : ''}`}
               data-toggle-expand={isExpandable ? tkId : undefined}
               onClick={event => {
@@ -228,53 +237,55 @@ function ProductTableBody({
                 onToggleExpand?.(tkId);
               }}
             >
-              <td className="mono">
+              <TableCell className="mono">
                 <div className="pl-row-seq">
                   <span>{seqNum}</span>
                   {isExpandable ? <span className="pl-expand-caret" aria-hidden="true">{isExpanded ? '▾' : '▸'}</span> : null}
                 </div>
-              </td>
-              <td className="pl-image-cell"><ProductImage product={product} /></td>
-              {showAccount ? <td><span className="chip muted products-react-account-chip">{helpers.formatText(product?.accountName)}</span></td> : null}
-              <td className="mono products-react-id">{helpers.formatText(product?.tkId)}</td>
-              <td className="products-react-name-cell"><div>{helpers.formatText(product?.name)}</div></td>
-              <td><span className="products-react-cargo">{helpers.getCargoTypeLabel(helpers.getProductDefaults(product)?.cargoType)}</span></td>
-              <td>
+              </TableCell>
+              <TableCell className="pl-image-cell"><ProductImage product={product} /></TableCell>
+              {showAccount ? <TableCell><span className="chip muted products-react-account-chip">{helpers.formatText(product?.accountName)}</span></TableCell> : null}
+              <TableCell className="mono products-react-id">{helpers.formatText(product?.tkId)}</TableCell>
+              <TableCell className="products-react-name-cell"><div>{helpers.formatText(product?.name)}</div></TableCell>
+              <TableCell><span className="products-react-cargo">{helpers.getCargoTypeLabel(helpers.getProductDefaults(product)?.cargoType)}</span></TableCell>
+              <TableCell>
                 <span className={`pl-sku-count-pill${isExpandable ? ' is-expandable' : ''}`} title={isExpandable ? '点击展开 SKU 明细' : undefined}>
                   {helpers.formatSkuCount(product)}
                 </span>
-              </td>
-              <td>
+              </TableCell>
+              <TableCell>
                 {link1688 ? (
                   <div className="pl-link-actions products-react-link-actions">
-                    <a className="btn sm icon-btn" href={link1688} target="_blank" rel="noreferrer" title="打开 1688 链接" aria-label="打开 1688 链接">
-                      <ExternalLink size={14} strokeWidth={2} />
-                    </a>
-                    <button className="btn sm icon-btn" type="button" data-copy-link={link1688} title="复制 1688 链接" aria-label="复制 1688 链接" onClick={() => onCopyLink?.(link1688)}>
+                    <Button asChild size="smIcon" title="打开 1688 链接" aria-label="打开 1688 链接">
+                      <a href={link1688} target="_blank" rel="noreferrer">
+                        <ExternalLink size={14} strokeWidth={2} />
+                      </a>
+                    </Button>
+                    <Button size="smIcon" data-copy-link={link1688} title="复制 1688 链接" aria-label="复制 1688 链接" onClick={() => onCopyLink?.(link1688)}>
                       <Copy size={14} strokeWidth={2} />
-                    </button>
+                    </Button>
                   </div>
                 ) : '-'}
-              </td>
-              <td>
+              </TableCell>
+              <TableCell>
                 <div className="products-react-actions">
-                  <button className="btn sm icon-btn" type="button" data-edit={tkId} title="编辑商品" aria-label="编辑商品" onClick={() => onEdit?.(tkId)}>
+                  <Button size="smIcon" data-edit={tkId} title="编辑商品" aria-label="编辑商品" onClick={() => onEdit?.(tkId)}>
                     <Pencil size={14} strokeWidth={2} />
-                  </button>
-                  <button className="btn sm danger icon-btn" type="button" data-del={tkId} title="删除商品" aria-label="删除商品" onClick={() => onDelete?.(tkId)}>
+                  </Button>
+                  <Button size="smIcon" variant="danger" data-del={tkId} title="删除商品" aria-label="删除商品" onClick={() => onDelete?.(tkId)}>
                     <Trash2 size={14} strokeWidth={2} />
-                  </button>
+                  </Button>
                 </div>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
             {isExpandable && isExpanded ? (
-              <tr className="pl-sku-detail-row products-react-sku-detail-row">
-                <td colSpan={columnCount}>
+              <TableRow className="pl-sku-detail-row products-react-sku-detail-row">
+                <TableCell colSpan={columnCount}>
                   <SkuExpandedTable product={product} skus={skus} helpers={helpers} />
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : null}
-          </tbody>
+          </TableBody>
         );
       })}
     </>
@@ -313,26 +324,26 @@ function ProductsTable(options: ProductsTableRenderOptions) {
         <ProductEmptyState hasQuery={hasQuery} activeAccount={activeAccount} />
       ) : (
         <div className="ot-table-inner products-react-table-inner">
-          <table className={`ot pl-table products-react-table${showAccount ? ' is-all-accounts' : ' is-account-scoped'}`}>
-            <thead>
-              <tr>
-                <th>
-                  <button id="pl-sort-btn" className="products-react-sort" type="button" title={sortTitle} onClick={() => onSortToggle?.()}>
+          <Table className={`pl-table products-react-table${showAccount ? ' is-all-accounts' : ' is-account-scoped'}`}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  <Button id="pl-sort-btn" variant="plain" className="products-react-sort" title={sortTitle} onClick={() => onSortToggle?.()}>
                     # {sortIcon}
-                  </button>
-                </th>
-                <th>图片</th>
-                {showAccount ? <th>账号</th> : null}
-                <th>TK ID</th>
-                <th>商品名称</th>
-                <th>货物类型</th>
-                <th>SKU数</th>
-                <th>1688</th>
-                <th>操作</th>
-              </tr>
-            </thead>
+                  </Button>
+                </TableHead>
+                <TableHead>图片</TableHead>
+                {showAccount ? <TableHead>账号</TableHead> : null}
+                <TableHead>TK ID</TableHead>
+                <TableHead>商品名称</TableHead>
+                <TableHead>货物类型</TableHead>
+                <TableHead>SKU数</TableHead>
+                <TableHead>1688</TableHead>
+                <TableHead>操作</TableHead>
+              </TableRow>
+            </TableHeader>
             <ProductTableBody {...options} products={paged} totalDisplayed={displayed.length} startIndex={startIndex} />
-          </table>
+          </Table>
         </div>
       )}
     </div>

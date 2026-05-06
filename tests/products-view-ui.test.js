@@ -9,6 +9,8 @@ const srcExportSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'produ
 const srcCrudSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'crud.mjs'), 'utf8');
 const reactProductsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsTable.tsx'), 'utf8');
 const reactProductsMountSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'mountProductsTable.tsx'), 'utf8');
+const reactButtonSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
+const reactTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'table.tsx'), 'utf8');
 const configSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'app-config.mjs'), 'utf8');
 const appSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
@@ -408,6 +410,30 @@ assert.match(
   reactProductsSource,
   /data-react-products-table-ready="true"/,
   'React 商品表格需要提供可测试的挂载完成标记'
+);
+
+assert.match(
+  reactProductsSource,
+  /from '@\/components\/ui\/button'[\s\S]*from '@\/components\/ui\/table'/,
+  'React 商品表格需要使用本地 shadcn 风格 UI primitives，而不是继续手写基础标签'
+);
+
+assert.doesNotMatch(
+  reactProductsSource,
+  /@tanstack\/react-table|useReactTable|getCoreRowModel/,
+  '商品表格当前不需要引入 TanStack Table，避免为了库重写数据逻辑'
+);
+
+assert.match(
+  reactButtonSource,
+  /@radix-ui\/react-slot[\s\S]*class-variance-authority[\s\S]*default:\s*'btn'[\s\S]*plain:\s*''[\s\S]*buttonVariants/,
+  '本地 Button primitive 需要使用 shadcn 风格 variants，并沿用现有 btn 样式避免改变显示'
+);
+
+assert.match(
+  reactTableSource,
+  /function Table[\s\S]*cn\('ot', className\)[\s\S]*function TableHead[\s\S]*function TableCell/,
+  '本地 Table primitive 需要保留现有 ot 表格 class 并提供表格子组件'
 );
 
 assert.match(

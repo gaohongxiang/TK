@@ -1029,6 +1029,20 @@ details[open] summary {
   font-size: 12.5px
 }
 
+.btn.icon-btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn.icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* —— View switching —— */
 .view {
   position: relative;
@@ -1530,6 +1544,125 @@ details[open] summary {
 
 .pl-search input {
   width: min(460px, 100%);
+}
+
+.products-react-toolbar {
+  margin-top: 14px;
+}
+
+.products-react-toolbar-inner {
+  gap: 12px;
+}
+
+.products-react-search {
+  width: min(520px, 100%);
+}
+
+.products-react-table-shell {
+  min-width: 860px;
+}
+
+.products-react-table-inner {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 90%, white);
+  background: color-mix(in srgb, var(--panel) 92%, white);
+}
+
+.products-react-table {
+  table-layout: fixed;
+}
+
+.products-react-table th:nth-child(1),
+.products-react-table td:nth-child(1) {
+  width: 64px;
+}
+
+.products-react-table th:nth-child(2),
+.products-react-table td:nth-child(2) {
+  width: 78px;
+}
+
+.products-react-table th:last-child,
+.products-react-table td:last-child {
+  width: 96px;
+}
+
+.products-react-table th {
+  background: color-mix(in srgb, var(--panel2) 78%, white);
+}
+
+.products-react-row td {
+  background: color-mix(in srgb, var(--panel) 98%, white);
+}
+
+.products-react-name-cell div {
+  max-width: 260px;
+  margin: 0 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.products-react-id {
+  font-weight: 650;
+}
+
+.products-react-cargo {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, white);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel2) 76%, white);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.products-react-actions,
+.products-react-link-actions {
+  justify-content: center;
+}
+
+.products-react-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.products-react-sort {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.products-react-empty {
+  min-height: 180px;
+}
+
+.products-react-empty div {
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
+.products-react-empty span {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.products-react-footer-toolbar {
+  margin-top: 12px;
+}
+
+.products-react-sku-surface {
+  border-top: 0;
 }
 
 /* ============================================================
@@ -4897,6 +5030,14 @@ table.ship td.actual {
   .analytics-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .products-react-table-shell {
+    min-width: 780px;
+  }
+
+  .products-react-toolbar-inner {
+    align-items: flex-start;
+  }
 }
 
 /* —— 响应式：手机 —— */
@@ -5111,6 +5252,19 @@ table.ship td.actual {
   .analytics-upload-action {
     width: 100%;
     min-width: 0;
+  }
+
+  .products-react-toolbar-inner {
+    gap: 10px;
+  }
+
+  .products-react-search {
+    width: 100%;
+  }
+
+  .products-react-pager {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .analytics-section-head {

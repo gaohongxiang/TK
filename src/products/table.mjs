@@ -1,9 +1,41 @@
 import { TKTableControls } from '../table-controls.mjs';
 
+let reactProductsTablePromise = null;
+let reactProductsTableModule = null;
+let latestReactProductsTableOptions = null;
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]
   ));
+}
+
+function shouldUseReactProductsTable({ wrap } = {}) {
+  const ownerWindow = wrap?.ownerDocument?.defaultView;
+  return Boolean(ownerWindow?.document && !ownerWindow.__TK_DISABLE_REACT_PRODUCTS_TABLE);
+}
+
+function tryRenderReactProductsTable(options = {}) {
+  if (!shouldUseReactProductsTable(options)) return false;
+  latestReactProductsTableOptions = options;
+  if (reactProductsTableModule?.mountProductsTable) {
+    reactProductsTableModule.mountProductsTable(options);
+    return true;
+  }
+  if (!reactProductsTablePromise) {
+    reactProductsTablePromise = import('../react/features/products/mountProductsTable.tsx')
+      .then(module => {
+        reactProductsTableModule = module;
+        if (latestReactProductsTableOptions) module.mountProductsTable(latestReactProductsTableOptions);
+        return module;
+      })
+      .catch(error => {
+        reactProductsTablePromise = null;
+        console.error('Failed to load React product table', error);
+        return null;
+      });
+  }
+  return false;
 }
 
 function normalizeSearchValue(value) {
@@ -271,6 +303,46 @@ function render({
   onEdit,
   onDelete
 } = {}) {
+  const renderOptions = {
+    toolbar,
+    footerToolbar,
+    wrap,
+    products,
+    activeAccount,
+    searchQuery,
+    sortOrder,
+    pageSize,
+    currentPage,
+    expandedTkIds,
+    pageSizeOptions,
+    onSearchChange,
+    onPageSizeChange,
+    onPageChange,
+    onSortToggle,
+    onToggleExpand,
+    onCopyLink,
+    onEdit,
+    onDelete,
+    helpers: {
+      clampPage,
+      deriveDisplayedProducts,
+      formatSkuCount,
+      formatText,
+      getCargoTypeLabel,
+      getProductDefaults,
+      getProductSkus,
+      mergeProductSku,
+      formatSize,
+      formatWeight,
+      formatSkuLabel,
+      formatSkuShippingFee
+    }
+  };
+  if (tryRenderReactProductsTable(renderOptions)) {
+    const displayed = deriveDisplayedProducts({ products, activeAccount, searchQuery, sortOrder });
+    return clampPage(currentPage, pageSize, displayed.length);
+  }
+
   const displayed = deriveDisplayedProducts({ products, activeAccount, searchQuery, sortOrder });
   const pageState = clampPage(currentPage, pageSize, displayed.length);
   const bindTopToolbar = totalPages => {

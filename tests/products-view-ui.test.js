@@ -7,9 +7,12 @@ const srcProductsIndexSource = fs.readFileSync(path.join(__dirname, '..', 'src',
 const srcAccountsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'accounts.mjs'), 'utf8');
 const srcExportSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'export.mjs'), 'utf8');
 const srcCrudSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'crud.mjs'), 'utf8');
+const reactProductsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsTable.tsx'), 'utf8');
+const reactProductsMountSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'mountProductsTable.tsx'), 'utf8');
 const configSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'app-config.mjs'), 'utf8');
 const appSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const styleSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
 
 assert.match(
   srcTableSource,
@@ -387,6 +390,54 @@ assert.match(
   srcTableSource,
   /pl-sku-detail-row|pl-sku-expanded-surface/,
   '商品库需要为多 SKU 商品提供可展开的 SKU 明细层'
+);
+
+assert.match(
+  srcTableSource,
+  /import\('\.\.\/react\/features\/products\/mountProductsTable\.tsx'\)[\s\S]*tryRenderReactProductsTable/,
+  '商品库表格应渐进式动态加载 React 表格，不阻塞 ESM 纯函数 import'
+);
+
+assert.match(
+  reactProductsMountSource,
+  /createRoot[\s\S]*mountProductsTable[\s\S]*<ProductToolbar[\s\S]*<ProductsTable[\s\S]*<ProductFooterToolbar/,
+  'React 商品表格需要同时接管搜索、主表和底部分页'
+);
+
+assert.match(
+  reactProductsSource,
+  /data-react-products-table-ready="true"/,
+  'React 商品表格需要提供可测试的挂载完成标记'
+);
+
+assert.match(
+  reactProductsSource,
+  /data-copy-link=\{link1688\}/,
+  'React 商品表格需要保留复制链接的数据属性'
+);
+
+assert.match(
+  reactProductsSource,
+  /data-edit=\{tkId\}[\s\S]*data-del=\{tkId\}/,
+  'React 商品表格需要保留编辑和删除的数据属性'
+);
+
+assert.match(
+  reactProductsSource,
+  /onCompositionStart[\s\S]*onCompositionEnd[\s\S]*onSearchChange/,
+  'React 商品搜索需要保留中文输入法 composition 保护'
+);
+
+assert.doesNotMatch(
+  reactProductsSource,
+  /firebase|Firestore|localStorage|fetch\(|XMLHttpRequest|sendBeacon/,
+  'React 商品表格只能做 UI 渲染，不应直接访问远端或持久化数据'
+);
+
+assert.match(
+  styleSource,
+  /\.products-react-table-shell[\s\S]*\.products-react-actions[\s\S]*\.products-react-empty/,
+  'React 商品表格需要有独立的稳定布局样式'
 );
 
 assert.match(

@@ -6,6 +6,7 @@ const root = path.join(__dirname, '..');
 const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'parser.mjs'), 'utf8');
 const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'analyzer.mjs'), 'utf8');
 const srcAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
+const srcChartsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'charts.mjs'), 'utf8');
 const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
 const appSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
@@ -50,6 +51,12 @@ assert.match(
 
 assert.match(
   indexSource,
+  /id="analytics-channel-share"[\s\S]*id="analytics-bubble-chart"/,
+  '数据分析需要提供渠道环形图和商品机会气泡图容器'
+);
+
+assert.match(
+  indexSource,
   /xlsx\.full\.min\.js[\s\S]*<script type="module" src="\/src\/analytics\/index\.mjs"><\/script>/,
   '数据分析需要在 SheetJS 后加载 ESM 入口'
 );
@@ -64,6 +71,18 @@ assert.match(
   styleSource,
   /\.analytics-layout[\s\S]*grid-template-columns:\s*repeat\(2/,
   '数据分析页需要提供图表布局样式'
+);
+
+assert.match(
+  styleSource,
+  /\.analytics-insight-layout[\s\S]*grid-template-columns:[\s\S]*\.analytics-channel-share[\s\S]*grid-template-columns:\s*repeat\(2/,
+  '数据分析页需要提供高级图表布局和双环形图样式'
+);
+
+assert.match(
+  styleSource,
+  /\.analytics-donut-card[\s\S]*\.analytics-donut-segment[\s\S]*\.analytics-bubble-point/,
+  '数据分析页需要提供环形图和气泡图样式'
 );
 
 assert.match(
@@ -110,6 +129,30 @@ assert.match(
 
 assert.match(
   srcAnalyticsSource,
+  /import\s+\{\s*TKAnalyticsCharts\s*\}\s+from\s+'\.\/charts\.mjs'/,
+  '数据分析入口需要接入独立图表渲染模块'
+);
+
+assert.match(
+  srcChartsSource,
+  /function buildChannelDonutMarkup\(/,
+  '数据分析图表模块需要提供渠道环形图渲染函数'
+);
+
+assert.match(
+  srcChartsSource,
+  /function buildBubbleChartMarkup\(/,
+  '数据分析图表模块需要提供商品机会气泡图渲染函数'
+);
+
+assert.match(
+  srcChartsSource,
+  /const TKAnalyticsCharts = \{/,
+  '数据分析图表模块需要提供命名空间导出'
+);
+
+assert.match(
+  srcAnalyticsSource,
   /function createAnalyticsModule\(options = \{\}\)/,
   '路线二 M2 analytics ESM 入口需要导出可注入依赖的创建函数'
 );
@@ -139,7 +182,7 @@ assert.match(
 );
 
 assert.doesNotMatch(
-  [srcParserSource, srcAnalyzerSource, srcAnalyticsSource].join('\n'),
+  [srcParserSource, srcAnalyzerSource, srcAnalyticsSource, srcChartsSource].join('\n'),
   /\bfetch\s*\(|XMLHttpRequest|sendBeacon|firebase|Firestore|localStorage\.setItem/,
   '数据分析相关模块不应上传或持久化用户 Excel 数据'
 );
@@ -271,6 +314,7 @@ const rows = [
 (async () => {
   const parserModule = await import(`file://${path.join(root, 'src', 'analytics', 'parser.mjs')}`);
   const analyzerModule = await import(`file://${path.join(root, 'src', 'analytics', 'analyzer.mjs')}`);
+  const chartsModule = await import(`file://${path.join(root, 'src', 'analytics', 'charts.mjs')}`);
   const analyticsModule = await import(`file://${path.join(root, 'src', 'analytics', 'index.mjs')}`);
 
   const parsedByModule = parserModule.parseRows(rows);
@@ -286,6 +330,32 @@ const rows = [
   assert.strictEqual(analysisByModule.kpis.totalOrders, 51, 'analytics analyzer ESM 模块需要可被直接 import');
   assert.strictEqual(analysisByModule.kpis.productCount, 2, '需要汇总商品数');
   assert.strictEqual(analysisByModule.channelTotals.find(channel => channel.key === 'video').gmv, 50000, '需要按渠道汇总 GMV');
+  assert.ok(
+    chartsModule.buildShareSlices(analysisByModule.channelTotals, 'gmv').some(slice => slice.key === 'video' && slice.share > 0.7),
+    '渠道环形图需要能计算各渠道 GMV 占比'
+  );
+  assert.ok(
+    chartsModule.buildChannelDonutMarkup({
+      analysis: analysisByModule,
+      metric: 'gmv',
+      id: 'test-donut',
+      title: '渠道 GMV 占比',
+      totalLabel: 'GMV',
+      totalValue: '70,036 円'
+    }).includes('analytics-donut-segment'),
+    '渠道环形图需要输出 SVG 分段'
+  );
+  assert.ok(
+    chartsModule.buildBubbleChartMarkup({
+      records: analysisByModule.records,
+      formatValue: value => `${value}`,
+      formatInteger: value => `${value}`,
+      formatPercent: value => `${value}`,
+      shortenText: value => value,
+      escapeHtml: value => String(value)
+    }).includes('analytics-bubble-point'),
+    '商品机会气泡图需要输出商品气泡'
+  );
   assert.ok(
     analysisByModule.records.some(record => record.diagnosis.label === '爆品放大'),
     '需要给高 GMV 商品生成运营诊断'

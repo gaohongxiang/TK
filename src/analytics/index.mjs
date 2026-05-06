@@ -1,4 +1,5 @@
 import { TKAnalyticsAnalyzer } from './analyzer.mjs';
+import { TKAnalyticsCharts } from './charts.mjs';
 import { TKAnalyticsParser } from './parser.mjs';
 import { TKFormat } from '../shared/format.mjs';
 import { TKHtml } from '../shared/html.mjs';
@@ -8,6 +9,7 @@ function createAnalyticsModule(options = {}) {
   const rootWindow = options.window ?? globalThis.window ?? globalThis;
   const parser = options.parser ?? TKAnalyticsParser;
   const analyzer = options.analyzer ?? TKAnalyticsAnalyzer;
+  const charts = options.charts ?? TKAnalyticsCharts;
   const html = options.html ?? TKHtml;
   const format = options.format ?? TKFormat;
   let initialized = false;
@@ -74,6 +76,48 @@ function createAnalyticsModule(options = {}) {
         <div class="analytics-bar-value">${escapeHtml(formatYen(channel.gmv))}</div>
       </div>
     `).join('');
+  }
+
+  function renderAdvancedCharts(analysis) {
+    const channelShare = $('#analytics-channel-share');
+    if (channelShare) {
+      channelShare.innerHTML = [
+        charts.buildChannelDonutMarkup({
+          analysis,
+          metric: 'gmv',
+          id: 'analytics-gmv-donut',
+          title: '渠道 GMV 占比',
+          totalLabel: 'GMV',
+          totalValue: formatYen(analysis.kpis.totalGmv),
+          formatValue: formatYen,
+          formatPercent,
+          escapeHtml
+        }),
+        charts.buildChannelDonutMarkup({
+          analysis,
+          metric: 'units',
+          id: 'analytics-units-donut',
+          title: '渠道成交件数占比',
+          totalLabel: '成交件数',
+          totalValue: `${formatInteger(analysis.kpis.totalUnits)} 件`,
+          formatValue: value => `${formatInteger(value)} 件`,
+          formatPercent,
+          escapeHtml
+        })
+      ].join('');
+    }
+
+    const bubble = $('#analytics-bubble-chart');
+    if (bubble) {
+      bubble.innerHTML = charts.buildBubbleChartMarkup({
+        records: analysis.records,
+        formatValue: formatYen,
+        formatInteger,
+        formatPercent,
+        shortenText,
+        escapeHtml
+      });
+    }
   }
 
   function renderFunnel(analysis) {
@@ -204,6 +248,7 @@ function createAnalyticsModule(options = {}) {
     const rowCount = $('#analytics-row-count');
     if (rowCount) rowCount.textContent = `${analysis.records.length} 个商品 · 仅展示前 50`;
     renderKpis(analysis);
+    renderAdvancedCharts(analysis);
     renderChannelGmv(analysis);
     renderFunnel(analysis);
     renderTopProducts(analysis);

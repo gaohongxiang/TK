@@ -1704,6 +1704,12 @@ details[open] summary {
   gap: 16px;
 }
 
+.analytics-insight-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+  gap: 16px;
+}
+
 .analytics-chart-card,
 .analytics-table-card {
   min-width: 0;
@@ -1731,6 +1737,189 @@ details[open] summary {
 .analytics-diagnostics {
   display: grid;
   gap: 12px;
+}
+
+.analytics-channel-share {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.analytics-donut-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel2) 34%, transparent);
+}
+
+.analytics-donut-visual {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+
+.analytics-donut-svg {
+  width: 140px;
+  height: 140px;
+  transform: rotate(0deg);
+}
+
+.analytics-donut-track,
+.analytics-donut-empty-ring {
+  fill: none;
+  stroke: color-mix(in srgb, var(--panel2) 76%, black);
+}
+
+.analytics-donut-segment {
+  fill: none;
+  stroke-linecap: round;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, .16));
+}
+
+.analytics-donut-center {
+  position: absolute;
+  inset: 38px 24px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.analytics-donut-center span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.analytics-donut-center strong {
+  max-width: 92px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+}
+
+.analytics-donut-legend {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.analytics-donut-legend-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.analytics-donut-legend-row span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-donut-legend-row strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.analytics-donut-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.analytics-empty-chart-copy {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.analytics-bubble-chart-wrap {
+  min-height: 260px;
+}
+
+.analytics-bubble-chart {
+  display: grid;
+  gap: 10px;
+}
+
+.analytics-bubble-svg {
+  width: 100%;
+  min-height: 250px;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel2) 28%, transparent), transparent),
+    color-mix(in srgb, var(--panel2) 22%, transparent);
+}
+
+.analytics-bubble-axis,
+.analytics-bubble-grid-line {
+  stroke: color-mix(in srgb, var(--border) 78%, transparent);
+  stroke-width: 1;
+}
+
+.analytics-bubble-grid-line {
+  stroke-dasharray: 5 6;
+  opacity: .68;
+}
+
+.analytics-bubble-point {
+  fill: color-mix(in srgb, var(--accent) 58%, transparent);
+  stroke: color-mix(in srgb, white 64%, var(--accent));
+  stroke-width: 1.5;
+  opacity: .84;
+}
+
+.analytics-bubble-point.is-hero {
+  fill: color-mix(in srgb, #13c2a3 62%, transparent);
+  stroke: #8affcf;
+}
+
+.analytics-bubble-point.is-scale {
+  fill: color-mix(in srgb, #3b82f6 58%, transparent);
+  stroke: #7dd3fc;
+}
+
+.analytics-bubble-point.is-creative {
+  fill: color-mix(in srgb, #f59e0b 58%, transparent);
+  stroke: #ffd166;
+}
+
+.analytics-bubble-point.is-detail {
+  fill: color-mix(in srgb, #ef476f 58%, transparent);
+  stroke: #ff9aa8;
+}
+
+.analytics-bubble-label,
+.analytics-bubble-axis-label {
+  fill: color-mix(in srgb, var(--text) 82%, var(--muted));
+  font-size: 10px;
+  font-weight: 720;
+}
+
+.analytics-bubble-axis-label {
+  fill: var(--muted);
+  font-size: 9.5px;
+}
+
+.analytics-bubble-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .analytics-bar-row {
@@ -4442,8 +4631,13 @@ table.ship td.actual {
   }
 
   .analytics-upload-grid,
+  .analytics-insight-layout,
   .analytics-layout {
     grid-template-columns: 1fr;
+  }
+
+  .analytics-channel-share {
+    grid-template-columns: 1fr 1fr;
   }
 
   .analytics-upload-action {
@@ -4612,6 +4806,34 @@ table.ship td.actual {
 
   .analytics-kpi-grid {
     grid-template-columns: 1fr;
+  }
+
+  .analytics-channel-share {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-donut-card {
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .analytics-donut-visual,
+  .analytics-donut-svg {
+    width: 126px;
+    height: 126px;
+  }
+
+  .analytics-donut-center {
+    inset: 34px 20px;
+  }
+
+  .analytics-bubble-chart-wrap {
+    min-height: 230px;
+  }
+
+  .analytics-bubble-svg {
+    min-height: 220px;
   }
 
   .analytics-upload-grid {

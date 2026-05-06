@@ -6,6 +6,7 @@ const { pathToFileURL } = require('url');
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'table.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 
 assert.match(
   esmSource,
@@ -44,13 +45,13 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  ordersPageSource,
   /id="ot-storage-help-btn"/,
   '订单主面板需要提供数据存储说明入口按钮'
 );
 
 assert.match(
-  indexSource,
+  ordersPageSource,
   /id="ot-summary-container"/,
   '订单主面板需要提供采购统计卡片容器'
 );

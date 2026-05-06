@@ -5,6 +5,7 @@ const assert = require('assert');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const appShellSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
 const calculatorSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'calculator', 'CalculatorApp.tsx'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const productsPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const connectionSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'firestore-connection.mjs'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
@@ -70,7 +71,7 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  ordersPageSource,
   /id="ot-open-connection"/,
   '订单模块未连接时需要提供打开全局连接弹层的按钮'
 );
@@ -160,7 +161,7 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  ordersPageSource,
   /id="ot-user"/,
   '订单卡片内需要保留自己的数据库连接状态展示'
 );

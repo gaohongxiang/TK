@@ -3,42 +3,44 @@ const path = require('path');
 const assert = require('assert');
 
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
+const reactMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'main.tsx'), 'utf8');
 const tabsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'tabs.mjs'), 'utf8');
 const tableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'table.mjs'), 'utf8');
 const tableControlsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'table-controls.mjs'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
 
 assert.match(
-  indexSource,
+  ordersPageSource,
   /id="ot-header-status-row"[\s\S]*id="ot-header-summary-row"[\s\S]*id="ot-header-accounts-row"[\s\S]*id="ot-header-controls-row"/,
   '订单主面板顶部需要拆成状态、统计、账号、控制四层'
 );
 
 assert.match(
-  indexSource,
+  ordersPageSource,
   /id="ot-acc-tabs-all"/,
   '账号区需要提供固定的全部标签容器'
 );
 
 assert.match(
-  indexSource,
+  ordersPageSource,
   /id="ot-acc-tabs-scroll"/,
   '账号区需要提供横向滚动的账号容器'
 );
 
 assert.match(
-  indexSource,
+  ordersPageSource,
   /id="ot-acc-actions"[\s\S]*id="ot-add"/,
   '账号区右侧需要固定显示新增订单按钮'
 );
 
 assert.doesNotMatch(
-  indexSource,
+  ordersPageSource,
   /id="ot-acc-actions"[\s\S]*id="ot-tab-add"/,
   '添加账号按钮不应再放在新增订单旁边'
 );
 
-const statusRowSlice = (indexSource.match(/id="ot-header-status-row"[\s\S]*?id="ot-header-summary-row"/) || [''])[0];
+const statusRowSlice = (ordersPageSource.match(/id="ot-header-status-row"[\s\S]*?id="ot-header-summary-row"/) || [''])[0];
 
 assert.doesNotMatch(
   statusRowSlice,
@@ -54,14 +56,26 @@ assert.match(
 
 assert.match(
   statusRowSlice,
-  /id="ot-refresh"[^>]*aria-label="刷新订单数据"[^>]*>[\s\S]*<svg/,
+  /id="ot-refresh"[\s\S]*aria-label="刷新订单数据"[\s\S]*<RefreshCw/,
   '刷新按钮需要收成图标按钮并保留无障碍名称'
 );
 
 assert.match(
   statusRowSlice,
-  /id="ot-refresh"[\s\S]*A7 7[\s\S]*A7 7/,
-  '刷新图标需要使用断开的双弧线样式，避免头尾连成一圈'
+  /id="ot-refresh"[\s\S]*<RefreshCw/,
+  '刷新图标需要使用 lucide 图标并保持图标按钮形态'
+);
+
+assert.match(
+  ordersPageSource,
+  /data-react-orders-page-ready="true"/,
+  'React 订单页面外壳需要提供可测试的挂载完成标记'
+);
+
+assert.match(
+  reactMainSource,
+  /import \{ OrdersPage \}[\s\S]*getElementById\('view-orders'\)[\s\S]*flushSync\(\(\) => \{[\s\S]*<OrdersPage \/>/,
+  'React 入口需要同步把订单页面外壳挂载到 view-orders，避免旧订单逻辑找不到节点'
 );
 
 assert.match(

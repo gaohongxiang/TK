@@ -2,6 +2,7 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { ReactIsland } from './app/ReactIsland';
 import { CalculatorApp } from './features/calculator/CalculatorApp';
+import { OrdersPage } from './features/orders/OrdersPage';
 import { ProductsPage } from './features/products/ProductsPage';
 import { AppShell } from './layouts/AppShell';
 import './styles.css';
@@ -24,6 +25,16 @@ function mountProductsPage(documentRef: Document = document) {
   if (!root || root.dataset.reactMounted === 'true') return false;
   flushSync(() => {
     createRoot(root).render(<ProductsPage />);
+  });
+  root.dataset.reactMounted = 'true';
+  return true;
+}
+
+function mountOrdersPage(documentRef: Document = document) {
+  const root = documentRef.getElementById('view-orders');
+  if (!root || root.dataset.reactMounted === 'true') return false;
+  flushSync(() => {
+    createRoot(root).render(<OrdersPage />);
   });
   root.dataset.reactMounted = 'true';
   return true;
@@ -98,6 +109,7 @@ function mountReactApps(documentRef: Document = document) {
   return {
     shell: mountAppShell(documentRef),
     calculator: mountCalculator(documentRef),
+    orders: mountOrdersPage(documentRef),
     products: mountProductsPage(documentRef),
     island: mountReactIsland(documentRef),
     analytics
@@ -116,4 +128,4 @@ if (typeof document !== 'undefined') {
   window.addEventListener('hashchange', mountCurrentRoute);
 }
 
-export { isAnalyticsRoute, loadAnalyticsMount, mountAnalyticsWhenNeeded, mountAppShell, mountCalculator, mountProductsPage, mountReactApps, mountReactIsland };
+export { isAnalyticsRoute, loadAnalyticsMount, mountAnalyticsWhenNeeded, mountAppShell, mountCalculator, mountOrdersPage, mountProductsPage, mountReactApps, mountReactIsland };

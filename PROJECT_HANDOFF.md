@@ -26,7 +26,8 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - 工具站提供页面、计算、分析和本地交互能力。
 - 用户业务数据只进入用户自己的 Firebase Firestore。
 - 本站、Cloudflare Pages、未来可能的 Workers 都不保存用户业务数据。
-- 当前原生 JS + Vite ESM 模块体系已稳定；路线一轻模块化和路线二标准模块化主体已完成。下一阶段启动渐进式 React 迁移，先从数据分析页开始，不一次性重写商品/订单。
+- 当前原生 JS + Vite ESM 模块体系已稳定；路线一轻模块化和路线二标准模块化主体已完成。
+- 当前已在 `modern-react-spa` 分支启动完整 React SPA 重建；这是独立现代化分支，不动 `main`，完成验收后再合并。
 
 ## 2. 当前硬性决策
 
@@ -48,9 +49,9 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - Supabase 不应作为 README 中的当前推荐数据源。
 - 如果保留 Supabase 代码，只能作为历史实验或未启用代码，不进入 UI 和注册表活跃路径。
 
-### 2.2 渐进式 React 迁移
+### 2.2 完整 React SPA 重建
 
-用户已确认后续要提高 UI 和数据可视化质量，项目进入渐进式 React 迁移路线。
+用户已确认不要继续局部微调旧页面，项目在 `modern-react-spa` 分支进入完整 React SPA 重建路线。
 
 技术选择：
 
@@ -59,19 +60,23 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - Tailwind CSS。
 - shadcn/ui。
 - ECharts。
-- TanStack Table。
 - lucide-react。
 
 当前选择暂不使用 Next.js。原因是主站仍是静态工具站，用户业务数据在用户自己的 Firebase Firestore，数据分析 Excel 只在浏览器本地解析；当前不需要 SSR、Server Components 或后端 API 路由。先用 Vite React 保持部署边界简单。
 
-迁移原则：
+重建原则：
 
-- 不做一次性全站重写。
-- 第一阶段只迁移数据分析页。
-- 商品管理和订单管理保持现有 ESM/Firebase 运行链路，等数据分析 React 版稳定后再迁。
+- 允许删除旧 DOM、旧全局脚本兼容层和旧 `css/style.css` 视觉体系。
 - 不改变 Firebase 数据结构。
-- 重写订单同步核心。
-- 每完成一小步都跑测试和构建。
+- 不上传或保存用户 Excel 数据。
+- 不引入平台方数据库。
+- 不推 GitHub，不动 `main`，在本地分支完成验收后再合并。
+- 页面显示尽量接近现有线上版本，让用户感知不到架构切换；保留现有导航位置、页面密度、表格信息层级、颜色语义和主要交互位置。
+- 如果调整布局，只做明显提升可读性和操作效率的克制优化，不做大换皮。
+- 先搭 React SPA App Shell 和设计系统，再按利润计算器、数据分析、商品管理、订单管理顺序重建页面。
+- 不改变 Firebase 数据结构。
+- 商品/订单重建时复用现有 Firestore provider 和纯函数，先保证数据兼容，再替换 UI。
+- 每完成一个阶段都跑 `npm test`、`npm run build`、`git diff --check`；大阶段跑 `npm run release:check` 和 Playwright。
 
 ### 2.3 不保存用户数据
 
@@ -86,10 +91,10 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 
 ## 3. 当前仓库状态
 
-当前工作分支：
+当前主重建工作分支：
 
 ```text
-route-2-esm-m1
+modern-react-spa
 ```
 
 当前状态：
@@ -101,7 +106,8 @@ route-2-esm-m1
 - `index.html` 通过 `/src/*.mjs` 加载主站、利润计算器、商品管理、订单管理、数据分析和 Firestore 连接。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前以 `src/*.mjs` 作为唯一主站业务源码。
-- 真实 Firebase 数据手动验收已完成，未发现大问题。当前阶段不要继续扩大架构改造。
+- 真实 Firebase 数据手动验收已完成，未发现大问题。
+- `route-2-esm-m1` 是稳定基线分支；`modern-react-spa` 是完整 React SPA 重建分支。
 
 最近已验证通过：
 
@@ -224,14 +230,13 @@ Build output directory: .vitepress/dist
 | 标准模块化 | 3-5 天 | Vite 原生 ES Modules + `import/export` | 主体已完成，进入真实数据验收期 | 中 | 依赖关系清晰，减少全局变量 |
 | React 渐进迁移 | 1-3 周 | Vite + React + TypeScript + Tailwind + shadcn/ui + ECharts + TanStack Table | 启动规划，先数据分析 | 中高 | UI 质感、图表、表格和长期维护性提升 |
 
-当前原则：
+旧渐进迁移原则已经被 `modern-react-spa` 分支的新路线取代：
 
 - 旧 `js/` 已完成清理，后续不要恢复双入口。
 - 不使用 Next.js，继续保持静态工具站部署方式。
-- 不做全站一次性 React 重写。
-- 第一阶段只迁移数据分析页，因为它不写 Firebase，风险最低，且最需要图表和 UI 组件库。
-- 商品管理第二批，订单管理最后迁移。
-- 每个 React 迁移阶段都必须保留“不上传 Excel、不保存平台方用户数据”的边界。
+- 使用 Vite React SPA，不做 Next.js。
+- 新分支允许全站重建，但显示应尽量保持旧站连续性。
+- 每个 React 重建阶段都必须保留“不上传 Excel、不保存平台方用户数据”的边界。
 
 ## 7. 路线一：轻模块化，1-2 天
 

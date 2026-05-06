@@ -1,10 +1,30 @@
 import { createRoot } from 'react-dom/client';
 import { ReactIsland } from './app/ReactIsland';
+import { CalculatorApp } from './features/calculator/CalculatorApp';
+import { AppShell } from './layouts/AppShell';
 import './styles.css';
 
 type AnalyticsMountModule = typeof import('./features/analytics/mountAnalytics');
 
 let analyticsMountPromise: Promise<AnalyticsMountModule> | null = null;
+let appShellMounted = false;
+
+function mountCalculator(documentRef: Document = document) {
+  const root = documentRef.getElementById('view-calc');
+  if (!root || root.dataset.reactMounted === 'true') return false;
+  createRoot(root).render(<CalculatorApp />);
+  root.dataset.reactMounted = 'true';
+  return true;
+}
+
+function mountAppShell(documentRef: Document = document) {
+  const root = documentRef.getElementById('react-app-shell-root');
+  if (!root || root.dataset.reactMounted === 'true') return false;
+  createRoot(root).render(<AppShell />);
+  root.dataset.reactMounted = 'true';
+  appShellMounted = true;
+  return true;
+}
 
 function mountReactIsland(documentRef: Document = document) {
   const root = documentRef.getElementById('react-island-root');
@@ -64,6 +84,8 @@ async function mountAnalyticsWhenNeeded(documentRef: Document = document) {
 function mountReactApps(documentRef: Document = document) {
   const analytics = mountAnalyticsWhenNeeded(documentRef);
   return {
+    shell: mountAppShell(documentRef),
+    calculator: mountCalculator(documentRef),
     island: mountReactIsland(documentRef),
     analytics
   };
@@ -81,4 +103,4 @@ if (typeof document !== 'undefined') {
   window.addEventListener('hashchange', mountCurrentRoute);
 }
 
-export { isAnalyticsRoute, loadAnalyticsMount, mountAnalyticsWhenNeeded, mountReactApps, mountReactIsland };
+export { isAnalyticsRoute, loadAnalyticsMount, mountAnalyticsWhenNeeded, mountAppShell, mountCalculator, mountReactApps, mountReactIsland };

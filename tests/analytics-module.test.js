@@ -8,6 +8,7 @@ const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'a
 const srcAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
 const srcChartsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'charts.mjs'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
+const reactAppShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
 const reactAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'AnalyticsApp.tsx'), 'utf8');
 const reactAnalyticsMountSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'mountAnalytics.tsx'), 'utf8');
 const reactChartOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'chartOptions.ts'), 'utf8');
@@ -36,9 +37,9 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
-  /data-view="analytics"/,
-  '页面导航需要提供数据分析入口'
+  reactAppShellSource,
+  /key:\s*'analytics'[\s\S]*data-view=\{module\.key\}/,
+  'React AppShell 导航需要提供数据分析入口'
 );
 
 assert.match(

@@ -3,6 +3,8 @@ const path = require('path');
 const assert = require('assert');
 
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const appShellSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
+const calculatorSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'calculator', 'CalculatorApp.tsx'), 'utf8');
 const connectionSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'firestore-connection.mjs'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
 
@@ -79,33 +81,33 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
-  /class="calc-toolbar"[\s\S]*class="calc-subnav"/,
-  '利润计算器需要将模式切换条放在独立的页内工具行里'
+  calculatorSource,
+  /className="calc-toolbar"[\s\S]*className="calc-subnav"/,
+  'React 利润计算器需要将模式切换条放在独立的页内工具行里'
 );
 
 assert.match(
-  indexSource,
-  /class="module-hero page-hero page-hero-calc"/,
-  '利润计算器需要使用更明确的页头容器来承接标题层级'
+  calculatorSource,
+  /className="module-hero page-hero page-hero-calc"/,
+  'React 利润计算器需要使用更明确的页头容器来承接标题层级'
 );
 
 assert.match(
-  indexSource,
-  /class="module-hero-title-row"[\s\S]*<h2>利润计算器<\/h2>[\s\S]*class="module-kicker"/,
-  '页面标题和小字说明需要放进同一行的标题区'
+  calculatorSource,
+  /className="module-hero-title-row"[\s\S]*<h2>利润计算器<\/h2>[\s\S]*className="module-kicker"/,
+  'React 页面标题和小字说明需要放进同一行的标题区'
 );
 
 assert.match(
-  indexSource,
-  /class="module-hero page-hero page-hero-calc"[\s\S]*根据各项参数统一测算售价、利润，以及确定售价复盘实际利润/,
-  '利润计算器说明需要保留在标题区域'
+  calculatorSource,
+  /className="module-hero page-hero page-hero-calc"[\s\S]*根据各项参数统一测算售价、利润，以及确定售价复盘实际利润/,
+  'React 利润计算器说明需要保留在标题区域'
 );
 
 assert.match(
-  indexSource,
-  /class="calc-tabs"[\s\S]*利润复盘[\s\S]*id="calc-help-btn"/,
-  '利润计算器说明图标需要紧跟在利润复盘后面'
+  calculatorSource,
+  /className="calc-tabs"[\s\S]*利润复盘[\s\S]*id="calc-help-btn"/,
+  'React 利润计算器说明图标需要紧跟在利润复盘后面'
 );
 
 assert.match(
@@ -151,9 +153,9 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  indexSource,
-  /<nav class="modules" aria-label="模块导航">/,
-  '顶部仍需保留统一模块导航'
+  appShellSource,
+  /<nav className="modules" aria-label="模块导航">/,
+  '顶部仍需通过 React AppShell 保留统一模块导航'
 );
 
 assert.match(

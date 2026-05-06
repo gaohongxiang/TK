@@ -9,6 +9,7 @@ const srcExportSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'produ
 const srcCrudSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'crud.mjs'), 'utf8');
 const reactProductsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsTable.tsx'), 'utf8');
 const reactProductsMountSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'mountProductsTable.tsx'), 'utf8');
+const reactAppShellSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
 const reactButtonSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
 const reactTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'table.tsx'), 'utf8');
 const configSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'app-config.mjs'), 'utf8');
@@ -95,9 +96,9 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
-  /data-view="products"/,
-  '页面导航需要新增商品库入口'
+  reactAppShellSource,
+  /key:\s*'products'[\s\S]*data-view=\{module\.key\}/,
+  'React AppShell 导航需要新增商品库入口'
 );
 
 assert.match(

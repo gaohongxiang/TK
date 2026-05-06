@@ -145,8 +145,14 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<a class="skip-link" href="#main-content">跳到主要内容<\/a>[\s\S]*<nav class="modules" aria-label="模块导航">[\s\S]*aria-current="page"[\s\S]*<main id="main-content" class="app-main" tabindex="-1">/,
-  '主站需要提供跳转主内容链接、main landmark 和当前导航语义'
+  /<a class="skip-link" href="#main-content">跳到主要内容<\/a>[\s\S]*id="react-app-shell-root"[\s\S]*<main id="main-content" class="app-main" tabindex="-1">/,
+  '主站需要提供跳转主内容链接、React AppShell mount 和 main landmark'
+);
+
+assert.match(
+  fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8'),
+  /<nav className="modules" aria-label="模块导航">[\s\S]*aria-current=\{isActive \? 'page' : undefined\}/,
+  'React AppShell 需要保留统一模块导航和当前导航语义'
 );
 
 assert.match(
@@ -205,8 +211,8 @@ assert.match(
 
 assert.match(
   htmlSource,
-  /<script type="module" src="\/src\/calc\/index\.mjs"><\/script>/,
-  '路线二 M3 利润计算器入口需要由 Vite ESM 模块加载'
+  /id="view-calc" class="view active"><\/div>[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>/,
+  '现代 React SPA 阶段利润计算器需要由 React 入口挂载'
 );
 
 assert.match(

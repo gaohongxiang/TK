@@ -313,7 +313,7 @@ function ProductsTable(options: ProductsTableRenderOptions) {
         <ProductEmptyState hasQuery={hasQuery} activeAccount={activeAccount} />
       ) : (
         <div className="ot-table-inner products-react-table-inner">
-          <table className="ot pl-table products-react-table">
+          <table className={`ot pl-table products-react-table${showAccount ? ' is-all-accounts' : ' is-account-scoped'}`}>
             <colgroup>
               <col className="products-react-col-seq" />
               <col className="products-react-col-image" />

@@ -1563,7 +1563,7 @@ details[open] summary {
 }
 
 .products-react-table-shell {
-  min-width: 860px;
+  min-width: 1080px;
 }
 
 .products-react-table-inner {
@@ -1578,39 +1578,43 @@ details[open] summary {
 }
 
 .products-react-col-seq {
-  width: 58px;
+  width: 54px;
 }
 
 .products-react-col-image {
-  width: 70px;
+  width: 68px;
 }
 
 .products-react-col-account {
-  width: 108px;
+  width: 96px;
 }
 
 .products-react-col-id {
-  width: 118px;
+  width: 180px;
 }
 
 .products-react-col-name {
-  width: auto;
+  width: 30%;
 }
 
 .products-react-col-cargo {
-  width: 82px;
+  width: 78px;
 }
 
 .products-react-col-sku {
-  width: 74px;
+  width: 70px;
 }
 
 .products-react-col-link {
-  width: 88px;
+  width: 82px;
 }
 
 .products-react-col-actions {
-  width: 88px;
+  width: 82px;
+}
+
+.products-react-table.is-account-scoped .products-react-col-name {
+  width: 34%;
 }
 
 .products-react-table th {
@@ -1629,13 +1633,13 @@ details[open] summary {
 .products-react-name-cell div {
   width: 100%;
   max-width: 100%;
-  margin: 0;
+  margin: 0 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 400;
   color: var(--text);
-  text-align: left;
+  text-align: center;
 }
 
 .products-react-id {
@@ -1643,6 +1647,7 @@ details[open] summary {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
 }
 
 .products-react-cargo {
@@ -5068,7 +5073,7 @@ table.ship td.actual {
   }
 
   .products-react-table-shell {
-    min-width: 780px;
+    min-width: 980px;
   }
 
   .products-react-toolbar-inner {

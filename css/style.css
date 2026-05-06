@@ -1030,17 +1030,21 @@ details[open] summary {
 }
 
 .btn.icon-btn {
+  display: inline-flex;
   width: 32px;
   min-width: 32px;
   height: 32px;
   padding: 0;
   align-items: center;
   justify-content: center;
+  line-height: 1;
 }
 
 .btn.icon-btn svg {
   width: 14px;
   height: 14px;
+  display: block;
+  flex: 0 0 auto;
 }
 
 /* —— View switching —— */
@@ -1573,23 +1577,49 @@ details[open] summary {
   table-layout: fixed;
 }
 
-.products-react-table th:nth-child(1),
-.products-react-table td:nth-child(1) {
-  width: 64px;
+.products-react-col-seq {
+  width: 58px;
 }
 
-.products-react-table th:nth-child(2),
-.products-react-table td:nth-child(2) {
-  width: 78px;
+.products-react-col-image {
+  width: 70px;
 }
 
-.products-react-table th:last-child,
-.products-react-table td:last-child {
-  width: 96px;
+.products-react-col-account {
+  width: 108px;
+}
+
+.products-react-col-id {
+  width: 118px;
+}
+
+.products-react-col-name {
+  width: auto;
+}
+
+.products-react-col-cargo {
+  width: 82px;
+}
+
+.products-react-col-sku {
+  width: 74px;
+}
+
+.products-react-col-link {
+  width: 88px;
+}
+
+.products-react-col-actions {
+  width: 88px;
 }
 
 .products-react-table th {
   background: color-mix(in srgb, var(--panel2) 78%, white);
+}
+
+.products-react-table th,
+.products-react-table td {
+  font-weight: 400;
 }
 
 .products-react-row td {
@@ -1597,17 +1627,22 @@ details[open] summary {
 }
 
 .products-react-name-cell div {
-  max-width: 260px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 650;
+  font-weight: 400;
   color: var(--text);
+  text-align: left;
 }
 
 .products-react-id {
-  font-weight: 650;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .products-react-cargo {
@@ -1626,6 +1661,7 @@ details[open] summary {
 .products-react-actions,
 .products-react-link-actions {
   justify-content: center;
+  width: 100%;
 }
 
 .products-react-actions {
@@ -1639,7 +1675,7 @@ details[open] summary {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-weight: 750;
+  font-weight: 400;
   cursor: pointer;
 }
 

@@ -72,6 +72,12 @@ assert.match(
 );
 
 assert.match(
+  viteConfig,
+  /@vitejs\/plugin-react[\s\S]*plugins:\s*\[react\(\)\]/,
+  'React 渐进迁移阶段需要通过 Vite React 插件接入 TSX'
+);
+
+assert.match(
   copyScript,
   /assertExists\(path\.join\(distDir, 'index\.html'\)\)[\s\S]*cp\(path\.join\(root, 'logo\.png'\), path\.join\(distDir, 'logo\.png'\)[\s\S]*assertExists\(path\.join\(distDir, 'logo\.png'\)\)/,
   '构建后需要补充公开分享和 manifest 依赖的稳定 logo.png'
@@ -177,6 +183,12 @@ assert.match(
   htmlSource,
   /<script type="module" src="\/src\/main\.mjs"><\/script>/,
   '路线二主站壳层入口需要由 Vite ESM 模块加载'
+);
+
+assert.match(
+  htmlSource,
+  /id="react-island-root"[\s\S]*<script type="module" src="\/src\/react\/main\.tsx"><\/script>[\s\S]*<script type="module" src="\/src\/main\.mjs"><\/script>/,
+  'React 渐进迁移阶段需要先新增独立 island 入口，且不替换现有主站入口'
 );
 
 assert.doesNotMatch(

@@ -1443,8 +1443,10 @@
   </div>
 
   <div id="toast" class="toast"></div>
+  <div id="react-island-root" hidden></div>
 
   <!-- JS 模块（路由 → 共享基础 → 业务模块；主路由和部分业务入口已由 Vite ESM 加载） -->
+  <script type="module" src="/src/react/main.tsx"></script>
   <script type="module" src="/src/main.mjs"></script>
   <script type="module" src="/src/firestore-connection.mjs"></script>
   <script type="module" src="/src/calc/index.mjs"></script>

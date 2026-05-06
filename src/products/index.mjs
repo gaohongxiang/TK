@@ -112,6 +112,16 @@ function createProductLibrary(options = {}) {
     };
   }
 
+  function notifyProductsChanged(detail = {}) {
+    rootWindow.dispatchEvent?.(new CustomEvent('tk-products-changed', {
+      detail: {
+        source: 'products',
+        projectId: state.firestoreProjectId || '',
+        ...detail
+      }
+    }));
+  }
+
   async function copyLink(link) {
     const text = String(link || '').trim();
     if (!text) {
@@ -254,11 +264,21 @@ function createProductLibrary(options = {}) {
 
   async function saveProduct(product) {
     const result = await provider.upsertProduct(product, { waitForCommit: false });
-    return result?.product || result;
+    const saved = result?.product || result;
+    notifyProductsChanged({ action: 'upsert', tkId: saved?.tkId || product?.tkId || '' });
+    result?.commitPromise?.then(() => {
+      notifyProductsChanged({ action: 'commit', tkId: saved?.tkId || product?.tkId || '' });
+    }).catch(() => {});
+    return saved;
   }
 
   async function deleteProduct(tkId) {
-    return provider.deleteProduct(tkId, { waitForCommit: false });
+    const result = await provider.deleteProduct(tkId, { waitForCommit: false });
+    notifyProductsChanged({ action: 'delete', tkId });
+    result?.commitPromise?.then(() => {
+      notifyProductsChanged({ action: 'commit', tkId });
+    }).catch(() => {});
+    return result;
   }
 
   const crud = crudFactory.create({

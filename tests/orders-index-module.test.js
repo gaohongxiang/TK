@@ -75,6 +75,12 @@ assert.match(
 );
 
 assert.match(
+  source,
+  /addEventListener\?\.\('tk-products-changed'[\s\S]*resetProductCache\(\)[\s\S]*loadProductsForModal\(\{ silent: true, force: true \}\)/,
+  '商品管理新增或删除商品后，订单入口需要清理并强制刷新关联商品缓存'
+);
+
+assert.match(
   htmlSource,
   /<script type="module" src="\/src\/orders\/index\.mjs"><\/script>/,
   'index.html 需要通过 ESM 入口加载订单管理'

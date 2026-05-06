@@ -486,6 +486,12 @@ function createOrderTracker(options = {}) {
     rootWindow.addEventListener?.('tk-firestore-config-changed', () => {
       resetProductCache();
     });
+    rootWindow.addEventListener?.('tk-products-changed', () => {
+      resetProductCache();
+      if (state.remoteProvider) {
+        void loadProductsForModal({ silent: true, force: true });
+      }
+    });
     bindSharedConnectionListener.bound = true;
   }
 

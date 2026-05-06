@@ -75,6 +75,12 @@ assert.match(
 );
 
 assert.match(
+  srcProductsIndexSource,
+  /new CustomEvent\('tk-products-changed'[\s\S]*action: 'upsert'[\s\S]*action: 'delete'/,
+  '商品管理保存或删除商品后需要广播 tk-products-changed，通知订单侧刷新关联商品缓存'
+);
+
+assert.match(
   configSource,
   /key:\s*'products'/,
   '全局配置需要新增商品库模块'

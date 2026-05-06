@@ -1563,7 +1563,7 @@ details[open] summary {
 }
 
 .products-react-table-shell {
-  min-width: 1080px;
+  min-width: 1000px;
 }
 
 .products-react-table-inner {
@@ -1578,47 +1578,47 @@ details[open] summary {
 }
 
 .products-react-col-seq {
-  width: 54px;
+  width: 56px;
 }
 
 .products-react-col-image {
-  width: 68px;
+  width: 72px;
 }
 
 .products-react-col-account {
-  width: 96px;
+  width: 104px;
 }
 
 .products-react-col-id {
-  width: 180px;
+  width: 160px;
 }
 
 .products-react-col-name {
-  width: 30%;
+  width: 28%;
 }
 
 .products-react-col-cargo {
-  width: 78px;
+  width: 84px;
 }
 
 .products-react-col-sku {
-  width: 70px;
+  width: 76px;
 }
 
 .products-react-col-link {
-  width: 82px;
+  width: 90px;
 }
 
 .products-react-col-actions {
-  width: 82px;
+  width: 90px;
 }
 
 .products-react-table.is-account-scoped .products-react-col-name {
-  width: 34%;
+  width: 32%;
 }
 
 .products-react-table th {
-  background: color-mix(in srgb, var(--panel2) 78%, white);
+  background: linear-gradient(180deg, rgba(110, 168, 255, .07), rgba(138, 255, 207, .04));
 }
 
 .products-react-table th,
@@ -5073,7 +5073,7 @@ table.ship td.actual {
   }
 
   .products-react-table-shell {
-    min-width: 980px;
+    min-width: 920px;
   }
 
   .products-react-toolbar-inner {

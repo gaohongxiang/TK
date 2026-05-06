@@ -1654,6 +1654,20 @@ details[open] summary {
   place-items: center;
 }
 
+.analytics-react-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.analytics-react-upload-card {
+  border-color: color-mix(in srgb, var(--accent2) 24%, var(--border));
+}
+
+.analytics-react-empty {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--panel2) 38%, transparent);
+}
+
 .analytics-main {
   display: grid;
   gap: 16px;
@@ -1743,6 +1757,75 @@ details[open] summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.analytics-react-donut-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.analytics-react-chart {
+  min-width: 0;
+}
+
+.analytics-react-donut {
+  height: 278px;
+  padding: 10px 6px 4px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel2) 32%, transparent), transparent),
+    color-mix(in srgb, var(--panel2) 18%, transparent);
+}
+
+.analytics-react-scatter-wrap {
+  min-height: 324px;
+}
+
+.analytics-react-scatter {
+  height: 324px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel2) 32%, transparent), transparent),
+    color-mix(in srgb, var(--panel2) 18%, transparent);
+}
+
+.analytics-react-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.analytics-react-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel2) 28%, transparent);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.analytics-react-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.analytics-react-readable-summary {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .analytics-donut-card {
@@ -4691,7 +4774,8 @@ table.ship td.actual {
     grid-template-columns: 1fr;
   }
 
-  .analytics-channel-share {
+  .analytics-channel-share,
+  .analytics-react-donut-grid {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -4863,7 +4947,8 @@ table.ship td.actual {
     grid-template-columns: 1fr;
   }
 
-  .analytics-channel-share {
+  .analytics-channel-share,
+  .analytics-react-donut-grid {
     grid-template-columns: 1fr;
   }
 
@@ -4887,8 +4972,21 @@ table.ship td.actual {
     min-height: 230px;
   }
 
-  .analytics-bubble-svg {
+  .analytics-react-scatter-wrap {
+    min-height: 260px;
+  }
+
+  .analytics-bubble-svg,
+  .analytics-react-scatter {
     min-height: 220px;
+  }
+
+  .analytics-react-donut {
+    height: 250px;
+  }
+
+  .analytics-react-scatter {
+    height: 260px;
   }
 
   .analytics-bubble-highlights {

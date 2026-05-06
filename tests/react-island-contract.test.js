@@ -69,7 +69,7 @@ assert.match(
 
 assert.match(
   reactMain,
-  /getElementById\('react-island-root'\)[\s\S]*dataset\.reactMounted[\s\S]*createRoot\(root\)\.render/,
+  /getElementById\('react-island-root'\)[\s\S]*dataset\.reactMounted[\s\S]*createRoot\(root\)\.render[\s\S]*mountReactApps/,
   'React 入口需要只挂载独立 island，且避免重复挂载'
 );
 

@@ -96,6 +96,8 @@ route-2-esm-m1
 
 - 路线一轻模块化已完成。
 - 路线二标准 ESM 模块化主体已完成。
+- React 基础设施已接入。
+- 数据分析页已迁到 React + ECharts；`src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 仍作为纯函数来源复用。
 - `index.html` 通过 `/src/*.mjs` 加载主站、利润计算器、商品管理、订单管理、数据分析和 Firestore 连接。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前以 `src/*.mjs` 作为唯一主站业务源码。
@@ -107,7 +109,7 @@ route-2-esm-m1
 npm test
 npm run build
 npm run smoke
-npm run release:check
+npx playwright test tests/e2e/release.spec.js -g "covers calculator" --project=desktop-chromium --project=mobile-chromium
 ```
 
 接手时仍应先跑 `git status --short` 看工作区是否干净；如果准备上线，重新跑 `npm run release:check`。
@@ -845,14 +847,14 @@ src/
 
 目标：让项目能同时运行现有 ESM 页面和 React island。
 
-需要新增依赖：
+已新增依赖：
 
 ```bash
-npm install react react-dom echarts echarts-for-react lucide-react clsx tailwind-merge class-variance-authority tailwindcss-animate
+npm install react react-dom echarts echarts-for-react lucide-react clsx tailwind-merge class-variance-authority tailwindcss-animate tslib
 npm install -D typescript @types/react @types/react-dom @vitejs/plugin-react tailwindcss postcss autoprefixer
 ```
 
-需要新增/调整：
+已新增/调整：
 
 ```text
 tsconfig.json
@@ -869,11 +871,13 @@ src/react/app/ReactIsland.tsx
 - `index.html` 仍保留现有模块 DOM。
 - 只新增一个 React mount 容器，例如 `#analytics-react-root`。
 - React mount 失败不能影响利润计算器、商品管理、订单管理。
-- 旧数据分析入口先保留，等 React 数据分析通过 e2e 后再隐藏或替换。
+- 旧数据分析 ESM 入口保留 provider/纯函数兼容，但页面存在 `#analytics-react-root` 时不再绑定 DOM 事件。
 
 ### 9.5 第二阶段：迁移数据分析页
 
 目标：数据分析页改成 React + shadcn/ui + ECharts。
+
+当前状态：已完成第一版 React 数据分析页。`index.html` 数据分析区域只保留 `#analytics-react-root`，React 上传、KPI、渠道 donut、商品机会 scatter、Top 商品、诊断卡片和明细表已接管页面；Excel 仍只在浏览器内用 SheetJS 解析，不上传、不保存。
 
 范围：
 
@@ -1753,13 +1757,11 @@ local/release-prep-static-site
 
 ## 17. 推荐下一步
 
-当前第一轮轻模块化、Phase 7 文档补齐、正规网站基础项、可访问性基础语义、部署发布指南、浏览器级 Playwright smoke 和路线二标准 ESM 模块化主体都已完成并通过验证。用户已确认下一阶段采用 React + TypeScript + Tailwind + shadcn/ui + ECharts + TanStack Table 渐进迁移。
+当前第一轮轻模块化、Phase 7 文档补齐、正规网站基础项、可访问性基础语义、部署发布指南、浏览器级 Playwright smoke、路线二标准 ESM 模块化主体、React 基础设施和 React 数据分析页第一版都已完成并通过验证。
 
 建议下一步：
 
-1. 先提交本规划更新。
-2. 新建 React 迁移工作包：安装 React/TypeScript/Tailwind/shadcn/ECharts/TanStack 相关依赖。
-3. 新增 React island 基础设施，不改商品/订单。
-4. 第一批只迁数据分析页，用 ECharts 替换手写复杂 SVG 图表。
-5. 数据分析 React 版通过真实 Excel 和 e2e 后，再评估商品管理迁移。
-6. GitHub 推送仍受当前网络影响；如需推送，换网络/VPN 后执行 `TK_ALLOW_PUSH=1 git -c http.version=HTTP/1.1 push origin HEAD:main`。
+1. 用真实 TikTok Shop 商品流量 Excel 手动验收 React 数据分析页，重点看 ECharts tooltip、移动端布局和商品明细表。
+2. 如果真实 Excel 验收没问题，再启动商品管理 React 化；商品管理先迁 UI/表格，不改 Firestore 数据结构。
+3. 订单管理最后迁移，迁移前不要重写订单同步核心。
+4. GitHub 推送仍受当前网络影响；如需推送，换网络/VPN 后执行 `TK_ALLOW_PUSH=1 git -c http.version=HTTP/1.1 push origin HEAD:main`。

@@ -7,6 +7,10 @@ const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'par
 const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'analyzer.mjs'), 'utf8');
 const srcAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
 const srcChartsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'charts.mjs'), 'utf8');
+const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
+const reactAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'AnalyticsApp.tsx'), 'utf8');
+const reactAnalyticsMountSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'mountAnalytics.tsx'), 'utf8');
+const reactChartOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'chartOptions.ts'), 'utf8');
 const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
 const appSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
@@ -45,14 +49,20 @@ assert.match(
 
 assert.match(
   indexSource,
-  /id="analytics-file-input"[^>]*type="file"[^>]*accept="\.xlsx,\.xls"/,
-  '数据分析需要提供 Excel 文件选择入口'
+  /id="analytics-react-root"/,
+  '数据分析页需要提供 React 挂载容器'
 );
 
 assert.match(
-  indexSource,
+  reactAnalyticsSource,
+  /id="analytics-file-input"[^>]*type="file"[^>]*accept="\.xlsx,\.xls"/,
+  'React 数据分析需要提供 Excel 文件选择入口'
+);
+
+assert.match(
+  reactAnalyticsSource,
   /id="analytics-channel-share"[\s\S]*id="analytics-bubble-chart"/,
-  '数据分析需要提供渠道环形图和商品机会气泡图容器'
+  'React 数据分析需要提供渠道环形图和商品机会散点图容器'
 );
 
 assert.match(
@@ -83,6 +93,18 @@ assert.match(
   styleSource,
   /\.analytics-donut-card[\s\S]*\.analytics-donut-segment[\s\S]*\.analytics-bubble-point/,
   '数据分析页需要提供环形图和气泡图样式'
+);
+
+assert.match(
+  styleSource,
+  /\.analytics-react-donut-grid[\s\S]*grid-template-columns:\s*repeat\(2/,
+  'React 数据分析页需要提供 ECharts 双环形图布局'
+);
+
+assert.match(
+  styleSource,
+  /\.analytics-react-scatter[\s\S]*height:\s*324px/,
+  'React 数据分析页需要提供稳定的散点图画布高度'
 );
 
 assert.match(
@@ -189,6 +211,12 @@ assert.match(
 
 assert.match(
   srcAnalyticsSource,
+  /function hasReactAnalyticsRoot\(\)[\s\S]*bindEvents\(\)[\s\S]*hasReactAnalyticsRoot\(\)/,
+  'React 数据分析接管页面后，旧 ESM 入口不应重复绑定 DOM 事件'
+);
+
+assert.match(
+  srcAnalyticsSource,
   /file\.arrayBuffer\(\)/,
   'Excel 文件应在浏览器本地读取'
 );
@@ -200,9 +228,39 @@ assert.match(
 );
 
 assert.doesNotMatch(
-  [srcParserSource, srcAnalyzerSource, srcAnalyticsSource, srcChartsSource].join('\n'),
+  [srcParserSource, srcAnalyzerSource, srcAnalyticsSource, srcChartsSource, reactAnalyticsSource, reactAnalyticsMountSource, reactChartOptionsSource].join('\n'),
   /\bfetch\s*\(|XMLHttpRequest|sendBeacon|firebase|Firestore|localStorage\.setItem/,
   '数据分析相关模块不应上传或持久化用户 Excel 数据'
+);
+
+assert.match(
+  reactMainSource,
+  /import\s+\{\s*mountAnalyticsReact\s*\}[\s\S]*function mountReactApps\(/,
+  'React 入口需要挂载数据分析模块'
+);
+
+assert.match(
+  reactAnalyticsMountSource,
+  /getElementById\('analytics-react-root'\)[\s\S]*createRoot\(root\)[\s\S]*<AnalyticsApp/,
+  'React 数据分析需要挂载到独立根节点'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /import ReactECharts from 'echarts-for-react'/,
+  'React 数据分析需要使用 ECharts React 封装渲染图表'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /data-react-analytics-ready="true"[\s\S]*getXlsx\?\.\(\)/,
+  'React 数据分析需要暴露就绪标记并延迟读取 SheetJS'
+);
+
+assert.match(
+  reactChartOptionsSource,
+  /type:\s*'pie'[\s\S]*type:\s*'scatter'/,
+  'React 数据分析需要用 ECharts 饼图和散点图替代旧手写气泡图'
 );
 
 assert.match(

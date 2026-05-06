@@ -25,6 +25,10 @@ function createAnalyticsModule(options = {}) {
   const formatPercent = (value, digits = 2) => format.percent(value, digits);
   const shortenText = (value, max = 46) => html.shorten(value, max);
 
+  function hasReactAnalyticsRoot() {
+    return Boolean($('#analytics-react-root'));
+  }
+
   function showToast(message, type = 'ok') {
     const toast = $('#toast');
     if (!toast) return;
@@ -279,6 +283,7 @@ function createAnalyticsModule(options = {}) {
   }
 
   function bindEvents() {
+    if (hasReactAnalyticsRoot()) return;
     if (initialized) return;
     initialized = true;
     const input = $('#analytics-file-input');
@@ -291,6 +296,7 @@ function createAnalyticsModule(options = {}) {
   }
 
   function onEnter() {
+    if (hasReactAnalyticsRoot()) return;
     bindEvents();
     if (currentAnalysis) renderAnalysis(currentAnalysis);
   }

@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { ReactIsland } from './app/ReactIsland';
+import { mountAnalyticsReact } from './features/analytics/mountAnalytics';
 
 function mountReactIsland(documentRef: Document = document) {
   const root = documentRef.getElementById('react-island-root');
@@ -9,12 +10,19 @@ function mountReactIsland(documentRef: Document = document) {
   return true;
 }
 
+function mountReactApps(documentRef: Document = document) {
+  return {
+    island: mountReactIsland(documentRef),
+    analytics: mountAnalyticsReact(documentRef)
+  };
+}
+
 if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => mountReactIsland(), { once: true });
+    document.addEventListener('DOMContentLoaded', () => mountReactApps(), { once: true });
   } else {
-    mountReactIsland();
+    mountReactApps();
   }
 }
 
-export { mountReactIsland };
+export { mountReactApps, mountReactIsland };

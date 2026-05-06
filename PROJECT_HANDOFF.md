@@ -97,7 +97,7 @@ route-2-esm-m1
 - 路线一轻模块化已完成。
 - 路线二标准 ESM 模块化主体已完成。
 - React 基础设施已接入。
-- 数据分析页已迁到 React + ECharts；`src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 仍作为纯函数来源复用。
+- 数据分析页已迁到 React + ECharts，并完成首轮图表体验和懒加载优化；`src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 仍作为纯函数来源复用。
 - `index.html` 通过 `/src/*.mjs` 加载主站、利润计算器、商品管理、订单管理、数据分析和 Firestore 连接。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前以 `src/*.mjs` 作为唯一主站业务源码。
@@ -877,7 +877,16 @@ src/react/app/ReactIsland.tsx
 
 目标：数据分析页改成 React + shadcn/ui + ECharts。
 
-当前状态：已完成第一版 React 数据分析页。`index.html` 数据分析区域只保留 `#analytics-react-root`，React 上传、KPI、渠道 donut、商品机会 scatter、Top 商品、诊断卡片和明细表已接管页面；Excel 仍只在浏览器内用 SheetJS 解析，不上传、不保存。
+当前状态：已完成 React 数据分析页首轮迁移和体验优化。`index.html` 数据分析区域只保留 `#analytics-react-root`，React 上传、KPI、运营总览、商品机会 scatter、Top 商品、诊断卡片和明细表已接管页面；Excel 仍只在浏览器内用 SheetJS 解析，不上传、不保存。
+
+已完成优化：
+
+- 数据分析只在进入 `#analytics` 时按需加载，避免首页提前加载 ECharts。
+- ECharts 使用 core 入口并只注册 `pie`、`funnel`、`scatter` 等实际图表。
+- Vite 已把 `echarts-core` 和 `echarts-react` 拆成独立 lazy chunk。
+- 运营总览把渠道 GMV donut 和流量漏斗合并到一个 ECharts canvas，下方保留可读漏斗摘要。
+- 商品机会图改成 ECharts scatter，避免旧手写 SVG 气泡图的文字重叠问题。
+- 客单价展示为 `円/单`，件均展示为 `円/件`，避免两个价格指标含义混淆。
 
 范围：
 
@@ -898,10 +907,9 @@ src/react/app/ReactIsland.tsx
 
 ECharts 图表：
 
-- 渠道 GMV：`pie` + radius 做 donut。
-- 成交件数：`pie` + radius 做 donut。
+- 运营总览：`pie` donut 展示渠道 GMV 结构，`funnel` 展示曝光、点击、加购、订单、成交件数。
 - 商品机会图：`scatter`，x=曝光，y=转化率，symbolSize=GMV，tooltip 展示商品名、GMV、订单、曝光、诊断。
-- 后续可加 visualMap 和象限线。
+- 后续只在真实 Excel 反馈明确时再微调 visualMap、象限线或筛选交互，避免过度设计。
 
 ### 9.6 第三阶段：商品管理 React 化
 
@@ -995,6 +1003,12 @@ npm run release:check
 - 数据仍只在浏览器内解析。
 - e2e 覆盖数据分析导入和图表渲染。
 - 旧手写复杂图表逻辑可删除或停止加载。
+
+当前数据分析 React 化状态：
+
+- 自动测试、构建、smoke 和关键浏览器 e2e 已通过。
+- 已用按需加载避免 ECharts 进入首页首包；当前 ECharts vendor chunk 约 532 kB，gzip 约 178 kB，只在数据分析页加载。
+- 仍建议用户用真实 TikTok Shop 商品流量 Excel 再看一次移动端布局和 tooltip 体验；如果没有明显问题，就可以进入商品管理 React 化。
 
 ## 10. 当前执行阶段细化
 
@@ -1632,7 +1646,7 @@ npm run release:check
 - 数据分析：导入一份 TikTok Shop 商品流量 Excel，确认渠道表现、Top 商品、漏斗和诊断标签能正常生成。
 - 静态页：打开 `/privacy.html`、`/terms.html`、`/404.html`，确认样式和链接正常。
 
-当前已进入 React 渐进迁移规划期。不要一次性重写全站；第一阶段只允许新增 React 基础设施和迁移数据分析页。
+当前已进入 React 渐进迁移期。React 基础设施和数据分析页首轮迁移已完成；下一步如继续开发，应优先做商品管理 React 化，订单管理仍最后迁移。不要一次性重写全站。
 
 ## 14. 风险清单
 
@@ -1757,11 +1771,12 @@ local/release-prep-static-site
 
 ## 17. 推荐下一步
 
-当前第一轮轻模块化、Phase 7 文档补齐、正规网站基础项、可访问性基础语义、部署发布指南、浏览器级 Playwright smoke、路线二标准 ESM 模块化主体、React 基础设施和 React 数据分析页第一版都已完成并通过验证。
+当前第一轮轻模块化、Phase 7 文档补齐、正规网站基础项、可访问性基础语义、部署发布指南、浏览器级 Playwright smoke、路线二标准 ESM 模块化主体、React 基础设施、React 数据分析页首轮迁移和 ECharts 懒加载优化都已完成并通过验证。
 
 建议下一步：
 
-1. 用真实 TikTok Shop 商品流量 Excel 手动验收 React 数据分析页，重点看 ECharts tooltip、移动端布局和商品明细表。
-2. 如果真实 Excel 验收没问题，再启动商品管理 React 化；商品管理先迁 UI/表格，不改 Firestore 数据结构。
-3. 订单管理最后迁移，迁移前不要重写订单同步核心。
-4. GitHub 推送仍受当前网络影响；如需推送，换网络/VPN 后执行 `TK_ALLOW_PUSH=1 git -c http.version=HTTP/1.1 push origin HEAD:main`。
+1. 准备上线或推送前重新跑 `npm run release:check`，确认文档、构建、smoke 和 e2e 仍全部通过。
+2. 用真实 TikTok Shop 商品流量 Excel 手动验收 React 数据分析页，重点看 ECharts tooltip、移动端布局和商品明细表。
+3. 如果真实 Excel 验收没问题，再启动商品管理 React 化；商品管理先迁 UI/表格，不改 Firestore 数据结构。
+4. 订单管理最后迁移，迁移前不要重写订单同步核心。
+5. GitHub 推送仍受当前网络影响；如需推送，换网络/VPN 后执行 `TK_ALLOW_PUSH=1 git -c http.version=HTTP/1.1 push origin HEAD:main`。

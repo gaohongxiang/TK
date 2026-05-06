@@ -3,16 +3,9 @@ const path = require('path');
 const assert = require('assert');
 
 const root = path.join(__dirname, '..');
-const configSource = fs.readFileSync(path.join(root, 'js', 'app-config.js'), 'utf8');
 const srcConfigSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
 const srcMainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-
-assert.match(
-  configSource,
-  /const TKAppConfig = Object\.freeze\(/,
-  '需要项目级配置对象'
-);
 
 assert.match(
   srcConfigSource,
@@ -21,7 +14,7 @@ assert.match(
 );
 
 assert.match(
-  configSource,
+  srcConfigSource,
   /officialDataSource:\s*'firestore'/,
   '正式数据源需要明确为 Firestore'
 );

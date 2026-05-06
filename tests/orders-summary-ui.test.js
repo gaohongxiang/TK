@@ -1,19 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const vm = require('vm');
 const { pathToFileURL } = require('url');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'table.js'), 'utf8');
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'table.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-
-assert.match(
-  source,
-  /function derivePurchaseSummary\(/,
-  '订单表格视图模块需要暴露采购金额统计纯函数'
-);
 
 assert.match(
   esmSource,
@@ -22,31 +14,31 @@ assert.match(
 );
 
 assert.match(
-  source,
+  esmSource,
   /function formatCurrencyAmount\(/,
   '订单表格视图模块需要暴露金额格式化函数'
 );
 
 assert.match(
-  source,
+  esmSource,
   /function formatSummaryMetric\(/,
   '订单表格视图模块需要暴露汇总金额显示格式化函数'
 );
 
 assert.match(
-  source,
+  esmSource,
   /function getSummaryTone\(/,
   '订单表格视图模块需要暴露汇总颜色判断函数'
 );
 
 assert.match(
-  source,
+  esmSource,
   /function buildCurrentFilterTitle\(/,
   '订单表格视图模块需要根据账号和搜索条件拼出当前筛选标题'
 );
 
 assert.match(
-  source,
+  esmSource,
   /ot-th-help/,
   '订单表头需要包含帮助提示图标结构'
 );
@@ -69,10 +61,6 @@ assert.match(
   '订单主面板需要提供数据存储说明弹窗'
 );
 
-const sandbox = {};
-vm.createContext(sandbox);
-vm.runInContext(`${source}\nthis.OrderTableView = OrderTableView;`, sandbox);
-
 const orders = [
   { id: '1', '账号': 'A', '产品名称': '红色杯子', '采购价格': '12.5', '售价': '598', '预估运费': '10', '预估利润': '999' },
   { id: '2', '账号': 'B', '产品名称': '蓝色盘子', '采购价格': '7', '售价': '360', '预估运费': '5.5', '预估利润': '999' },
@@ -80,190 +68,34 @@ const orders = [
   { id: '4', '账号': 'B', '产品名称': '异常价格', '采购价格': 'abc', '售价': '', '预估运费': '', '预估利润': '' }
 ];
 
-const summary = sandbox.OrderTableView.derivePurchaseSummary({
-  orders,
-  activeAccount: 'B',
-  searchQuery: '蓝色',
-  exchangeRate: 20,
-  currentPage: 2,
-  pageSize: 1
-});
-
-assert.equal(summary.filteredCount, 2, '当前筛选条数应按账号和搜索条件统计');
-assert.equal(summary.filteredTotal, 15.25, '当前筛选总额应按筛选结果统计，且不受分页影响');
-assert.equal(summary.allTotal, 27.75, '全部订单总额应按全量订单统计，非法价格按 0 处理');
-assert.equal(summary.filteredSaleTotal, 39, '当前筛选总销售额应按汇率折算后统计');
-assert.equal(summary.allSaleTotal, 68.9, '全部总销售额应按汇率折算后统计');
-assert.equal(summary.filteredShippingTotal, 12, '当前筛选预估运费总额应按筛选结果统计');
-assert.equal(summary.allShippingTotal, 22, '全部预估运费总额应按全量订单统计');
-assert.equal(summary.filteredProfitTotal, 11.75, '当前筛选预估总利润应按汇率折算后统计');
-assert.equal(summary.allProfitTotal, 19.15, '全部预估总利润应按汇率折算后统计');
-assert.equal(
-  sandbox.OrderTableView.formatSummaryMetric(summary.filteredProfitMetric),
-  '¥ 11.75',
-  '有数据时汇总金额应正常格式化'
-);
-assert.equal(
-  sandbox.OrderTableView.formatSummaryMetric({ total: 0, count: 1 }),
-  '¥ 0.00',
-  '有真实数据且结果为 0 时应显示 0'
-);
-assert.equal(
-  sandbox.OrderTableView.formatSummaryMetric({ total: 0, count: 0 }),
-  '-',
-  '无数据时汇总金额应显示为 -'
-);
-assert.equal(
-  sandbox.OrderTableView.formatSummaryMetric({ total: Number.NaN, count: 1 }),
-  '-',
-  '无效金额不应被兜底显示为 0'
-);
-assert.equal(
-  sandbox.OrderTableView.getSummaryTone(summary.filteredSaleMetric, 'income'),
-  'income',
-  '收入汇总应使用收入色'
-);
-assert.equal(
-  sandbox.OrderTableView.getSummaryTone(summary.filteredProfitMetric, 'profit'),
-  'profit-positive',
-  '正利润汇总应使用绿色'
-);
-assert.equal(
-  sandbox.OrderTableView.getSummaryTone({ total: -5, count: 1 }, 'profit'),
-  'profit-negative',
-  '负利润汇总应使用红色'
-);
-assert.equal(
-  sandbox.OrderTableView.formatCurrencyAmount(summary.filteredTotal),
-  '¥ 15.25',
-  '金额格式化结果不正确'
-);
-
-assert.equal(
-  sandbox.OrderTableView.buildCurrentFilterTitle('B', '蓝色'),
-  '当前筛选 · 账号：B · 搜索：蓝色',
-  '当前筛选标题应同步显示账号和搜索条件'
-);
-
-assert.equal(
-  sandbox.OrderTableView.buildCurrentFilterTitle('__all__', ''),
-  '当前筛选',
-  '没有筛选条件时不应额外拼接说明'
-);
-
 assert.match(
-  source,
+  esmSource,
   /return `采购 \$\{purchaseText\} · 运费 \$\{shippingText\} · 达人 \$\{creatorText\}`;/,
   '统计卡片需要按收入和支出组织汇总信息，并把达人佣金计入支出'
 );
 
 assert.match(
-  source,
+  esmSource,
   /销售 \$\{grossText\} - 退款 \$\{refundText\}/,
   '有退款时，收入说明需要写成总销售额减总退款额'
 );
 
 assert.match(
-  source,
+  esmSource,
   /含 \$\{refundMetric\.count\} 条退款/,
   '统计说明需要补充退款订单条数'
 );
 
 assert.match(
-  source,
+  esmSource,
   /ot-summary-hero[\s\S]*预估总利润/,
   '统计卡片需要把预估利润总额放进独立主区'
 );
 
 assert.match(
-  source,
+  esmSource,
   /formatSummaryMetric\(summary\.filteredProfitMetric\)[\s\S]*formatSummaryMetric\(summary\.filteredSaleMetric\)/,
   '统计卡片中的预估总利润和总销售额应直接按有效数据渲染'
-);
-
-const zeroSaleSummary = sandbox.OrderTableView.derivePurchaseSummary({
-  orders: [
-    { id: 'zero-sale', '账号': 'A', '售价': '0', '采购价格': '', '预估运费': '' }
-  ],
-  activeAccount: '__all__',
-  searchQuery: '',
-  exchangeRate: 20
-});
-
-assert.equal(
-  sandbox.OrderTableView.formatSummaryMetric(zeroSaleSummary.allSaleMetric),
-  '-',
-  '售价为 0 时应按未录入处理，汇总收入应显示为 -'
-);
-
-assert.equal(
-  sandbox.OrderTableView.formatSummaryMetric(zeroSaleSummary.allProfitMetric),
-  '-',
-  '售价为 0 时应按未录入处理，汇总利润应显示为 -'
-);
-
-const expenseOnlySummary = sandbox.OrderTableView.derivePurchaseSummary({
-  orders: [
-    { id: 'expense-only', '账号': 'A', '售价': '', '采购价格': '10', '预估运费': '2' }
-  ],
-  activeAccount: '__all__',
-  searchQuery: '',
-  exchangeRate: 20
-});
-
-assert.equal(
-  expenseOnlySummary.allProfitTotal,
-  -12,
-  '摘要区总利润应按总收入减总支出计算'
-);
-
-assert.equal(
-  sandbox.OrderTableView.formatSummaryMetric(expenseOnlySummary.allProfitMetric),
-  '¥ -12.00',
-  '只有支出时，总利润应反映为负数'
-);
-
-const refundedSummary = sandbox.OrderTableView.derivePurchaseSummary({
-  orders: [
-    { id: 'refunded-1', '账号': 'A', '售价': '500', '是否退款': '1', '采购价格': '10', '预估运费': '2' },
-    { id: 'normal-1', '账号': 'A', '售价': '300', '采购价格': '5', '预估运费': '1' }
-  ],
-  activeAccount: '__all__',
-  searchQuery: '',
-  exchangeRate: 20
-});
-
-assert.equal(
-  refundedSummary.allRefundMetric.total,
-  25,
-  '退款汇总应按退款订单折算后的收入口径统计'
-);
-
-assert.equal(
-  refundedSummary.allRefundMetric.count,
-  1,
-  '退款汇总应统计退款订单条数'
-);
-
-const creatorCommissionSummary = sandbox.OrderTableView.derivePurchaseSummary({
-  orders: [
-    { id: 'creator-1', '账号': 'A', '售价': '1000', '达人佣金率': '10', '采购价格': '20', '预估运费': '5' }
-  ],
-  activeAccount: '__all__',
-  searchQuery: '',
-  exchangeRate: 20
-});
-
-assert.equal(
-  creatorCommissionSummary.allCreatorCommissionMetric.total,
-  5,
-  '达人佣金汇总应按订单总售价百分比折算后统计'
-);
-
-assert.equal(
-  creatorCommissionSummary.allProfitTotal,
-  20,
-  '摘要区总利润应扣除达人佣金'
 );
 
 function toPlain(value) {
@@ -272,7 +104,7 @@ function toPlain(value) {
 
 (async () => {
   const tableModule = await import(pathToFileURL(esmPath).href);
-  const esmSummary = tableModule.OrderTableView.derivePurchaseSummary({
+  const summary = tableModule.OrderTableView.derivePurchaseSummary({
     orders,
     activeAccount: 'B',
     searchQuery: '蓝色',
@@ -281,10 +113,84 @@ function toPlain(value) {
     pageSize: 1
   });
 
+  assert.equal(summary.filteredCount, 2, '当前筛选条数应按账号和搜索条件统计');
+  assert.equal(summary.filteredTotal, 15.25, '当前筛选总额应按筛选结果统计，且不受分页影响');
+  assert.equal(summary.allTotal, 27.75, '全部订单总额应按全量订单统计，非法价格按 0 处理');
+  assert.equal(summary.filteredSaleTotal, 39, '当前筛选总销售额应按汇率折算后统计');
+  assert.equal(summary.allSaleTotal, 68.9, '全部总销售额应按汇率折算后统计');
+  assert.equal(summary.filteredShippingTotal, 12, '当前筛选预估运费总额应按筛选结果统计');
+  assert.equal(summary.allShippingTotal, 22, '全部预估运费总额应按全量订单统计');
+  assert.equal(summary.filteredProfitTotal, 11.75, '当前筛选预估总利润应按汇率折算后统计');
+  assert.equal(summary.allProfitTotal, 19.15, '全部预估总利润应按汇率折算后统计');
+  assert.equal(tableModule.formatSummaryMetric(summary.filteredProfitMetric), '¥ 11.75', '有数据时汇总金额应正常格式化');
+  assert.equal(tableModule.formatSummaryMetric({ total: 0, count: 1 }), '¥ 0.00', '有真实数据且结果为 0 时应显示 0');
+  assert.equal(tableModule.formatSummaryMetric({ total: 0, count: 0 }), '-', '无数据时汇总金额应显示为 -');
+  assert.equal(tableModule.formatSummaryMetric({ total: Number.NaN, count: 1 }), '-', '无效金额不应被兜底显示为 0');
+  assert.equal(tableModule.getSummaryTone(summary.filteredSaleMetric, 'income'), 'income', '收入汇总应使用收入色');
+  assert.equal(tableModule.getSummaryTone(summary.filteredProfitMetric, 'profit'), 'profit-positive', '正利润汇总应使用绿色');
+  assert.equal(tableModule.getSummaryTone({ total: -5, count: 1 }, 'profit'), 'profit-negative', '负利润汇总应使用红色');
+  assert.equal(tableModule.formatCurrencyAmount(summary.filteredTotal), '¥ 15.25', '金额格式化结果不正确');
+  assert.equal(tableModule.buildCurrentFilterTitle('B', '蓝色'), '当前筛选 · 账号：B · 搜索：蓝色', '当前筛选标题应同步显示账号和搜索条件');
+  assert.equal(tableModule.buildCurrentFilterTitle('__all__', ''), '当前筛选', '没有筛选条件时不应额外拼接说明');
+
+  const zeroSaleSummary = tableModule.OrderTableView.derivePurchaseSummary({
+    orders: [
+      { id: 'zero-sale', '账号': 'A', '售价': '0', '采购价格': '', '预估运费': '' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '',
+    exchangeRate: 20
+  });
+
+  assert.equal(tableModule.formatSummaryMetric(zeroSaleSummary.allSaleMetric), '-', '售价为 0 时应按未录入处理，汇总收入应显示为 -');
+  assert.equal(tableModule.formatSummaryMetric(zeroSaleSummary.allProfitMetric), '-', '售价为 0 时应按未录入处理，汇总利润应显示为 -');
+
+  const expenseOnlySummary = tableModule.OrderTableView.derivePurchaseSummary({
+    orders: [
+      { id: 'expense-only', '账号': 'A', '售价': '', '采购价格': '10', '预估运费': '2' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '',
+    exchangeRate: 20
+  });
+
+  assert.equal(expenseOnlySummary.allProfitTotal, -12, '摘要区总利润应按总收入减总支出计算');
+  assert.equal(tableModule.formatSummaryMetric(expenseOnlySummary.allProfitMetric), '¥ -12.00', '只有支出时，总利润应反映为负数');
+
+  const refundedSummary = tableModule.OrderTableView.derivePurchaseSummary({
+    orders: [
+      { id: 'refunded-1', '账号': 'A', '售价': '500', '是否退款': '1', '采购价格': '10', '预估运费': '2' },
+      { id: 'normal-1', '账号': 'A', '售价': '300', '采购价格': '5', '预估运费': '1' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '',
+    exchangeRate: 20
+  });
+
+  assert.equal(refundedSummary.allRefundMetric.total, 25, '退款汇总应按退款订单折算后的收入口径统计');
+  assert.equal(refundedSummary.allRefundMetric.count, 1, '退款汇总应统计退款订单条数');
+
+  const creatorCommissionSummary = tableModule.OrderTableView.derivePurchaseSummary({
+    orders: [
+      { id: 'creator-1', '账号': 'A', '售价': '1000', '达人佣金率': '10', '采购价格': '20', '预估运费': '5' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '',
+    exchangeRate: 20
+  });
+
+  assert.equal(creatorCommissionSummary.allCreatorCommissionMetric.total, 5, '达人佣金汇总应按订单总售价百分比折算后统计');
+  assert.equal(creatorCommissionSummary.allProfitTotal, 20, '摘要区总利润应扣除达人佣金');
+
   assert.deepEqual(
-    toPlain(esmSummary),
     toPlain(summary),
-    'ESM 订单表格摘要统计应和旧模块一致'
+    toPlain(tableModule.derivePurchaseSummary({
+      orders,
+      activeAccount: 'B',
+      searchQuery: '蓝色',
+      exchangeRate: 20
+    })),
+    'ESM 订单表格摘要统计应保持稳定'
   );
 
   assert.equal(

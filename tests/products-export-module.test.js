@@ -1,49 +1,40 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const vm = require('vm');
 
 const root = path.join(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'js', 'products', 'export.js'), 'utf8');
-const indexSource = fs.readFileSync(path.join(root, 'js', 'products', 'index.js'), 'utf8');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'products', 'export.mjs'), 'utf8');
 const srcIndexSource = fs.readFileSync(path.join(root, 'src', 'products', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
-  source,
-  /const ProductLibraryExport = \(function \(\) \{/,
-  '商品库需要独立的导出模块'
-);
-
-assert.match(
-  source,
+  srcSource,
   /function promptProductExportAccounts\(/,
-  '商品导出模块需要负责账号选择流程'
+  '商品导出 ESM 模块需要负责账号选择流程'
 );
 
 assert.match(
-  source,
+  srcSource,
   /function buildProductExportRows\(/,
-  '商品导出模块需要负责 CSV 行构建'
+  '商品导出 ESM 模块需要负责 CSV 行构建'
 );
 
 assert.match(
-  source,
+  srcSource,
   /async function exportProductsCsv\(/,
-  '商品导出模块需要暴露 CSV 导出入口'
+  '商品导出 ESM 模块需要暴露 CSV 导出入口'
 );
 
 assert.match(
-  source,
+  srcSource,
   /getDisplayedProducts\(\{\s*activeAccount:\s*'__all__'\s*\}\)/,
-  '商品导出需要复用当前搜索筛选后的全账号结果'
+  '商品导出 ESM 需要复用当前搜索筛选后的全账号结果'
 );
 
 assert.match(
-  indexSource,
-  /ProductLibraryExport\.create\(/,
-  '商品库入口需要接入导出模块'
+  srcIndexSource,
+  /exportFactory\.create\(/,
+  '商品 ESM 入口需要接入导出模块'
 );
 
 assert.match(
@@ -77,14 +68,10 @@ assert.doesNotMatch(
 );
 
 assert.doesNotMatch(
-  indexSource,
+  srcIndexSource,
   /function promptProductExportAccounts\(|function buildProductExportRows\(|function exportProductsCsv\(/,
-  '商品库入口不应继续内联 CSV 导出实现'
+  '商品 ESM 入口不应继续内联 CSV 导出实现'
 );
-
-const sandbox = {};
-vm.createContext(sandbox);
-vm.runInContext(`${source}\nthis.ProductLibraryExport = ProductLibraryExport;`, sandbox);
 
 const state = {
   accounts: ['A'],
@@ -118,29 +105,6 @@ function exporterInputProducts() {
   ];
 }
 
-const exporter = sandbox.ProductLibraryExport.create({
-  state,
-  helpers: {
-    getDisplayedProducts: exporterInputProducts,
-    normalizeAccountName: value => String(value || '').trim(),
-    toAccountSlot: value => String(value || '').trim() || '__unassigned__',
-    uniqueAccounts: values => [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))]
-  }
-});
-
-const options = exporter.getProductExportAccountOptions();
-assert.deepStrictEqual(
-  options.map(option => option.key),
-  ['A', '__unassigned__'],
-  '商品导出账号选项需要包含已关联和未关联商品'
-);
-
-const rows = exporter.buildProductExportRows(new Set(['A', '__unassigned__']));
-assert.strictEqual(rows.length, 3, '商品导出需要按 SKU 展开行，并包含无 SKU 商品');
-assert.strictEqual(rows[0][4], '白 / S', '导出行需要包含 SKU 名称');
-assert.strictEqual(rows[0][7], '10×8×6', '继承默认参数的 SKU 需要导出商品默认尺寸');
-assert.strictEqual(rows[2][0], '', '未关联账号商品导出账号列应为空');
-
 function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -160,15 +124,28 @@ function plain(value) {
       uniqueAccounts: values => [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))]
     }
   });
+  const options = esmExporter.getProductExportAccountOptions();
+  assert.deepStrictEqual(
+    options.map(option => option.key),
+    ['A', '__unassigned__'],
+    '商品导出 ESM 账号选项需要包含已关联和未关联商品'
+  );
+
+  const rows = esmExporter.buildProductExportRows(new Set(['A', '__unassigned__']));
+  assert.strictEqual(rows.length, 3, '商品导出 ESM 需要按 SKU 展开行，并包含无 SKU 商品');
+  assert.strictEqual(rows[0][4], '白 / S', '商品导出 ESM 行需要包含 SKU 名称');
+  assert.strictEqual(rows[0][7], '10×8×6', '商品导出 ESM 继承默认参数的 SKU 需要导出商品默认尺寸');
+  assert.strictEqual(rows[2][0], '', '商品导出 ESM 未关联账号商品导出账号列应为空');
+
   assert.deepStrictEqual(
     plain(esmExporter.getProductExportAccountOptions()),
     plain(options),
-    '商品导出 ESM 账号选项需要保持旧模块行为'
+    '商品导出 ESM 账号选项需要保持稳定'
   );
   assert.deepStrictEqual(
     plain(esmExporter.buildProductExportRows(new Set(['A', '__unassigned__']))),
     plain(rows),
-    '商品导出 ESM 行构建需要保持旧模块行为'
+    '商品导出 ESM 行构建需要保持稳定'
   );
 
   console.log('products export module contract ok');

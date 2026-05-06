@@ -1,27 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const vm = require('vm');
 const { pathToFileURL } = require('url');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'session.js'), 'utf8');
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'session.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const syncSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'sync.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-
-assert.match(
-  source,
-  /const OrderTrackerSession = \(function \(\) \{/,
-  '需要新的订单会话模块'
-);
-
-assert.match(
-  source,
-  /function create\(/,
-  '订单会话模块需要暴露 create 工厂'
-);
 
 assert.match(
   esmSource,
@@ -48,82 +34,40 @@ assert.match(
 );
 
 assert.match(
-  source,
-  /window\.TKFirestoreConnection/,
+  esmSource,
+  /rootWindow\?\.TKFirestoreConnection/,
   '订单会话模块需要通过全局 Firestore 连接模块读取配置'
 );
 
 assert.doesNotMatch(
-  source,
+  esmSource,
   /gist|storageMode|parseConfigInput\(|connectOrMigrateFirestore|ot-migrate-from-gist|input\[name="ot-storage-mode"\]/,
   '订单会话模块不应再保留 Gist 迁移或存储模式切换逻辑'
 );
 
 assert.match(
-  source,
+  esmSource,
   /tk-firestore-config-changed/,
   '订单会话模块需要监听全局 Firestore 配置变化事件'
 );
 
 assert.match(
-  source,
+  esmSource,
   /#ot-open-connection/,
   '订单会话模块需要绑定未连接状态下的打开连接按钮'
 );
 
 assert.match(
-  source,
-  /classList\.add\('is-spinning'\)[\s\S]*syncNow[\s\S]*classList\.remove\('is-spinning'\)/,
+  esmSource,
+  /setRefreshButtonLoading\(refreshBtn,\s*true\)[\s\S]*syncNow[\s\S]*setRefreshButtonLoading\(refreshBtn,\s*false\)/,
   '订单会话模块需要在手动刷新时给刷新按钮加上转圈状态'
 );
 
 assert.match(
-  source,
+  esmSource,
   /async function onEnter\(/,
   '订单会话模块需要包含进入模块时的恢复逻辑'
 );
-
-const sandbox = {};
-vm.createContext(sandbox);
-vm.runInContext(`${source}\nthis.OrderTrackerSession = OrderTrackerSession;`, sandbox);
-
-const sessionTools = sandbox.OrderTrackerSession.create({
-  state: {},
-  constants: { LS_KEY: 'tk.orders.cfg.v1' },
-  helpers: {
-    $: () => null,
-    loadCfg: () => null,
-    saveCfg: () => {},
-    loadAccounts: () => []
-  },
-  ui: {
-    toast: () => {},
-    setSync: () => {},
-    openModal: () => {},
-    exportOrdersCsv: () => {},
-    bindCrudEvents: () => {},
-    renderAccTabs: () => {},
-    renderTable: () => {}
-  },
-  providers: {
-    getProviderByMode: () => ({
-      init: async () => {},
-      isConnected: () => false
-    })
-  },
-  sync: {
-    setRemoteProvider: () => {},
-    hydrateCache: async () => false,
-    syncNow: async () => true,
-    resetTrackerState: () => {},
-    renderLocalOrders: () => {},
-    queueSync: () => {},
-    cancelPendingSync: () => {}
-  }
-});
-
-assert.equal(typeof sessionTools.init, 'function', '会话模块需要返回 init');
-assert.equal(typeof sessionTools.onEnter, 'function', '会话模块需要返回 onEnter');
 
 assert.match(
   syncSource,

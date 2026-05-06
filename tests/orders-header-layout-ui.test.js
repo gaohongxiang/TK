@@ -3,8 +3,9 @@ const path = require('path');
 const assert = require('assert');
 
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const tabsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'tabs.js'), 'utf8');
-const tableSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'table.js'), 'utf8');
+const tabsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'tabs.mjs'), 'utf8');
+const tableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'table.mjs'), 'utf8');
+const tableControlsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'table-controls.mjs'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
 
 assert.match(
@@ -83,12 +84,12 @@ assert.match(
 
 assert.match(
   tableSource,
-  /tableControls\.buildTableToolbarMarkup\(\{[\s\S]*prefix: 'ot'[\s\S]*includeSearch/,
+  /TKTableControls\.buildTableToolbarMarkup\(\{[\s\S]*prefix: 'ot'[\s\S]*includeSearch/,
   '表格视图需要通过共用控件输出订单吸顶控制带'
 );
 
 assert.match(
-  fs.readFileSync(path.join(__dirname, '..', 'js', 'table-controls.js'), 'utf8'),
+  tableControlsSource,
   /ot-table-toolbar-left/,
   '共用表格控件需要把搜索区放到控制带左侧'
 );

@@ -1,15 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const vm = require('vm');
 
 const root = path.join(__dirname, '..');
-const parserSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'parser.js'), 'utf8');
-const analyzerSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'analyzer.js'), 'utf8');
 const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'parser.mjs'), 'utf8');
 const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'analyzer.mjs'), 'utf8');
 const srcAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
-const analyticsSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'index.js'), 'utf8');
 const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
 const appSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
@@ -71,25 +67,25 @@ assert.match(
 );
 
 assert.match(
-  parserSource,
-  /const TKAnalyticsParser = \(function \(\) \{/,
-  '数据分析解析逻辑需要独立命名空间'
+  srcParserSource,
+  /const TKAnalyticsParser = \{/,
+  '数据分析解析逻辑需要独立命名空间导出'
 );
 
 assert.match(
-  parserSource,
+  srcParserSource,
   /function parseRows\(rows\)/,
   '数据分析 parser 需要暴露 Excel 行解析逻辑'
 );
 
 assert.match(
-  analyzerSource,
-  /const TKAnalyticsAnalyzer = \(function \(\) \{/,
-  '数据分析汇总逻辑需要独立命名空间'
+  srcAnalyzerSource,
+  /const TKAnalyticsAnalyzer = \{/,
+  '数据分析汇总逻辑需要独立命名空间导出'
 );
 
 assert.match(
-  analyzerSource,
+  srcAnalyzerSource,
   /function analyze\(records, period\)/,
   '数据分析 analyzer 需要暴露分析逻辑'
 );
@@ -125,25 +121,25 @@ assert.match(
 );
 
 assert.match(
-  analyticsSource,
-  /const TKAnalytics = \(function \(\) \{/,
-  '旧数据分析 DOM 模块需要保留独立命名空间兼容参考'
+  srcAnalyticsSource,
+  /const TKAnalytics = createAnalyticsModule\(\)/,
+  '数据分析 DOM 入口需要保留独立命名空间导出'
 );
 
 assert.match(
-  analyticsSource,
+  srcAnalyticsSource,
   /file\.arrayBuffer\(\)/,
   'Excel 文件应在浏览器本地读取'
 );
 
 assert.match(
-  analyticsSource,
-  /window\.XLSX\.read\(buffer,\s*\{\s*type:\s*'array'\s*\}\)/,
+  srcAnalyticsSource,
+  /rootWindow\.XLSX\.read\(buffer,\s*\{\s*type:\s*'array'\s*\}\)/,
   'Excel 解析应使用本地 buffer，不依赖远程上传'
 );
 
 assert.doesNotMatch(
-  [parserSource, analyzerSource, analyticsSource, srcParserSource, srcAnalyzerSource, srcAnalyticsSource].join('\n'),
+  [srcParserSource, srcAnalyzerSource, srcAnalyticsSource].join('\n'),
   /\bfetch\s*\(|XMLHttpRequest|sendBeacon|firebase|Firestore|localStorage\.setItem/,
   '数据分析相关模块不应上传或持久化用户 Excel 数据'
 );
@@ -159,20 +155,6 @@ assert.match(
   /数据分析模块只在浏览器内读取 Excel 文件/,
   'README 需要说明数据分析文件只在浏览器本地解析'
 );
-
-const sandbox = {
-  console,
-  window: {}
-};
-vm.createContext(sandbox);
-vm.runInContext(`
-${parserSource}
-${analyzerSource}
-${analyticsSource}
-this.TKAnalyticsParser = TKAnalyticsParser;
-this.TKAnalyticsAnalyzer = TKAnalyticsAnalyzer;
-this.TKAnalytics = TKAnalytics;
-`, sandbox);
 
 const rows = [
   ['2026-04-27 ~ 2026-05-03'],
@@ -286,34 +268,28 @@ const rows = [
   ]
 ];
 
-const parsed = sandbox.TKAnalyticsParser.parseRows(rows);
-assert.strictEqual(parsed.period, '2026-04-27 ~ 2026-05-03', '需要读取导出周期');
-assert.strictEqual(parsed.records.length, 2, '需要读取商品数据行');
-assert.strictEqual(parsed.records[0].gmv, 70036, '需要正确清洗日元和千分位');
-assert.strictEqual(parsed.records[0].channels.video.gmv, 50000, '需要解析视频归因 GMV');
-assert.strictEqual(parsed.records[0].channels.mall.ctr, 0.12, '需要把百分比转换为小数');
-
-const analysis = sandbox.TKAnalyticsAnalyzer.analyze(parsed.records, parsed.period);
-assert.strictEqual(analysis.kpis.totalGmv, 70036, '需要汇总总 GMV');
-assert.strictEqual(analysis.kpis.totalOrders, 51, '需要汇总订单数');
-assert.strictEqual(analysis.kpis.productCount, 2, '需要汇总商品数');
-assert.strictEqual(analysis.channelTotals.find(channel => channel.key === 'video').gmv, 50000, '需要按渠道汇总 GMV');
-assert.ok(
-  analysis.records.some(record => record.diagnosis.label === '爆品放大'),
-  '需要给高 GMV 商品生成运营诊断'
-);
-
 (async () => {
   const parserModule = await import(`file://${path.join(root, 'src', 'analytics', 'parser.mjs')}`);
   const analyzerModule = await import(`file://${path.join(root, 'src', 'analytics', 'analyzer.mjs')}`);
   const analyticsModule = await import(`file://${path.join(root, 'src', 'analytics', 'index.mjs')}`);
 
   const parsedByModule = parserModule.parseRows(rows);
+  assert.strictEqual(parsedByModule.period, '2026-04-27 ~ 2026-05-03', '需要读取导出周期');
+  assert.strictEqual(parsedByModule.records.length, 2, '需要读取商品数据行');
   assert.strictEqual(parsedByModule.records[0].gmv, 70036, 'analytics parser ESM 模块需要可被直接 import');
+  assert.strictEqual(parsedByModule.records[0].channels.video.gmv, 50000, '需要解析视频归因 GMV');
+  assert.strictEqual(parsedByModule.records[0].channels.mall.ctr, 0.12, '需要把百分比转换为小数');
   assert.strictEqual(parserModule.TKAnalyticsParser.normalizePercent('12%'), 0.12, 'analytics parser ESM 模块需要保留命名空间导出');
 
   const analysisByModule = analyzerModule.analyze(parsedByModule.records, parsedByModule.period);
+  assert.strictEqual(analysisByModule.kpis.totalGmv, 70036, '需要汇总总 GMV');
   assert.strictEqual(analysisByModule.kpis.totalOrders, 51, 'analytics analyzer ESM 模块需要可被直接 import');
+  assert.strictEqual(analysisByModule.kpis.productCount, 2, '需要汇总商品数');
+  assert.strictEqual(analysisByModule.channelTotals.find(channel => channel.key === 'video').gmv, 50000, '需要按渠道汇总 GMV');
+  assert.ok(
+    analysisByModule.records.some(record => record.diagnosis.label === '爆品放大'),
+    '需要给高 GMV 商品生成运营诊断'
+  );
   assert.strictEqual(typeof analyzerModule.TKAnalyticsAnalyzer.diagnoseProduct, 'function', 'analytics analyzer ESM 模块需要保留命名空间导出');
 
   const analyticsByModule = analyticsModule.createAnalyticsModule();

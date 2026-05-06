@@ -2,19 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
-const globalSettingsSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'global-settings.js'), 'utf8');
-const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shared.js'), 'utf8');
 const srcSharedSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'shared.mjs'), 'utf8');
 const srcIndexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'index.mjs'), 'utf8');
 const srcMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.mjs'), 'utf8');
-const shippingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'shipping.js'), 'utf8');
-const legacySource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'legacy.js'), 'utf8');
-const pricingSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'pricing.js'), 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'js', 'calc', 'index.js'), 'utf8');
+const srcShippingSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'shipping.mjs'), 'utf8');
+const srcLegacySource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'legacy.mjs'), 'utf8');
+const srcPricingSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'pricing.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
-assert.match(globalSettingsSource, /const TKGlobalSettings = \(function \(\) \{/, '需要独立的全局设置模块');
-assert.match(sharedSource, /const CalcShared = \(function \(\) \{/, '需要新的 calc shared 模块');
 assert.match(srcSharedSource, /export\s+\{[\s\S]*CalcShared[\s\S]*create[\s\S]*\}/, '路线二 M3 需要提供 calc shared ESM 导出');
 assert.match(srcIndexSource, /import\s+\{\s*ensureGlobalSettingsStore\s*\}\s+from\s+'..\/global-settings\.mjs'/, 'calc ESM 入口需要复用全局设置 ESM 模块');
 assert.match(srcIndexSource, /import\s+\{\s*CalcShared\s*\}\s+from\s+'\.\/shared\.mjs'/, 'calc ESM 入口需要复用 CalcShared ESM 模块');
@@ -23,13 +18,13 @@ assert.match(srcIndexSource, /import\s+\{\s*CalcLegacyPricing\s*\}\s+from\s+'\.\
 assert.match(srcIndexSource, /import\s+\{\s*CalcPricing\s*\}\s+from\s+'\.\/pricing\.mjs'/, 'calc ESM 入口需要复用 CalcPricing ESM 模块');
 assert.match(srcIndexSource, /export\s+\{[\s\S]*DEFAULTS[\s\S]*initCalc[\s\S]*\}/, 'calc ESM 入口需要导出 initCalc 以便测试和后续迁移复用');
 assert.match(srcMainSource, /import '\.\/global-settings\.mjs'[\s\S]*import '\.\/shipping-core\.mjs'[\s\S]*import '\.\/shared\/html\.mjs'[\s\S]*import '\.\/shared\/format\.mjs'/, 'ESM 主入口需要先导入基础全局工具');
-assert.match(shippingSource, /const CalcShipping = \(function \(\) \{/, '需要新的 calc shipping 模块');
-assert.match(legacySource, /const CalcLegacyPricing = \(function \(\) \{/, '需要新的 calc legacy 模块');
-assert.match(pricingSource, /const CalcPricing = \(function \(\) \{/, '需要新的 calc pricing 模块');
-assert.match(indexSource, /CalcShared\.create\(/, 'js/calc/index.js 需要接入 CalcShared.create');
-assert.match(indexSource, /CalcShipping\.create\(/, 'js/calc/index.js 需要接入 CalcShipping.create');
-assert.match(indexSource, /CalcLegacyPricing\.create\(/, 'js/calc/index.js 需要接入 CalcLegacyPricing.create');
-assert.match(indexSource, /CalcPricing\.create\(/, 'js/calc/index.js 需要接入 CalcPricing.create');
+assert.match(srcShippingSource, /const CalcShipping = \{[\s\S]*create/, 'calc shipping ESM 模块需要保留命名空间导出');
+assert.match(srcLegacySource, /const CalcLegacyPricing = \{[\s\S]*create/, 'calc legacy ESM 模块需要保留命名空间导出');
+assert.match(srcPricingSource, /const CalcPricing = \{[\s\S]*create/, 'calc pricing ESM 模块需要保留命名空间导出');
+assert.match(srcIndexSource, /CalcShared\.create\(/, 'calc ESM 入口需要接入 CalcShared.create');
+assert.match(srcIndexSource, /CalcShipping\.create\(/, 'calc ESM 入口需要接入 CalcShipping.create');
+assert.match(srcIndexSource, /CalcLegacyPricing\.create\(/, 'calc ESM 入口需要接入 CalcLegacyPricing.create');
+assert.match(srcIndexSource, /CalcPricing\.create\(/, 'calc ESM 入口需要接入 CalcPricing.create');
 assert.doesNotMatch(htmlSource, /<script src="js\/calc\.js" defer><\/script>/, 'index.html 不应再直接加载旧的 js/calc.js');
 assert.doesNotMatch(htmlSource, /<script src="js\/calc\/(?:shared|shipping|legacy|pricing|index)\.js" defer><\/script>/, 'index.html 不应再加载旧 calc 普通脚本链');
 assert.match(

@@ -96,7 +96,7 @@ route-2-esm-m1
 - 路线二标准 ESM 模块化主体已完成。
 - `index.html` 通过 `/src/*.mjs` 加载主站、利润计算器、商品管理、订单管理、数据分析和 Firestore 连接。
 - 构建产物不再发布旧 `dist/js/`。
-- 旧 `js/` 目录仍保留为历史参考和回退对照，不在主页面加载链，也不进入生产构建产物。
+- 旧 `js/` 源目录已清理；当前以 `src/*.mjs` 作为唯一主站业务源码。
 - 当前阶段建议进入真实 Firebase 数据手动验收，不要继续扩大架构改造。
 
 最近已验证通过：
@@ -137,7 +137,7 @@ docs/node_modules/
 
 ### 5.1 主站
 
-主站已经接入 Vite，页面入口已经切到 `/src/*.mjs` ESM 模块。旧 `js/` 目录只作为历史参考和对照保留，不再由 `index.html` 加载，也不再复制到构建产物。
+主站已经接入 Vite，页面入口已经切到 `/src/*.mjs` ESM 模块。旧 `js/` 源目录已清理，不再由 `index.html` 加载，也不再复制到构建产物。
 
 本地安装：
 
@@ -223,8 +223,8 @@ Build output directory: .vitepress/dist
 当前原则：
 
 - 先用真实 Firebase 配置手动验收当前 ESM 版本。
-- 不急着删除旧 `js/`，旧文件当前只作为历史参考保留。
-- 标准模块化在线上稳定后，再考虑单独做 legacy cleanup。
+- 旧 `js/` 已完成清理，后续不要恢复双入口。
+- 标准模块化后续以验收和小修为主，不再扩大架构改造。
 - TypeScript 仍然放到后续路线，不和当前验收期混在一起做。
 
 ## 7. 路线一：轻模块化，1-2 天
@@ -428,7 +428,7 @@ js/
 src/
 ```
 
-不要一次把所有 `js/` 删除。
+当前过渡期已结束，旧 `js/` 源目录已清理。
 
 ### 8.4 迁移顺序
 
@@ -704,14 +704,14 @@ npm run release:check
 - 新增 `src/main.mjs`，负责年份、文档链接、模块配置表、hash 路由、`aria-current` 同步，以及进入 orders/products/analytics 时调用对应全局入口。
 - `src/main.mjs` 保持 `DOMContentLoaded` 后再执行初始路由，避免 ESM 与旧 `defer` helper 混合期间漏掉业务入口挂载。
 - `index.html` 已移除旧 `js/app-config.js` 和 `js/app.js` 页面加载，改为 `/src/main.mjs`。
-- 旧 `js/app-config.js` 和 `js/app.js` 暂时保留为历史参考和回退，不再由主页面加载。
+- 旧 `js/app-config.js` 和 `js/app.js` 源文件已随旧目录统一清理，不再维护双入口。
 - `tests/app-config.test.js`、`tests/main-build-contract.test.js`、`scripts/preview-smoke.mjs` 已更新为覆盖 ESM 主入口和 Vite build 产物。
 - 新增 `src/table-controls.mjs`，提供表格分页、搜索工具栏 HTML 和事件绑定的 ESM 导出，并由 `src/main.mjs` 挂回 `window.TKTableControls`。
 - 新增 `src/data-sources/registry.mjs`，提供数据源注册表 ESM 导出，并由 `src/main.mjs` 挂回 `window.TKDataSourceRegistry`，保证旧 Firestore provider 注册顺序不变。
-- `index.html` 已移除旧 `js/table-controls.js` 和 `js/data-sources/registry.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 已移除旧 `js/table-controls.js` 和 `js/data-sources/registry.js` 页面加载；旧文件已随旧目录统一清理。
 - `tests/shared-utils.test.js`、`tests/data-source-registry.test.js`、`tests/orders-table-view.test.js`、`tests/products-view-ui.test.js` 已覆盖这两个基础模块的 ESM 导出、入口挂载和旧页面加载移除。
 - 新增 `src/searchable-select.mjs`，提供订单商品/SKU 可搜索下拉框 ESM 导出，并由 `src/main.mjs` 挂回 `window.TKSearchSelect`。
-- `index.html` 已移除旧 `js/searchable-select.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 已移除旧 `js/searchable-select.js` 页面加载；旧文件已随旧目录统一清理。
 - `tests/shared-utils.test.js` 和 `tests/orders-crud-module.test.js` 已覆盖可搜索下拉框 ESM 导出、入口挂载和旧页面加载移除。
 
 - 利润计算器、商品管理、订单管理、数据分析、Firestore 连接和基础共享工具都已由 `/src/*.mjs` 加载。
@@ -720,7 +720,7 @@ npm run release:check
 - `public/_headers` 已移除旧 `/js/*` 缓存规则。
 - `scripts/preview-smoke.mjs` 会确认 `/logo.png` 可访问，并确认旧 `/js/app.js`、`/js/orders/provider-supabase.js` 不在构建产物中。
 
-当前仍保留旧 `js/` 源文件作为历史参考和回退对照。不要在没有单独清理计划时一次删除旧 `js/`。
+旧 `js/` 源文件已清理；不要再恢复双入口或继续维护两套业务源码。
 
 迁移中不要同时维护两套入口太久。
 
@@ -765,7 +765,7 @@ git diff --check
 - 主站入口为 `src/main.mjs`。已完成。
 - 大多数业务模块使用 `import/export`。已完成。
 - `index.html` 不再列大量 `js/*.js` 脚本。已完成。
-- 旧 `js/` 不再进入构建产物，当前只作为历史参考保留。已完成。
+- 旧 `js/` 源目录已清理，构建产物也不发布 `dist/js/`。已完成。
 - `scripts/copy-main-assets.mjs` 不再复制业务 `js/`。已完成。
 - `npm test` 通过。
 - `npm run build` 通过。
@@ -1541,7 +1541,7 @@ npm run release:check
 - 数据分析：导入一份 TikTok Shop 商品流量 Excel，确认渠道表现、Top 商品、漏斗和诊断标签能正常生成。
 - 静态页：打开 `/privacy.html`、`/terms.html`、`/404.html`，确认样式和链接正常。
 
-手动验收通过后，才考虑上线或继续做旧 `js/` 清理。
+手动验收通过后，才考虑上线或继续后续轻量优化。
 
 ## 14. 风险清单
 
@@ -1669,4 +1669,4 @@ local/release-prep-static-site
 3. 需要上线前，重新跑 `npm run release:check`。
 4. 准备上线时，再解除本机 push 防护：`TK_ALLOW_PUSH=1 git push`。
 5. 部署到 Cloudflare Pages 后，按 `docs/guide/deploy.md` 做线上手动验收。
-6. 线上稳定后，再单独评估旧 `js/` 清理或 TypeScript，不要把清理和类型化混在当前验收期做。
+6. 线上稳定后，再单独评估 TypeScript 或共享 UI 组件，不要和当前验收期混在一起做。

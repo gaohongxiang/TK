@@ -34,13 +34,12 @@
 - `css/`
 - `src/`
 - `public/`
-- `js/`
 - `logo.png`
 - `package.json`
 - `vite.config.mjs`
 - `wrangler.toml`
 
-当前主站使用 Vite 构建，页面入口已经切到 `/src/*.mjs` ESM 模块。旧 `js/` 目录暂时保留为历史参考和对照，不再由 `index.html` 加载，也不再复制到 `dist/js/`。
+当前主站使用 Vite 构建，页面入口已经切到 `/src/*.mjs` ESM 模块。旧 `js/` 源目录已清理，主站源码以 `src/*.mjs` 为准，构建产物也不发布 `dist/js/`。
 
 ### 2. 文档站
 
@@ -81,10 +80,10 @@
 
 当前正式数据源策略是 Firebase-only。注册表只用于明确当前数据边界和后续扩展位置，不把 Supabase 作为正式功能暴露给用户。
 
-- `js/data-sources/registry.js`：全局数据源注册表。已完成。
+- `src/data-sources/registry.mjs`：全局数据源注册表。已完成。
 - `FirebaseProvider`：当前商品和订单默认实现。已注册。
 - `BrowserExcelProvider`：数据分析 Excel 只在浏览器内存解析。已注册。
-- `js/app-config.js`：项目级配置，明确正式数据源为 Firestore、本站不保存用户业务数据。已完成。
+- `src/app-config.mjs`：项目级配置，明确正式数据源为 Firestore、本站不保存用户业务数据。已完成。
 - `LocalFileProvider`：未来可选，适合只用本地导入/导出的轻量用户。暂不实现。
 
 当前注册表只描述和发现数据源，不改变现有 Firebase 离线缓存流程，也不保存用户数据。
@@ -245,7 +244,6 @@ npm install
 只需要推源码：
 
 - 主站源码：根目录的 `index.html`、`css/`、`src/`
-- 旧脚本参考：`js/`
 - 主站静态发布文件：`public/`
 - 主站公开图片：`logo.png`
 - 主站构建配置：`package.json`、`package-lock.json`、`vite.config.mjs`、`wrangler.toml`

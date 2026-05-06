@@ -1,38 +1,29 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const vm = require('vm');
 
 const root = path.join(__dirname, '..');
-const htmlSource = fs.readFileSync(path.join(root, 'js', 'shared', 'html.js'), 'utf8');
-const formatSource = fs.readFileSync(path.join(root, 'js', 'shared', 'format.js'), 'utf8');
 const srcHtmlSource = fs.readFileSync(path.join(root, 'src', 'shared', 'html.mjs'), 'utf8');
 const srcFormatSource = fs.readFileSync(path.join(root, 'src', 'shared', 'format.mjs'), 'utf8');
-const tableControlsSource = fs.readFileSync(path.join(root, 'js', 'table-controls.js'), 'utf8');
 const srcTableControlsSource = fs.readFileSync(path.join(root, 'src', 'table-controls.mjs'), 'utf8');
-const searchSelectSource = fs.readFileSync(path.join(root, 'js', 'searchable-select.js'), 'utf8');
 const srcSearchSelectSource = fs.readFileSync(path.join(root, 'src', 'searchable-select.mjs'), 'utf8');
 const srcMainSource = fs.readFileSync(path.join(root, 'src', 'main.mjs'), 'utf8');
-const analyticsSource = fs.readFileSync(path.join(root, 'js', 'analytics', 'index.js'), 'utf8');
+const analyticsSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'index.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
-assert.match(htmlSource, /const TKHtml = \(function \(\) \{/, '需要共享 HTML 工具命名空间');
-assert.match(htmlSource, /function escape\(value\)/, '共享 HTML 工具需要 escape');
-assert.match(htmlSource, /function shorten\(value,\s*max = 46\)/, '共享 HTML 工具需要 shorten');
-assert.match(formatSource, /const TKFormat = \(function \(\) \{/, '需要共享格式化工具命名空间');
-assert.match(formatSource, /function integer\(value/, '共享格式化工具需要 integer');
-assert.match(formatSource, /function yen\(value\)/, '共享格式化工具需要 yen');
-assert.match(formatSource, /function percent\(value,\s*digits = 2\)/, '共享格式化工具需要 percent');
 assert.match(srcHtmlSource, /export\s+const\s+TKHtml/, '路线二 M1 需要提供共享 HTML ESM 导出');
+assert.match(srcHtmlSource, /function escape\(value\)/, '共享 HTML 工具需要 escape');
+assert.match(srcHtmlSource, /function shorten\(value,\s*max = 46\)/, '共享 HTML 工具需要 shorten');
 assert.match(srcFormatSource, /export\s+const\s+TKFormat/, '路线二 M1 需要提供共享格式化 ESM 导出');
+assert.match(srcFormatSource, /function integer\(value/, '共享格式化工具需要 integer');
+assert.match(srcFormatSource, /function yen\(value\)/, '共享格式化工具需要 yen');
+assert.match(srcFormatSource, /function percent\(value,\s*digits = 2\)/, '共享格式化工具需要 percent');
 assert.match(srcHtmlSource, /window\.TKHtml = TKHtml/, '共享 HTML ESM 模块需要在浏览器里挂回旧全局命名空间');
 assert.match(srcFormatSource, /window\.TKFormat = TKFormat/, '共享格式化 ESM 模块需要在浏览器里挂回旧全局命名空间');
 assert.match(srcMainSource, /import '\.\/shared\/html\.mjs'/, 'ESM 主入口需要先导入共享 HTML 工具');
 assert.match(srcMainSource, /import '\.\/shared\/format\.mjs'/, 'ESM 主入口需要先导入共享格式化工具');
-assert.match(tableControlsSource, /const TKTableControls = \(function \(\) \{/, '需要共享表格控件命名空间');
 assert.match(srcTableControlsSource, /export\s+\{[\s\S]*TKTableControls[\s\S]*buildTableToolbarMarkup[\s\S]*clampPage[\s\S]*\}/, '路线二需要提供表格控件 ESM 导出');
 assert.match(srcMainSource, /import '\.\/table-controls\.mjs'/, 'ESM 主入口需要先导入表格控件以挂回全局');
-assert.match(searchSelectSource, /const TKSearchSelect = \(function \(\) \{/, '需要可搜索下拉框命名空间');
 assert.match(srcSearchSelectSource, /export\s+\{[\s\S]*TKSearchSelect[\s\S]*create[\s\S]*normalizeText[\s\S]*\}/, '路线二需要提供可搜索下拉框 ESM 导出');
 assert.match(srcMainSource, /import '\.\/searchable-select\.mjs'/, 'ESM 主入口需要先导入可搜索下拉框以挂回全局');
 
@@ -54,26 +45,18 @@ assert.doesNotMatch(
 
 assert.match(
   analyticsSource,
-  /TKHtml\.escape[\s\S]*TKFormat\.integer[\s\S]*TKFormat\.yen[\s\S]*TKFormat\.percent[\s\S]*TKHtml\.shorten/,
+  /import \{ TKFormat \}[\s\S]*import \{ TKHtml \}[\s\S]*html\.escape[\s\S]*format\.integer[\s\S]*format\.yen[\s\S]*format\.percent[\s\S]*html\.shorten/,
   'analytics 渲染层需要使用共享 HTML/format 工具'
 );
-
-const sandbox = {};
-vm.createContext(sandbox);
-vm.runInContext(`${htmlSource}\n${formatSource}\nthis.TKHtml = TKHtml; this.TKFormat = TKFormat;`, sandbox);
-
-assert.strictEqual(sandbox.TKHtml.escape('<a href="x">&</a>'), '&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;', 'escape 需要处理 HTML 特殊字符');
-assert.strictEqual(sandbox.TKHtml.shorten('abcdefghijkl', 8), 'abcdefgh...', 'shorten 需要截断长文本');
-assert.strictEqual(sandbox.TKFormat.integer(12345.6), '12,346', 'integer 需要四舍五入并格式化千分位');
-assert.strictEqual(sandbox.TKFormat.yen(12345.2), '12,345 円', 'yen 需要格式化日元');
-assert.strictEqual(sandbox.TKFormat.percent(0.1234, 1), '12.3%', 'percent 需要按小数转百分比');
 
 (async () => {
   const htmlModule = await import(`file://${path.join(root, 'src', 'shared', 'html.mjs')}`);
   const formatModule = await import(`file://${path.join(root, 'src', 'shared', 'format.mjs')}`);
 
+  assert.strictEqual(htmlModule.TKHtml.escape('<a href="x">&</a>'), '&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;', 'escape 需要处理 HTML 特殊字符');
   assert.strictEqual(htmlModule.TKHtml.escape('<b>'), '&lt;b&gt;', '共享 HTML ESM 模块需要可被直接 import');
   assert.strictEqual(htmlModule.shorten('abcdefghijkl', 8), 'abcdefgh...', '共享 HTML ESM 模块需要导出 shorten');
+  assert.strictEqual(formatModule.TKFormat.integer(12345.6), '12,346', 'integer 需要四舍五入并格式化千分位');
   assert.strictEqual(formatModule.TKFormat.yen(1200), '1,200 円', '共享格式化 ESM 模块需要可被直接 import');
   assert.strictEqual(formatModule.percent(0.456, 1), '45.6%', '共享格式化 ESM 模块需要导出 percent');
   const tableControlsModule = await import(`file://${path.join(root, 'src', 'table-controls.mjs')}`);

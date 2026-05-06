@@ -3,29 +3,10 @@ const path = require('path');
 const assert = require('assert');
 const { pathToFileURL } = require('url');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'orders', 'export.js'), 'utf8');
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'export.mjs');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-
-assert.match(
-  source,
-  /const OrderTrackerExport = \(function \(\) \{/,
-  '需要新的订单导出模块'
-);
-
-assert.match(
-  source,
-  /function create\(/,
-  '订单导出模块需要暴露 create 工厂'
-);
-
-assert.match(
-  source,
-  /function buildExportFilename\(/,
-  '订单导出模块需要包含导出文件名逻辑'
-);
 
 assert.match(
   esmSource,
@@ -58,19 +39,19 @@ assert.match(
 );
 
 assert.match(
-  source,
+  esmSource,
   /async function exportOrdersCsv\(/,
   '订单导出模块需要包含 CSV 导出逻辑'
 );
 
 assert.match(
-  source,
+  esmSource,
   /采购价格[\s\S]*售价\(日元\)[\s\S]*达人佣金率\(%\)[\s\S]*达人佣金\(人民币\)[\s\S]*预估运费\(人民币\)[\s\S]*预估利润\(人民币\)/,
   'CSV 导出需要明确标注售价为日元、达人佣金/运费/利润为人民币'
 );
 
 assert.match(
-  source,
+  esmSource,
   /computeOrderCreatorCommission[\s\S]*computeOrderEstimatedProfit/,
   'CSV 导出需要按当前汇率重新计算达人佣金和人民币预估利润，不能直接信任旧存量字段'
 );

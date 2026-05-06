@@ -1,22 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const vm = require('vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'js', 'products', 'provider-firestore.js'), 'utf8');
 const srcSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'provider-firestore.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 assert.match(
-  source,
-  /const ProductLibraryProviderFirestore = \(function \(\) \{/,
-  '商品库需要独立的 Firestore provider 模块'
-);
-
-assert.match(
-  source,
+  srcSource,
   /function parseConfigInput\(/,
-  '商品库 Firestore provider 需要解析 firebaseConfig'
+  '商品库 Firestore provider ESM 需要解析 firebaseConfig'
 );
 
 assert.match(
@@ -38,45 +30,45 @@ assert.match(
 );
 
 assert.match(
-  source,
+  srcSource,
   /collection\('products'\)/,
-  '商品库 Firestore provider 需要读写 products 集合'
+  '商品库 Firestore provider ESM 需要读写 products 集合'
 );
 
 assert.match(
-  source,
+  srcSource,
   /collection\('order_accounts'\)/,
-  '商品库 Firestore provider 需要复用 order_accounts 集合作为共享账号来源'
+  '商品库 Firestore provider ESM 需要复用 order_accounts 集合作为共享账号来源'
 );
 
 assert.match(
-  source,
+  srcSource,
   /function normalizeProductDefaults\(|defaults:\s*buildProductDefaultsDoc|defaults:\s*normalizeProductDefaults/,
-  '商品库 Firestore provider 需要把商品默认物流参数收进 defaults 结构'
+  '商品库 Firestore provider ESM 需要把商品默认物流参数收进 defaults 结构'
 );
 
 assert.match(
-  source,
+  srcSource,
   /function normalizePulledSku\(/,
-  '商品库 Firestore provider 需要支持 SKU 子结构'
+  '商品库 Firestore provider ESM 需要支持 SKU 子结构'
 );
 
 assert.match(
-  source,
+  srcSource,
   /skus: Array\.isArray\(data\?\.skus\)[\s\S]*buildSkuDoc/,
-  '商品库 Firestore provider 需要读写 skus 数组'
+  '商品库 Firestore provider ESM 需要读写 skus 数组'
 );
 
 assert.match(
-  source,
+  srcSource,
   /waitForCommit\s*=\s*true/,
-  '商品库 Firestore provider 写入应支持保存时不等待云端提交'
+  '商品库 Firestore provider ESM 写入应支持保存时不等待云端提交'
 );
 
 assert.match(
-  source,
+  srcSource,
   /commitPromise/,
-  '商品库 Firestore provider 保存时应返回 Firestore 本地队列写入 Promise'
+  '商品库 Firestore provider ESM 保存时应返回 Firestore 本地队列写入 Promise'
 );
 
 const sandbox = {
@@ -112,41 +104,12 @@ const sandbox = {
     }
   }
 };
-vm.createContext(sandbox);
-vm.runInContext(`${source}\nthis.ProductLibraryProviderFirestore = ProductLibraryProviderFirestore;`, sandbox);
-
-const provider = sandbox.ProductLibraryProviderFirestore.create({
-  state: {
-    firestoreConfigText: '',
-    firestoreProjectId: '',
-    user: ''
-  },
-  helpers: {
-    nowIso: () => '2026-04-24T10:00:00.000Z'
-  }
-});
-
-assert.equal(provider.key, 'firestore', '商品库 Firestore provider 需要暴露 firestore key');
-assert.equal(typeof provider.parseConfigInput, 'function', '商品库 Firestore provider 需要暴露 parseConfigInput');
-assert.equal(typeof provider.init, 'function', '商品库 Firestore provider 需要暴露 init');
-assert.equal(typeof provider.pullProducts, 'function', '商品库 Firestore provider 需要暴露 pullProducts');
-assert.equal(typeof provider.upsertProduct, 'function', '商品库 Firestore provider 需要暴露 upsertProduct');
-assert.equal(typeof provider.deleteProduct, 'function', '商品库 Firestore provider 需要暴露 deleteProduct');
 
 assert.doesNotMatch(
   htmlSource,
   /<script src="js\/products\/provider-firestore\.js" defer><\/script>/,
   'index.html 不应再加载旧商品 Firestore provider 普通脚本'
 );
-
-const parsed = provider.parseConfigInput(`const firebaseConfig = {
-  apiKey: "AIza",
-  authDomain: "demo.firebaseapp.com",
-  projectId: "demo",
-  appId: "1:web:demo"
-};`);
-
-assert.equal(parsed.projectId, 'demo', '商品库 Firestore provider 应能解析 projectId');
 
 const configText = `const firebaseConfig = {
   apiKey: "AIza",
@@ -155,19 +118,24 @@ const configText = `const firebaseConfig = {
   appId: "1:web:demo"
 };`;
 
-provider.init({ configText })
-  .then(() => provider.init({ configText }))
-  .then(async () => {
-    const module = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'provider-firestore.mjs')}`);
-    const esmParsed = module.parseConfigInput(configText);
-    assert.deepStrictEqual(esmParsed, { ...parsed }, '商品 provider ESM 配置解析需要和旧 provider 一致');
+(async () => {
+  const module = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'provider-firestore.mjs')}`);
+  const parsed = module.parseConfigInput(`const firebaseConfig = {
+  apiKey: "AIza",
+  authDomain: "demo.firebaseapp.com",
+  projectId: "demo",
+  appId: "1:web:demo"
+};`);
+  assert.equal(parsed.projectId, 'demo', '商品 provider ESM 应能解析 projectId');
+  const esmParsed = module.parseConfigInput(configText);
+  assert.deepStrictEqual(esmParsed, { ...parsed }, '商品 provider ESM 配置解析需要保持稳定');
 
-    const esmProviderState = {
+  const esmProviderState = {
       firestoreConfigText: '',
       firestoreProjectId: '',
       user: ''
     };
-    const esmProvider = module.ProductLibraryProviderFirestore.create({
+  const esmProvider = module.ProductLibraryProviderFirestore.create({
       state: esmProviderState,
       helpers: {
         nowIso: () => '2026-04-24T10:00:00.000Z'
@@ -175,21 +143,21 @@ provider.init({ configText })
       window: sandbox.window
     });
 
-    assert.equal(esmProvider.key, 'firestore', '商品 provider ESM 需要暴露 firestore key');
-    assert.equal(typeof esmProvider.init, 'function', '商品 provider ESM 需要暴露 init');
-    assert.equal(typeof esmProvider.pullProducts, 'function', '商品 provider ESM 需要暴露 pullProducts');
-    assert.equal(typeof esmProvider.upsertProduct, 'function', '商品 provider ESM 需要暴露 upsertProduct');
-    assert.equal(typeof esmProvider.deleteProduct, 'function', '商品 provider ESM 需要暴露 deleteProduct');
-    await esmProvider.init({ configText });
-    assert.equal(esmProviderState.firestoreProjectId, 'demo', '商品 provider ESM init 需要写回项目 ID');
+  assert.equal(esmProvider.key, 'firestore', '商品 provider ESM 需要暴露 firestore key');
+  assert.equal(typeof esmProvider.init, 'function', '商品 provider ESM 需要暴露 init');
+  assert.equal(typeof esmProvider.pullProducts, 'function', '商品 provider ESM 需要暴露 pullProducts');
+  assert.equal(typeof esmProvider.upsertProduct, 'function', '商品 provider ESM 需要暴露 upsertProduct');
+  assert.equal(typeof esmProvider.deleteProduct, 'function', '商品 provider ESM 需要暴露 deleteProduct');
+  await esmProvider.init({ configText });
+  assert.equal(esmProviderState.firestoreProjectId, 'demo', '商品 provider ESM init 需要写回项目 ID');
 
-    assert.equal(
+  assert.equal(
       module.ProductLibraryProviderFirestoreUtils.getDisplayName({ configText, user: '运营A' }),
       '运营A · Firestore',
       '商品 provider ESM 需要保留展示名称逻辑'
     );
 
-    const productDoc = module.buildProductDoc({
+  const productDoc = module.buildProductDoc({
       tkId: 'TK-001',
       accountName: '账号A',
       name: '雨衣',
@@ -214,21 +182,19 @@ provider.init({ configText })
     }, {
       nowIso: () => '2026-04-24T10:00:00.000Z'
     });
-    assert.equal(productDoc.tkId, 'TK-001', '商品 provider ESM 需要构造商品 doc TK ID');
-    assert.equal(productDoc.defaults.cargoType, 'special', '商品 provider ESM 需要构造 defaults');
-    assert.equal(productDoc.defaults.lengthCm, 20.05, '商品 provider ESM 需要按两位小数保存尺寸');
-    assert.equal(productDoc.defaults.estimatedShippingFee, 17.03, '商品 provider ESM 需要按两位小数保存运费');
-    assert.equal(productDoc.skus.length, 1, '商品 provider ESM 需要过滤空 SKU ID');
-    assert.equal(productDoc.skus[0].useProductDefaults, true, '商品 provider ESM 需要保留 SKU 默认值标记');
+  assert.equal(productDoc.tkId, 'TK-001', '商品 provider ESM 需要构造商品 doc TK ID');
+  assert.equal(productDoc.defaults.cargoType, 'special', '商品 provider ESM 需要构造 defaults');
+  assert.equal(productDoc.defaults.lengthCm, 20.05, '商品 provider ESM 需要按两位小数保存尺寸');
+  assert.equal(productDoc.defaults.estimatedShippingFee, 17.03, '商品 provider ESM 需要按两位小数保存运费');
+  assert.equal(productDoc.skus.length, 1, '商品 provider ESM 需要过滤空 SKU ID');
+  assert.equal(productDoc.skus[0].useProductDefaults, true, '商品 provider ESM 需要保留 SKU 默认值标记');
 
-    const normalized = module.normalizePulledProduct(productDoc);
-    assert.equal(normalized.defaults.estimatedShippingFee, '17.03', '商品 provider ESM 需要把 Firestore 数值归一化为表单字符串');
-    assert.equal(normalized.skus[0].skuId, 'S-1', '商品 provider ESM 需要归一化 SKU 子结构');
-  })
-  .then(() => {
-    console.log('products firestore provider contract ok');
-  })
-  .catch(error => {
-    console.error(error);
-    process.exit(1);
-  });
+  const normalized = module.normalizePulledProduct(productDoc);
+  assert.equal(normalized.defaults.estimatedShippingFee, '17.03', '商品 provider ESM 需要把 Firestore 数值归一化为表单字符串');
+  assert.equal(normalized.skus[0].skuId, 'S-1', '商品 provider ESM 需要归一化 SKU 子结构');
+
+  console.log('products firestore provider contract ok');
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

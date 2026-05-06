@@ -25,13 +25,36 @@ function loadAnalyticsMount() {
   return analyticsMountPromise;
 }
 
+function setAnalyticsFallback(root: HTMLElement, state: 'loading' | 'error') {
+  const isError = state === 'error';
+  root.innerHTML = `
+    <section class="card analytics-react-status ${isError ? 'is-error' : 'is-loading'}" data-analytics-lazy-state="${state}">
+      <div class="analytics-react-status-mark" aria-hidden="true"></div>
+      <div>
+        <h2>${isError ? '数据分析加载失败' : '正在加载数据分析'}</h2>
+        <p>${isError ? '图表模块没有加载成功，请检查网络后重试。' : '正在按需加载图表模块，稍等片刻。'}</p>
+      </div>
+      ${isError ? '<button type="button" class="btn sm" data-analytics-retry>重试</button>' : ''}
+    </section>
+  `;
+  root.querySelector('[data-analytics-retry]')?.addEventListener('click', () => {
+    analyticsMountPromise = null;
+    void mountAnalyticsWhenNeeded(root.ownerDocument);
+  });
+}
+
 async function mountAnalyticsWhenNeeded(documentRef: Document = document) {
   const root = documentRef.getElementById('analytics-react-root');
   if (!root || root.dataset.reactMounted === 'true' || !isAnalyticsRoute(documentRef)) return false;
   root.dataset.reactLoading = 'true';
+  setAnalyticsFallback(root, 'loading');
   try {
     const { mountAnalyticsReact } = await loadAnalyticsMount();
     return mountAnalyticsReact(documentRef);
+  } catch (error) {
+    console.error(error);
+    setAnalyticsFallback(root, 'error');
+    return false;
   } finally {
     root.dataset.reactLoading = 'false';
   }

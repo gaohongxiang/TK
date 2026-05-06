@@ -235,14 +235,26 @@ assert.doesNotMatch(
 
 assert.match(
   reactMainSource,
-  /import\('\.\/features\/analytics\/mountAnalytics'\)[\s\S]*mountAnalyticsWhenNeeded/,
-  'React 入口需要按需加载数据分析模块'
+  /import\('\.\/features\/analytics\/mountAnalytics'\)[\s\S]*setAnalyticsFallback[\s\S]*mountAnalyticsWhenNeeded/,
+  'React 入口需要按需加载数据分析模块，并在加载期间提供轻量状态'
 );
 
 assert.doesNotMatch(
   reactMainSource,
   /from '\.\/features\/analytics\/mountAnalytics'/,
   'React 首屏入口不应静态引入数据分析模块，避免提前加载 ECharts'
+);
+
+assert.match(
+  styleSource,
+  /\.analytics-react-status[\s\S]*\.analytics-react-status\.is-error/,
+  'React 数据分析懒加载状态需要有可见样式'
+);
+
+assert.match(
+  reactMainSource,
+  /data-analytics-lazy-state="\$\{state\}"/,
+  'React 数据分析懒加载状态需要提供可测试状态标记'
 );
 
 assert.match(

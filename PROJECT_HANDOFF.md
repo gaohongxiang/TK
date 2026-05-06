@@ -104,8 +104,9 @@ modern-react-spa
 - React SPA 基础壳层已接管主导航、hash 路由、年份、文档链接和四个主视图占位。
 - 利润计算器已迁到 `src/react/features/calculator/CalculatorApp.tsx`，复用现有公式和运费核心。
 - 数据分析页已迁到 React + ECharts，并由 React 入口懒加载；`src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 仍作为纯函数来源复用。
-- 商品管理和订单管理的页面外壳已迁到 React；Firestore provider、CRUD、同步、表格纯函数和弹窗业务逻辑仍复用现有 `src/products/*.mjs`、`src/orders/*.mjs`。
-- `index.html` 当前只加载 `/src/react/main.tsx` 作为主站壳层入口，继续加载 Firestore 连接、订单 ESM 入口和商品 ESM 入口；不再加载 `/src/main.mjs` 和 `/src/analytics/index.mjs`。
+- 商品管理已迁到完整 React 页面：React 接管连接状态、账号筛选、表格、分页、新增/编辑商品弹窗、SKU 编辑、CSV 导出和商品变更广播；继续复用现有 Firestore provider、商品表格纯函数、SKU 表单纯函数和运费核心，不改变 Firestore 数据结构。
+- 订单管理的页面外壳已迁到 React；Firestore provider、CRUD、同步、表格纯函数和弹窗业务逻辑仍复用现有 `src/orders/*.mjs`。
+- `index.html` 当前只加载 `/src/react/main.tsx` 作为主站壳层入口，继续加载 Firestore 连接和订单 ESM 入口；不再加载 `/src/main.mjs`、`/src/analytics/index.mjs` 和 `/src/products/index.mjs`。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前以 `src/*.mjs` 作为唯一主站业务源码。
 - 真实 Firebase 数据手动验收已完成，未发现大问题。
@@ -149,7 +150,7 @@ docs/node_modules/
 
 ### 5.1 主站
 
-主站已经接入 Vite。当前在 `modern-react-spa` 分支中，页面壳层入口是 `/src/react/main.tsx`；订单和商品业务入口仍由 `/src/orders/index.mjs`、`/src/products/index.mjs` 加载。旧 `js/` 源目录已清理，不再由 `index.html` 加载，也不再复制到构建产物。
+主站已经接入 Vite。当前在 `modern-react-spa` 分支中，页面壳层入口是 `/src/react/main.tsx`；商品管理已由 React 页面直接接管，订单管理业务入口仍由 `/src/orders/index.mjs` 加载。旧 `js/` 源目录已清理，不再由 `index.html` 加载，也不再复制到构建产物。
 
 本地安装：
 

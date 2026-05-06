@@ -208,115 +208,6 @@
     </div>
   </div>
 
-  <div id="pl-modal" class="modal-mask">
-    <div class="modal">
-      <h3 id="pl-modal-title">新增商品</h3>
-      <form id="pl-form" autocomplete="off">
-        <div class="row">
-          <div class="field">
-            <label>账号 *</label>
-            <select name="accountName" id="pl-account-select" required>
-              <option value="">- 请选择 -</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>TK ID *</label>
-            <input type="text" name="tkId" required>
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <div class="field full" style="grid-column:1/-1">
-            <label>商品名称</label>
-            <input type="text" name="name">
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <div class="field">
-            <label>1688 链接</label>
-            <input type="url" name="link1688" placeholder="https://detail.1688.com/...">
-          </div>
-          <div class="field">
-            <label>图片 URL</label>
-            <input type="url" name="imageUrl" placeholder="https://...">
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <div class="field full" style="grid-column:1/-1">
-            <label>货物类型</label>
-            <select name="cargoType">
-              <option value="general">普货</option>
-              <option value="special">特货</option>
-            </select>
-          </div>
-        </div>
-        <div class="pl-sku-panel">
-          <div class="pl-sku-header">
-            <div>
-              <div class="pl-sku-title">SKU规格</div>
-              <div class="pl-sku-copy">先生成 SKU，再根据实际情况统一设置或按分组调整物流参数。</div>
-            </div>
-          </div>
-          <div class="pl-sku-actions">
-            <button type="button" class="btn sm" id="pl-add-sku">+ 新增单个SKU</button>
-            <button type="button" class="btn sm" id="pl-open-sku-batch">+ 新增多个SKU</button>
-          </div>
-          <div class="pl-sku-batch-tools" id="pl-sku-batch-tools">
-            <div class="pl-sku-batch-block">
-              <div class="pl-sku-batch-title">批量生成多个 SKU</div>
-              <div class="pl-sku-batch-copy">按颜色、尺寸等规格值自动组合生成，已有 SKU 不会重复追加。</div>
-              <div class="row triple pl-sku-batch-row">
-                <div class="field">
-                  <label>规格维度 1</label>
-                  <input type="text" id="pl-batch-axis-a" placeholder="例如 白、黑、蓝">
-                </div>
-                <div class="field">
-                  <label>规格维度 2</label>
-                  <input type="text" id="pl-batch-axis-b" placeholder="例如 S、M、L">
-                </div>
-                <div class="field">
-                  <label>规格维度 3</label>
-                  <input type="text" id="pl-batch-axis-c" placeholder="例如 普通款、升级款">
-                </div>
-              </div>
-              <div class="pl-sku-batch-actions">
-                <button type="button" class="btn sm accent-soft" id="pl-generate-skus">生成多个 SKU</button>
-              </div>
-            </div>
-          </div>
-          <div class="pl-sku-parameter-panel">
-            <div class="pl-sku-batch-title">参数调整</div>
-            <div class="pl-sku-batch-copy">留空匹配关键词就应用到全部 SKU；填写关键词则只更新命中的 SKU。</div>
-            <div class="pl-sku-setup-block pl-sku-setup-block-single">
-              <div class="pl-sku-setup-surface">
-                <div class="row pl-sku-batch-row">
-                  <div class="field full" style="grid-column:1/-1">
-                    <label>匹配关键词（可选）</label>
-                    <input type="text" id="pl-batch-match" placeholder="例如 S 或 白 / S；留空则应用到全部 SKU">
-                  </div>
-                </div>
-                <div class="row pl-sku-batch-row" style="margin-top:10px">
-                  <div class="field">
-                    <label>重量(g)</label>
-                    <input type="number" min="0" step="1" id="pl-batch-weight" placeholder="例如 320">
-                  </div>
-                  <div class="field">
-                    <label>尺寸(cm)</label>
-                    <input type="text" id="pl-batch-size" placeholder="例如 20×15×10">
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="pl-sku-list" id="pl-sku-list"></div>
-        </div>
-        <div class="actions">
-          <button type="button" id="pl-cancel" class="btn">取消</button>
-          <button type="submit" class="btn primary">保存</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <div id="ot-export-modal" class="modal-mask" role="dialog" aria-modal="true" aria-labelledby="ot-export-title">
     <div class="modal" style="max-width:460px">
       <h3 id="ot-export-title">选择要导出的账号</h3>
@@ -333,26 +224,6 @@
       <div class="actions">
         <button type="button" id="ot-export-cancel" class="btn">取消</button>
         <button type="button" id="ot-export-confirm" class="btn primary">导出 CSV</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="pl-export-modal" class="modal-mask" role="dialog" aria-modal="true" aria-labelledby="pl-export-title">
-    <div class="modal" style="max-width:460px">
-      <h3 id="pl-export-title">选择要导出的账号</h3>
-      <div class="modal-copy" style="margin-bottom:16px">可勾选一个或多个账号；如果当前已经切到某个账号，会默认选中该账号。</div>
-      <div class="ot-export-selectors">
-        <label class="ot-export-option ot-export-option-all">
-          <span class="ot-export-option-main">
-            <input type="checkbox" id="pl-export-all">
-            <span>全部账号</span>
-          </span>
-        </label>
-        <div id="pl-export-options" class="ot-export-options"></div>
-      </div>
-      <div class="actions">
-        <button type="button" id="pl-export-cancel" class="btn">取消</button>
-        <button type="button" id="pl-export-confirm" class="btn primary">导出 CSV</button>
       </div>
     </div>
   </div>
@@ -460,7 +331,6 @@
   <script src="https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore-compat.js" defer></script>
   <script type="module" src="/src/orders/firestore-rules.mjs"></script>
   <script type="module" src="/src/orders/index.mjs"></script>
-  <script type="module" src="/src/products/index.mjs"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
 </body>
 

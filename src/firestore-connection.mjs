@@ -374,6 +374,7 @@ const TKFirestoreConnection = {
   notifyRulesUpdateNeeded,
   closeRulesNotice,
   closeDisconnectConfirm,
+  requestDisconnect,
   bind,
   updateStatus
 };
@@ -397,6 +398,7 @@ export {
   notifyRulesUpdateNeeded,
   closeRulesNotice,
   closeDisconnectConfirm,
+  requestDisconnect,
   bind,
   updateStatus
 };

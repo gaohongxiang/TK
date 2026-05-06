@@ -221,10 +221,10 @@ assert.match(
   '现代 React SPA 阶段利润计算器需要由 React 入口挂载'
 );
 
-assert.match(
+assert.doesNotMatch(
   htmlSource,
   /<script type="module" src="\/src\/products\/index\.mjs"><\/script>/,
-  '路线二 M4 商品管理入口需要由 Vite ESM 模块加载'
+  '完整 React SPA 重建后商品管理页面不应再加载旧 DOM 入口'
 );
 
 assert.match(

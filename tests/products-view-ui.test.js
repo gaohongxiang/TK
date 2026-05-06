@@ -3,7 +3,6 @@ const path = require('path');
 const assert = require('assert');
 
 const srcTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'table.mjs'), 'utf8');
-const srcProductsIndexSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'index.mjs'), 'utf8');
 const srcAccountsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'accounts.mjs'), 'utf8');
 const srcExportSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'export.mjs'), 'utf8');
 const srcCrudSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'crud.mjs'), 'utf8');
@@ -37,12 +36,6 @@ assert.match(
 );
 
 assert.match(
-  srcProductsIndexSource,
-  /import \{ ProductLibraryTableView \} from '\.\/table\.mjs'/,
-  '商品 ESM 入口需要直接导入商品表格 ESM 模块'
-);
-
-assert.match(
   srcTableSource,
   /sortOrder = 'asc'/,
   '商品库表格 ESM 视图需要支持和订单页一致的排序方向状态'
@@ -55,27 +48,9 @@ assert.match(
 );
 
 assert.match(
-  srcProductsIndexSource,
-  /function createProductLibrary\(options = \{\}\)/,
-  '路线二 M4 商品管理 ESM 入口需要导出可注入依赖的创建函数'
-);
-
-assert.match(
-  srcProductsIndexSource,
-  /function getProductLibrary\(options = \{\}\)/,
-  '路线二 M4 商品管理 ESM 入口需要懒初始化，避免旧 defer 子模块时序问题'
-);
-
-assert.match(
-  srcProductsIndexSource,
-  /window\.ProductLibrary = ProductLibrary/,
-  '路线二 M4 商品管理 ESM 入口需要挂回 ProductLibrary 全局供旧路由调用'
-);
-
-assert.match(
-  srcProductsIndexSource,
+  reactProductsPageSource,
   /new CustomEvent\('tk-products-changed'[\s\S]*action: 'upsert'[\s\S]*action: 'delete'/,
-  '商品管理保存或删除商品后需要广播 tk-products-changed，通知订单侧刷新关联商品缓存'
+  'React 商品管理保存或删除商品后需要广播 tk-products-changed，通知订单侧刷新关联商品缓存'
 );
 
 assert.match(
@@ -133,63 +108,63 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-sku-list"/,
-  '商品库弹窗需要提供 SKU 列表容器'
+  'React 商品库弹窗需要提供 SKU 列表容器'
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-batch-axis-a"[\s\S]*id="pl-batch-axis-b"[\s\S]*id="pl-batch-axis-c"/,
-  '商品库弹窗批量生成 SKU 需要在同一行提供三个规格维度'
+  'React 商品库弹窗批量生成 SKU 需要在同一行提供三个规格维度'
 );
 
 assert.match(
-  srcCrudSource,
+  reactProductsPageSource,
   /data-sku-field="sizeText"/,
-  '商品库弹窗需要在 SKU 区块里提供单个尺寸输入框'
+  'React 商品库弹窗需要在 SKU 区块里提供单个尺寸输入框'
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /name="accountName"|id="pl-account-select"/,
-  '商品库弹窗需要提供账号选择字段'
+  'React 商品库弹窗需要提供账号选择字段'
 );
 
 assert.doesNotMatch(
-  indexSource,
+  reactProductsPageSource,
   /name="lengthCm"|name="widthCm"|name="heightCm"/,
-  '商品库弹窗不应再拆成长宽高三个输入框'
+  'React 商品库弹窗不应再拆成长宽高三个输入框'
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-batch-weight"|id="pl-batch-size"/,
-  '商品库弹窗需要提供统一的参数调整输入框'
+  'React 商品库弹窗需要提供统一的参数调整输入框'
 );
 
 assert.match(
-  srcCrudSource,
+  reactProductsPageSource,
   /data-sku-use-defaults=/,
-  '商品库 SKU 行需要保留继承共用物流参数的内部状态'
+  'React 商品库 SKU 行需要保留继承共用物流参数的内部状态'
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /匹配关键词（可选）/,
-  '商品库参数调整区需要支持“留空则应用到全部 SKU”的交互'
+  'React 商品库参数调整区需要支持“留空则应用到全部 SKU”的交互'
 );
 
 assert.doesNotMatch(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-apply-sku-batch"|应用到 SKU/,
-  '商品库参数调整区不应再保留“应用到 SKU”按钮，改为输入即联动'
+  'React 商品库参数调整区不应再保留“应用到 SKU”按钮，改为输入即联动'
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-add-sku"/,
-  '商品库弹窗需要提供添加 SKU 的入口'
+  'React 商品库弹窗需要提供添加 SKU 的入口'
 );
 
 assert.match(
@@ -205,9 +180,9 @@ assert.match(
 );
 
 assert.match(
-  indexSource,
+  reactProductsPageSource,
   /id="pl-export-modal"[\s\S]*id="pl-export-options"[\s\S]*id="pl-export-confirm"/,
-  '商品库需要提供按账号选择的导出 CSV 弹层'
+  'React 商品库需要提供按账号选择的导出 CSV 弹层'
 );
 
 assert.match(
@@ -240,10 +215,10 @@ assert.match(
   '商品库需要提供底部分页容器'
 );
 
-assert.match(
+assert.doesNotMatch(
   indexSource,
   /<script type="module" src="\/src\/products\/index\.mjs"><\/script>/,
-  'index.html 需要通过 ESM 入口加载商品库 index'
+  '完整 React SPA 重建后 index.html 不应再加载商品旧 DOM 入口'
 );
 
 assert.doesNotMatch(
@@ -295,15 +270,15 @@ assert.match(
 );
 
 assert.match(
-  srcProductsIndexSource,
+  reactProductsPageSource,
   /products 集合[\s\S]*notifyRulesUpdateNeeded/,
-  '商品库在 Firestore 权限不足时需要触发全局规则更新提示'
+  'React 商品库在 Firestore 权限不足时需要触发全局规则更新提示'
 );
 
 assert.match(
-  srcProductsIndexSource,
-  /classList\.add\('is-spinning'\)[\s\S]*classList\.remove\('is-spinning'\)/,
-  '商品库刷新时需要和订单页一样显示转圈状态'
+  reactProductsPageSource,
+  /aria-busy[\s\S]*is-spinning|is-spinning[\s\S]*aria-busy/,
+  'React 商品库刷新时需要和订单页一样显示转圈状态'
 );
 
 assert.match(
@@ -319,15 +294,15 @@ assert.match(
 );
 
 assert.match(
-  srcProductsIndexSource,
-  /provider\.upsertProduct\(product,\s*\{\s*waitForCommit:\s*false\s*\}\)/,
-  '商品库保存应先进入 Firestore 本地队列，不等待云端提交后才更新 UI'
+  reactProductsPageSource,
+  /upsertProduct\([\s\S]*waitForCommit:\s*false/,
+  'React 商品库保存应先进入 Firestore 本地队列，不等待云端提交后才更新 UI'
 );
 
 assert.match(
-  srcProductsIndexSource,
-  /provider\.deleteProduct\(tkId,\s*\{\s*waitForCommit:\s*false\s*\}\)/,
-  '商品库删除应先进入 Firestore 本地队列，不等待云端提交后才更新 UI'
+  reactProductsPageSource,
+  /deleteProduct\(tkId,\s*\{\s*waitForCommit:\s*false\s*\}\)/,
+  'React 商品库删除应先进入 Firestore 本地队列，不等待云端提交后才更新 UI'
 );
 
 assert.match(
@@ -428,8 +403,8 @@ assert.match(
 
 assert.match(
   reactMainSource,
-  /import \{ flushSync \} from 'react-dom'[\s\S]*import \{ ProductsPage \}[\s\S]*getElementById\('view-products'\)[\s\S]*flushSync\(\(\) => \{[\s\S]*<ProductsPage \/>/,
-  'React 入口需要同步把商品页面外壳挂载到 view-products，避免旧商品逻辑找不到节点'
+  /import \{ ProductsPage \}[\s\S]*getElementById\('view-products'\)[\s\S]*flushSync\(\(\) => \{[\s\S]*<ProductsPage \/>/,
+  'React 入口需要同步把商品页面挂载到 view-products'
 );
 
 assert.match(
@@ -524,15 +499,15 @@ assert.match(
 );
 
 assert.match(
-  srcProductsIndexSource,
-  /expandedTkIds:\s*\{\}/,
-  '商品库页面状态需要保存多 SKU 行的展开状态'
+  reactProductsPageSource,
+  /expandedTkIds/,
+  'React 商品库页面状态需要保存多 SKU 行的展开状态'
 );
 
 assert.match(
-  srcProductsIndexSource,
-  /onToggleExpand:\s*tkId\s*=>/,
-  '商品库页面需要支持切换多 SKU 行的展开状态'
+  reactProductsPageSource,
+  /onToggleExpand=\{tkId =>/,
+  'React 商品库页面需要支持切换多 SKU 行的展开状态'
 );
 
 const numericProducts = [
@@ -543,9 +518,6 @@ const numericProducts = [
 
 (async () => {
   const tableModule = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'table.mjs')}`);
-  const productsIndexModule = await import(`file://${path.join(__dirname, '..', 'src', 'products', 'index.mjs')}`);
-  assert.equal(typeof productsIndexModule.createProductLibrary, 'function', '商品管理 ESM 入口需要可被直接 import');
-  assert.equal(typeof productsIndexModule.getProductLibrary, 'function', '商品管理 ESM 入口需要导出懒初始化入口');
   assert.equal(typeof tableModule.ProductLibraryTableView.render, 'function', '商品表格 ESM 模块需要保留渲染壳');
   const result = tableModule.ProductLibraryTableView.deriveDisplayedProducts({
     products: [

@@ -1,7 +1,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { FormField } from '@/components/ui/form';
+import { FormField, FormRow } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Toast } from '@/components/ui/toast';
 import { useEffect, useState } from 'react';
@@ -116,7 +116,7 @@ function AppRuntime() {
             <code>orders</code>、<code>order_accounts</code>、<code>sync_state</code> 和 <code>products</code> 一并放行。
             </AlertDescription>
           </Alert>
-          <div className="row mt-[14px]">
+          <FormRow className="mt-[14px]">
             <FormField htmlFor="app-firestore-config" label="Firebase config" full>
               <Textarea
                 id="app-firestore-config"
@@ -132,7 +132,7 @@ function AppRuntime() {
                 onChange={event => setConfigText(event.target.value)}
               />
             </FormField>
-          </div>
+          </FormRow>
           <div className="ot-setup-guide-actions mt-[10px]">
             <Button id="app-open-firebase-console" size="sm" onClick={() => TKFirestoreConnection.openConsole()}>打开 Firebase Console</Button>
             <Button id="app-copy-firestore-rules" size="sm" data-rules-url="docs/firebase/order-tracker-firestore.rules" disabled={copyingRules} onClick={() => void copyRules()}>

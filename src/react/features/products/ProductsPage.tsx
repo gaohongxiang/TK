@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ExportOptions } from '@/components/ui/export-options';
-import { FormField } from '@/components/ui/form';
+import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -425,7 +425,7 @@ function ProductModal({
       <DialogContent>
         <DialogTitle id="pl-modal-title">{title}</DialogTitle>
         <form id="pl-form" autoComplete="off" onSubmit={event => { event.preventDefault(); onSubmit(); }}>
-          <div className="row">
+          <FormRow>
             <FormField label="账号 *">
               <Select
                 name="accountName"
@@ -448,28 +448,28 @@ function ProductModal({
                 onChange={event => updateField('tkId', event.target.value)}
               />
             </FormField>
-          </div>
-          <div className="row mt-3">
+          </FormRow>
+          <FormRow className="mt-3">
             <FormField label="商品名称" full>
               <Input name="name" value={draft.name} onChange={event => updateField('name', event.target.value)} />
             </FormField>
-          </div>
-          <div className="row mt-3">
+          </FormRow>
+          <FormRow className="mt-3">
             <FormField label="1688 链接">
               <Input type="url" name="link1688" placeholder="https://detail.1688.com/..." value={draft.link1688} onChange={event => updateField('link1688', event.target.value)} />
             </FormField>
             <FormField label="图片 URL">
               <Input type="url" name="imageUrl" placeholder="https://..." value={draft.imageUrl} onChange={event => updateField('imageUrl', event.target.value)} />
             </FormField>
-          </div>
-          <div className="row mt-3">
+          </FormRow>
+          <FormRow className="mt-3">
             <FormField label="货物类型" full>
               <Select name="cargoType" value={draft.cargoType} onChange={event => updateField('cargoType', event.target.value)}>
                 <option value="general">普货</option>
                 <option value="special">特货</option>
               </Select>
             </FormField>
-          </div>
+          </FormRow>
 
           <div className="pl-sku-panel">
             <div className="pl-sku-header">
@@ -486,7 +486,7 @@ function ProductModal({
               <div className="pl-sku-batch-block">
                 <div className="pl-sku-batch-title">批量生成多个 SKU</div>
                 <div className="pl-sku-batch-copy">按颜色、尺寸等规格值自动组合生成，已有 SKU 不会重复追加。</div>
-                <div className="row triple pl-sku-batch-row">
+                <FormRow columns={3} className="triple pl-sku-batch-row">
                   <FormField label="规格维度 1">
                     <Input id="pl-batch-axis-a" value={draft.axisA} placeholder="例如 白、黑、蓝" onChange={event => updateField('axisA', event.target.value)} />
                   </FormField>
@@ -496,7 +496,7 @@ function ProductModal({
                   <FormField label="规格维度 3">
                     <Input id="pl-batch-axis-c" value={draft.axisC} placeholder="例如 普通款、升级款" onChange={event => updateField('axisC', event.target.value)} />
                   </FormField>
-                </div>
+                </FormRow>
                 <div className="pl-sku-batch-actions">
                   <Button size="sm" variant="accentSoft" id="pl-generate-skus" onClick={onGenerateSkus}>生成多个 SKU</Button>
                 </div>
@@ -507,7 +507,7 @@ function ProductModal({
               <div className="pl-sku-batch-copy">留空匹配关键词就应用到全部 SKU；填写关键词则只更新命中的 SKU。</div>
               <div className="pl-sku-setup-block pl-sku-setup-block-single">
                 <div className="pl-sku-setup-surface">
-                  <div className="row pl-sku-batch-row">
+                  <FormRow className="pl-sku-batch-row">
                     <FormField label="匹配关键词（可选）" full>
                       <Input
                         id="pl-batch-match"
@@ -516,8 +516,8 @@ function ProductModal({
                         onChange={event => updateField('matchText', event.target.value)}
                       />
                     </FormField>
-                  </div>
-                  <div className="row pl-sku-batch-row mt-[10px]">
+                  </FormRow>
+                  <FormRow className="pl-sku-batch-row mt-[10px]">
                     <FormField label="重量(g)">
                       <Input
                         type="number"
@@ -539,7 +539,7 @@ function ProductModal({
                         onChange={event => updateField('defaultSizeText', event.target.value)}
                       />
                     </FormField>
-                  </div>
+                  </FormRow>
                 </div>
               </div>
             </div>

@@ -1,9 +1,5 @@
 /* —— 响应式：平板 —— */
 @media (max-width:860px) {
-  .row.quad {
-    grid-template-columns: 1fr 1fr
-  }
-
   .pricing-ship-inline-inputs {
     grid-template-columns: repeat(3, minmax(0, 1fr))
   }
@@ -102,14 +98,6 @@
   .card h2 {
     font-size: 13px;
     margin-bottom: 14px
-  }
-
-  .row,
-  .row.triple,
-  .row.quad,
-  .row.quint {
-    grid-template-columns: 1fr;
-    gap: 12px
   }
 
   .calc-toolbar {
@@ -238,10 +226,6 @@
 
   .ot-summary-ledger-note {
     white-space: normal;
-  }
-
-  .row+.row {
-    margin-top: 12px
   }
 
   .calc-result-table,

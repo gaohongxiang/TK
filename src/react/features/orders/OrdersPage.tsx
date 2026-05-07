@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ExportOptions } from '@/components/ui/export-options';
-import { FormField } from '@/components/ui/form';
+import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
@@ -921,7 +921,7 @@ function OrderModal({
       <DialogContent className="max-w-[880px]">
         <DialogTitle id="ot-modal-title">{editingId ? '编辑订单' : '新增订单'}</DialogTitle>
         <form id="ot-form" autoComplete="off" onSubmit={event => { event.preventDefault(); onSubmit(); }}>
-          <div className="row">
+          <FormRow>
             <FormField label="账号 *">
               <Select name="账号" id="ot-acc-select" required value={draft.accountName} onChange={event => {
                 if (event.target.value === '__ADD__') {
@@ -938,8 +938,8 @@ function OrderModal({
             <FormField label="订单号 *">
               <Input name="订单号" required value={draft.orderNo} onChange={event => updateDraft({ orderNo: event.target.value }, false)} />
             </FormField>
-          </div>
-          <div className="row triple">
+          </FormRow>
+          <FormRow columns={3} className="triple mt-[18px] max-[768px]:mt-3">
             <FormField label="下单时间 *">
               <Input type="date" name="下单时间" required value={draft.orderedAt} onChange={event => updateDraft({ orderedAt: event.target.value })} />
             </FormField>
@@ -949,7 +949,7 @@ function OrderModal({
             <FormField label={<>最晚到仓时间 <span className="kbd">自动</span></>}>
               <Input type="date" name="最晚到仓时间" readOnly value={draft.latestWarehouseAt} />
             </FormField>
-          </div>
+          </FormRow>
           <section className="ot-item-block">
             <div className="ot-item-block-head">
               <div>
@@ -965,7 +965,7 @@ function OrderModal({
             <input type="hidden" name="产品名称" id="ot-product-name-hidden" value={buildOrderItemsSummary(draft.items)} readOnly />
             <input type="hidden" name="数量" id="ot-total-quantity-hidden" value={computeItemTotals(draft.items).quantity || ''} readOnly />
           </section>
-          <div className="row triple">
+          <FormRow columns={3} className="triple">
             <FormField label="总件数">
               <Input id="ot-total-quantity" readOnly value={computeItemTotals(draft.items).quantity || ''} />
             </FormField>
@@ -975,8 +975,8 @@ function OrderModal({
             <FormField label={<>总尺寸(cm) <span className="ot-inline-hint">多个订单明细时请自行调整尺寸</span></>}>
               <Input name="尺寸" value={draft.sizeText} onChange={event => updateDraft({ sizeText: event.target.value })} />
             </FormField>
-          </div>
-          <div className="row quint ot-money-row-top">
+          </FormRow>
+          <FormRow columns={5} className="quint ot-money-row-top mt-[18px] max-[768px]:mt-3">
             <FormField label="是否退款" className="ot-refund-field">
               <label className="ot-refund-toggle">
                 <input type="checkbox" id="ot-is-refunded" name="是否退款" value="1" checked={draft.isRefunded} onChange={event => updateDraft({ isRefunded: event.target.checked })} />
@@ -1001,8 +1001,8 @@ function OrderModal({
             <FormField label={<>预估利润（人民币） <span className="kbd">自动</span></>}>
               <Input type="number" name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
             </FormField>
-          </div>
-          <div className="row quad ot-meta-row">
+          </FormRow>
+          <FormRow columns={4} className="quad ot-meta-row mt-[18px] max-[768px]:mt-3">
             <FormField label="达人佣金率（%）">
               <Input type="number" name="达人佣金率" min="0" step="0.01" value={draft.creatorCommissionRate} onChange={event => updateDraft({ creatorCommissionRate: event.target.value })} />
             </FormField>
@@ -1018,7 +1018,7 @@ function OrderModal({
             <FormField label={<>订单预警 <span className="kbd">自动</span></>}>
               <Input name="订单预警" readOnly value={draft.warningText} />
             </FormField>
-          </div>
+          </FormRow>
           <DialogActions>
             <Button id="ot-cancel" onClick={() => onOpenChange(false)}>取消</Button>
             <Button type="submit" variant="primary">保存</Button>
@@ -1047,11 +1047,11 @@ function AddAccountModal({
       <DialogContent className="max-w-[400px]">
         <DialogTitle>添加新账号</DialogTitle>
         <form id="ot-add-acc-form" autoComplete="off" onSubmit={event => { event.preventDefault(); onConfirm(); }}>
-          <div className="row">
+          <FormRow>
             <FormField label="新账号名称" full>
               <Input id="ot-new-acc-input" value={value} placeholder="例如：US-TK-01" required onChange={event => onValueChange(event.target.value)} />
             </FormField>
-          </div>
+          </FormRow>
           <DialogActions>
             <Button id="ot-add-acc-cancel" onClick={() => onOpenChange(false)}>取消</Button>
             <Button type="submit" variant="primary">确定</Button>

@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const { readReactStyleSource } = require('./helpers/react-style-source.cjs');
 
 const root = path.join(__dirname, '..');
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -16,7 +15,6 @@ const wrangler = fs.readFileSync(path.join(root, 'wrangler.toml'), 'utf8');
 const gitignore = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
-const reactStyleSource = readReactStyleSource(root);
 const privacySource = fs.readFileSync(path.join(root, 'public', 'privacy.html'), 'utf8');
 const termsSource = fs.readFileSync(path.join(root, 'public', 'terms.html'), 'utf8');
 const notFoundSource = fs.readFileSync(path.join(root, 'public', '404.html'), 'utf8');
@@ -154,19 +152,19 @@ assert.match(
 
 assert.match(
   reactAppSource,
-  /<a className="skip-link" href="#main-content">跳到主要内容<\/a>[\s\S]*<AppShell modules=\{modules\} active=\{active\} docsUrl=\{config\.docsUrl\} \/>[\s\S]*<main id="main-content" className="app-main" tabIndex=\{-1\}>/,
+  /skipLinkClass = 'skip-link[\s\S]*appWrapClass = 'wrap[\s\S]*appMainClass = 'app-main[\s\S]*<a className=\{skipLinkClass\} href="#main-content">跳到主要内容<\/a>[\s\S]*<AppShell modules=\{modules\} active=\{active\} docsUrl=\{config\.docsUrl\} \/>[\s\S]*<main id="main-content" className=\{appMainClass\} tabIndex=\{-1\}>/,
   '主站需要由 React App 提供跳转主内容链接、AppShell 和 main landmark'
 );
 
 assert.match(
   fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8'),
-  /<nav className="modules" aria-label="模块导航">[\s\S]*aria-current=\{isActive \? 'page' : undefined\}/,
+  /modulesNavClass = 'modules[\s\S]*<nav className=\{modulesNavClass\} aria-label="模块导航">[\s\S]*aria-current=\{isActive \? 'page' : undefined\}/,
   'React AppShell 需要保留统一模块导航和当前导航语义'
 );
 
 assert.match(
   reactAppSource,
-  /<main id="main-content" className="app-main"[\s\S]*id="view-calc"[\s\S]*id="view-orders"[\s\S]*id="view-products"[\s\S]*id="view-analytics"[\s\S]*<\/main>[\s\S]*<footer(?:\s+className=\{appFooterClass\})?>/,
+  /<main id="main-content" className=\{appMainClass\}[\s\S]*id="view-calc"[\s\S]*id="view-orders"[\s\S]*id="view-products"[\s\S]*id="view-analytics"[\s\S]*<\/main>[\s\S]*<footer(?:\s+className=\{appFooterClass\})?>/,
   '主站核心工具视图需要由 React 放在 main landmark 内，footer 需要留在 main 之后'
 );
 
@@ -177,8 +175,8 @@ assert.match(
 );
 
 assert.match(
-  reactStyleSource,
-  /\.skip-link\s*\{[\s\S]*transform:\s*translateY\(-140%\)[\s\S]*\.skip-link:focus\s*\{[\s\S]*transform:\s*translateY\(0\)/,
+  reactAppSource,
+  /skipLinkClass = 'skip-link[\s\S]*-translate-y-\[140%\][\s\S]*focus:translate-y-0/,
   '跳转主内容链接默认隐藏，键盘聚焦时需要可见'
 );
 
@@ -195,8 +193,14 @@ assert.ok(
 
 assert.match(
   fs.readFileSync(path.join(root, 'src', 'react', 'styles.css'), 'utf8'),
-  /@import "\.\/styles\/01-base\.css"[\s\S]*@import "\.\/styles\/09-responsive\.css"/,
-  'React 样式入口需要按模块导入拆分后的样式文件'
+  /tailwindcss\/utilities[\s\S]*@import "\.\/styles\/01-base\.css"/,
+  'React 样式入口需要只保留 Tailwind utilities 和基础 token 样式'
+);
+
+assert.doesNotMatch(
+  fs.readFileSync(path.join(root, 'src', 'react', 'styles.css'), 'utf8'),
+  /09-responsive\.css|02-calculator-core\.css|05-analytics\.css|08-calculator-reference\.css/,
+  '已迁入 React/Tailwind 的旧样式模块不应继续从 React 样式入口导入'
 );
 
 assert.match(

@@ -184,7 +184,7 @@ function ProductPager({
 }) {
   return (
     <TablePager
-      className={cn('products-react-pager', compact ? 'is-compact' : '')}
+      className={cn('products-react-pager max-[640px]:w-full max-[640px]:justify-start', compact ? 'is-compact' : '')}
       pageSize={pageSize}
       pageSizeOptions={PAGE_SIZE_OPTIONS}
       currentPage={currentPage}

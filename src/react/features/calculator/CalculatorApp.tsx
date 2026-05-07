@@ -220,6 +220,7 @@ const calcToolbarClass = 'calc-toolbar mb-2.5 flex flex-wrap items-center justif
 const calcSubnavClass = 'calc-subnav flex w-full min-w-0 items-center rounded-2xl border border-[color-mix(in_srgb,var(--border)_78%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_74%,transparent),color-mix(in_srgb,var(--panel)_92%,transparent))] px-2.5 py-1 shadow-[0_8px_20px_rgba(14,20,44,.07)] max-[768px]:px-[11px] max-[768px]:py-2.5';
 const calcTabbarClass = 'calc-tabbar flex w-full items-center justify-start gap-2';
 const calcTabsClass = 'calc-tabs flex w-full flex-wrap gap-2.5 max-[768px]:w-auto max-[768px]:min-w-0 max-[768px]:flex-1';
+const calcHelpButtonClass = 'calc-help-icon h-7 w-7 shrink-0 rounded-full border border-[var(--border)] bg-[var(--panel)] p-0 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.5] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]';
 const knownSaleItemClass = 'known-sale-item flex flex-col justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel2)] px-3.5 py-3';
 const knownSaleLabelClass = 'label text-[11px] uppercase tracking-[1px] text-[var(--muted)]';
 const knownSaleValueClass = 'value text-xl font-bold leading-[1.2] text-[var(--text)] tabular-nums max-[768px]:text-lg';
@@ -743,7 +744,7 @@ function CalculatorApp() {
             <Button
               id="calc-help-btn"
               variant="plain"
-              className="calc-help-icon"
+              className={calcHelpButtonClass}
               aria-controls="calc-help-modal"
               aria-haspopup="dialog"
               aria-label="模式说明"

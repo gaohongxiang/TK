@@ -52,6 +52,9 @@ function viewClass(active: string, key: string) {
 const appFooterClass = 'relative z-[2] mt-[30px] flex flex-wrap justify-center gap-x-3 gap-y-2 text-center text-xs text-[var(--muted)]';
 const appFooterLinksClass = 'inline-flex flex-wrap justify-center gap-2.5';
 const appFooterLinkClass = 'relative z-[3] inline-flex min-h-7 items-center font-bold text-[var(--accent)] hover:underline';
+const skipLinkClass = 'skip-link fixed left-2.5 top-2.5 z-[10000] -translate-y-[140%] rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-[var(--text)] shadow-[var(--shadow)] transition-transform focus:translate-y-0 focus:outline-[3px] focus:outline-[rgba(110,168,255,.35)] focus:outline-offset-2';
+const appWrapClass = 'wrap mx-auto max-w-[1180px] px-[18px] pb-20 pt-3.5 max-[640px]:px-3.5 max-[640px]:pb-[60px] max-[640px]:pt-2.5';
+const appMainClass = 'app-main min-w-0 outline-none';
 const analyticsStatusClass = 'analytics-react-status mb-4 grid grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3.5 max-[640px]:grid-cols-[32px_minmax(0,1fr)]';
 const analyticsStatusMarkClass = 'analytics-react-status-mark h-[38px] w-[38px] rounded-xl border border-[color-mix(in_srgb,var(--accent2)_45%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent2)_56%,transparent),transparent),color-mix(in_srgb,var(--panel2)_48%,transparent)]';
 const analyticsStatusLoadingClass = '[&_.analytics-react-status-mark]:animate-pulse';
@@ -139,10 +142,10 @@ function App({
 
   return (
     <>
-      <a className="skip-link" href="#main-content">跳到主要内容</a>
-      <div className="wrap">
+      <a className={skipLinkClass} href="#main-content">跳到主要内容</a>
+      <div className={appWrapClass}>
         <AppShell modules={modules} active={active} docsUrl={config.docsUrl} />
-        <main id="main-content" className="app-main" tabIndex={-1}>
+        <main id="main-content" className={appMainClass} tabIndex={-1}>
           <div id="view-calc" className={viewClass(active, 'calc')}>
             <CalculatorApp />
           </div>

@@ -146,13 +146,13 @@ assert.doesNotMatch(
 
 assert.match(
   statusStripSource,
-  /refreshIconButtonClass = 'calc-help-icon ot-refresh-inline[\s\S]*bg-transparent/,
+  /refreshIconButtonClass = cn\(iconButtonClass, 'ot-refresh-inline[\s\S]*bg-transparent/,
   '共享状态栏 primitive 需要定义顶部内联刷新图标按钮'
 );
 
 assert.match(
   statusStripSource,
-  /refreshIconButtonClass = 'calc-help-icon ot-refresh-inline[\s\S]*bg-transparent/,
+  /iconButtonClass = 'calc-help-icon[\s\S]*refreshIconButtonClass = cn\(iconButtonClass, 'ot-refresh-inline[\s\S]*bg-transparent/,
   '刷新图标按钮需要去掉灰底'
 );
 

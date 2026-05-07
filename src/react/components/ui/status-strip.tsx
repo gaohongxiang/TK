@@ -4,9 +4,10 @@ const statusStripClass = 'ot-bar flex flex-wrap items-center justify-between gap
 const statusStripLeftClass = 'left flex items-center gap-2.5 text-[12.5px] text-[var(--muted)]';
 const statusStripRightClass = 'right flex flex-wrap items-center justify-end gap-2 [&_[data-slot=button]]:inline-flex [&_[data-slot=button]]:items-center [&_[data-slot=button]]:justify-center [&_[data-slot=button]]:gap-1.5 max-[768px]:w-full max-[768px]:justify-end';
 const syncStatusBaseClass = 'sync min-h-[30px] text-xs text-[var(--muted)]';
-const refreshIconButtonClass = 'calc-help-icon ot-refresh-inline h-[30px] w-[30px] bg-transparent [&_svg]:h-[15px] [&_svg]:w-[15px]';
+const iconButtonClass = 'calc-help-icon inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] p-0 text-[var(--muted)] transition-[background,border-color,color] hover:border-[var(--accent)] hover:text-[var(--accent)] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.5] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]';
+const refreshIconButtonClass = cn(iconButtonClass, 'ot-refresh-inline h-[30px] w-[30px] bg-transparent [&_svg]:h-[15px] [&_svg]:w-[15px]');
 const refreshIconBusyClass = 'is-spinning border-[color-mix(in_srgb,var(--accent)_42%,var(--border))] text-[var(--accent)] [&_svg]:animate-spin';
-const storageHelpButtonClass = 'calc-help-icon ot-storage-help-btn h-[30px] w-[30px] [&_svg]:h-[15px] [&_svg]:w-[15px]';
+const storageHelpButtonClass = cn(iconButtonClass, 'ot-storage-help-btn h-[30px] w-[30px] [&_svg]:h-[15px] [&_svg]:w-[15px]');
 
 function syncStatusClass(statusClass?: string) {
   return cn(

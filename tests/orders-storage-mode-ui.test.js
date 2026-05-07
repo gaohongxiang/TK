@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const { readReactStyleSource } = require('./helpers/react-style-source.cjs');
 
 const root = path.join(__dirname, '..');
 
@@ -12,7 +11,6 @@ const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'featur
 const productsPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const connectionSource = fs.readFileSync(path.join(root, 'src', 'firestore-connection.mjs'), 'utf8');
 const appRuntimeSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'AppRuntime.tsx'), 'utf8');
-const cssSource = readReactStyleSource(root);
 const formPrimitiveSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'form.tsx'), 'utf8');
 const pageHeroSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'page-hero.tsx'), 'utf8');
 
@@ -155,20 +153,20 @@ assert.match(
 );
 
 assert.match(
-  cssSource,
-  /\.app-header\s*\{[\s\S]*justify-content:\s*flex-start[\s\S]*flex-wrap:\s*nowrap/s,
+  appShellSource,
+  /appHeaderClass = 'app-header[\s\S]*justify-start[\s\S]*flex-nowrap/s,
   '顶部头部需要保持单行布局，品牌在左导航在右'
 );
 
 assert.match(
-  cssSource,
-  /\.app-brand\s*\{[\s\S]*flex:\s*0 0 auto/s,
+  appShellSource,
+  /appBrandClass = 'app-brand flex-none/,
   '品牌区需要固定在左侧，不再独占一整行'
 );
 
 assert.match(
-  cssSource,
-  /\.app-header-side\s*\{[\s\S]*margin-left:\s*56px[\s\S]*justify-content:\s*flex-start/s,
+  appShellSource,
+  /appHeaderSideClass = 'app-header-side ml-14[\s\S]*justify-start/,
   '顶部导航需要排在品牌右侧，并与品牌拉开明显距离'
 );
 
@@ -198,7 +196,7 @@ assert.doesNotMatch(
 
 assert.match(
   appShellSource,
-  /<nav className="modules" aria-label="模块导航">/,
+  /modulesNavClass = 'modules[\s\S]*<nav className=\{modulesNavClass\} aria-label="模块导航">/,
   '顶部仍需通过 React AppShell 保留统一模块导航'
 );
 

@@ -114,7 +114,7 @@ assert.match(
 
 assert.match(
   appShell,
-  /className="app-header"[\s\S]*data-react-app-shell-ready="true"[\s\S]*className="modules"[\s\S]*href=\{`#\$\{module\.key\}`\}/,
+  /appHeaderClass = 'app-header[\s\S]*modulesNavClass = 'modules[\s\S]*className=\{appHeaderClass\}[\s\S]*data-react-app-shell-ready="true"[\s\S]*className=\{modulesNavClass\}[\s\S]*href=\{`#\$\{module\.key\}`\}/,
   'React AppShell 需要接管主导航，同时保留现有 header/modules 类名以维持视觉连续性'
 );
 

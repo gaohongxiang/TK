@@ -3,19 +3,29 @@ const path = require('path');
 const assert = require('assert');
 const { pathToFileURL } = require('url');
 
-const syncSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'sync.mjs'), 'utf8');
+const root = path.join(__dirname, '..');
+const providerSource = fs.readFileSync(path.join(root, 'src', 'orders', 'provider-firestore.mjs'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const sharedPath = path.join(__dirname, '..', 'src', 'orders', 'shared.mjs');
 
+assert.ok(!fs.existsSync(path.join(root, 'src', 'orders', 'sync.mjs')), '完整 React SPA 后不应保留旧订单同步运行层');
+
 assert.match(
-  syncSource,
-  /pullSnapshot/,
-  'provider 化后的同步模块需要通过 pullSnapshot 拉取远端变更'
+  providerSource,
+  /async function pullSnapshot/,
+  'Firestore provider 需要通过 pullSnapshot 拉取远端变更'
 );
 
 assert.match(
-  syncSource,
-  /pushChanges/,
-  'provider 化后的同步模块需要通过 pushChanges 推送远端变更'
+  providerSource,
+  /async function pushChanges/,
+  'Firestore provider 需要通过 pushChanges 推送远端变更'
+);
+
+assert.match(
+  ordersPageSource,
+  /pullSnapshot\(\{ cursor: '' \}\)[\s\S]*pushChanges\(\{[\s\S]*waitForCommit:\s*false/,
+  'React 订单页需要直接使用 provider 拉取远端快照并写入本地队列'
 );
 
 (async () => {

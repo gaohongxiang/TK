@@ -631,7 +631,7 @@ npm run release:check
 - provider-firestore
 - index
 
-订单同步运行链路已按原逻辑机械迁移到 `src/orders/sync.mjs`；当前先完成 ESM 入口挂载和测试覆盖，不删除旧 helper 参考文件。
+订单同步运行链路已由 React 订单页直接接管；旧 `src/orders/sync.mjs` 运行壳层已删除，订单页直接调用 Firestore provider 的 `pullSnapshot()` / `pushChanges()`。
 
 已完成：
 
@@ -651,8 +651,8 @@ npm run release:check
 - `tests/orders-session-module.test.js` 已改为断言旧订单会话 DOM runtime 不存在，并保护 React 订单页直接接管配置变化、连接和刷新状态。
 - 新增 `src/orders/provider-firestore.mjs`，提供 Firestore 配置解析/序列化、显示名、items 归一化、旧结构清洗识别、订单拉取映射、订单写入 doc 构造等 ESM 纯函数，并保留 `OrderTrackerProviderFirestore.create()` 兼容壳。
 - `tests/orders-provider-firestore-module.test.js` 已新增动态 `import()` 断言，验证 ESM provider 的配置解析、显示名、items 清洗、拉取订单字段映射、写入 doc 汇总和空字段处理。
-- 新增 `src/orders/sync.mjs`，提供 Firestore 乐观写入变更集、订单三方合并、账号合并、远端 canonical cleanup 写回变更集、缺失 seq 检测、远端快照应用判断等同步纯函数，并承载订单同步运行版 `OrderTrackerSync.create()`。
-- `tests/orders-sync-module.test.js` 已新增动态 `import()` 断言，验证 ESM sync 的乐观写入 upsert/delete、更新时间冲突合并、本地删除时间记录、远端新增吸收、`__needsOrderCleanup` 强制写回，以及订单入口直接 import `src/orders/sync.mjs`。
+- 完整 React SPA 重建后已删除 `src/orders/sync.mjs` 旧同步运行壳层；React 订单页直接使用 Firestore provider 拉远端快照、计算 upsert/delete/account 变更，并用 `waitForCommit: false` 投递 SDK 本地写入队列。
+- `tests/orders-react-sync-contract.test.js` 已新增断言，保护订单页直连 `pullSnapshot()` / `pushChanges()`、后台 `commitPromise` 和 provider 的 cursor/seq 能力；`tests/orders-sync-provider-contract.test.js` 已改为保护 provider 同步接口而不是旧 sync 壳层。
 - 新增 `src/orders/index.mjs`，提供订单管理 ESM 入口，导出 `createOrderTracker`、`getOrderTracker` 和 `OrderTracker`，并通过 `window.OrderTracker` 挂回给旧 hash 路由调用。
 - `src/orders/index.mjs` 采用懒初始化，直接 `import` 已完整迁移的 `shared`、`provider-firestore`、`export`、`tabs`、`session`、`sync`、`crud` ESM helper。
 - 完整 React SPA 重建后已删除 `src/orders/products.mjs`，订单页直接通过 `ProductLibraryProviderFirestore` 拉取商品资料，监听 `tk-products-changed` 并在页面内完成商品关联。
@@ -666,7 +666,7 @@ npm run release:check
 - `src/orders/provider-firestore.mjs` 已收敛为纯 ESM provider，不再注册 `TKDataSourceRegistry`；React 订单页直接 import 使用。
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载；React SPA 阶段也已移除 `<script type="module" src="/src/orders/index.mjs"></script>`，订单运行入口改为 `src/react/features/orders/OrdersPage.tsx`。
 - `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js`、`js/orders/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
-- `index.html` 已移除旧 `js/orders/sync.js` 的页面加载，订单入口直接 import `src/orders/sync.mjs`。
+- `index.html` 已移除旧 `js/orders/sync.js` 的页面加载；订单同步运行入口改为 `src/react/features/orders/OrdersPage.tsx`，不再保留 `src/orders/sync.mjs` 过渡层。
 - `index.html` 已移除旧 `js/orders/crud.js` 的页面加载；订单弹窗运行入口改为 `src/react/features/orders/OrdersPage.tsx`，不再保留 `src/orders/crud.mjs` 过渡层。
 - `index.html` 已移除旧 `js/firestore-connection.js`、`/src/firestore-connection.mjs` 和 `/src/orders/firestore-rules.mjs` 的页面加载；连接模块和规则文本现在由 React 入口依赖图加载。
 - 新增 `tests/orders-index-module.test.js`，验证订单 ESM 入口可直接 import、懒初始化、挂回全局，以及旧订单 index 普通脚本不再由主页面加载。
@@ -680,9 +680,10 @@ node tests/orders-summary-ui.test.js
 node tests/orders-export-module.test.js
 node tests/orders-tabs-module.test.js
 node tests/orders-crud-module.test.js
+node tests/orders-react-form-behavior.test.js
 node tests/orders-session-module.test.js
 node tests/orders-provider-firestore-module.test.js
-node tests/orders-sync-module.test.js
+node tests/orders-react-sync-contract.test.js
 node tests/orders-index-module.test.js
 node tests/firestore-connection-module.test.js
 npm test
@@ -694,7 +695,7 @@ npm run release:check
 下一步：
 
 - M5 进入观察期。不要急着删除旧 `js/orders/index.js` 或旧 helper；先让 release/e2e 稳定后，再考虑统一清理旧入口参考文件。
-- `js/orders/sync.js` 只作为历史参考保留；后续不要轻改 `src/orders/sync.mjs` 的同步语义。
+- `js/orders/sync.js` 和 `src/orders/sync.mjs` 均已清理；后续订单同步语义以 React 订单页和 `src/orders/provider-firestore.mjs` 为准。
 
 ### 8.5 标准模块化期间的构建变化
 
@@ -939,7 +940,7 @@ ECharts 图表：
 - 先把订单表格迁到 React/TanStack Table。
 - 再迁订单弹窗。
 - 最后才考虑 sync/provider 类型化。
-- `src/orders/sync.mjs` 不在早期重写。
+- 旧 `src/orders/sync.mjs` 已在完整 React SPA 阶段删除。
 
 ### 9.8 TypeScript 策略
 
@@ -1521,7 +1522,6 @@ js/orders/export.js
 js/orders/shared.js
 src/orders/firestore-rules.mjs
 src/orders/form-utils.mjs
-src/orders/sync.mjs
 src/orders/table.mjs
 ```
 
@@ -1672,7 +1672,7 @@ npm run release:check
 处理：
 
 - 不轻易改 `provider-firestore.js` 写入路径。
-- 不轻易改订单同步语义；当前运行链路在 `src/orders/sync.mjs`。
+- 不轻易改订单同步语义；当前运行链路在 React 订单页和 `src/orders/provider-firestore.mjs`。
 - 改订单保存后要重点测试新增/编辑订单、快递公司、快递单号输入。
 
 ### 14.3 Supabase 遗留代码

@@ -4,25 +4,21 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const esmPath = path.join(root, 'src', 'orders', 'session.mjs');
-const syncSource = fs.readFileSync(path.join(root, 'src', 'orders', 'sync.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
+const firestoreConnectionSource = fs.readFileSync(path.join(root, 'src', 'firestore-connection.mjs'), 'utf8');
 
 assert.ok(
   !fs.existsSync(esmPath),
   '完整 React SPA 重建后旧订单会话 DOM runtime 应删除'
 );
 
-assert.match(
-  syncSource,
-  /cancelPendingSync/,
-  '同步模块需要提供取消待同步任务的接口'
-);
+assert.ok(!fs.existsSync(path.join(root, 'src', 'orders', 'sync.mjs')), '完整 React SPA 后旧订单同步 runtime 应删除');
 
 assert.match(
-  syncSource,
+  ordersPageSource,
   /orders、order_accounts、sync_state 和 products[\s\S]*notifyRulesUpdateNeeded/,
-  '订单同步在 Firestore 权限不足时需要触发全局规则更新提示'
+  'React 订单页在 Firestore 权限不足时需要触发全局规则更新提示'
 );
 
 assert.ok(!fs.existsSync(path.join(root, 'src', 'orders', 'index.mjs')), '完整 React SPA 重建后旧订单 DOM 入口应删除');
@@ -37,6 +33,18 @@ assert.match(
   ordersPageSource,
   /tk-firestore-config-changed[\s\S]*id="ot-open-connection"[\s\S]*id="ot-refresh"/,
   'React 订单页需要直接接管 Firestore 配置变化、连接按钮和刷新按钮'
+);
+
+assert.match(
+  ordersPageSource,
+  /providerRef\.current\.pullSnapshot[\s\S]*providerRef\.current\.pushChanges/,
+  'React 订单页需要直接接管订单拉取和写入流程'
+);
+
+assert.match(
+  firestoreConnectionSource,
+  /tk-firestore-config-changed[\s\S]*function dispatchConfigChanged\(detail\)[\s\S]*dispatchEvent/,
+  'Firestore 连接模块需要继续广播配置变化给 React 订单页'
 );
 
 assert.match(

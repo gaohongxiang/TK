@@ -12,6 +12,7 @@ import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 const LS_KEY = 'tk.profit.v1';
 
@@ -212,6 +213,7 @@ function Field({
 const calcPanelClass = 'calc-panel active block';
 const calcLayoutClass = 'calc-layout-grid grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-[18px] [&>*]:min-w-0 max-[860px]:grid-cols-1';
 const calcFormSectionClass = 'calc-form-section mt-[18px]';
+const calcDetailsClass = 'calc-details mt-4';
 const calcDetailsGridClass = 'calc-details-grid mt-2.5';
 const calcToolbarClass = 'calc-toolbar mb-2.5 flex flex-wrap items-center justify-center gap-0 max-[768px]:items-stretch';
 const calcSubnavClass = 'calc-subnav flex w-full min-w-0 items-center rounded-2xl border border-[color-mix(in_srgb,var(--border)_78%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_74%,transparent),color-mix(in_srgb,var(--panel)_92%,transparent))] px-2.5 py-1 shadow-[0_8px_20px_rgba(14,20,44,.07)] max-[768px]:px-[11px] max-[768px]:py-2.5';
@@ -225,6 +227,26 @@ const shippingFieldLabelClass = 'min-h-0 text-xs';
 const shippingControlClass = 'rounded-[9px] px-2.5 py-2 text-[13.5px]';
 const shippingSummaryFieldLabelClass = 'text-[11px]';
 const shippingSummaryInputClass = 'px-2.5 py-[7px] text-[13px]';
+const shippingInlineClass = 'pricing-ship-inline mt-[18px] rounded-xl border border-[var(--border)] bg-[linear-gradient(180deg,rgba(110,168,255,.07),rgba(138,255,207,.04))] p-3';
+const shippingTitleRowClass = 'pricing-ship-inline-title-row mb-2.5 flex flex-wrap items-center justify-start gap-3';
+const shippingTitleClass = 'pricing-ship-inline-title text-xs font-semibold tracking-[.5px] text-[var(--muted)]';
+const shippingTipClass = 'pricing-ship-inline-tip text-[10px] leading-[1.35] text-[var(--accent)]';
+const shippingAlertClass = 'pricing-ship-inline-alert mono min-w-0 flex-[0_1_auto] whitespace-normal text-left text-[10px] leading-[1.35] text-[var(--danger)]';
+const shippingInputsClass = 'pricing-ship-inline-inputs grid grid-cols-[1.05fr_.95fr_.8fr_.8fr_.8fr] items-end gap-2.5 [&>*]:min-w-0 max-[860px]:grid-cols-3 max-[640px]:grid-cols-2';
+const shippingMetricsClass = 'pricing-ship-inline-metrics mt-2.5 grid grid-cols-[.92fr_.92fr_1.16fr] gap-2.5 [&>*]:min-w-0 max-[640px]:grid-cols-1';
+const shippingSummaryClass = 'pricing-ship-inline-summary mt-2.5 grid grid-cols-[1.84fr_1.16fr] items-stretch gap-2.5 [&>*]:min-w-0 max-[640px]:grid-cols-1';
+const shippingSummaryFieldsClass = 'pricing-ship-inline-summary-fields grid min-w-0 grid-cols-3 gap-2.5 [&>*]:min-w-0 max-[640px]:grid-cols-1';
+const shippingItemClass = 'pricing-ship-inline-item flex flex-col items-stretch justify-start gap-1.5 rounded-[10px] border border-[rgba(110,168,255,.18)] bg-[var(--panel2)] px-3 py-2.5';
+const shippingHeadClass = 'pricing-ship-inline-head flex min-w-0 items-center justify-between gap-2.5';
+const shippingMetricLabelClass = 'k text-[11px] font-semibold tracking-[.5px] text-[var(--muted)]';
+const shippingMetricValueClass = 'v mono text-right text-base font-bold text-[var(--text)]';
+const shippingMetricRuleClass = 'pricing-ship-inline-rule mono whitespace-normal text-[10px] leading-[1.25] text-[var(--muted)]';
+const shippingPriceButtonClass = 'pricing-ship-inline-price pricing-ship-inline-price-clickable expense flex w-full min-w-0 flex-col items-center justify-center gap-1.5 rounded-[10px] border-0 bg-transparent px-1 py-0.5 transition-[background,box-shadow,opacity] hover:bg-[rgba(240,138,134,.08)] disabled:cursor-not-allowed disabled:opacity-50';
+const shippingPriceValueClass = 'v mono text-center text-xl font-bold text-[var(--expense)]';
+const shippingFormulaClass = 'pricing-ship-inline-formula mono mt-2.5 whitespace-normal text-center text-[9px] leading-[1.35] text-[var(--muted)] [overflow-wrap:anywhere]';
+const calcFormulaBlockClass = 'calc-formula-block mt-2.5 border-t border-dashed border-[var(--border)] pt-2 text-[var(--muted)]';
+const calcFormulaTitleClass = 'calc-formula-title mb-1 text-[9.5px] uppercase tracking-[.6px] opacity-70';
+const calcFormulaListClass = 'calc-formula-list flex flex-col gap-[3px] font-mono text-[10.5px] leading-[1.28]';
 
 function ShippingInline({
   state,
@@ -250,13 +272,13 @@ function ShippingInline({
   const importId = prefix === 'New' ? 'importShippingNew' : 'importShippingReview';
 
   return (
-    <div className="pricing-ship-inline">
-      <div className="pricing-ship-inline-title-row">
-        <div className="pricing-ship-inline-title">海外运费计算器</div>
-        <div className="pricing-ship-inline-tip">点击计算结果可回填到海外运费框</div>
-        <div className="pricing-ship-inline-alert mono" id={`shipChargeReason${suffix}`}>{quote.alerts[0]?.text || ''}</div>
+    <div className={shippingInlineClass}>
+      <div className={shippingTitleRowClass}>
+        <div className={shippingTitleClass}>海外运费计算器</div>
+        <div className={shippingTipClass}>点击计算结果可回填到海外运费框</div>
+        <div className={shippingAlertClass} id={`shipChargeReason${suffix}`}>{quote.alerts[0]?.text || ''}</div>
       </div>
-      <div className="pricing-ship-inline-inputs">
+      <div className={shippingInputsClass}>
         <FormField htmlFor={cargoId} label="货物类型" className="gap-1.5" labelClassName={shippingFieldLabelClass}>
           <Select className={shippingControlClass} id={cargoId} value={state.shipCargoTypeNew} onChange={event => onCargo(event.target.value as CargoType)}>
             <option value="general">普货</option>
@@ -268,31 +290,31 @@ function ShippingInline({
         <Field id={widthId} label="宽（cm）" className="gap-1.5" labelClassName={shippingFieldLabelClass} inputClassName={shippingControlClass} value={state.shipWidthNew} onChange={value => onNumber('shipWidthNew', value)} />
         <Field id={heightId} label="高（cm）" className="gap-1.5" labelClassName={shippingFieldLabelClass} inputClassName={shippingControlClass} value={state.shipHeightNew} onChange={value => onNumber('shipHeightNew', value)} />
       </div>
-      <div className="pricing-ship-inline-metrics">
-        <div className="pricing-ship-inline-item">
-          <div className="pricing-ship-inline-head">
-            <span className="k">实重</span>
-            <span className="v mono" id={`shipActualKg${suffix}`}>{quote.actualWeightKg > 0 ? formatWeight(quote.actualWeightKg) : '-'}</span>
+      <div className={shippingMetricsClass}>
+        <div className={shippingItemClass}>
+          <div className={shippingHeadClass}>
+            <span className={shippingMetricLabelClass}>实重</span>
+            <span className={shippingMetricValueClass} id={`shipActualKg${suffix}`}>{quote.actualWeightKg > 0 ? formatWeight(quote.actualWeightKg) : '-'}</span>
           </div>
-          <span className="pricing-ship-inline-rule mono" id={`shipActualRule${suffix}`}>按输入重量换算</span>
+          <span className={shippingMetricRuleClass} id={`shipActualRule${suffix}`}>按输入重量换算</span>
         </div>
-        <div className="pricing-ship-inline-item">
-          <div className="pricing-ship-inline-head">
-            <span className="k">体积重</span>
-            <span className="v mono" id={`shipVolWeight${suffix}`}>{quote.volumeWeightKg !== null ? formatWeight(quote.volumeWeightKg) : '-'}</span>
+        <div className={shippingItemClass}>
+          <div className={shippingHeadClass}>
+            <span className={shippingMetricLabelClass}>体积重</span>
+            <span className={shippingMetricValueClass} id={`shipVolWeight${suffix}`}>{quote.volumeWeightKg !== null ? formatWeight(quote.volumeWeightKg) : '-'}</span>
           </div>
-          <span className="pricing-ship-inline-rule mono" id={`shipVolFormula${suffix}`}>长 × 宽 × 高 ÷ 8000</span>
+          <span className={shippingMetricRuleClass} id={`shipVolFormula${suffix}`}>长 × 宽 × 高 ÷ 8000</span>
         </div>
-        <div className="pricing-ship-inline-item">
-          <div className="pricing-ship-inline-head">
-            <span className="k">计费重</span>
-            <span className="v mono" id={`shipChargeWeight${suffix}`}>{quote.chargeWeightKg !== null ? formatWeight(quote.chargeWeightKg) : '-'}</span>
+        <div className={shippingItemClass}>
+          <div className={shippingHeadClass}>
+            <span className={shippingMetricLabelClass}>计费重</span>
+            <span className={shippingMetricValueClass} id={`shipChargeWeight${suffix}`}>{quote.chargeWeightKg !== null ? formatWeight(quote.chargeWeightKg) : '-'}</span>
           </div>
-          <span className="pricing-ship-inline-rule mono" id={`shipChargeRule${suffix}`}>{chargeRuleText(quote)}</span>
+          <span className={shippingMetricRuleClass} id={`shipChargeRule${suffix}`}>{chargeRuleText(quote)}</span>
         </div>
       </div>
-      <div className="pricing-ship-inline-summary">
-        <div className="pricing-ship-inline-summary-fields">
+      <div className={shippingSummaryClass}>
+        <div className={shippingSummaryFieldsClass}>
           <FormField htmlFor={`shipBand${suffix}`} label="命中价卡区间" labelClassName={shippingSummaryFieldLabelClass}>
             <Input className={shippingSummaryInputClass} id={`shipBand${suffix}`} value={quote.band?.range || '-'} readOnly />
           </FormField>
@@ -302,15 +324,15 @@ function ShippingInline({
         <button
           id={importId}
           type="button"
-          className={`pricing-ship-inline-price pricing-ship-inline-price-clickable expense ${finalCost === null ? 'is-disabled' : ''}`.trim()}
+          className={cn(shippingPriceButtonClass, finalCost === null ? 'is-disabled' : '')}
           title="点击导入到上方海外运费"
           onClick={onImport}
           disabled={finalCost === null}
         >
-          <span className="v mono" id={`shipFeeCny${suffix}`}>{finalCost !== null ? formatCny(finalCost, 2) : '-'}</span>
+          <span className={shippingPriceValueClass} id={`shipFeeCny${suffix}`}>{finalCost !== null ? formatCny(finalCost, 2) : '-'}</span>
         </button>
       </div>
-      <div className="pricing-ship-inline-formula mono" id={`shipFeeFormula${suffix}`}>
+      <div className={shippingFormulaClass} id={`shipFeeFormula${suffix}`}>
         {quote.band && quote.chargeWeightKg !== null
           ? `海外运费 =（基础费 ${quote.band.parcel} + 每千克重量费 ${quote.band.perKg} × 计费重 ${formatNumberValue(quote.chargeWeightKg, 3)} - 用户承担 ${DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY}）× 运费倍率 ${formatMoney(state.shippingMultiplierNew, 2)} / 汇率 ${formatNumberValue(state.rateNew, 2)} + 贴单费 ${formatNumberValue(state.labelFeeNew, 2)}`
           : '海外运费 =（基础费 + 每千克重量费 × 计费重 - 用户承担）× 运费倍率 / 汇率 + 贴单费'}
@@ -419,9 +441,9 @@ function PricingNewPanel({
               })}
             </TableBody>
           </Table>
-          <div className="calc-formula-block">
-            <div className="calc-formula-title">◇ 公式</div>
-            <div className="calc-formula-list">
+          <div className={calcFormulaBlockClass}>
+            <div className={calcFormulaTitleClass}>◇ 公式</div>
+            <div className={calcFormulaListClass}>
               <div>海外运费 =（基础费 + 每千克重量费 × 计费重 − 用户承担）× 运费倍率 ÷ 汇率 + 贴单费</div>
               <div>总费用 = 采购价 + 海外运费</div>
               <div>日元售价 = 原价 × 折扣 ×（1 − 平台手续费率）</div>
@@ -460,7 +482,7 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
             </FormField>
             <Field id="origPrice" label="商品原价（円）" className="readonly" value={Math.round(origPrice)} readOnly />
           </FormRow>
-          <details open className="calc-details">
+          <details open className={calcDetailsClass}>
             <summary>全局参数（平台手续费 / 汇率 / 运费 / 折扣档位）</summary>
             <FormRow columns={4} className={calcDetailsGridClass}>
               <Field id="fee" label="TK 平台手续费（%）" value={state.fee} onChange={value => updateNumber('fee', value)} />

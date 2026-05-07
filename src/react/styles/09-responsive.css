@@ -1,21 +1,5 @@
 /* —— 响应式：平板 —— */
 @media (max-width:860px) {
-  .pricing-ship-inline-inputs {
-    grid-template-columns: repeat(3, minmax(0, 1fr))
-  }
-
-  .pricing-ship-inline-metrics {
-    grid-template-columns: .92fr .92fr 1.16fr
-  }
-
-  .pricing-ship-inline-summary {
-    grid-template-columns: 1.84fr 1.16fr
-  }
-
-  .pricing-ship-inline-summary-fields {
-    grid-template-columns: repeat(3, minmax(0, 1fr))
-  }
-
   .analytics-upload-grid,
   .analytics-insight-layout,
   .analytics-layout {
@@ -76,22 +60,6 @@
     flex: 0 0 auto;
     font-size: 12px;
     padding: 6px 11px
-  }
-
-  .pricing-ship-inline-inputs {
-    grid-template-columns: 1fr 1fr
-  }
-
-  .pricing-ship-inline-metrics {
-    grid-template-columns: 1fr
-  }
-
-  .pricing-ship-inline-summary {
-    grid-template-columns: 1fr
-  }
-
-  .pricing-ship-inline-summary-fields {
-    grid-template-columns: 1fr
   }
 
   .analytics-kpi-grid {

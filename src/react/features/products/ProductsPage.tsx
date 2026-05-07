@@ -79,6 +79,18 @@ const productSkuBatchActionsClass = 'pl-sku-batch-actions mt-2.5 flex justify-en
 const productSkuParameterPanelClass = 'pl-sku-parameter-panel mt-3 rounded-xl border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel2)_34%,white)] px-3.5 py-3';
 const productSkuSetupBlockClass = 'pl-sku-setup-block pl-sku-setup-block-single mt-3 min-w-0';
 const productSkuSetupSurfaceClass = 'pl-sku-setup-surface rounded-[14px] border border-[color-mix(in_srgb,var(--border)_86%,white)] bg-[linear-gradient(180deg,rgba(110,168,255,.06),rgba(138,255,207,.035))] px-4 py-3.5';
+const productSkuCountPillClass = 'pl-sku-count-pill inline-flex min-h-7 items-center rounded-full border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel2)_90%,white)] px-2.5 text-xs font-semibold text-[var(--text)]';
+const productSkuCountExpandableClass = 'is-expandable border-[color-mix(in_srgb,var(--accent)_20%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_8%,white)]';
+const productSkuDetailCellClass = 'px-4 pb-4 pt-0 !border-t-0 bg-[color-mix(in_srgb,var(--accent)_2%,white)]';
+const productSkuExpandedSurfaceClass = 'pl-sku-expanded-surface products-react-sku-surface -mt-px rounded-b-2xl border border-t-0 border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[linear-gradient(180deg,rgba(110,168,255,.05),rgba(138,255,207,.03))] px-4 pb-4 pt-3.5';
+const productSkuExpandedHeadClass = 'pl-sku-expanded-head mb-3 flex items-start justify-between gap-3';
+const productSkuExpandedTitleClass = 'pl-sku-expanded-title text-[13px] font-bold text-[var(--text)]';
+const productSkuExpandedCopyClass = 'pl-sku-expanded-copy text-xs leading-normal text-[var(--muted)]';
+const productSkuExpandedTableWrapClass = 'pl-sku-expanded-table-wrap overflow-x-auto rounded-xl border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,white_72%,var(--panel2))]';
+const productSkuExpandedTableClass = 'pl-sku-expanded-table min-w-[560px] w-full border-collapse';
+const productSkuExpandedHeadCellClass = 'border-b border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel)_86%,white)] px-2.5 py-[7px] text-left align-middle text-[11px] font-normal uppercase tracking-[.08em] text-[var(--muted)]';
+const productSkuExpandedCellClass = 'border-b border-[color-mix(in_srgb,var(--border)_88%,white)] px-2.5 py-[7px] text-left align-middle text-[12.5px]';
+const productSkuExpandedSkuMainClass = 'pl-sku-expanded-sku-main font-semibold text-[var(--text)]';
 const EMPTY_PRODUCT_FORM: ProductFormDraft = {
   accountName: '',
   tkId: '',
@@ -299,7 +311,7 @@ function ProductsTableView({
                       <TableCell className="products-react-name-cell"><div>{ProductLibraryTable.formatText(product.name)}</div></TableCell>
                       <TableCell>{ProductLibraryTable.getCargoTypeLabel(defaults?.cargoType)}</TableCell>
                       <TableCell className="products-react-actions-cell min-w-[92px]">
-                        <span className={cn('pl-sku-count-pill', isExpandable ? 'is-expandable' : '')} title={isExpandable ? '点击展开 SKU 明细' : undefined}>
+                        <span className={cn(productSkuCountPillClass, isExpandable ? productSkuCountExpandableClass : '')} title={isExpandable ? '点击展开 SKU 明细' : undefined}>
                           {ProductLibraryTable.formatSkuCount(product)}
                         </span>
                       </TableCell>
@@ -328,31 +340,32 @@ function ProductsTableView({
                     </TableRow>
                     {isExpandable && isExpanded ? (
                       <TableRow className="pl-sku-detail-row products-react-sku-detail-row">
-                        <TableCell colSpan={columnCount}>
-                          <div className="pl-sku-expanded-surface products-react-sku-surface">
-                            <div className="pl-sku-expanded-head">
-                              <div className="pl-sku-expanded-title">SKU 规格明细</div>
-                              <div className="pl-sku-expanded-copy">订单选择商品时会优先使用这里的 SKU 参数。</div>
+                        <TableCell className={productSkuDetailCellClass} colSpan={columnCount}>
+                          <div className={productSkuExpandedSurfaceClass}>
+                            <div className={productSkuExpandedHeadClass}>
+                              <div className={productSkuExpandedTitleClass}>SKU 规格明细</div>
+                              <div className={productSkuExpandedCopyClass}>订单选择商品时会优先使用这里的 SKU 参数。</div>
                             </div>
-                            <div className="pl-sku-expanded-table-wrap">
-                              <Table className="pl-sku-expanded-table">
+                            <div className={productSkuExpandedTableWrapClass}>
+                              <Table className={productSkuExpandedTableClass}>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead>SKU</TableHead>
-                                    <TableHead>重量(g)</TableHead>
-                                    <TableHead>尺寸(cm)</TableHead>
-                                    <TableHead>预估海外运费</TableHead>
+                                    <TableHead className={productSkuExpandedHeadCellClass}>SKU</TableHead>
+                                    <TableHead className={productSkuExpandedHeadCellClass}>重量(g)</TableHead>
+                                    <TableHead className={productSkuExpandedHeadCellClass}>尺寸(cm)</TableHead>
+                                    <TableHead className={productSkuExpandedHeadCellClass}>预估海外运费</TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {skus.map(sku => {
+                                  {skus.map((sku, skuIndex) => {
                                     const merged = ProductLibraryTable.mergeProductSku(product, sku);
+                                    const cellClass = cn(productSkuExpandedCellClass, skuIndex === skus.length - 1 ? 'border-b-0' : '');
                                     return (
                                       <TableRow key={String(sku.skuId || sku.skuName)}>
-                                        <TableCell><div className="pl-sku-expanded-sku-main">{ProductLibraryTable.formatSkuLabel(sku)}</div></TableCell>
-                                        <TableCell>{ProductLibraryTable.formatWeight(merged?.weightG)}</TableCell>
-                                        <TableCell>{ProductLibraryTable.formatSize(merged)}</TableCell>
-                                        <TableCell>{ProductLibraryTable.formatSkuShippingFee(product, sku)}</TableCell>
+                                        <TableCell className={cellClass}><div className={productSkuExpandedSkuMainClass}>{ProductLibraryTable.formatSkuLabel(sku)}</div></TableCell>
+                                        <TableCell className={cellClass}>{ProductLibraryTable.formatWeight(merged?.weightG)}</TableCell>
+                                        <TableCell className={cellClass}>{ProductLibraryTable.formatSize(merged)}</TableCell>
+                                        <TableCell className={cellClass}>{ProductLibraryTable.formatSkuShippingFee(product, sku)}</TableCell>
                                       </TableRow>
                                     );
                                   })}

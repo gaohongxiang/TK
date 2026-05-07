@@ -281,7 +281,3 @@
 .ot-summary-ledger-item.is-expense .ot-summary-ledger-value {
   color: var(--expense);
 }
-
-.products-react-sku-surface {
-  border-top: 0;
-}

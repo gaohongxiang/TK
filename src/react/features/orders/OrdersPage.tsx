@@ -9,7 +9,7 @@ import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { EmptyState, TableFrame, TablePager, TableSearch, TableToolbar, TableViewport } from '@/components/ui/table-tools';
+import { EmptyState, TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { showAppToast } from '@/app/toast';
 import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
@@ -811,10 +811,10 @@ function OrdersTable({
             />
           ) : (
             <TableFrame>
-              <Table className="orders-react-table">
+              <Table className="orders-react-table mt-1.5 min-w-[1100px] text-[13px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_tbody_tr.is-refunded:hover]:bg-[rgba(196,78,78,.09)] [&_tbody_tr.is-refunded]:bg-[rgba(196,78,78,.055)] [&_tbody_tr:hover]:bg-[rgba(110,168,255,.05)] max-[768px]:text-[13px] max-[768px]:[&_td]:px-1.5 max-[768px]:[&_td]:py-[9px] max-[768px]:[&_th]:px-1.5 max-[768px]:[&_th]:py-[9px] max-[768px]:[&_th]:text-[10.5px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead><Button variant="plain" id="ot-sort-btn" className="orders-react-sort" title={sortTitle} onClick={onSortToggle}># {sortIcon}</Button></TableHead>
+                    <TableHead><TableSortButton id="ot-sort-btn" className="orders-react-sort" title={sortTitle} onClick={onSortToggle}># {sortIcon}</TableSortButton></TableHead>
                     {isAll ? <TableHead>账号</TableHead> : null}
                     <TableHead>下单时间</TableHead>
                     <TableHead>采购日期</TableHead>

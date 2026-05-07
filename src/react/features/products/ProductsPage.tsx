@@ -9,7 +9,7 @@ import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { EmptyState, TableFrame, TablePager, TableSearch, TableToolbar, TableViewport } from '@/components/ui/table-tools';
+import { EmptyState, TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { showAppToast, type ToastType } from '@/app/toast';
 import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
@@ -230,14 +230,14 @@ function ProductsTableView({
               description={searchQuery.trim() ? '试试更换关键词' : '点击右上角「+ 新增商品」开始记录'}
             />
           ) : (
-            <TableFrame className="products-react-table-inner rounded-none border-0 bg-transparent">
-              <Table className={cn('pl-table products-react-table table-auto', showAccount ? 'is-all-accounts' : 'is-account-scoped')}>
+            <TableFrame className="products-react-table-inner min-w-[920px] rounded-none border-0 bg-transparent">
+              <Table className={cn('pl-table products-react-table table-auto [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap', showAccount ? 'is-all-accounts' : 'is-account-scoped')}>
               <TableHeader>
                 <TableRow>
                   <TableHead>
-                    <Button id="pl-sort-btn" variant="plain" className="products-react-sort" title={sortTitle} onClick={onSortToggle}>
+                    <TableSortButton id="pl-sort-btn" className="products-react-sort" title={sortTitle} onClick={onSortToggle}>
                       # {sortIcon}
-                    </Button>
+                    </TableSortButton>
                   </TableHead>
                   <TableHead>图片</TableHead>
                   {showAccount ? <TableHead>账号</TableHead> : null}
@@ -246,7 +246,7 @@ function ProductsTableView({
                   <TableHead>货物类型</TableHead>
                   <TableHead>SKU数</TableHead>
                   <TableHead>1688</TableHead>
-                  <TableHead className="products-react-actions-head">操作</TableHead>
+                  <TableHead className="products-react-actions-head min-w-[92px]">操作</TableHead>
                 </TableRow>
               </TableHeader>
               {paged.map((product, index) => {
@@ -284,7 +284,7 @@ function ProductsTableView({
                       <TableCell className="mono products-react-id">{ProductLibraryTable.formatText(product.tkId)}</TableCell>
                       <TableCell className="products-react-name-cell"><div>{ProductLibraryTable.formatText(product.name)}</div></TableCell>
                       <TableCell>{ProductLibraryTable.getCargoTypeLabel(defaults?.cargoType)}</TableCell>
-                      <TableCell className="products-react-actions-cell">
+                      <TableCell className="products-react-actions-cell min-w-[92px]">
                         <span className={cn('pl-sku-count-pill', isExpandable ? 'is-expandable' : '')} title={isExpandable ? '点击展开 SKU 明细' : undefined}>
                           {ProductLibraryTable.formatSkuCount(product)}
                         </span>

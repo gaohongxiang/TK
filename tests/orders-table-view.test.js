@@ -95,8 +95,8 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /function OrdersTable\([\s\S]*id="ot-table-container"[\s\S]*<Table className="orders-react-table"/,
-  'React 订单页需要通过共享 Table primitive 直接渲染订单表格'
+  /function OrdersTable\([\s\S]*id="ot-table-container"[\s\S]*<Table className="[^"]*\borders-react-table\b[^"]*"/,
+  'React 订单页需要通过共享 Table primitive 直接渲染订单表格，并保留 orders-react-table 定位类'
 );
 
 assert.doesNotMatch(

@@ -50,36 +50,6 @@
   justify-content: center;
 }
 
-.products-react-table-wrap {
-  max-width: 100%;
-}
-
-.products-react-table-inner {
-  min-width: 920px;
-}
-
-.products-react-table th,
-.products-react-table td {
-  white-space: nowrap;
-}
-
-.products-react-sort,
-.orders-react-sort {
-  min-height: 24px;
-  padding: 0 7px;
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1;
-}
-
-.products-react-sort:hover,
-.orders-react-sort:hover {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  color: var(--accent);
-}
-
 .products-react-id {
   min-width: 140px;
 }
@@ -93,11 +63,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.products-react-actions-head,
-.products-react-actions-cell {
-  min-width: 92px;
 }
 
 .products-react-actions {

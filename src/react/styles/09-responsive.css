@@ -295,7 +295,6 @@
   }
 
   .calc-result-table,
-  .orders-react-table,
   .ship-rate,
   .analytics-detail-table {
     font-size: 13px
@@ -307,8 +306,6 @@
 
   .calc-result-table th,
   .calc-result-table td,
-  .orders-react-table th,
-  .orders-react-table td,
   .ship-rate th,
   .ship-rate td,
   .analytics-detail-table th,
@@ -322,7 +319,6 @@
   }
 
   .calc-result-table th,
-  .orders-react-table th,
   .ship-rate th,
   .analytics-detail-table th {
     font-size: 10.5px

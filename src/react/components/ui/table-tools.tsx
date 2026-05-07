@@ -133,6 +133,31 @@ function TableFrame({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div className={cn('inline-block box-border pl-0.5 pr-[18px]', className)} {...props} />;
 }
 
+type TableSortButtonProps = {
+  children: ReactNode;
+  className?: string;
+  id: string;
+  title: string;
+  onClick: () => void;
+};
+
+function TableSortButton({ children, className, id, onClick, title }: TableSortButtonProps) {
+  return (
+    <Button
+      id={id}
+      variant="plain"
+      className={cn(
+        'min-h-6 rounded-full px-[7px] text-xs font-semibold leading-none text-[var(--muted)] hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] hover:text-[var(--accent)]',
+        className
+      )}
+      title={title}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  );
+}
+
 type EmptyStateProps = HTMLAttributes<HTMLDivElement> & {
   title: ReactNode;
   description?: ReactNode;
@@ -153,6 +178,7 @@ export {
   TableFrame,
   TablePager,
   TableSearch,
+  TableSortButton,
   TableToolbar,
   TableViewport
 };

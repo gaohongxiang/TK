@@ -349,6 +349,13 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('nav.modules a[data-view="products"]')).toHaveAttribute('aria-current', 'page');
     await expect(page.locator('nav.modules a[data-view="calc"]')).not.toHaveAttribute('aria-current', 'page');
     await expect(page.locator('#pl-sync')).toContainText('已同步');
+    await expect(page.locator('#pl-main .ot-header-status-row .left #pl-user')).toBeVisible();
+    await expect(page.locator('#pl-main .ot-header-status-row .left #pl-sync')).toBeVisible();
+    await expect(page.locator('#pl-main .ot-header-status-row .left #pl-refresh')).toBeVisible();
+    await expect(page.locator('#pl-main .ot-header-status-row .right #pl-export')).toBeVisible();
+    await expect(page.locator('#pl-refresh')).toHaveAttribute('aria-label', '刷新商品数据');
+    await expect(page.locator('#pl-refresh')).toHaveText('');
+    await expect(page.locator('#pl-export')).toContainText('导出 CSV');
     await expectNoOverlap(page, '#pl-user', '#pl-export', 'product header status and export button should not overlap');
     await expectNoOverlap(page, '#pl-sync', '#pl-refresh', 'product sync text and refresh button should not overlap');
     await expectNoOverlap(page, '#pl-acc-tabs', '#pl-add', 'product account tabs and add button should not overlap');

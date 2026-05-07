@@ -1307,8 +1307,17 @@ details[open] summary {
 
 .ot-bar .right {
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap
+}
+
+.ot-bar .right .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .sync {

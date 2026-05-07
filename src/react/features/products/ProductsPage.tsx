@@ -1292,17 +1292,19 @@ function ProductsPage() {
       </Card>
 
       <div id="pl-main" style={{ display: connected ? undefined : 'none' }}>
-        <div className="ot-header-status-row flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div className="muted min-w-0 flex-1 truncate max-[640px]:basis-full max-[640px]:whitespace-normal" id="pl-user">
-            {projectId ? `已连接 · ${projectId} · Firestore` : '已连接 · Firebase Firestore'}
-          </div>
-          <div className="ot-header-actions flex flex-wrap items-center justify-end gap-2 max-[640px]:w-full max-[640px]:justify-start">
-            <span id="pl-sync" className={`sync ${syncClass} inline-flex min-h-[30px] items-center whitespace-nowrap`}>{syncText}</span>
+        <div className="ot-header-status-row ot-bar mb-3">
+          <div className="left min-w-0 flex-wrap">
+            <span className="workspace-chip workspace-chip-connection min-w-0 max-w-full truncate" id="pl-user">
+              {projectId ? `已连接 · ${projectId} · Firestore` : '已连接 · Firebase Firestore'}
+            </span>
+            <span id="pl-sync" className={`sync workspace-chip workspace-chip-sync ${syncClass}`}>{syncText}</span>
             <Button
               id="pl-refresh"
-              size="sm"
-              className="ot-refresh-inline"
+              variant="plain"
+              className="calc-help-icon ot-refresh-inline"
               disabled={loading}
+              aria-label="刷新商品数据"
+              title="刷新商品数据"
               aria-busy={loading ? 'true' : 'false'}
               onClick={() => void loadProducts().catch(error => {
                 showToast(formatFirestoreError(error, '刷新失败'), 'error');
@@ -1310,10 +1312,11 @@ function ProductsPage() {
                 setSyncClass('error');
               })}
             >
-              <RefreshCw size={14} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
-              刷新
+              <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
             </Button>
-            <Button id="pl-export" size="sm" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
+          </div>
+          <div className="right">
+            <Button id="pl-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
             <Button id="pl-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => window.TKFirestoreConnection?.requestDisconnect?.()}>退出数据库</Button>
           </div>
         </div>

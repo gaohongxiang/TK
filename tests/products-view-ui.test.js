@@ -103,8 +103,8 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /ot-header-status-row flex flex-wrap items-center justify-between[\s\S]*ot-header-actions flex flex-wrap items-center justify-end[\s\S]*pl-account-tabs-row flex items-center justify-between[\s\S]*ot-acc-tabs flex min-w-0 flex-1[\s\S]*ot-acc-actions flex shrink-0/,
-  'React 商品管理顶部状态、操作按钮、账号标签和新增商品按钮需要有稳定 flex 布局，避免文字和按钮挤在一起'
+  /ot-header-status-row ot-bar[\s\S]*className="left min-w-0 flex-wrap"[\s\S]*id="pl-user"[\s\S]*id="pl-sync"[\s\S]*id="pl-refresh"[\s\S]*className="right"[\s\S]*id="pl-export"[\s\S]*id="pl-disconnect-firestore"[\s\S]*pl-account-tabs-row flex items-center justify-between[\s\S]*ot-acc-tabs flex min-w-0 flex-1[\s\S]*ot-acc-actions flex shrink-0/,
+  'React 商品管理顶部需要和订单管理一致：连接、同步和图标刷新在左侧，导出与退出在右侧'
 );
 
 assert.match(
@@ -169,14 +169,20 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /id="pl-refresh"[\s\S]*ot-refresh-inline/,
-  '商品库刷新按钮需要复用订单页的图标样式与位置语义'
+  /id="pl-refresh"[\s\S]*variant="plain"[\s\S]*className="calc-help-icon ot-refresh-inline"[\s\S]*aria-label="刷新商品数据"[\s\S]*<RefreshCw/,
+  '商品库刷新按钮需要复用订单页的图标按钮样式与位置语义'
+);
+
+assert.doesNotMatch(
+  reactProductsPageSource,
+  /id="pl-refresh"[\s\S]*>\s*<RefreshCw[\s\S]*刷新\s*<\/Button>/,
+  '商品库刷新按钮不应显示“刷新”文字，和订单页保持图标按钮'
 );
 
 assert.match(
   reactProductsPageSource,
-  /id="pl-export"[\s\S]*导出 CSV/,
-  '商品库已连接状态条需要提供导出 CSV 按钮'
+  /id="pl-export"[\s\S]*className="inline-flex items-center justify-center gap-1\.5"[\s\S]*<FileDown[\s\S]*导出 CSV/,
+  '商品库导出 CSV 按钮需要图标和文字居中'
 );
 
 assert.match(

@@ -33,12 +33,6 @@
   flex-wrap: wrap;
 }
 
-.pl-subtext {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
 .pl-table th,
 .pl-table td {
   text-align: center;

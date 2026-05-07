@@ -282,12 +282,6 @@
   font: 10.5px/1.28 ui-monospace, Consolas, monospace
 }
 
-.pricing-ship-inline-band {
-  display: inline-block;
-  margin-left: 8px;
-  color: var(--text)
-}
-
 .calc-result-table {
   width: 100%;
   border-collapse: collapse;

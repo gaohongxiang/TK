@@ -22,7 +22,6 @@
     grid-template-columns: 1fr;
   }
 
-  .analytics-channel-share,
   .analytics-react-funnel-summary {
     grid-template-columns: 1fr 1fr;
   }
@@ -124,7 +123,6 @@
     grid-template-columns: 1fr;
   }
 
-  .analytics-channel-share,
   .analytics-react-funnel-summary {
     grid-template-columns: 1fr;
   }

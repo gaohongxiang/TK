@@ -65,6 +65,20 @@ type ProductFormDraft = {
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const modalCopyClass = 'mb-4 text-[13px] leading-[1.75] text-[var(--muted)]';
+const productSkuPanelClass = 'pl-sku-panel mt-4 rounded-[14px] border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel)_92%,white)] px-4 py-3.5';
+const productSkuHeaderClass = 'pl-sku-header flex items-start justify-between gap-3';
+const productSkuTitleClass = 'pl-sku-title text-sm font-bold text-[var(--text)]';
+const productSkuCopyClass = 'pl-sku-copy mt-1 text-xs leading-[1.55] text-[var(--muted)]';
+const productSkuActionsClass = 'pl-sku-actions mt-3 flex justify-start gap-2';
+const productSkuBatchToolsClass = 'pl-sku-batch-tools mt-3 rounded-xl border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel2)_56%,white)] px-3.5 py-3';
+const productSkuBatchBlockClass = 'pl-sku-batch-block';
+const productSkuBatchTitleClass = 'pl-sku-batch-title text-[12.5px] font-bold text-[var(--text)]';
+const productSkuBatchCopyClass = 'pl-sku-batch-copy mt-1 text-xs leading-[1.55] text-[var(--muted)]';
+const productSkuBatchRowClass = 'triple pl-sku-batch-row mt-2.5';
+const productSkuBatchActionsClass = 'pl-sku-batch-actions mt-2.5 flex justify-end';
+const productSkuParameterPanelClass = 'pl-sku-parameter-panel mt-3 rounded-xl border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel2)_34%,white)] px-3.5 py-3';
+const productSkuSetupBlockClass = 'pl-sku-setup-block pl-sku-setup-block-single mt-3 min-w-0';
+const productSkuSetupSurfaceClass = 'pl-sku-setup-surface rounded-[14px] border border-[color-mix(in_srgb,var(--border)_86%,white)] bg-[linear-gradient(180deg,rgba(110,168,255,.06),rgba(138,255,207,.035))] px-4 py-3.5';
 const EMPTY_PRODUCT_FORM: ProductFormDraft = {
   accountName: '',
   tkId: '',
@@ -471,22 +485,22 @@ function ProductModal({
             </FormField>
           </FormRow>
 
-          <div className="pl-sku-panel">
-            <div className="pl-sku-header">
+          <div className={productSkuPanelClass}>
+            <div className={productSkuHeaderClass}>
               <div>
-                <div className="pl-sku-title">SKU规格</div>
-                <div className="pl-sku-copy">先生成 SKU，再根据实际情况统一设置或按分组调整物流参数。</div>
+                <div className={productSkuTitleClass}>SKU规格</div>
+                <div className={productSkuCopyClass}>先生成 SKU，再根据实际情况统一设置或按分组调整物流参数。</div>
               </div>
             </div>
-            <div className="pl-sku-actions">
+            <div className={productSkuActionsClass}>
               <Button size="sm" id="pl-add-sku" onClick={onAddSku}>+ 新增单个SKU</Button>
               <Button size="sm" id="pl-open-sku-batch" aria-expanded={batchOpen ? 'true' : 'false'} onClick={() => onBatchOpenChange(!batchOpen)}>+ 新增多个SKU</Button>
             </div>
-            <div className={cn('pl-sku-batch-tools', batchOpen ? 'show' : '')} id="pl-sku-batch-tools">
-              <div className="pl-sku-batch-block">
-                <div className="pl-sku-batch-title">批量生成多个 SKU</div>
-                <div className="pl-sku-batch-copy">按颜色、尺寸等规格值自动组合生成，已有 SKU 不会重复追加。</div>
-                <FormRow columns={3} className="triple pl-sku-batch-row">
+            <div className={cn(productSkuBatchToolsClass, batchOpen ? 'block' : 'hidden')} id="pl-sku-batch-tools">
+              <div className={productSkuBatchBlockClass}>
+                <div className={productSkuBatchTitleClass}>批量生成多个 SKU</div>
+                <div className={productSkuBatchCopyClass}>按颜色、尺寸等规格值自动组合生成，已有 SKU 不会重复追加。</div>
+                <FormRow columns={3} className={productSkuBatchRowClass}>
                   <FormField label="规格维度 1">
                     <Input id="pl-batch-axis-a" value={draft.axisA} placeholder="例如 白、黑、蓝" onChange={event => updateField('axisA', event.target.value)} />
                   </FormField>
@@ -497,17 +511,17 @@ function ProductModal({
                     <Input id="pl-batch-axis-c" value={draft.axisC} placeholder="例如 普通款、升级款" onChange={event => updateField('axisC', event.target.value)} />
                   </FormField>
                 </FormRow>
-                <div className="pl-sku-batch-actions">
+                <div className={productSkuBatchActionsClass}>
                   <Button size="sm" variant="accentSoft" id="pl-generate-skus" onClick={onGenerateSkus}>生成多个 SKU</Button>
                 </div>
               </div>
             </div>
-            <div className="pl-sku-parameter-panel">
-              <div className="pl-sku-batch-title">参数调整</div>
-              <div className="pl-sku-batch-copy">留空匹配关键词就应用到全部 SKU；填写关键词则只更新命中的 SKU。</div>
-              <div className="pl-sku-setup-block pl-sku-setup-block-single">
-                <div className="pl-sku-setup-surface">
-                  <FormRow className="pl-sku-batch-row">
+            <div className={productSkuParameterPanelClass}>
+              <div className={productSkuBatchTitleClass}>参数调整</div>
+              <div className={productSkuBatchCopyClass}>留空匹配关键词就应用到全部 SKU；填写关键词则只更新命中的 SKU。</div>
+              <div className={productSkuSetupBlockClass}>
+                <div className={productSkuSetupSurfaceClass}>
+                  <FormRow className={productSkuBatchRowClass}>
                     <FormField label="匹配关键词（可选）" full>
                       <Input
                         id="pl-batch-match"
@@ -517,7 +531,7 @@ function ProductModal({
                       />
                     </FormField>
                   </FormRow>
-                  <FormRow className="pl-sku-batch-row mt-[10px]">
+                  <FormRow className={productSkuBatchRowClass}>
                     <FormField label="重量(g)">
                       <Input
                         type="number"

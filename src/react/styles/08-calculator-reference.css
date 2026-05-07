@@ -282,27 +282,27 @@
   color: var(--muted)
 }
 
-table.ship-rate td,
-table.ship-rate th {
+.ship-rate td,
+.ship-rate th {
   padding: 10px 8px
 }
 
-table.ship {
+.ship-rate {
   width: 100%;
   border-collapse: collapse;
   margin-top: 6px;
   font-size: 13.5px
 }
 
-table.ship th,
-table.ship td {
+.ship-rate th,
+.ship-rate td {
   text-align: center;
   padding: 11px 8px;
   border-bottom: 1px dashed var(--border);
   white-space: nowrap
 }
 
-table.ship thead th {
+.ship-rate thead th {
   background: var(--panel2);
   color: var(--muted);
   font-weight: 600;
@@ -312,20 +312,20 @@ table.ship thead th {
   border-bottom: 1px solid var(--border)
 }
 
-table.ship tbody tr:nth-child(even) td {
+.ship-rate tbody tr:nth-child(even) td {
   background: rgba(110, 168, 255, .04)
 }
 
-table.ship tbody tr:hover td {
+.ship-rate tbody tr:hover td {
   background: rgba(110, 168, 255, .10)
 }
 
-table.ship td.w {
+.ship-rate td.w {
   color: var(--warn);
   font-weight: 700
 }
 
-table.ship td.actual {
+.ship-rate td.actual {
   color: #f87171;
   font-weight: 600;
   text-shadow: 0 0 12px rgba(248, 113, 113, .25)

@@ -9,6 +9,7 @@ import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/
 import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const LS_KEY = 'tk.profit.v1';
@@ -556,28 +557,28 @@ function ReferenceCards() {
         </div>
         <div className="ship-rate-wrap">
           <div className="ship-rate-title">2026/04/24 起新版价卡</div>
-          <table className="ship ship-rate mono">
-            <thead>
-              <tr>
-                <th>重量区间</th>
-                <th>普货基础费</th>
-                <th>普货重量费</th>
-                <th>特货基础费</th>
-                <th>特货重量费</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className="ship-rate mono">
+            <TableHeader>
+              <TableRow>
+                <TableHead>重量区间</TableHead>
+                <TableHead>普货基础费</TableHead>
+                <TableHead>普货重量费</TableHead>
+                <TableHead>特货基础费</TableHead>
+                <TableHead>特货重量费</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {general.map((band, index) => (
-                <tr key={band.range}>
-                  <td className="w">{band.range}</td>
-                  <td>{band.parcel} 円</td>
-                  <td>{band.perKg} 円/kg</td>
-                  <td>{special[index].parcel} 円</td>
-                  <td>{special[index].perKg} 円/kg</td>
-                </tr>
+                <TableRow key={band.range}>
+                  <TableCell className="w">{band.range}</TableCell>
+                  <TableCell>{band.parcel} 円</TableCell>
+                  <TableCell>{band.perKg} 円/kg</TableCell>
+                  <TableCell>{special[index].parcel} 円</TableCell>
+                  <TableCell>{special[index].perKg} 円/kg</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </Card>
       <Card className="commission-ref">

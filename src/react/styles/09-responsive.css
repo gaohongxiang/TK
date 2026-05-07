@@ -328,7 +328,7 @@
 
   .calc-result-table,
   .orders-react-table,
-  table.ship,
+  .ship-rate,
   .analytics-detail-table {
     font-size: 13px
   }
@@ -341,8 +341,8 @@
   .calc-result-table td,
   .orders-react-table th,
   .orders-react-table td,
-  table.ship th,
-  table.ship td,
+  .ship-rate th,
+  .ship-rate td,
   .analytics-detail-table th,
   .analytics-detail-table td {
     padding: 9px 6px
@@ -355,7 +355,7 @@
 
   .calc-result-table th,
   .orders-react-table th,
-  table.ship th,
+  .ship-rate th,
   .analytics-detail-table th {
     font-size: 10.5px
   }
@@ -383,8 +383,7 @@
     padding: 0 16px
   }
 
-  table.ship-rate,
-  table.ship {
+  .ship-rate {
     min-width: 640px
   }
 }

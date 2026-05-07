@@ -213,8 +213,8 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /id="pl-disconnected"/,
-  '商品库在未连接时需要提供轻量空态容器'
+  /<Card id="pl-disconnected"(?![^>]*className="card")/,
+  '商品库在未连接时需要通过 Card primitive 提供轻量空态容器'
 );
 
 assert.match(

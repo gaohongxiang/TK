@@ -1267,7 +1267,7 @@ function ProductsPage() {
 
   return (
     <section className="products-page" data-react-products-page-ready="true">
-      <Card id="pl-disconnected" className="card" style={{ display: connected ? 'none' : undefined }}>
+      <Card id="pl-disconnected" style={{ display: connected ? 'none' : undefined }}>
         <div className="ot-setup-content">
           <h2>商品管理</h2>
           <p>先连接你的 Firebase Firestore。商品和订单共用同一个 Firebase 项目，本站不保存你的商品资料。</p>

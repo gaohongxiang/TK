@@ -46,7 +46,7 @@ function loadAnalyticsRoute() {
 }
 
 function viewClass(active: string, key: string) {
-  return active === key ? 'view active' : 'view';
+  return active === key ? 'relative z-0 block' : 'relative z-0 hidden';
 }
 
 function AnalyticsStatus({

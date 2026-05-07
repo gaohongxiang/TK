@@ -78,20 +78,20 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  styleSource,
-  /\.analytics-kpi-grid[\s\S]*grid-template-columns:\s*repeat\(4/,
+  reactAnalyticsSource,
+  /kpiGridClass = 'analytics-kpi-grid grid grid-cols-4[\s\S]*max-\[860px\]:grid-cols-2[\s\S]*max-\[640px\]:grid-cols-1/,
   '数据分析页需要提供 KPI 网格样式'
 );
 
 assert.match(
-  styleSource,
-  /\.analytics-layout[\s\S]*grid-template-columns:\s*repeat\(2/,
+  reactAnalyticsSource,
+  /analyticsLayoutClass = 'analytics-layout grid grid-cols-2[\s\S]*max-\[860px\]:grid-cols-1/,
   '数据分析页需要提供图表布局样式'
 );
 
 assert.match(
-  styleSource,
-  /\.analytics-insight-layout[\s\S]*grid-template-columns:[\s\S]*\.analytics-react-overview-chart[\s\S]*\.analytics-react-scatter-wrap/,
+  reactAnalyticsSource,
+  /analyticsInsightLayoutClass = 'analytics-insight-layout analytics-react-insight-layout grid grid-cols-\[minmax\(0,1\.05fr\)_minmax\(0,\.95fr\)\][\s\S]*overviewChartWrapClass = 'analytics-react-overview-chart[\s\S]*scatterWrapClass = 'analytics-react-scatter-wrap/,
   '数据分析页需要提供 ECharts 图表布局样式'
 );
 
@@ -114,14 +114,14 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  styleSource,
-  /\.analytics-react-overview[\s\S]*height:\s*332px[\s\S]*\.analytics-react-funnel-summary/,
+  reactAnalyticsSource,
+  /analytics-react-overview h-\[332px\][\s\S]*analytics-react-funnel-summary[\s\S]*grid-cols-4/,
   'React 数据分析页需要用一个总览图结合渠道结构和流量漏斗'
 );
 
 assert.match(
-  styleSource,
-  /\.analytics-react-scatter[\s\S]*height:\s*324px/,
+  reactAnalyticsSource,
+  /analytics-react-scatter h-\[324px\]/,
   'React 数据分析页需要提供稳定的散点图画布高度'
 );
 
@@ -195,8 +195,8 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  styleSource,
-  /\.analytics-react-status[\s\S]*\.analytics-react-status\.is-error/,
+  reactAppSource,
+  /analyticsStatusClass = 'analytics-react-status[\s\S]*analyticsStatusErrorClass = '\[\&_\.analytics-react-status-mark\]:border/,
   'React 数据分析懒加载状态需要有可见样式'
 );
 
@@ -214,7 +214,7 @@ assert.match(
 
 assert.match(
   reactAppSource,
-  /<Card className=\{`analytics-react-status[\s\S]*<Button size="sm" data-analytics-retry/,
+  /<Card className=\{`\$\{analyticsStatusClass\}[\s\S]*<Button className=\{analyticsStatusRetryClass\} size="sm" data-analytics-retry/,
   '数据分析懒加载状态不应再手写 legacy card/btn 元素'
 );
 
@@ -256,7 +256,7 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /from '@\/components\/ui\/table'[\s\S]*<Table className="analytics-detail-table"[\s\S]*<TableHeader>[\s\S]*<TableBody>/,
+  /from '@\/components\/ui\/table'[\s\S]*detailTableClass = 'analytics-detail-table[\s\S]*<Table className=\{detailTableClass\}[\s\S]*<TableHeader>[\s\S]*<TableBody>/,
   '数据分析明细表需要使用共享 Table primitive'
 );
 
@@ -268,7 +268,7 @@ assert.doesNotMatch(
 
 assert.match(
   reactAnalyticsSource,
-  /<Card className="analytics-chart-card analytics-overview-card"[\s\S]*<Badge className="analytics-chip muted"[\s\S]*<Alert variant="info" className="analytics-privacy-strip"[\s\S]*<Card id="analytics-empty"/,
+  /analyticsCardClass = 'analytics-chart-card[\s\S]*mutedChipClass = cn\(analyticsChipClass, 'muted'\)[\s\S]*<Card className=\{cn\(analyticsCardClass, 'analytics-overview-card'\)\}[\s\S]*<Badge className=\{mutedChipClass\}[\s\S]*<Alert variant="info" className=\{uploadPrivacyClass\}[\s\S]*<Card id="analytics-empty" className=\{emptyCardClass\}/,
   '数据分析页面应在保留现有 class 的前提下，把卡片、标签和提示容器收敛到 primitives'
 );
 

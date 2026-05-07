@@ -52,6 +52,13 @@ function viewClass(active: string, key: string) {
 const appFooterClass = 'relative z-[2] mt-[30px] flex flex-wrap justify-center gap-x-3 gap-y-2 text-center text-xs text-[var(--muted)]';
 const appFooterLinksClass = 'inline-flex flex-wrap justify-center gap-2.5';
 const appFooterLinkClass = 'relative z-[3] inline-flex min-h-7 items-center font-bold text-[var(--accent)] hover:underline';
+const analyticsStatusClass = 'analytics-react-status mb-4 grid grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3.5 max-[640px]:grid-cols-[32px_minmax(0,1fr)]';
+const analyticsStatusMarkClass = 'analytics-react-status-mark h-[38px] w-[38px] rounded-xl border border-[color-mix(in_srgb,var(--accent2)_45%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent2)_56%,transparent),transparent),color-mix(in_srgb,var(--panel2)_48%,transparent)]';
+const analyticsStatusLoadingClass = '[&_.analytics-react-status-mark]:animate-pulse';
+const analyticsStatusErrorClass = '[&_.analytics-react-status-mark]:border-[color-mix(in_srgb,var(--danger)_56%,var(--border))] [&_.analytics-react-status-mark]:bg-[linear-gradient(135deg,color-mix(in_srgb,var(--danger)_48%,transparent),transparent),color-mix(in_srgb,var(--panel2)_48%,transparent)]';
+const analyticsStatusTitleClass = 'mb-1 mt-0 text-[15px]';
+const analyticsStatusCopyClass = 'm-0 text-[12.5px] text-[var(--muted)]';
+const analyticsStatusRetryClass = 'max-[640px]:col-start-2 max-[640px]:justify-self-start';
 
 function AnalyticsStatus({
   state,
@@ -62,13 +69,13 @@ function AnalyticsStatus({
 }) {
   const isError = state === 'error';
   return (
-    <Card className={`analytics-react-status ${isError ? 'is-error' : 'is-loading'}`} data-analytics-lazy-state={state}>
-      <div className="analytics-react-status-mark" aria-hidden="true" />
+    <Card className={`${analyticsStatusClass} ${isError ? analyticsStatusErrorClass : analyticsStatusLoadingClass}`} data-analytics-lazy-state={state}>
+      <div className={analyticsStatusMarkClass} aria-hidden="true" />
       <div>
-        <CardTitle>{isError ? '数据分析加载失败' : '正在加载数据分析'}</CardTitle>
-        <p>{isError ? '图表模块没有加载成功，请检查网络后重试。' : '正在按需加载图表模块，稍等片刻。'}</p>
+        <CardTitle className={analyticsStatusTitleClass}>{isError ? '数据分析加载失败' : '正在加载数据分析'}</CardTitle>
+        <p className={analyticsStatusCopyClass}>{isError ? '图表模块没有加载成功，请检查网络后重试。' : '正在按需加载图表模块，稍等片刻。'}</p>
       </div>
-      {isError ? <Button size="sm" data-analytics-retry onClick={onRetry}>重试</Button> : null}
+      {isError ? <Button className={analyticsStatusRetryClass} size="sm" data-analytics-retry onClick={onRetry}>重试</Button> : null}
     </Card>
   );
 }

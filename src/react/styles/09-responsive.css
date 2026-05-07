@@ -1,23 +1,5 @@
 /* —— 响应式：平板 —— */
 @media (max-width:860px) {
-  .analytics-upload-grid,
-  .analytics-insight-layout,
-  .analytics-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .analytics-react-funnel-summary {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .analytics-upload-action {
-    width: min(320px, 100%);
-  }
-
-  .analytics-kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
 }
 
 /* —— 响应式：手机 —— */
@@ -62,39 +44,6 @@
     padding: 6px 11px
   }
 
-  .analytics-kpi-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .analytics-react-funnel-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .analytics-react-scatter-wrap {
-    min-height: 260px;
-  }
-
-  .analytics-react-scatter {
-    min-height: 220px;
-  }
-
-  .analytics-react-overview {
-    height: 250px;
-  }
-
-  .analytics-react-scatter {
-    height: 260px;
-  }
-
-  .analytics-upload-grid {
-    gap: 14px;
-  }
-
-  .analytics-upload-action {
-    width: 100%;
-    min-width: 0;
-  }
-
   .products-react-search {
     width: 100%;
   }
@@ -102,39 +51,6 @@
   .products-react-pager {
     width: 100%;
     justify-content: flex-start;
-  }
-
-  .analytics-section-head {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .analytics-react-status {
-    grid-template-columns: 32px minmax(0, 1fr);
-  }
-
-  .analytics-react-status [data-slot="button"] {
-    grid-column: 2;
-    justify-self: start;
-  }
-
-  .analytics-rank-row {
-    grid-template-columns: 28px minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .analytics-rank-value {
-    grid-column: 2;
-    justify-items: start;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .analytics-detail-table td:first-child,
-  .analytics-detail-table th:first-child {
-    min-width: 220px;
   }
 
   .ot-summary-grid {
@@ -160,8 +76,7 @@
   }
 
   .calc-result-table,
-  .ship-rate,
-  .analytics-detail-table {
+  .ship-rate {
     font-size: 13px
   }
 
@@ -172,9 +87,7 @@
   .calc-result-table th,
   .calc-result-table td,
   .ship-rate th,
-  .ship-rate td,
-  .analytics-detail-table th,
-  .analytics-detail-table td {
+  .ship-rate td {
     padding: 9px 6px
   }
 
@@ -184,8 +97,7 @@
   }
 
   .calc-result-table th,
-  .ship-rate th,
-  .analytics-detail-table th {
+  .ship-rate th {
     font-size: 10.5px
   }
 

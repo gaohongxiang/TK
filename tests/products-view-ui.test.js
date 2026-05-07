@@ -1,23 +1,26 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
+const { readReactStyleSource } = require('./helpers/react-style-source.cjs');
 
-const srcTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'table.mjs'), 'utf8');
-const srcAccountsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'accounts.mjs'), 'utf8');
-const srcExportSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'export.mjs'), 'utf8');
-const srcCrudSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'products', 'crud.mjs'), 'utf8');
-const reactProductsPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
-const reactMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'main.tsx'), 'utf8');
-const reactAppSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'App.tsx'), 'utf8');
-const reactAppShellSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
-const reactIslandSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
-const reactButtonSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
-const reactCheckboxSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
-const reactTabsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
-const reactTableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'table.tsx'), 'utf8');
-const configSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'app-config.mjs'), 'utf8');
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const styleSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+const root = path.join(__dirname, '..');
+
+const srcTableSource = fs.readFileSync(path.join(root, 'src', 'products', 'table.mjs'), 'utf8');
+const srcAccountsSource = fs.readFileSync(path.join(root, 'src', 'products', 'accounts.mjs'), 'utf8');
+const srcExportSource = fs.readFileSync(path.join(root, 'src', 'products', 'export.mjs'), 'utf8');
+const srcCrudSource = fs.readFileSync(path.join(root, 'src', 'products', 'crud.mjs'), 'utf8');
+const reactProductsPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
+const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
+const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
+const reactAppShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
+const reactIslandSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
+const reactButtonSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
+const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
+const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
+const reactTableSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'table.tsx'), 'utf8');
+const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
+const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const styleSource = readReactStyleSource(root);
 
 assert.match(
   srcTableSource,

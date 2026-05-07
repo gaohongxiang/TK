@@ -31,7 +31,6 @@
 主站源码在仓库根目录：
 
 - `index.html`
-- `css/`
 - `src/`
 - `public/`
 - `logo.png`
@@ -39,12 +38,13 @@
 - `vite.config.mjs`
 - `wrangler.toml`
 
-当前主站使用 Vite 构建，页面入口已经切到 `/src/*.mjs` ESM 模块。旧 `js/` 源目录已清理，主站源码以 `src/*.mjs` 为准，构建产物也不发布 `dist/js/`。
+当前主站使用 Vite 构建。旧 `js/` 源目录和旧 `css/style.css` 全局入口已清理，构建产物也不发布 `dist/js/`。
 
 `modern-react-spa` 分支上，主站已重建为完整 Vite React SPA：
 
 - `index.html` 只保留单根 `#root`、`/src/react/main.tsx`、Firebase compat SDK 和 SheetJS。
 - `src/react/app/App.tsx` 接管 App Shell、hash 路由、页脚和四个主视图。
+- `src/react/styles.css` 接管主站样式入口，并按模块导入 `src/react/styles/*.css`。
 - 利润计算器、商品管理、订单管理、数据分析都由 React 页面渲染。
 - `src/*.mjs` 继续作为业务纯函数、Firestore provider、解析器和导出逻辑来源。
 - 已删除旧 DOM 入口和旧 React island 二次挂载入口，构建产物不发布旧 `dist/js/`。

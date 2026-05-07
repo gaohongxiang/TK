@@ -1,16 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
+const { readReactStyleSource } = require('./helpers/react-style-source.cjs');
 
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const appShellSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
-const calculatorSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'calculator', 'CalculatorApp.tsx'), 'utf8');
-const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
-const productsPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
-const connectionSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'firestore-connection.mjs'), 'utf8');
-const reactIslandSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
-const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
-const formPrimitiveSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'form.tsx'), 'utf8');
+const root = path.join(__dirname, '..');
+
+const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const appShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
+const calculatorSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'calculator', 'CalculatorApp.tsx'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
+const productsPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
+const connectionSource = fs.readFileSync(path.join(root, 'src', 'firestore-connection.mjs'), 'utf8');
+const reactIslandSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
+const cssSource = readReactStyleSource(root);
+const formPrimitiveSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'form.tsx'), 'utf8');
 
 assert.doesNotMatch(
   indexSource,

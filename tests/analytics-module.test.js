@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
+const { readReactStyleSource } = require('./helpers/react-style-source.cjs');
 
 const root = path.join(__dirname, '..');
 const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'parser.mjs'), 'utf8');
@@ -13,7 +14,7 @@ const reactAnalyticsRouteSource = fs.readFileSync(path.join(root, 'src', 'react'
 const reactChartOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'chartOptions.ts'), 'utf8');
 const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const styleSource = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
+const styleSource = readReactStyleSource(root);
 const readmeSource = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
 
 assert.match(

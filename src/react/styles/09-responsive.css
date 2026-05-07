@@ -1,0 +1,404 @@
+/* —— 响应式：平板 —— */
+@media (max-width:860px) {
+  .grid {
+    grid-template-columns: 1fr
+  }
+
+  .row.quad {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .calc-shared-grid,
+  .known-sale-grid {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .pricing-ship-inline-inputs {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+  }
+
+  .pricing-ship-inline-metrics {
+    grid-template-columns: .92fr .92fr 1.16fr
+  }
+
+  .pricing-ship-inline-summary {
+    grid-template-columns: 1.84fr 1.16fr
+  }
+
+  .pricing-ship-inline-summary-fields {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+  }
+
+  .ot-storage-modes {
+    grid-template-columns: 1fr;
+  }
+
+  .ship-inputs {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+  }
+
+  .ship-kpis {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .ship-kpi .value,
+  .ship-result .line,
+  .ship-result .line #shipFeeJpy,
+  .ship-result .line #shipFeeCny {
+    font-size: 18px
+  }
+
+  .analytics-upload-grid,
+  .analytics-insight-layout,
+  .analytics-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-channel-share,
+  .analytics-react-funnel-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .analytics-upload-action {
+    width: min(320px, 100%);
+  }
+
+  .analytics-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+/* —— 响应式：手机 —— */
+@media (max-width:640px) {
+  .wrap {
+    padding: 10px 14px 60px
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 18px
+  }
+
+  .app-brand {
+    text-align: center;
+  }
+
+  .app-brand h1 {
+    font-size: 16px
+  }
+
+  .app-header-side {
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    margin-left: 0;
+  }
+
+  nav.modules {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px
+  }
+
+  nav.modules a {
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding: 6px 11px
+  }
+
+  .module-hero {
+    margin-bottom: 22px;
+  }
+
+  .page-hero-calc {
+    margin-bottom: 24px;
+  }
+
+  .page-hero-orders,
+  .page-hero-products,
+  .page-hero-analytics {
+    margin-bottom: 22px;
+  }
+
+  .module-hero-title-row {
+    gap: 6px;
+  }
+
+  .module-kicker {
+    font-size: 10px;
+    letter-spacing: .12em;
+  }
+
+  .module-hero-copy h2 {
+    font-size: 20px;
+  }
+
+  .module-hero-copy p {
+    font-size: 13px;
+    line-height: 1.72;
+  }
+
+  .calc-subnav {
+    min-width: 0;
+    width: 100%;
+    padding: 10px 11px;
+  }
+
+  .calc-tabbar {
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: 12px
+  }
+
+  .card h2 {
+    font-size: 13px;
+    margin-bottom: 14px
+  }
+
+  .row,
+  .row.triple,
+  .row.quad,
+  .row.quint {
+    grid-template-columns: 1fr;
+    gap: 12px
+  }
+
+  .calc-toolbar {
+    align-items: stretch
+  }
+
+  .calc-tabbar {
+    width: 100%;
+  }
+
+  .calc-tabs {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+
+  .calc-tab {
+    flex: 1 1 auto;
+    text-align: center
+  }
+
+  .pricing-ship-inline-inputs {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .pricing-ship-inline-metrics {
+    grid-template-columns: 1fr
+  }
+
+  .pricing-ship-inline-summary {
+    grid-template-columns: 1fr
+  }
+
+  .pricing-ship-inline-summary-fields {
+    grid-template-columns: 1fr
+  }
+
+  .ship-inputs {
+    grid-template-columns: 1fr 1fr
+  }
+
+  .calc-shared-grid,
+  .known-sale-grid {
+    grid-template-columns: 1fr
+  }
+
+  .known-sale-item .value {
+    font-size: 18px
+  }
+
+  .ship-result {
+    grid-template-columns: 1fr
+  }
+
+  .analytics-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-channel-share,
+  .analytics-react-funnel-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-react-scatter-wrap {
+    min-height: 260px;
+  }
+
+  .analytics-react-scatter {
+    min-height: 220px;
+  }
+
+  .analytics-react-overview {
+    height: 250px;
+  }
+
+  .analytics-react-scatter {
+    height: 260px;
+  }
+
+  .analytics-upload-grid {
+    gap: 14px;
+  }
+
+  .analytics-upload-action {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .products-react-search {
+    width: 100%;
+  }
+
+  .products-react-pager {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .analytics-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .analytics-react-status {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .analytics-react-status [data-slot="button"] {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .analytics-rank-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .analytics-rank-value {
+    grid-column: 2;
+    justify-items: start;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .analytics-detail-table td:first-child,
+  .analytics-detail-table th:first-child {
+    min-width: 220px;
+  }
+
+  .ship-kpi,
+  .ship-result-card {
+    gap: 12px
+  }
+
+  .modal .row {
+    grid-template-columns: 1fr
+  }
+
+  .modal-mask.show {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 12px 10px 28px;
+  }
+
+  .modal {
+    max-height: none;
+    padding: 18px 16px 20px;
+  }
+
+  .modal .actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 18px -16px -20px;
+    padding: 12px 16px 14px;
+    background: color-mix(in srgb, var(--panel) 96%, transparent);
+    border-top: 1px solid var(--border);
+  }
+
+  .ot-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .ot-summary-grid::after {
+    display: none;
+  }
+
+  .ot-summary-hero-value {
+    font-size: 22px;
+  }
+
+  .ot-summary-ledger {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .ot-summary-ledger-note {
+    white-space: normal;
+  }
+
+  .row+.row {
+    margin-top: 12px
+  }
+
+  table {
+    font-size: 13px
+  }
+
+  th,
+  td {
+    padding: 9px 6px
+  }
+
+  th {
+    font-size: 10.5px
+  }
+
+  .ot-table-wrap {
+    margin: 0;
+    padding: 0 2px
+  }
+
+  .formula-card {
+    padding: 18px
+  }
+
+  .formula-item {
+    padding: 12px 14px;
+    gap: 10px
+  }
+
+  .formula-eq {
+    font-size: 13px
+  }
+
+  .ot-formula .f-rule {
+    margin-left: 0
+  }
+
+  .ship-ref {
+    overflow-x: auto;
+    margin: 18px -16px 0;
+    padding: 0 16px
+  }
+
+  table.ship-rate,
+  table.ship {
+    min-width: 640px
+  }
+}

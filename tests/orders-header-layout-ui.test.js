@@ -1,17 +1,20 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
+const { readReactStyleSource } = require('./helpers/react-style-source.cjs');
 
-const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
-const reactCheckboxSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
-const reactTabsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
-const reactMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'main.tsx'), 'utf8');
-const reactAppSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'App.tsx'), 'utf8');
-const tabsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'tabs.mjs'), 'utf8');
-const tableSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'table.mjs'), 'utf8');
-const tableControlsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'table-controls.mjs'), 'utf8');
-const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+const root = path.join(__dirname, '..');
+
+const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
+const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
+const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
+const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
+const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
+const tabsSource = fs.readFileSync(path.join(root, 'src', 'orders', 'tabs.mjs'), 'utf8');
+const tableSource = fs.readFileSync(path.join(root, 'src', 'orders', 'table.mjs'), 'utf8');
+const tableControlsSource = fs.readFileSync(path.join(root, 'src', 'table-controls.mjs'), 'utf8');
+const cssSource = readReactStyleSource(root);
 
 assert.match(
   ordersPageSource,

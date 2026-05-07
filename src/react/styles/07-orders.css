@@ -1,0 +1,1176 @@
+/* —— Account tabs —— */
+.ot-acc-tabs {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border)
+}
+
+.ot-acc-shell {
+  min-width: 0;
+}
+
+.ot-acc-tabs-all {
+  flex-shrink: 0;
+}
+
+.ot-acc-tabs-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+}
+
+.ot-acc-tabs-scroll-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: max-content;
+  padding-right: 4px;
+}
+
+.ot-acc-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 16px;
+}
+
+.ot-acc-empty {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  color: var(--muted);
+  font-size: 12.5px;
+  white-space: nowrap
+}
+
+.ot-acc-tabs .tab {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap
+}
+
+.ot-acc-tabs .tab:hover {
+  border-color: var(--accent);
+  color: var(--accent)
+}
+
+.ot-acc-tabs .tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600
+}
+
+.ot-acc-tabs .tab-actions {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--panel2);
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 10px;
+  gap: 2px;
+  opacity: 0;
+  transform: translateX(5px);
+  pointer-events: none;
+  transition: all .15s;
+  mask-image: linear-gradient(to right, transparent, black 10px);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10px);
+}
+
+.ot-acc-tabs .tab.active .tab-actions {
+  background: var(--accent);
+}
+
+.ot-acc-tabs .tab:hover .tab-actions {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+  transition-delay: 0.1s;
+}
+
+.ot-acc-tabs .tab-actions .t-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  transition: all .15s;
+}
+
+.ot-acc-tabs .tab.active .tab-actions .t-btn {
+  color: rgba(255, 255, 255, .7);
+}
+
+.ot-acc-tabs .tab-actions .t-btn:hover {
+  background: rgba(110, 168, 255, .15);
+  color: var(--accent);
+}
+
+.ot-acc-tabs .tab.active .tab-actions .t-btn:hover {
+  background: rgba(255, 255, 255, .25);
+  color: #fff;
+}
+
+.ot-acc-tabs .tab-actions .t-btn.danger:hover {
+  background: rgba(255, 107, 138, .15);
+  color: var(--danger);
+}
+
+.ot-acc-tabs .tab.active .tab-actions .t-btn.danger:hover {
+  background: rgba(255, 255, 255, .25);
+  color: #fff;
+}
+
+.ot-acc-tabs .tab-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all .15s
+}
+
+.ot-acc-tabs .tab-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(110, 168, 255, .08)
+}
+
+.ot-acc-tabs .tab-count {
+  font-size: 10.5px;
+  opacity: .7;
+  margin-left: 2px
+}
+
+/* —— Order table —— */
+.ot-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0;
+  padding: 0 2px;
+  scroll-padding-inline: 12px;
+}
+
+.ot-table-inner {
+  display: inline-block;
+  padding: 0 18px 0 2px;
+  box-sizing: border-box;
+}
+
+.ot-table-toolbar {
+  display: block;
+  margin: 0 0 12px;
+  padding: 0 2px;
+}
+
+.ot-table-toolbar-bottom {
+  margin-top: 12px;
+}
+
+.ot-sticky-controls {
+  position: sticky;
+  top: 12px;
+  z-index: 18;
+}
+
+.ot-sticky-controls-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .12);
+  backdrop-filter: blur(10px);
+}
+
+.ot-table-toolbar-left {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ot-table-toolbar-right {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.ot-table-pagination {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ot-table-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 320px;
+  height: 32px;
+  margin-right: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .035);
+  overflow: hidden;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+.ot-table-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(110, 168, 255, .14);
+}
+
+.ot-table-search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.ot-table-search-icon svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ot-table-search input {
+  width: 100%;
+  height: 100%;
+  padding: 0 12px 0 34px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  box-shadow: none;
+  position: relative;
+  z-index: 2;
+}
+
+.ot-table-search input:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.ot-table-search-hint {
+  position: absolute;
+  left: 34px;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity .12s ease;
+  z-index: 1;
+}
+
+.ot-table-search input:focus+.ot-table-search-hint,
+.ot-table-search input:not(:placeholder-shown)+.ot-table-search-hint {
+  opacity: 0;
+}
+
+.ot-page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.ot-page-size-control {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ot-page-size select {
+  min-width: 54px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .035);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 30px;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  text-align: center;
+  text-align-last: center;
+}
+
+.ot-page-indicator {
+  min-width: 52px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+@media (max-width: 768px) {
+  .ot-bar .right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .ot-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .ot-summary-grid::after {
+    display: none;
+  }
+
+  .ot-summary-head {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ot-summary-surface {
+    padding: 16px;
+  }
+
+  .ot-summary-section {
+    padding: 0;
+  }
+
+  .ot-summary-section+.ot-summary-section {
+    border-left: 0;
+    border-top: 1px solid color-mix(in srgb, var(--border) 86%, white);
+    padding-top: 16px;
+  }
+
+  .ot-summary-meta-inline {
+    text-align: left;
+  }
+
+  .ot-summary-ledger-note {
+    white-space: normal;
+  }
+
+  .ot-acc-tabs {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .ot-acc-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .ot-sticky-controls-inner {
+    align-items: stretch;
+  }
+
+  .ot-table-toolbar-left,
+  .ot-table-toolbar-right,
+  .ot-table-pagination {
+    width: 100%;
+  }
+
+  .ot-table-toolbar-right {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .ot-table-search {
+    width: 100%;
+  }
+
+  .ot-setup-secondary-action {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.ot-th-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.ot-th-help-label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ot-th-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s ease;
+}
+
+.ot-th-help-trigger:hover,
+.ot-th-help-trigger:focus-visible,
+.ot-th-help[data-open="true"] .ot-th-help-trigger {
+  color: var(--accent);
+  outline: none;
+}
+
+.ot-th-help-trigger svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ot-th-help-bubble {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  width: min(280px, 70vw);
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease, transform .15s ease;
+  z-index: 20;
+}
+
+.ot-th-help:hover .ot-th-help-bubble,
+.ot-th-help:focus-within .ot-th-help-bubble,
+.ot-th-help[data-open="true"] .ot-th-help-bubble {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+.ot-th-help-line {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: normal;
+}
+
+table.ot {
+  min-width: 1100px;
+  font-size: 13px
+}
+
+table.ot th,
+table.ot td {
+  text-align: center;
+  padding: 10px 8px;
+  white-space: nowrap;
+  vertical-align: middle
+}
+
+table.ot td.actions {
+  white-space: nowrap
+}
+
+table.ot tbody tr:hover {
+  background: rgba(110, 168, 255, .05)
+}
+
+table.ot tbody tr.is-refunded {
+  background: rgba(196, 78, 78, .055);
+}
+
+table.ot tbody tr.is-refunded:hover {
+  background: rgba(196, 78, 78, .09);
+}
+
+.chip {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid transparent
+}
+
+.chip.ok {
+  background: rgba(55, 211, 153, .15);
+  color: var(--ok);
+  border-color: rgba(55, 211, 153, .35)
+}
+
+.chip.warn {
+  background: rgba(255, 200, 87, .15);
+  color: var(--warn);
+  border-color: rgba(255, 200, 87, .4)
+}
+
+.chip.danger {
+  background: rgba(255, 107, 138, .15);
+  color: var(--danger);
+  border-color: rgba(255, 107, 138, .4)
+}
+
+.chip.info {
+  background: rgba(110, 168, 255, .16);
+  color: var(--accent);
+  border-color: rgba(110, 168, 255, .35)
+}
+
+.chip.muted {
+  background: var(--panel2);
+  color: var(--muted);
+  border-color: var(--border)
+}
+
+.ot-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--muted)
+}
+
+.ot-empty svg {
+  opacity: .5;
+  margin-bottom: 12px
+}
+
+/* —— Modal —— */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 24, .7);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px
+}
+
+.modal-mask.show {
+  display: flex
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 720px;
+  max-height: 92vh;
+  overflow: auto;
+  padding: 24px;
+  box-shadow: var(--shadow)
+}
+
+.modal.modal-order {
+  max-width: 880px;
+}
+
+.ot-item-block {
+  margin: 10px 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: visible;
+}
+
+.ot-item-block-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.ot-item-block-head h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.ot-item-block-copy {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ot-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: visible;
+}
+
+.ot-item-edit-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 44px 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, white);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 96%, white);
+}
+
+.ot-item-remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--expense) 84%, white);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+
+.ot-item-remove:hover {
+  background: color-mix(in srgb, var(--expense) 10%, white);
+  color: var(--expense);
+}
+
+.ot-item-field {
+  min-width: 0;
+}
+
+.ot-item-span-2 {
+  grid-column: span 2;
+}
+
+.ot-item-span-3 {
+  grid-column: span 3;
+}
+
+.ot-item-span-4 {
+  grid-column: span 4;
+}
+
+.ot-item-edit-row .field label {
+  margin-bottom: 2px;
+  font-size: 10.5px;
+  line-height: 1.2;
+  color: var(--muted);
+  letter-spacing: .04em;
+}
+
+.ot-item-edit-row .tk-search-select,
+.ot-item-edit-row .field input,
+.ot-item-edit-row .field select {
+  width: 100%;
+}
+
+.ot-item-edit-row .tk-search-select-trigger,
+.ot-item-edit-row .field input,
+.ot-item-edit-row .field select,
+.ot-item-courier-toggle {
+  min-height: 40px;
+  height: 40px;
+}
+
+.ot-item-edit-row .tk-search-select-trigger-label,
+.ot-item-edit-row .field input,
+.ot-item-edit-row .field select {
+  text-align: center;
+}
+
+.ot-item-edit-row .tk-search-select-trigger,
+.ot-item-edit-row .field select {
+  padding: 0 12px;
+  border-radius: 10px;
+  border-color: color-mix(in srgb, var(--border) 82%, white);
+  background: color-mix(in srgb, var(--panel2) 38%, white);
+}
+
+.ot-item-edit-row .tk-search-select-trigger-label {
+  font-size: 13.5px;
+}
+
+.ot-item-edit-row .tk-search-select.is-open {
+  z-index: 120;
+}
+
+.ot-item-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+}
+
+.ot-item-inline-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.ot-item-inline-btn:hover {
+  color: color-mix(in srgb, var(--accent) 82%, black);
+}
+
+.ot-item-copy-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ot-inline-hint {
+  display: inline;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.modal h3 {
+  margin: 0 0 16px;
+  font-size: 16px
+}
+
+.modal .row {
+  grid-template-columns: 1fr 1fr
+}
+
+.modal .row.triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.modal .row.quad {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.modal .row.quint {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ot-money-row-top {
+  grid-template-columns: minmax(72px, 84px) repeat(4, minmax(0, 1fr)) !important;
+}
+
+.ot-meta-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.ot-refund-toggle {
+  width: 76px;
+  min-height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+  background: transparent;
+}
+
+.ot-refund-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ot-refund-toggle-knob {
+  position: relative;
+  width: 76px;
+  height: 40px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel2) 84%, white 16%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 88%, white 12%);
+  flex: 0 0 auto;
+  transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.ot-refund-toggle:hover .ot-refund-toggle-knob {
+  background: color-mix(in srgb, var(--panel2) 74%, white 26%);
+}
+
+.ot-refund-toggle-knob::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .18);
+  transition: left .18s ease;
+}
+
+.ot-refund-toggle:has(input:checked) {
+  background: transparent;
+}
+
+.ot-refund-toggle:has(input:checked) .ot-refund-toggle-knob {
+  background: linear-gradient(135deg, #f0b1b1, #de6a6a);
+  box-shadow: inset 0 0 0 1px rgba(196, 78, 78, .18);
+}
+
+.ot-refund-toggle:has(input:checked) .ot-refund-toggle-knob::after {
+  left: calc(100% - 36px);
+}
+
+.ot-sale-input-wrap {
+  position: relative;
+}
+
+.ot-sale-input-refund {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, #fff5f5 78%, var(--panel2) 22%);
+  box-shadow: inset 0 0 0 1px rgba(196, 78, 78, .16);
+  pointer-events: none;
+}
+
+.ot-sale-input-original,
+.ot-sale-input-zero {
+  font-variant-numeric: tabular-nums;
+}
+
+.ot-sale-input-original {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.2px;
+}
+
+.ot-sale-input-zero {
+  color: #c44e4e;
+  font-weight: 700;
+}
+
+.ot-sale-field.is-refunded input {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ot-sale-field.is-refunded .ot-sale-input-refund {
+  display: flex;
+}
+
+.ot-sale-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  text-align: center;
+}
+
+.ot-sale-cell .ot-sale-current {
+  font-weight: 600;
+  color: #c44e4e;
+}
+
+.ot-sale-cell .ot-sale-original {
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.ot-order-no-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.ot-order-no-text {
+  min-width: 0;
+}
+
+.ot-order-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.ot-order-tag-creator {
+  color: #b5525e;
+  background: rgba(196, 78, 78, .12);
+  border: 1px solid rgba(196, 78, 78, .22);
+  opacity: .98;
+}
+
+.modal .full {
+  grid-column: 1/-1
+}
+
+.modal .actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px
+}
+
+.ot-export-selectors {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ot-export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.ot-export-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .02);
+  cursor: pointer;
+}
+
+.ot-export-option-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ot-export-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.ot-export-option-name {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.ot-export-option-count {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ot-export-option-all {
+  background: rgba(255, 255, 255, .035);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px)
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0)
+  }
+}
+
+/* —— 公式展示卡片（高级版） —— */
+.formula-card {
+  margin-top: 18px;
+  background:
+    radial-gradient(600px 200px at 0% 0%, rgba(110, 168, 255, .10), transparent 60%),
+    radial-gradient(500px 200px at 100% 100%, rgba(138, 255, 207, .08), transparent 60%),
+    var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px 28px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden
+}
+
+.formula-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent), var(--accent2))
+}
+
+.formula-card h2 {
+  margin: 0 0 20px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase
+}
+
+.formula-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px
+}
+
+.formula-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  transition: all .2s
+}
+
+.formula-item:hover {
+  border-color: var(--accent);
+  transform: translateX(2px)
+}
+
+.formula-step {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 13px/1 ui-monospace, Consolas, monospace;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #0b1020
+}
+
+.formula-eq {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font: 500 15px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--text);
+  font-variant-numeric: tabular-nums
+}
+
+.formula-eq .lhs {
+  color: var(--accent2);
+  font-weight: 700
+}
+
+.formula-eq .op {
+  color: var(--muted);
+  padding: 0 2px
+}
+
+.formula-eq .paren {
+  color: var(--muted)
+}
+
+.formula-eq .num {
+  color: var(--warn)
+}
+
+.formula-eq .var {
+  display: inline-block;
+  font: 12px/1 ui-monospace, Consolas, monospace;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: rgba(110, 168, 255, .16);
+  color: var(--accent);
+  border: 1px solid rgba(110, 168, 255, .32)
+}

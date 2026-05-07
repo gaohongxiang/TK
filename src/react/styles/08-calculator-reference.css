@@ -1,0 +1,545 @@
+/* —— 运费计算器 / 参考表 —— */
+.ship-calc,
+.ship-ref,
+.commission-ref {
+  margin-top: 18px
+}
+
+.ship-calc .ship-meta,
+.ship-ref .ship-meta,
+.commission-ref .ship-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: var(--panel2);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: var(--muted)
+}
+
+.ship-calc .ship-meta b,
+.ship-ref .ship-meta b,
+.commission-ref .ship-meta b {
+  color: var(--text);
+  font-weight: 600
+}
+
+.ship-calc .ship-meta .sep,
+.ship-ref .ship-meta .sep,
+.commission-ref .ship-meta .sep {
+  opacity: .4
+}
+
+.ship-note {
+  margin-bottom: 14px;
+  padding: 13px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 200, 87, .28);
+  background: linear-gradient(180deg, rgba(255, 200, 87, .10), rgba(255, 200, 87, .04));
+}
+
+.ship-note .title {
+  margin-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--warn);
+  font-weight: 700
+}
+
+.ship-note .text {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted)
+}
+
+.ship-note .text+.text {
+  margin-top: 6px
+}
+
+.ship-inputs {
+  display: grid;
+  grid-template-columns: 1.05fr .95fr .8fr .8fr .8fr;
+  gap: 10px;
+  align-items: end
+}
+
+.ship-calc .ship-inputs .field {
+  gap: 6px
+}
+
+.ship-calc .ship-inputs .field label {
+  min-height: auto;
+  font-size: 12px
+}
+
+.ship-calc .ship-inputs .field input,
+.ship-calc .ship-inputs .field select {
+  padding: 9px 11px;
+  font-size: 14px;
+  border-radius: 9px
+}
+
+.ship-calc .ship-inputs .field.ship-accent input {
+  background: linear-gradient(180deg, rgba(255, 200, 87, .18), rgba(255, 200, 87, .08));
+  border-color: rgba(255, 200, 87, .55);
+  color: var(--warn);
+  font-weight: 700
+}
+
+.ship-calc .ship-inputs .field.ship-accent input:focus {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 3px rgba(255, 200, 87, .22)
+}
+
+.ship-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px
+}
+
+.ship-kpi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(110, 168, 255, .09), rgba(138, 255, 207, .04));
+  border: 1px solid rgba(110, 168, 255, .18)
+}
+
+.ship-card-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1
+}
+
+.ship-kpi .label,
+.ship-result .eyebrow {
+  font-size: 12.5px;
+  letter-spacing: .4px;
+  color: var(--muted);
+  margin-bottom: 0;
+  font-weight: 600;
+  line-height: 1.25
+}
+
+.ship-kpi .value {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  text-align: right;
+  align-self: center;
+  flex: 0 0 auto
+}
+
+#shipActualKg,
+#shipVolWeight,
+#shipBand {
+  font-weight: 500
+}
+
+#shipChargeWeight {
+  color: var(--expense);
+  text-shadow: 0 0 18px rgba(240, 138, 134, .16)
+}
+
+.ship-kpi .meta,
+.ship-result .subline {
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.45
+}
+
+.ship-reason-line {
+  display: block
+}
+
+.ship-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 14px
+}
+
+.ship-result-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 92px;
+  padding: 16px 14px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--panel2)
+}
+
+.ship-card-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding-right: 50px;
+  text-align: right
+}
+
+.ship-result .line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap
+}
+
+.ship-result .line {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2
+}
+
+.ship-result .line #shipFeeJpy,
+.ship-result .line #shipFeeCny {
+  color: var(--expense);
+  text-shadow: 0 0 18px rgba(240, 138, 134, .16)
+}
+
+.ship-result .line .unit {
+  font-size: 14px;
+  color: var(--muted);
+  margin-left: 0
+}
+
+.ship-result .subline {
+  margin-top: 0;
+  padding: 0;
+  max-width: 240px
+}
+
+.ship-inline-action {
+  padding: 4px 10px;
+  font-size: 11.5px;
+  line-height: 1.2
+}
+
+.ship-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px
+}
+
+.ship-alerts:empty {
+  display: none
+}
+
+.ship-alert {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(110, 168, 255, .06);
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6
+}
+
+.ship-alert.warn {
+  border-color: rgba(255, 200, 87, .34);
+  background: rgba(255, 200, 87, .10);
+  color: var(--text)
+}
+
+.ship-alert.error {
+  border-color: rgba(255, 107, 138, .34);
+  background: rgba(255, 107, 138, .10);
+  color: var(--text)
+}
+
+.ship-rate-wrap {
+  margin-top: 16px;
+  overflow-x: auto
+}
+
+.ship-rate-title {
+  margin-bottom: 10px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted)
+}
+
+table.ship-rate td,
+table.ship-rate th {
+  padding: 10px 8px
+}
+
+table.ship {
+  width: 100%;
+  font-size: 13.5px
+}
+
+table.ship th,
+table.ship td {
+  text-align: center;
+  padding: 11px 8px;
+  white-space: nowrap
+}
+
+table.ship thead th {
+  background: var(--panel2);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11.5px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border)
+}
+
+table.ship tbody tr:nth-child(even) td {
+  background: rgba(110, 168, 255, .04)
+}
+
+table.ship tbody tr:hover td {
+  background: rgba(110, 168, 255, .10)
+}
+
+table.ship td.w {
+  color: var(--warn);
+  font-weight: 700
+}
+
+table.ship td.actual {
+  color: #f87171;
+  font-weight: 600;
+  text-shadow: 0 0 12px rgba(248, 113, 113, .25)
+}
+
+.commission-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.commission-group {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(110, 168, 255, .05);
+}
+
+.commission-rate-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--panel2);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 86%, white 14%);
+}
+
+.commission-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.commission-tags span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .78);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 86%, white 14%);
+  font-size: 12.5px;
+  line-height: 1.2;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.commission-note {
+  margin-top: 14px;
+}
+
+@media (max-width: 768px) {
+  .commission-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .commission-group {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 10px;
+    padding: 11px 12px;
+  }
+
+  .commission-rate-badge {
+    min-height: 30px;
+    font-size: 13.5px;
+  }
+
+  .commission-tags {
+    gap: 6px;
+  }
+
+  .commission-tags span {
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+}
+
+/* —— 订单跟踪器 · 账号下拉历史 —— */
+.acc-wrap {
+  position: relative
+}
+
+.acc-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  z-index: 50;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  max-height: 220px;
+  overflow: auto;
+  display: none
+}
+
+.acc-dropdown.show {
+  display: block
+}
+
+.acc-dropdown .empty {
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 12.5px
+}
+
+.acc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--border)
+}
+
+.acc-item:last-child {
+  border-bottom: 0
+}
+
+.acc-item:hover {
+  background: var(--panel2);
+  color: var(--accent)
+}
+
+.acc-item .del {
+  opacity: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px
+}
+
+.acc-item:hover .del {
+  opacity: 1
+}
+
+.acc-item .del:hover {
+  background: rgba(255, 107, 138, .2);
+  color: var(--danger)
+}
+
+/* —— 订单跟踪器 · 公式说明块 —— */
+.ot-formula {
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  background: var(--panel2);
+  border: 1px dashed var(--border);
+  border-radius: 12px
+}
+
+.ot-formula .title {
+  font-size: 11.5px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 10px
+}
+
+.ot-formula .f-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 6px 0;
+  flex-wrap: wrap;
+  font: 13px/1.6 ui-monospace, Consolas, monospace;
+  color: var(--text)
+}
+
+.ot-formula .f-row .k {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ot-formula .f-row .op {
+  color: var(--muted)
+}
+
+.f-rules-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font: 11.5px/1 ui-monospace, Consolas, monospace;
+}
+
+.f-rules-grid .rule {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.f-rules-grid .cond {
+  color: var(--text);
+  white-space: nowrap
+}
+
+.f-rules-grid .arrow {
+  color: var(--muted)
+}
+
+.f-rules-grid .result {
+  color: var(--muted);
+  white-space: nowrap
+}

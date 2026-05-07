@@ -2,3 +2,13 @@
 @import "tailwindcss/utilities";
 
 @source "./**/*.{ts,tsx}";
+
+@import "./styles/01-base.css";
+@import "./styles/02-calculator-core.css";
+@import "./styles/03-primitives.css";
+@import "./styles/04-orders-summary.css";
+@import "./styles/05-analytics.css";
+@import "./styles/06-products.css";
+@import "./styles/07-orders.css";
+@import "./styles/08-calculator-reference.css";
+@import "./styles/09-responsive.css";

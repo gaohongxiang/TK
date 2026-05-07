@@ -1499,8 +1499,9 @@ npm run release:check
 
 ```text
 index.html
-css/style.css
-js/app.js
+src/react/main.tsx
+src/react/styles.css
+src/react/styles/
 public/
 ```
 
@@ -1734,8 +1735,8 @@ Excel 必须本地解析。
 处理：
 
 - 先做 React island，不替换全站入口。
-- Tailwind 样式作用域和现有 `css/style.css` 要重点检查。
-- 第一阶段只迁数据分析页。
+- Tailwind 样式作用域和 `src/react/styles/` 分模块样式要重点检查。
+- 第一阶段只迁数据分析页。（已完成；当前分支已进入完整 React SPA 和视觉系统收敛）
 - ECharts 只在数据分析页使用。
 - 商品/订单保持现有 ESM 运行链路，等数据分析稳定后再迁。
 - 每一步跑 `npm test`、`npm run build`、相关 e2e。

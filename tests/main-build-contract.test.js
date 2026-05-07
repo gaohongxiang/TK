@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
+const { readReactStyleSource } = require('./helpers/react-style-source.cjs');
 
 const root = path.join(__dirname, '..');
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -15,6 +16,7 @@ const wrangler = fs.readFileSync(path.join(root, 'wrangler.toml'), 'utf8');
 const gitignore = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
+const reactStyleSource = readReactStyleSource(root);
 const privacySource = fs.readFileSync(path.join(root, 'public', 'privacy.html'), 'utf8');
 const termsSource = fs.readFileSync(path.join(root, 'public', 'terms.html'), 'utf8');
 const notFoundSource = fs.readFileSync(path.join(root, 'public', '404.html'), 'utf8');
@@ -175,9 +177,26 @@ assert.match(
 );
 
 assert.match(
-  fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8'),
+  reactStyleSource,
   /\.skip-link\s*\{[\s\S]*transform:\s*translateY\(-140%\)[\s\S]*\.skip-link:focus\s*\{[\s\S]*transform:\s*translateY\(0\)/,
   '跳转主内容链接默认隐藏，键盘聚焦时需要可见'
+);
+
+assert.doesNotMatch(
+  htmlSource,
+  /href="css\/style\.css"/,
+  '现代 React SPA 不应再从 index.html 直连旧 css/style.css'
+);
+
+assert.ok(
+  !fs.existsSync(path.join(root, 'css', 'style.css')),
+  '现代 React SPA 样式应进入 src/react/styles.css 和 styles modules，不再保留旧 css/style.css 入口'
+);
+
+assert.match(
+  fs.readFileSync(path.join(root, 'src', 'react', 'styles.css'), 'utf8'),
+  /@import "\.\/styles\/01-base\.css"[\s\S]*@import "\.\/styles\/09-responsive\.css"/,
+  'React 样式入口需要按模块导入拆分后的样式文件'
 );
 
 assert.match(

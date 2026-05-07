@@ -1,15 +1,6 @@
 /* —— 响应式：平板 —— */
 @media (max-width:860px) {
-  .calc-layout-grid {
-    grid-template-columns: 1fr
-  }
-
   .row.quad {
-    grid-template-columns: 1fr 1fr
-  }
-
-  .calc-shared-grid,
-  .known-sale-grid {
     grid-template-columns: 1fr 1fr
   }
 
@@ -149,15 +140,6 @@
 
   .pricing-ship-inline-summary-fields {
     grid-template-columns: 1fr
-  }
-
-  .calc-shared-grid,
-  .known-sale-grid {
-    grid-template-columns: 1fr
-  }
-
-  .known-sale-item .value {
-    font-size: 18px
   }
 
   .analytics-kpi-grid {

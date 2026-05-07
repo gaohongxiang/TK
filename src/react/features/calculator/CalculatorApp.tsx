@@ -204,6 +204,11 @@ function Field({
   );
 }
 
+const calcPanelClass = 'calc-panel active block';
+const calcLayoutClass = 'calc-layout-grid grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-[18px] [&>*]:min-w-0 max-[860px]:grid-cols-1';
+const calcFormSectionClass = 'calc-form-section mt-[18px]';
+const calcDetailsGridClass = 'row quad calc-details-grid mt-2.5';
+
 function ShippingInline({
   state,
   onNumber,
@@ -324,8 +329,8 @@ function PricingNewPanel({
   };
 
   return (
-    <div className="calc-panel active" id="calc-panel-pricing-new">
-      <div className="calc-layout-grid">
+    <div className={calcPanelClass} id="calc-panel-pricing-new">
+      <div className={calcLayoutClass}>
         <Card>
           <h2>定价输入</h2>
           <div className="row triple">
@@ -336,7 +341,7 @@ function PricingNewPanel({
             </FormField>
           </div>
           <ShippingInline state={state} onNumber={updateNumber} onCargo={updateCargo} onImport={importShipping} />
-          <div className="calc-form-section">
+          <div className={calcFormSectionClass}>
             <div className="row triple">
               <Field id="feeNew" label="TK 平台手续费（%）" value={state.feeNew} onChange={value => updateNumber('feeNew', value)} />
               <Field id="creatorRateNew" label="达人佣金率（%）" value={state.creatorRateNew} onChange={value => updateNumber('creatorRateNew', value)} />
@@ -422,8 +427,8 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
   const rows = discounts.slice().sort((a, b) => a - b).map(discount => calcLegacyRow(state, origPrice, discount));
   const updateNumber = (key: keyof CalcState, value: string) => setState(prev => ({ ...prev, [key]: toNumber(value) }));
   return (
-    <div className="calc-panel active" id="calc-panel-pricing">
-      <div className="calc-layout-grid">
+    <div className={calcPanelClass} id="calc-panel-pricing">
+      <div className={calcLayoutClass}>
         <Card>
           <h2>核心输入</h2>
           <div className="row">
@@ -440,7 +445,7 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
           </div>
           <details open className="calc-details">
             <summary>全局参数（平台手续费 / 汇率 / 运费 / 折扣档位）</summary>
-            <div className="row quad calc-details-grid">
+            <div className={calcDetailsGridClass}>
               <Field id="fee" label="TK 平台手续费（%）" value={state.fee} onChange={value => updateNumber('fee', value)} />
               <Field id="rate" label="日元汇率（1元 = ? 円）" value={state.rate} onChange={value => updateNumber('rate', value)} />
               <Field id="shipping" label="100g 运费+贴单费（¥）" value={state.shipping} onChange={value => updateNumber('shipping', value)} />
@@ -487,8 +492,8 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
   };
   const profitClass = result && result.profit > 0 ? 'profit-pos' : result && result.profit < 0 ? 'profit-neg' : '';
   return (
-    <div className="calc-panel active" id="calc-panel-review">
-      <div className="calc-layout-grid">
+    <div className={calcPanelClass} id="calc-panel-review">
+      <div className={calcLayoutClass}>
         <Card>
           <h2>成交输入</h2>
           <div className="row">
@@ -497,36 +502,36 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
               <Input id="totalCostReview" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
             </FormField>
           </div>
-          <div className="calc-form-section">
+          <div className={calcFormSectionClass}>
             <div className="row">
               <Field id="costReview" label="采购价 ¥" className="expense-field" value={state.costNew} onChange={value => updateNumber('costNew', value)} />
               <Field id="shippingReview" label="海外运费 ¥" className="expense-field" value={state.overseasShippingNew} onChange={value => updateNumber('overseasShippingNew', value)} />
             </div>
           </div>
-          <div className="calc-form-section">
+          <div className={calcFormSectionClass}>
             <div className="row">
               <Field id="creatorRateReview" label="达人佣金率（%）" value={state.creatorRateNew} onChange={value => updateNumber('creatorRateNew', value)} />
               <Field id="saleCommissionReview" label="达人佣金 ¥" className="expense-field" value={result ? result.creatorCommission.toFixed(2) : ''} readOnly />
             </div>
           </div>
-          <div className="calc-form-section">
+          <div className={calcFormSectionClass}>
             <ShippingInline state={state} onNumber={updateNumber} onCargo={value => setState(prev => ({ ...prev, shipCargoTypeNew: value }))} onImport={importShipping} prefix="Review" />
           </div>
         </Card>
         <Card>
           <h2>利润复盘</h2>
-          <div className="known-sale-grid review-metrics">
+          <div className="known-sale-grid review-metrics grid grid-cols-3 items-stretch gap-3 [&>*]:min-w-0 max-[860px]:grid-cols-2 max-[768px]:grid-cols-1">
             <div className="known-sale-item">
               <div className="label">人民币到手</div>
-              <div className="value mono" id="saleNet">{result ? formatCny(result.cnyNet, 2) : '-'}</div>
+              <div className="value mono max-[768px]:text-lg" id="saleNet">{result ? formatCny(result.cnyNet, 2) : '-'}</div>
             </div>
             <div className="known-sale-item">
               <div className="label">利润</div>
-              <div className={`value mono ${profitClass}`.trim()} id="saleProfit">{result ? formatCny(result.profit, 2) : '-'}</div>
+              <div className={`value mono max-[768px]:text-lg ${profitClass}`.trim()} id="saleProfit">{result ? formatCny(result.profit, 2) : '-'}</div>
             </div>
             <div className="known-sale-item">
               <div className="label">利润率</div>
-              <div className={`value mono ${profitClass}`.trim()} id="saleMargin">{result ? formatMargin(result.margin) : '-'}</div>
+              <div className={`value mono max-[768px]:text-lg ${profitClass}`.trim()} id="saleMargin">{result ? formatMargin(result.margin) : '-'}</div>
             </div>
           </div>
           <div className="review-formula mono">

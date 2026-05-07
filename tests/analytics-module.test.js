@@ -90,14 +90,14 @@ assert.match(
 
 assert.match(
   styleSource,
-  /\.analytics-insight-layout[\s\S]*grid-template-columns:[\s\S]*\.analytics-channel-share[\s\S]*grid-template-columns:\s*repeat\(2/,
-  '数据分析页需要提供高级图表布局和双环形图样式'
+  /\.analytics-insight-layout[\s\S]*grid-template-columns:[\s\S]*\.analytics-react-overview-chart[\s\S]*\.analytics-react-scatter-wrap/,
+  '数据分析页需要提供 ECharts 图表布局样式'
 );
 
-assert.match(
+assert.doesNotMatch(
   styleSource,
-  /\.analytics-donut-card[\s\S]*\.analytics-donut-segment[\s\S]*\.analytics-bubble-point/,
-  '数据分析页需要提供环形图和气泡图样式'
+  /\.analytics-donut-card|\.analytics-bubble-point|\.analytics-bar-row|\.analytics-funnel-row/,
+  'React ECharts 迁移后不应继续保留旧手写 SVG 图表样式块'
 );
 
 assert.match(

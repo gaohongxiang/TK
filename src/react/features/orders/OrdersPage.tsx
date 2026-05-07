@@ -512,7 +512,7 @@ const orderItemRowClass = 'ot-item-edit-row relative grid grid-cols-12 gap-2 rou
 const orderItemRemoveClass = 'ot-item-remove absolute right-2.5 top-2.5 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-[18px] leading-none text-[color-mix(in_srgb,var(--expense)_84%,white)] transition-[background,color] hover:bg-[color-mix(in_srgb,var(--expense)_10%,white)] hover:text-[var(--expense)]';
 const orderItemFieldClass = 'ot-item-field ot-item-span-3 col-span-3 min-w-0';
 const orderItemLabelClass = 'min-h-0 !text-[10.5px] !leading-[1.2] tracking-[.04em]';
-const orderItemInputClass = 'pl-sku-inline-input !h-10 !min-h-10 text-center';
+const orderItemInputClass = '!h-10 !min-h-10 text-center';
 const orderItemSelectClass = '!h-10 !min-h-10 rounded-[10px] border-[color-mix(in_srgb,var(--border)_82%,white)] bg-[color-mix(in_srgb,var(--panel2)_38%,white)] px-3 text-center';
 const orderItemInlineActionsClass = 'ot-item-inline-actions ml-1.5 inline-flex items-center gap-1.5';
 const orderItemInlineButtonClass = 'ot-item-inline-btn ot-item-copy-btn inline-flex h-4 w-4 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[var(--accent)] hover:text-[color-mix(in_srgb,var(--accent)_82%,black)] [&_svg]:h-3.5 [&_svg]:w-3.5';
@@ -592,7 +592,7 @@ function OrderItemsEditor({
               <input type="hidden" data-item-field="productSkuName" value={item.productSkuName} readOnly />
             </FormField>
             <FormField label="商品名称" labelClassName={orderItemLabelClass} className={orderItemFieldClass}>
-              <Input className={orderItemInputClass} data-item-field="productName" value={item.productName} onChange={event => updateItem(index, { productName: event.target.value })} />
+              <Input density="skuInline" className={orderItemInputClass} data-item-field="productName" value={item.productName} onChange={event => updateItem(index, { productName: event.target.value })} />
             </FormField>
             <FormField label="快递公司" labelClassName={orderItemLabelClass} className={orderItemFieldClass}>
               <Select className={orderItemSelectClass} data-item-field="courierCompany" value={item.courierCompany} onChange={event => updateItem(index, { courierCompany: event.target.value })}>
@@ -600,13 +600,13 @@ function OrderItemsEditor({
               </Select>
             </FormField>
             <FormField label="数量" labelClassName={orderItemLabelClass} className={orderItemFieldClass}>
-              <Input type="number" className={orderItemInputClass} data-item-field="quantity" min="1" step="1" value={item.quantity} onChange={event => updateItem(index, { quantity: event.target.value })} />
+              <Input density="skuInline" type="number" className={orderItemInputClass} data-item-field="quantity" min="1" step="1" value={item.quantity} onChange={event => updateItem(index, { quantity: event.target.value })} />
             </FormField>
             <FormField label="单件重量(g)" labelClassName={orderItemLabelClass} className={orderItemFieldClass}>
-              <Input className={orderItemInputClass} data-item-field="unitWeightG" value={item.unitWeightG} onChange={event => updateItem(index, { unitWeightG: event.target.value })} />
+              <Input density="skuInline" className={orderItemInputClass} data-item-field="unitWeightG" value={item.unitWeightG} onChange={event => updateItem(index, { unitWeightG: event.target.value })} />
             </FormField>
             <FormField label="单件尺寸(cm)" labelClassName={orderItemLabelClass} className={orderItemFieldClass}>
-              <Input className={orderItemInputClass} data-item-field="unitSizeText" value={item.unitSizeText} placeholder="20×15×10" onChange={event => updateItem(index, { unitSizeText: event.target.value })} />
+              <Input density="skuInline" className={orderItemInputClass} data-item-field="unitSizeText" value={item.unitSizeText} placeholder="20×15×10" onChange={event => updateItem(index, { unitSizeText: event.target.value })} />
             </FormField>
             <FormField
               className={orderItemFieldClass}
@@ -636,6 +636,7 @@ function OrderItemsEditor({
               }
             >
               <Input
+                density="skuInline"
                 className={orderItemInputClass}
                 data-item-field="trackingNo"
                 value={item.trackingNo}

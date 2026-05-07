@@ -108,6 +108,13 @@ const productNameCellClass = 'products-react-name-cell min-w-[220px] max-w-[360p
 const productNameTextClass = 'truncate';
 const productLinkActionsClass = 'pl-link-actions products-react-link-actions flex flex-wrap items-center justify-center gap-1.5';
 const productActionsClass = 'products-react-actions inline-flex items-center justify-center gap-1.5';
+const productRowClass = 'pl-product-row products-react-row [&.is-expandable]:cursor-pointer [&.is-expandable_td]:transition-[background-color] [&.is-expandable_td]:duration-150 hover:[&.is-expandable_td]:bg-[color-mix(in_srgb,var(--accent)_4%,white)] [&.is-expanded_td]:bg-[color-mix(in_srgb,var(--accent)_5%,var(--panel))]';
+const productSkuListClass = 'pl-sku-list mt-3.5';
+const productSkuEditWrapClass = 'pl-sku-table-wrap overflow-x-auto border-t border-[color-mix(in_srgb,var(--border)_88%,white)]';
+const productSkuEditTableClass = 'pl-sku-edit-table min-w-[820px] table-fixed overflow-hidden rounded-xl border-collapse';
+const productSkuEditHeadCellClass = 'border-b border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel2)_45%,white)] px-1.5 py-2.5 text-center align-middle text-[11px] font-bold uppercase tracking-[.08em] text-[var(--muted)]';
+const productSkuEditCellClass = 'border-b border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel)_92%,white)] px-1.5 py-2 text-center align-middle';
+const productSkuEditRowClass = 'pl-sku-edit-row hover:[&_td]:bg-[color-mix(in_srgb,var(--accent)_2%,white)] [&.is-inheriting_td]:bg-[color-mix(in_srgb,var(--accent)_3%,white)]';
 const EMPTY_PRODUCT_FORM: ProductFormDraft = {
   accountName: '',
   tkId: '',
@@ -304,7 +311,7 @@ function ProductsTableView({
                 return (
                   <TableBody key={tkId || index}>
                     <TableRow
-                      className={cn('pl-product-row products-react-row', isExpandable ? 'is-expandable' : '', isExpanded ? 'is-expanded' : '')}
+                      className={cn(productRowClass, isExpandable ? 'is-expandable' : '', isExpanded ? 'is-expanded' : '')}
                       data-toggle-expand={isExpandable ? tkId : undefined}
                       onClick={event => {
                         if (!isExpandable) return;
@@ -622,25 +629,27 @@ function SkuEditorList({
   const pricingContext = useMemo(() => ensureGlobalSettingsStore(window).getPricingContext(), []);
 
   if (!draft.skus.length) {
-    return <div className="pl-sku-list" id="pl-sku-list"><div className={productSkuEmptyClass}>请先添加 SKU；每个 SKU 单独维护重量、尺寸和预估运费。</div></div>;
+    return <div className={productSkuListClass} id="pl-sku-list"><div className={productSkuEmptyClass}>请先添加 SKU；每个 SKU 单独维护重量、尺寸和预估运费。</div></div>;
   }
 
   return (
-    <div className="pl-sku-list" id="pl-sku-list">
-      <div className="pl-sku-table-wrap">
-        <Table className="pl-sku-edit-table">
+    <div className={productSkuListClass} id="pl-sku-list">
+      <div className={productSkuEditWrapClass}>
+        <Table className={productSkuEditTableClass}>
           <TableHeader>
             <TableRow>
-              <TableHead>SKU 名称</TableHead>
-              <TableHead>SKU ID</TableHead>
-              <TableHead>重量(g)</TableHead>
-              <TableHead>尺寸(cm)</TableHead>
-              <TableHead>预估海外运费</TableHead>
-              <TableHead></TableHead>
+              <TableHead className={productSkuEditHeadCellClass}>SKU 名称</TableHead>
+              <TableHead className={productSkuEditHeadCellClass}>SKU ID</TableHead>
+              <TableHead className={productSkuEditHeadCellClass}>重量(g)</TableHead>
+              <TableHead className={productSkuEditHeadCellClass}>尺寸(cm)</TableHead>
+              <TableHead className={productSkuEditHeadCellClass}>预估海外运费</TableHead>
+              <TableHead className={productSkuEditHeadCellClass}></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {draft.skus.map((sku, index) => {
+              const isLastSku = index === draft.skus.length - 1;
+              const skuCellClass = cn(productSkuEditCellClass, isLastSku ? 'border-b-0' : '');
               const useDefaults = skuUsesProductDefaults(sku);
               const weightG = useDefaults ? String(defaultSnapshot.weightG || '') : String(sku.weightG || '');
               const sizeText = useDefaults ? String(defaultSnapshot.sizeText || '') : String(sku.sizeText || formatSizeInput(sku) || '');
@@ -656,45 +665,49 @@ function SkuEditorList({
                 }
               });
               return (
-                <TableRow className={cn('pl-sku-edit-row', useDefaults ? 'is-inheriting' : '')} data-sku-index={index} data-sku-use-defaults={useDefaults ? '1' : '0'} key={String(sku.skuId || index)}>
-                  <TableCell>
+                <TableRow className={cn(productSkuEditRowClass, useDefaults ? 'is-inheriting' : '')} data-sku-index={index} data-sku-use-defaults={useDefaults ? '1' : '0'} key={String(sku.skuId || index)}>
+                  <TableCell className={skuCellClass}>
                     <Input
-                      className={cn('pl-sku-inline-input', invalid.has(`sku.${index}.skuName`) ? 'is-invalid' : '')}
+                      density="skuInline"
+                      className={invalid.has(`sku.${index}.skuName`) ? 'is-invalid' : ''}
                       data-sku-field="skuName"
                       placeholder="例如 白 / S"
                       value={String(sku.skuName || '')}
                       onChange={event => onSkuChange(index, { skuName: event.target.value })}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className={skuCellClass}>
                     <Input
-                      className={cn('pl-sku-inline-input', invalid.has(`sku.${index}.skuId`) ? 'is-invalid' : '')}
+                      density="skuInline"
+                      className={invalid.has(`sku.${index}.skuId`) ? 'is-invalid' : ''}
                       data-sku-field="skuId"
                       value={String(sku.skuId || '')}
                       onChange={event => onSkuChange(index, { skuId: event.target.value })}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className={skuCellClass}>
                     <Input
                       type="number"
                       min="0"
                       step="1"
-                      className={cn('pl-sku-inline-input', invalid.has(`sku.${index}.weightG`) ? 'is-invalid' : '')}
+                      density="skuInline"
+                      className={invalid.has(`sku.${index}.weightG`) ? 'is-invalid' : ''}
                       data-sku-field="weightG"
                       value={weightG}
                       onChange={event => onSkuChange(index, { weightG: event.target.value, useProductDefaults: false })}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className={skuCellClass}>
                     <Input
-                      className={cn('pl-sku-inline-input', invalid.has(`sku.${index}.sizeText`) ? 'is-invalid' : '')}
+                      density="skuInline"
+                      className={invalid.has(`sku.${index}.sizeText`) ? 'is-invalid' : ''}
                       data-sku-field="sizeText"
                       placeholder="例如 20×15×10"
                       value={sizeText}
                       onChange={event => onSkuChange(index, { sizeText: event.target.value, useProductDefaults: false })}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className={skuCellClass}>
                     <div className={productSkuFeeStackClass}>
                       <span className={productSkuFeeValueClass} data-sku-estimated-fee>{snapshot.estimatedShippingFee ? `¥ ${snapshot.estimatedShippingFee}` : '-'}</span>
                       <span className={productSkuFeeSubClass} data-sku-charge-weight>{snapshot.chargeWeightKg ? `计费重 ${snapshot.chargeWeightKg} kg` : ''}</span>
@@ -703,7 +716,7 @@ function SkuEditorList({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className={productSkuActionsCellClass}>
+                  <TableCell className={cn(skuCellClass, productSkuActionsCellClass)}>
                     <Button size="sm" variant="danger" data-sku-remove={index} onClick={() => onRemoveSku(index)}>删除</Button>
                   </TableCell>
                 </TableRow>

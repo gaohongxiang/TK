@@ -496,7 +496,7 @@ assert.doesNotMatch(
 
 assert.match(
   reactProductsPageSource,
-  /<Table className="pl-sku-edit-table">[\s\S]*<TableHeader>[\s\S]*<TableBody>/,
+  /productSkuEditTableClass[\s\S]*pl-sku-edit-table[\s\S]*<Table className=\{productSkuEditTableClass\}>[\s\S]*<TableHeader>[\s\S]*<TableBody>/,
   '商品 SKU 编辑表需要迁到共享 Table primitive'
 );
 

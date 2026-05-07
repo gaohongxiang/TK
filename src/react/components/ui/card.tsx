@@ -6,7 +6,7 @@ function Card({ className, ...props }: HTMLAttributes<HTMLElement>) {
     <section
       data-slot="card"
       className={cn(
-        'card rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow)]',
+        'card min-w-0 max-w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-5 shadow-[var(--shadow)] max-[768px]:rounded-xl max-[768px]:p-4',
         className
       )}
       {...props}

@@ -90,11 +90,6 @@
     justify-content: flex-start;
   }
 
-  .card {
-    padding: 16px;
-    border-radius: 12px
-  }
-
   .card h2 {
     font-size: 13px;
     margin-bottom: 14px

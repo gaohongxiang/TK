@@ -34,16 +34,6 @@
   flex-wrap: wrap
 }
 
-.card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  max-width: 100%;
-  min-width: 0;
-  padding: 20px;
-  box-shadow: var(--shadow)
-}
-
 .card h2 {
   margin: 0 0 16px;
   font-size: 14px;

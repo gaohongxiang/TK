@@ -14,10 +14,6 @@ export const TKHtml = {
   shorten
 };
 
-if (typeof window !== 'undefined') {
-  window.TKHtml = TKHtml;
-}
-
 export {
   escape,
   shorten

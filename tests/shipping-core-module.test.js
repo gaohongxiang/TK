@@ -29,7 +29,7 @@ assert.match(
 assert.match(srcSource, /\bTKShippingCore\b/, '共享运费核心 ESM 导出需要保留命名空间');
 assert.match(srcSource, /\bcomputeShippingQuote\b/, '共享运费核心 ESM 导出需要提供 computeShippingQuote');
 assert.match(srcSource, /\bcomputeCalculatedShippingCost\b/, '共享运费核心 ESM 导出需要提供 computeCalculatedShippingCost');
-assert.match(srcSource, /window\.TKShippingCore = TKShippingCore/, '共享运费核心 ESM 模块需要在浏览器里挂回旧全局命名空间');
+assert.doesNotMatch(srcSource, /window\.TKShippingCore/, '共享运费核心应保持纯 ESM，不应再挂旧全局命名空间');
 assert.match(reactOrdersSource, /from '\.\.\/\.\.\/\.\.\/shipping-core\.mjs'/, 'React 订单页需要显式导入共享运费核心');
 assert.match(reactProductsSource, /from '\.\.\/\.\.\/\.\.\/shipping-core\.mjs'/, 'React 商品页需要显式导入共享运费核心');
 assert.match(reactCalculatorSource, /from '\.\.\/\.\.\/\.\.\/shipping-core\.mjs'/, 'React 利润计算器需要显式导入共享运费核心');

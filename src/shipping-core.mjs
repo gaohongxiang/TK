@@ -167,10 +167,6 @@ const TKShippingCore = {
   computeCalculatedShippingCost
 };
 
-if (typeof window !== 'undefined') {
-  window.TKShippingCore = TKShippingCore;
-}
-
 export {
   DEFAULT_CONSTANTS,
   SHIPPING_RULES,

@@ -32,10 +32,10 @@ assert.match(
   'ESM 订单共享 helper 需要导出共享命名空间和关键纯函数'
 );
 
-assert.match(
+assert.doesNotMatch(
   esmSource,
-  /window\.OrderTrackerShared = OrderTrackerShared/,
-  'ESM 订单共享 helper 需要挂回旧全局命名空间'
+  /window\.OrderTrackerShared/,
+  'ESM 订单共享 helper 应保持纯 ESM，不应再挂旧全局命名空间'
 );
 
 const multiItemOrderInput = {

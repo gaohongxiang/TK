@@ -43,10 +43,10 @@ assert.match(
   '路线二 M5 需要提供订单表单纯函数 ESM 模块'
 );
 
-assert.match(
+assert.doesNotMatch(
   srcSource,
-  /window\.OrderTrackerFormUtils = OrderTrackerFormUtils/,
-  '订单表单纯函数 ESM 模块需要挂回旧全局命名空间'
+  /window\.OrderTrackerFormUtils/,
+  '订单表单纯函数 ESM 模块应保持纯 ESM，不应再挂旧全局命名空间'
 );
 
 assert.match(

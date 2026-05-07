@@ -19,10 +19,6 @@ service cloud.firestore {
   }
 }`;
 
-if (typeof window !== 'undefined') {
-  window.ORDER_TRACKER_FIRESTORE_RULES = ORDER_TRACKER_FIRESTORE_RULES;
-}
-
 export {
   ORDER_TRACKER_FIRESTORE_RULES
 };

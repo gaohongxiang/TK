@@ -156,7 +156,7 @@ function clearConfig() {
 }
 
 function getRulesSource() {
-  const embedded = String(getWindowRef().ORDER_TRACKER_FIRESTORE_RULES || ORDER_TRACKER_FIRESTORE_RULES || '').trim();
+  const embedded = String(ORDER_TRACKER_FIRESTORE_RULES || '').trim();
   if (embedded) return embedded;
   const rulesUrl = 'docs/firebase/order-tracker-firestore.rules';
   throw new Error(rulesUrl

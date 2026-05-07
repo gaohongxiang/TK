@@ -32,10 +32,16 @@ assert.match(
   '路线二 M3 需要提供全局设置 ESM 导出'
 );
 
+assert.doesNotMatch(
+  srcSource,
+  /window\.TKGlobalSettings/,
+  '全局设置模块不应再挂旧全局命名空间'
+);
+
 assert.match(
   srcSource,
-  /window\.TKGlobalSettings = TKGlobalSettings[\s\S]*ensureGlobalSettingsStore\(window\)/,
-  '全局设置 ESM 模块需要在浏览器里挂回旧全局命名空间'
+  /ensureGlobalSettingsStore\(window\)/,
+  '全局设置模块仍需要初始化浏览器共享设置 store'
 );
 
 assert.match(

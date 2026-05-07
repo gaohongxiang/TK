@@ -21,10 +21,10 @@ const rulesSource = fs.readFileSync(path.join(__dirname, '..', 'docs', 'public',
     rulesSource.trim(),
     'ESM 页面内置规则需要和文档规则保持一致'
   );
-  assert.match(
+  assert.doesNotMatch(
     esmSource,
-    /window\.ORDER_TRACKER_FIRESTORE_RULES = ORDER_TRACKER_FIRESTORE_RULES/,
-    'ESM 页面内置规则需要挂回旧全局变量'
+    /window\.ORDER_TRACKER_FIRESTORE_RULES/,
+    'ESM 页面内置规则应由 firestore-connection 直接 import，不应再挂旧全局变量'
   );
   console.log('orders firestore rules contract ok');
 })().catch(error => {

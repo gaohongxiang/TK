@@ -16,8 +16,4 @@ const TKAppConfig = Object.freeze({
   ])
 });
 
-if (typeof window !== 'undefined' && window.document) {
-  window.TKAppConfig = TKAppConfig;
-}
-
 export { TKAppConfig };

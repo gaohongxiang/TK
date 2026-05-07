@@ -193,10 +193,6 @@ const OrderTrackerFormUtils = {
   skuUsesProductDefaults
 };
 
-if (typeof window !== 'undefined') {
-  window.OrderTrackerFormUtils = OrderTrackerFormUtils;
-}
-
 export {
   OrderTrackerFormUtils,
   buildLegacyOrderItems,

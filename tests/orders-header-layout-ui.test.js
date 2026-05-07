@@ -11,7 +11,6 @@ const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'com
 const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
-const tabsSource = fs.readFileSync(path.join(root, 'src', 'orders', 'tabs.mjs'), 'utf8');
 const tableSource = fs.readFileSync(path.join(root, 'src', 'orders', 'table.mjs'), 'utf8');
 const tableControlsSource = fs.readFileSync(path.join(root, 'src', 'table-controls.mjs'), 'utf8');
 const cssSource = readReactStyleSource(root);
@@ -114,22 +113,9 @@ assert.match(
   'React App 需要直接渲染订单页面外壳'
 );
 
-assert.match(
-  tabsSource,
-  /#ot-acc-tabs-all/,
-  '账号标签渲染需要写入固定的全部标签容器'
-);
-
-assert.match(
-  tabsSource,
-  /#ot-acc-tabs-scroll/,
-  '账号标签渲染需要写入横向滚动的账号容器'
-);
-
-assert.match(
-  tabsSource,
-  /ot-acc-tabs-scroll-inner[\s\S]*id="ot-tab-add"/,
-  '添加账号按钮需要跟在账号滚动区末尾'
+assert.ok(
+  !fs.existsSync(path.join(root, 'src', 'orders', 'tabs.mjs')),
+  'React SPA 重建后旧订单账号标签 runtime 应删除'
 );
 
 assert.match(

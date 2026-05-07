@@ -32,16 +32,16 @@ assert.match(
   'ESM 订单导出模块需要导出命名空间和 CSV 纯函数'
 );
 
-assert.match(
+assert.doesNotMatch(
   esmSource,
-  /window\.OrderTrackerExport = OrderTrackerExport/,
-  'ESM 订单导出模块需要挂回旧全局命名空间'
+  /window\.OrderTrackerExport|document\.|querySelector|innerHTML|classList|createElement|globalThis\.Blob|globalThis\.URL|function promptExportAccounts|async function exportOrdersCsv/,
+  '订单导出模块应保持纯 ESM，不应再包含旧 DOM 弹层、下载动作或全局暴露'
 );
 
 assert.match(
-  esmSource,
-  /async function exportOrdersCsv\(/,
-  '订单导出模块需要包含 CSV 导出逻辑'
+  ordersPageSource,
+  /function confirmExport\([\s\S]*new Blob\(\[csv\][\s\S]*link\.download = filename/,
+  'React 订单页需要直接负责 CSV 下载动作'
 );
 
 assert.match(
@@ -78,6 +78,7 @@ assert.doesNotMatch(
 
 (async () => {
   const exportModule = await import(pathToFileURL(esmPath).href);
+  assert.equal(typeof exportModule.OrderTrackerExport.buildOrdersCsv, 'function', '订单导出命名空间需要保留 CSV 纯函数');
   const orders = [
     {
       '账号': 'A',

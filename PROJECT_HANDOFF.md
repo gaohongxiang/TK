@@ -602,7 +602,7 @@ npm run release:check
 - 新增 `src/products/provider-firestore.mjs`，提供商品 Firestore provider 的配置解析、展示名、商品/SKU 归一化、Firestore 写入 doc 构造、`create/init/pullProducts/upsertProduct/deleteProduct` 的 ESM 导出。
 - `tests/products-provider-firestore-module.test.js` 已新增动态 `import()` 断言，确认 provider 纯函数 ESM 的配置解析和商品/SKU 文档映射保持旧行为。
 - `src/products/provider-firestore.mjs` 已在浏览器里挂回 `window.ProductLibraryProviderFirestore`，并注册 `TKDataSourceRegistry.registerProvider('products', ...)`。
-- `src/orders/products.mjs` 已导入商品 provider ESM；订单商品桥接不再依赖旧普通脚本加载顺序。
+- 订单商品资料读取已由 React 订单页直接导入商品 provider ESM，不再依赖旧普通脚本加载顺序。
 - 完整 React SPA 重建后已删除 `src/products/index.mjs`，商品管理入口由 `src/react/features/products/ProductsPage.tsx` 接管。
 - `index.html` 已移除旧 `js/products/index.js` 的页面加载，商品管理不再通过旧 hash DOM 入口启动。
 - `index.html` 已移除旧 `js/products/provider-firestore.js` 页面加载；旧文件暂时保留为历史参考和回退。
@@ -655,23 +655,22 @@ npm run release:check
 - 新增 `src/orders/table.mjs`，提供订单表格筛选排序、日期型搜索判断、退款/达人识别、快递汇总、金额格式化、利润颜色、采购/销售/运费/达人佣金/利润摘要统计和表格渲染壳等 ESM 导出。
 - `tests/orders-table-view.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证搜索筛选、达人搜索、稳定排序、利润颜色和多明细快递紧凑展示口径一致。
 - `tests/orders-summary-ui.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证摘要统计、摘要金额格式化和当前筛选标题一致。
-- 新增 `src/orders/export.mjs`，提供导出账号选项、导出文件名、CSV 转义、CSV 行构造、订单筛选和 CSV 字符串生成等 ESM 纯函数导出，并保留 `OrderTrackerExport.create()` 兼容壳。
+- 新增 `src/orders/export.mjs`，提供导出账号选项、导出文件名、CSV 转义、CSV 行构造、订单筛选和 CSV 字符串生成等纯函数 ESM 导出；导出弹层和 CSV 下载由 React 订单页直接处理，不再保留旧 DOM 兼容壳。
 - `tests/orders-export-module.test.js` 已新增动态 `import()` 断言，验证 ESM 导出模块的账号选项、文件名、CSV 表头、CSV 双引号转义、未关联账号筛选，以及达人佣金/预估利润按当前汇率计算。
-- 新增 `src/orders/tabs.mjs`，提供订单账号归并、账号订单数统计、激活账号兜底、标签 HTML 和删除账号提示文案等 ESM 纯函数导出，并保留 `OrderTrackerTabs.create()` 兼容壳。
-- `tests/orders-tabs-module.test.js` 已新增动态 `import()` 断言，对照旧 `js/orders/tabs.js` 验证账号归并，并覆盖账号计数、激活账号兜底、标签 HTML 和删除提示文案。
+- 完整 React SPA 重建后已删除 `src/orders/tabs.mjs`，订单账号标签栏、账号计数和新增订单入口由 React 订单页直接渲染。
+- `tests/orders-tabs-module.test.js` 已改为断言旧订单账号标签 DOM runtime 不存在，并保护 React 订单页直接接管账号标签栏。
 - 新增 `src/orders/crud.mjs`，提供订单弹窗运行版 `OrderTrackerCrud.create()`，并导出快递选项、商品/SKU 选项、明细草稿缓存合并、明细数量/商品摘要/总重量汇总、快递自动识别状态、达人佣金和预估利润计算等工具函数。
 - `tests/orders-crud-module.test.js` 已新增动态 `import()` 断言，验证 ESM CRUD 的运行版工厂、商品/SKU 选项、明细汇总、达人佣金/预估利润计算和明细快递识别规则。
-- 新增 `src/orders/session.mjs`，提供订单会话连接文案、配置状态应用、缓存恢复文案、连接状态重置和刷新按钮 loading 状态等 ESM helper，并保留 `OrderTrackerSession.create()` 兼容壳。
-- `tests/orders-session-module.test.js` 已新增动态 `import()` 断言，验证 ESM 会话模块的 `init/onEnter` 接口、已连接文案、本地缓存文案、配置状态应用/重置和刷新按钮状态切换。
+- 完整 React SPA 重建后已删除 `src/orders/session.mjs`，Firestore 配置变化、连接按钮、刷新按钮 loading 和连接状态由 React 订单页直接接管。
+- `tests/orders-session-module.test.js` 已改为断言旧订单会话 DOM runtime 不存在，并保护 React 订单页直接接管配置变化、连接和刷新状态。
 - 新增 `src/orders/provider-firestore.mjs`，提供 Firestore 配置解析/序列化、显示名、items 归一化、旧结构清洗识别、订单拉取映射、订单写入 doc 构造等 ESM 纯函数，并保留 `OrderTrackerProviderFirestore.create()` 兼容壳。
 - `tests/orders-provider-firestore-module.test.js` 已新增动态 `import()` 断言，验证 ESM provider 的配置解析、显示名、items 清洗、拉取订单字段映射、写入 doc 汇总和空字段处理。
 - 新增 `src/orders/sync.mjs`，提供 Firestore 乐观写入变更集、订单三方合并、账号合并、远端 canonical cleanup 写回变更集、缺失 seq 检测、远端快照应用判断等同步纯函数，并承载订单同步运行版 `OrderTrackerSync.create()`。
 - `tests/orders-sync-module.test.js` 已新增动态 `import()` 断言，验证 ESM sync 的乐观写入 upsert/delete、更新时间冲突合并、本地删除时间记录、远端新增吸收、`__needsOrderCleanup` 强制写回，以及订单入口直接 import `src/orders/sync.mjs`。
 - 新增 `src/orders/index.mjs`，提供订单管理 ESM 入口，导出 `createOrderTracker`、`getOrderTracker` 和 `OrderTracker`，并通过 `window.OrderTracker` 挂回给旧 hash 路由调用。
 - `src/orders/index.mjs` 采用懒初始化，直接 `import` 已完整迁移的 `shared`、`provider-firestore`、`export`、`tabs`、`session`、`sync`、`crud` ESM helper。
-- `src/orders/shared.mjs`、`src/orders/export.mjs`、`src/orders/tabs.mjs`、`src/orders/session.mjs`、`src/orders/provider-firestore.mjs` 已在浏览器里挂回对应旧 `window.OrderTracker...` 命名空间。
-- 新增 `src/orders/products.mjs`，提供订单弹窗商品资料读取桥接、按账号筛商品、按 TK ID 查商品、商品缓存重置等 ESM 导出，并在浏览器里挂回 `window.OrderTrackerProducts`。
-- `tests/orders-products-module.test.js` 已新增动态 `import()` 断言，确认订单商品桥接 ESM 加载商品、账号筛选、TK ID 查找和缓存重置行为与旧模块一致。
+- 完整 React SPA 重建后已删除 `src/orders/products.mjs`，订单页直接通过 `ProductLibraryProviderFirestore` 拉取商品资料，监听 `tk-products-changed` 并在页面内完成商品关联。
+- `tests/orders-products-module.test.js` 已改为断言旧订单商品桥接 runtime 不存在，并保护 React 订单页直接读取商品资料、监听商品变更和按账号/TK ID 关联商品。
 - 新增 `src/orders/firestore-rules.mjs`，提供页面内置 Firestore 规则文本的 ESM 导出，并在浏览器里挂回 `window.ORDER_TRACKER_FIRESTORE_RULES`。
 - `tests/orders-firestore-rules.test.js` 已新增动态 `import()` 断言，确认 ESM 内置规则和文档规则保持一致。
 - 新增 `src/orders/form-utils.mjs`，提供订单弹窗商品/SKU 标签、商品默认参数合并、订单明细草稿归一化、旧版订单明细恢复、金额/尺寸解析等纯函数 ESM 导出，并在浏览器里挂回 `window.OrderTrackerFormUtils`。
@@ -1525,7 +1524,6 @@ js/data-sources/registry.js
 src/firestore-connection.mjs
 js/orders/provider-firestore.js
 js/products/provider-firestore.js
-src/orders/products.mjs
 ```
 
 ### 订单

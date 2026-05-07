@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { showAppToast } from '@/app/toast';
 import { OrderTrackerProviderFirestore } from '../../../orders/provider-firestore.mjs';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
 import {
@@ -142,15 +143,8 @@ function readGlobalConfig() {
 }
 
 function showToast(message: string, type: 'ok' | 'error' = 'ok') {
-  const toast = document.querySelector('#toast');
-  if (!toast) return;
-  toast.textContent = message;
-  toast.className = `toast show ${type}`;
-  window.clearTimeout(showToast.timer);
-  showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 2500);
+  showAppToast(message, type);
 }
-
-showToast.timer = 0;
 
 function clampPage(currentPage: number, pageSize: number, totalItems: number) {
   const safePageSize = Math.max(1, Number(pageSize) || 50);

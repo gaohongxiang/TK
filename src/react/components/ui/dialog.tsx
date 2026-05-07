@@ -11,7 +11,12 @@ type DialogProps = HTMLAttributes<HTMLDivElement> & {
 function Dialog({ children, className, onOpenChange, open, titleId, ...props }: DialogProps) {
   return (
     <div
-      className={cn('modal-mask', open ? 'show' : '', className)}
+      data-slot="dialog"
+      className={cn(
+        'modal-mask fixed inset-0 z-[1000] hidden items-center justify-center bg-[rgba(5,8,24,.7)] p-4 backdrop-blur-[4px]',
+        open ? 'show flex' : '',
+        className
+      )}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -26,11 +31,20 @@ function Dialog({ children, className, onOpenChange, open, titleId, ...props }: 
 }
 
 function DialogContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('modal', className)} {...props} />;
+  return (
+    <div
+      data-slot="dialog-content"
+      className={cn(
+        'modal w-full max-w-[720px] max-h-[92vh] overflow-auto rounded-[var(--radius)] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]',
+        className
+      )}
+      {...props}
+    />
+  );
 }
 
 function DialogTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn(className)} {...props} />;
+  return <h3 data-slot="dialog-title" className={cn('m-0 mb-4 text-base font-semibold', className)} {...props} />;
 }
 
 export { Dialog, DialogContent, DialogTitle };

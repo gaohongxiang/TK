@@ -2,27 +2,27 @@ import type { HTMLAttributes, TableHTMLAttributes, TdHTMLAttributes, ThHTMLAttri
 import { cn } from '@/lib/utils';
 
 function Table({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
-  return <table className={cn('ot text-[13px]', className)} {...props} />;
+  return <table data-slot="table" className={cn('ot text-[13px]', className)} {...props} />;
 }
 
 function TableHeader({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cn(className)} {...props} />;
+  return <thead data-slot="table-header" className={cn(className)} {...props} />;
 }
 
 function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <tbody className={cn(className)} {...props} />;
+  return <tbody data-slot="table-body" className={cn(className)} {...props} />;
 }
 
 function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={cn(className)} {...props} />;
+  return <tr data-slot="table-row" className={cn(className)} {...props} />;
 }
 
 function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th className={cn('bg-transparent font-semibold text-[var(--text)]', className)} {...props} />;
+  return <th data-slot="table-head" className={cn('bg-transparent font-semibold text-[var(--text)]', className)} {...props} />;
 }
 
 function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn('font-normal', className)} {...props} />;
+  return <td data-slot="table-cell" className={cn('font-normal', className)} {...props} />;
 }
 
 export {

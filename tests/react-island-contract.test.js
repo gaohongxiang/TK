@@ -12,9 +12,14 @@ const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const reactMain = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactApp = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const reactIsland = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
+const reactToast = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'toast.ts'), 'utf8');
 const appShell = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
 const utilsSource = fs.readFileSync(path.join(root, 'src', 'react', 'lib', 'utils.ts'), 'utf8');
 const reactStyles = fs.readFileSync(path.join(root, 'src', 'react', 'styles.css'), 'utf8');
+const ordersPage = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
+const productsPage = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
+
+const uiRoot = path.join(root, 'src', 'react', 'components', 'ui');
 
 [
   'react',
@@ -119,8 +124,54 @@ assert.match(
 
 assert.match(
   reactIsland,
-  /data-react-island-ready="true"[\s\S]*id="app-firestore-modal"[\s\S]*id="app-firestore-rules-modal"[\s\S]*id="app-firestore-disconnect-modal"[\s\S]*id="toast"/,
+  /data-react-island-ready="true"[\s\S]*id="app-firestore-modal"[\s\S]*<Textarea[\s\S]*id="app-firestore-rules-modal"[\s\S]*<Alert[\s\S]*id="app-firestore-disconnect-modal"[\s\S]*data-slot="toast"/,
   'React App 内的全局运行层需要接管 Firestore 弹窗和 Toast'
+);
+
+[
+  'alert.tsx',
+  'badge.tsx',
+  'button.tsx',
+  'card.tsx',
+  'checkbox.tsx',
+  'dialog.tsx',
+  'input.tsx',
+  'label.tsx',
+  'select.tsx',
+  'table.tsx',
+  'tabs.tsx',
+  'textarea.tsx',
+  'tooltip.tsx'
+].forEach(file => {
+  assert.ok(fs.existsSync(path.join(uiRoot, file)), `视觉系统二期 Phase A 需要提供 ${file} primitive`);
+});
+
+[
+  'button.tsx',
+  'card.tsx',
+  'dialog.tsx',
+  'input.tsx',
+  'select.tsx',
+  'textarea.tsx',
+  'tabs.tsx',
+  'badge.tsx',
+  'alert.tsx'
+].forEach(file => {
+  const source = fs.readFileSync(path.join(uiRoot, file), 'utf8');
+  assert.match(source, /data-slot=/, `${file} 需要暴露 data-slot，便于后续 UI 收敛和测试`);
+  assert.match(source, /var\(--|color-mix\(in_srgb|class-variance-authority|cn\(/, `${file} 需要复用现有 token 或 Tailwind/cva 样式`);
+});
+
+assert.match(
+  reactToast,
+  /TKFirestoreConnection\?\.showToast\?\.\(message, type\)/,
+  '商品、订单等 React 页面 Toast 需要走全局 ReactIsland showToast 入口'
+);
+
+assert.doesNotMatch(
+  ordersPage + productsPage,
+  /querySelector\('#toast'\)|toast\.className|showToast\.timer|className = `toast/,
+  '商品和订单页面不应再直接改 #toast DOM class，避免覆盖 React/Tailwind Toast 样式'
 );
 
 assert.match(

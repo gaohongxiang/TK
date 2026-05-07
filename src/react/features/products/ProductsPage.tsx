@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { showAppToast, type ToastType } from '@/app/toast';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
 import { ProductLibraryExport, csvEscape } from '../../../products/export.mjs';
 import {
@@ -50,8 +51,6 @@ type ProductFormDraft = {
   axisC: string;
   skus: ProductDraftSku[];
 };
-
-type ToastType = 'ok' | 'error';
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
@@ -123,15 +122,8 @@ function readGlobalConfig() {
 }
 
 function showToast(message: string, type: ToastType = 'ok') {
-  const toast = document.querySelector('#toast');
-  if (!toast) return;
-  toast.textContent = message;
-  toast.className = `toast show ${type}`;
-  window.clearTimeout(showToast.timer);
-  showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 2500);
+  showAppToast(message, type);
 }
-
-showToast.timer = 0;
 
 function ProductPager({
   pageSize,

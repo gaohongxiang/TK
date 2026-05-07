@@ -1,16 +1,37 @@
+import { cva, type VariantProps } from 'class-variance-authority';
 import type { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-function Badge({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
+const badgeVariants = cva(
+  'inline-flex min-h-[22px] items-center rounded-full border px-2.5 text-[12px] leading-none',
+  {
+    variants: {
+      variant: {
+        default: 'border-[var(--border)] bg-[var(--panel2)] text-[var(--muted)]',
+        success: 'border-[color-mix(in_srgb,var(--ok)_38%,var(--border))] bg-[color-mix(in_srgb,var(--ok)_12%,var(--panel))] text-[var(--ok)]',
+        warning: 'border-[color-mix(in_srgb,var(--warn)_42%,var(--border))] bg-[color-mix(in_srgb,var(--warn)_12%,var(--panel))] text-[var(--warn)]',
+        danger: 'border-[color-mix(in_srgb,var(--danger)_42%,var(--border))] bg-[color-mix(in_srgb,var(--danger)_10%,var(--panel))] text-[var(--danger)]',
+        accent: 'border-[color-mix(in_srgb,var(--accent)_36%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_10%,var(--panel))] text-[var(--accent)]'
+      }
+    },
+    defaultVariants: {
+      variant: 'default'
+    }
+  }
+);
+
+type BadgeProps = HTMLAttributes<HTMLSpanElement> & VariantProps<typeof badgeVariants>;
+
+function Badge({ className, variant, ...props }: BadgeProps) {
   return (
     <span
-      className={cn(
-        'inline-flex min-h-[22px] items-center rounded-full border border-[var(--border)] bg-[var(--panel2)] px-2.5 text-[12px] leading-none text-[var(--muted)]',
-        className
-      )}
+      data-slot="badge"
+      className={cn(badgeVariants({ variant }), className)}
       {...props}
     />
   );
 }
 
 export { Badge };
+export { badgeVariants };
+export type { BadgeProps };

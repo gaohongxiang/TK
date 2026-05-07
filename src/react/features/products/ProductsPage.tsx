@@ -1,9 +1,12 @@
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { showAppToast, type ToastType } from '@/app/toast';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
 import { ProductLibraryExport, csvEscape } from '../../../products/export.mjs';
@@ -178,19 +181,19 @@ function AccountTabs({
   }, [products]);
 
   return (
-    <div className="ot-acc-tabs-scroll-inner">
+    <Tabs className="ot-acc-tabs-scroll-inner">
       {accounts.length ? accounts.map(account => (
-        <button
-          type="button"
+        <TabsTrigger
+          active={account === activeAccount}
           className={cn('tab', account === activeAccount ? 'active' : '')}
           data-pl-acc={account}
           key={account}
           onClick={() => onChange(account)}
         >
           {account}<span className="tab-count">({countMap[account] || 0})</span>
-        </button>
+        </TabsTrigger>
       )) : <span className="ot-acc-empty">暂无账号，先去订单管理添加账号或在已有商品里关联账号</span>}
-    </div>
+    </Tabs>
   );
 }
 
@@ -770,12 +773,13 @@ function ExportModal({
     <Dialog id="pl-export-modal" open={open} titleId="pl-export-title" onOpenChange={onOpenChange}>
       <DialogContent style={{ maxWidth: 460 }}>
         <DialogTitle id="pl-export-title">选择要导出的账号</DialogTitle>
-        <div className="modal-copy mb-4">可勾选一个或多个账号；如果当前已经切到某个账号，会默认选中该账号。</div>
+        <Alert variant="info" className="modal-copy mb-4">
+          <AlertDescription>可勾选一个或多个账号；如果当前已经切到某个账号，会默认选中该账号。</AlertDescription>
+        </Alert>
         <div className="ot-export-selectors">
           <label className="ot-export-option ot-export-option-all">
             <span className="ot-export-option-main">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="pl-export-all"
                 checked={allChecked}
                 onChange={event => {
@@ -789,8 +793,7 @@ function ExportModal({
             {options.map(option => (
               <label className="ot-export-option" key={option.key}>
                 <span className="ot-export-option-main">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     className="pl-export-checkbox"
                     value={option.key}
                     checked={selected.has(option.key)}
@@ -1316,22 +1319,24 @@ function ProductsPage() {
         <div className="ot-account-tabs-row pl-account-tabs-row flex items-center justify-between gap-3 border-b border-[var(--border)] pb-3 mb-3 max-[768px]:flex-col max-[768px]:items-stretch">
           <div className="ot-acc-tabs flex min-w-0 flex-1 items-center gap-2 border-0 p-0" id="pl-acc-tabs">
             <div id="pl-acc-tabs-all" className="shrink-0">
-              <button
-                type="button"
+              <TabsTrigger
+                active={activeAccount === '__all__'}
                 className={cn('tab', activeAccount === '__all__' ? 'active' : '')}
                 data-pl-acc="__all__"
                 onClick={() => { setActiveAccount('__all__'); setCurrentPage(1); }}
               >
                 全部<span className="tab-count">({products.length})</span>
-              </button>
+              </TabsTrigger>
             </div>
             <div id="pl-acc-tabs-scroll" className="ot-acc-tabs-scroll min-w-0 flex-1">
-              <AccountTabs
-                activeAccount={activeAccount}
-                accounts={allAccounts}
-                products={products}
-                onChange={account => { setActiveAccount(account); setCurrentPage(1); }}
-              />
+              <TabsList>
+                <AccountTabs
+                  activeAccount={activeAccount}
+                  accounts={allAccounts}
+                  products={products}
+                  onChange={account => { setActiveAccount(account); setCurrentPage(1); }}
+                />
+              </TabsList>
             </div>
           </div>
           <div className="ot-acc-actions flex shrink-0 items-center justify-end gap-2 ml-0 max-[768px]:w-full" id="pl-acc-actions">

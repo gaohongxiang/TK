@@ -1447,11 +1447,13 @@ function OrdersPage() {
       </div>
 
       <Card className="ot-setup" id="ot-setup" style={{ display: connected ? 'none' : undefined }}>
-        <div className="ot-empty">
-          <div style={{ fontSize: 15, marginBottom: 6 }}>尚未连接 Firebase 数据源</div>
-          <div style={{ fontSize: 12.5, marginBottom: 14 }}>订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。</div>
+        <EmptyState
+          className="py-[60px]"
+          title="尚未连接 Firebase 数据源"
+          description="订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。"
+        >
           <Button id="ot-open-connection" variant="primary" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>
-        </div>
+        </EmptyState>
       </Card>
 
       <Card id="ot-main" style={{ display: connected ? undefined : 'none' }}>

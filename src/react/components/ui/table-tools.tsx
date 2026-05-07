@@ -138,11 +138,12 @@ type EmptyStateProps = HTMLAttributes<HTMLDivElement> & {
   description?: ReactNode;
 };
 
-function EmptyState({ className, description, title, ...props }: EmptyStateProps) {
+function EmptyState({ children, className, description, title, ...props }: EmptyStateProps) {
   return (
     <div className={cn('px-5 py-[60px] text-center text-[var(--muted)]', className)} {...props}>
       <div className="mb-1.5 text-[15px]">{title}</div>
       {description ? <div className="text-[12.5px]">{description}</div> : null}
+      {children ? <div className="mt-3.5">{children}</div> : null}
     </div>
   );
 }

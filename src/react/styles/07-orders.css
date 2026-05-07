@@ -195,17 +195,6 @@ table.ot tbody tr.is-refunded:hover {
   border-color: var(--border)
 }
 
-.ot-empty {
-  padding: 60px 20px;
-  text-align: center;
-  color: var(--muted)
-}
-
-.ot-empty svg {
-  opacity: .5;
-  margin-bottom: 12px
-}
-
 .ot-item-block {
   margin: 10px 0 8px;
   display: flex;

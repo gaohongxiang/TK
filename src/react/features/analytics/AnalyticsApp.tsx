@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { TableViewport } from '@/components/ui/table-tools';
+import { EmptyState, TableViewport } from '@/components/ui/table-tools';
 import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsRecord } from './types';
 import { buildFunnelStages, buildOpportunityScatterOption, buildOverviewOption, DIAGNOSIS_COLORS } from './chartOptions';
 import { formatInteger, formatPercent, formatYen, shortenText } from './format';
@@ -310,10 +310,11 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
       </Card>
       {!analysis ? (
         <Card id="analytics-empty" className="analytics-empty analytics-react-empty">
-          <div className="ot-empty">
-            <div style={{ fontSize: 15, marginBottom: 6 }}>等待导入商品流量 Excel</div>
-            <div style={{ fontSize: 12.5 }}>导入后会自动生成 ECharts 渠道图、商品机会散点图、Top 商品和诊断标签。</div>
-          </div>
+          <EmptyState
+            className="py-0"
+            title="等待导入商品流量 Excel"
+            description="导入后会自动生成 ECharts 渠道图、商品机会散点图、Top 商品和诊断标签。"
+          />
         </Card>
       ) : <AnalyticsDashboard analysis={analysis} />}
     </div>

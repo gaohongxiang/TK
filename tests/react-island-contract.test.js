@@ -182,6 +182,12 @@ assert.doesNotMatch(
   '商品和订单页面不应再直接改 #toast DOM class，避免覆盖 React/Tailwind Toast 样式'
 );
 
+assert.doesNotMatch(
+  reactIsland + ordersPage + productsPage,
+  /modal-copy/,
+  'React 弹窗说明文字不应继续依赖 legacy modal-copy CSS class'
+);
+
 assert.match(
   utilsSource,
   /twMerge\(clsx\(inputs\)\)/,

@@ -18,6 +18,7 @@ type DisconnectOptions = {
 };
 
 let toastTimer = 0;
+const modalCopyClass = 'text-[13px] leading-[1.75] text-[var(--muted)]';
 
 function ReactIsland() {
   const [connectionOpen, setConnectionOpen] = useState(false);
@@ -107,7 +108,7 @@ function ReactIsland() {
       <Dialog id="app-firestore-modal" open={connectionOpen} titleId="app-firestore-title" onOpenChange={setConnectionOpen}>
         <DialogContent style={{ maxWidth: 560 }}>
           <DialogTitle id="app-firestore-title">连接 Firebase Firestore</DialogTitle>
-          <Alert variant="info" className="modal-copy">
+          <Alert variant="info" className={modalCopyClass}>
             <AlertDescription>
             订单管理和商品管理共用同一个 Firestore 项目。添加应用时选 <code>网页</code>，不用勾 Hosting；创建数据库时选 <code>区域级</code> 和
             <code>生产模式</code>。如果这个项目之前只发布过旧规则，请重新复制并发布最新 Firestore 规则，把
@@ -148,7 +149,7 @@ function ReactIsland() {
       <Dialog id="app-firestore-rules-modal" open={rulesOpen} titleId="app-firestore-rules-title" onOpenChange={setRulesOpen}>
         <DialogContent style={{ maxWidth: 520 }}>
           <DialogTitle id="app-firestore-rules-title">需要更新 Firestore 规则</DialogTitle>
-          <Alert variant="warning" className="modal-copy" id="app-firestore-rules-copy">
+          <Alert variant="warning" className={modalCopyClass} id="app-firestore-rules-copy">
             <AlertDescription>{rulesMessage}</AlertDescription>
           </Alert>
           <div className="ot-setup-guide-actions" style={{ marginTop: 10 }}>
@@ -164,7 +165,7 @@ function ReactIsland() {
       <Dialog id="app-firestore-disconnect-modal" open={disconnectOpen} titleId="app-firestore-disconnect-title" onOpenChange={setDisconnectOpen}>
         <DialogContent style={{ maxWidth: 460 }}>
           <DialogTitle id="app-firestore-disconnect-title">退出当前数据库？</DialogTitle>
-          <Alert variant="warning" className="modal-copy">
+          <Alert variant="warning" className={modalCopyClass}>
             <AlertDescription>
               当前项目：<strong id="app-firestore-disconnect-project">{disconnectProject}</strong>。退出后只会清除本浏览器保存的 Firebase 连接配置，不会删除 Firestore 里的商品和订单。
             </AlertDescription>

@@ -96,6 +96,7 @@ const LS_KEY = 'tk.orders.cfg.v1';
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
 const ORDER_STATUS_OPTIONS = ['未采购', '已采购', '在途', '已入仓', '已送达', '已完成', '订单取消'];
+const modalCopyClass = 'mb-4 text-[13px] leading-[1.75] text-[var(--muted)]';
 const COURIER_AUTO_DETECTORS = [
   { name: '顺丰快递', test: (value: string) => /^SF[0-9A-Z]+$/i.test(value) || /^SFP[0-9A-Z]+$/i.test(value) },
   { name: '极兔快递', test: (value: string) => /^JT[0-9A-Z]+$/i.test(value) },
@@ -1231,7 +1232,7 @@ function ExportModal({
     <Dialog id="ot-export-modal" open={open} titleId="ot-export-title" onOpenChange={onOpenChange}>
       <DialogContent style={{ maxWidth: 460 }}>
         <DialogTitle id="ot-export-title">选择要导出的账号</DialogTitle>
-        <Alert variant="info" className="modal-copy mb-4">
+        <Alert variant="info" className={modalCopyClass}>
           <AlertDescription>可勾选一个或多个账号；如果有未关联订单，也可以单独导出。</AlertDescription>
         </Alert>
         <div className="ot-export-selectors">

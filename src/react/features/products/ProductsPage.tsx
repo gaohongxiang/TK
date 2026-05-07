@@ -58,6 +58,7 @@ type ProductFormDraft = {
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
+const modalCopyClass = 'mb-4 text-[13px] leading-[1.75] text-[var(--muted)]';
 const EMPTY_PRODUCT_FORM: ProductFormDraft = {
   accountName: '',
   tkId: '',
@@ -762,7 +763,7 @@ function ExportModal({
     <Dialog id="pl-export-modal" open={open} titleId="pl-export-title" onOpenChange={onOpenChange}>
       <DialogContent style={{ maxWidth: 460 }}>
         <DialogTitle id="pl-export-title">选择要导出的账号</DialogTitle>
-        <Alert variant="info" className="modal-copy mb-4">
+        <Alert variant="info" className={modalCopyClass}>
           <AlertDescription>可勾选一个或多个账号；如果当前已经切到某个账号，会默认选中该账号。</AlertDescription>
         </Alert>
         <div className="ot-export-selectors">

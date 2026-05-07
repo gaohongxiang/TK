@@ -3738,12 +3738,6 @@ table.ot tbody tr.is-refunded:hover {
   margin-top: 20px
 }
 
-.modal-copy {
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.75;
-}
-
 .ot-export-selectors {
   display: flex;
   flex-direction: column;

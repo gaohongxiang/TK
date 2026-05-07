@@ -106,6 +106,12 @@ assert.doesNotMatch(
   '通用输入框和计算器 tone 样式应由 React Input/FormField primitives 接管'
 );
 
+assert.doesNotMatch(
+  styleSource,
+  /\.modal-copy/,
+  '弹窗说明文字样式应进入 React Alert class，而不是继续留在旧 CSS'
+);
+
 assert.match(
   styleSource,
   /\.analytics-react-overview[\s\S]*height:\s*332px[\s\S]*\.analytics-react-funnel-summary/,

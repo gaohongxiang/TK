@@ -114,7 +114,9 @@ modern-react-spa
 - `src/orders/table.mjs` 和 `src/products/table.mjs` 已收缩为纯 helper，不再暴露 DOM `render` 壳或挂旧全局表格视图。
 - 商品主表已使用本地 shadcn 风格 `Table` / `Button` primitives；商品导出弹层由 React 控制，CSV 行构建和文件名继续复用 `src/products/export.mjs`。
 - 订单摘要已保留收入、支出、利润、退款和达人佣金口径；退款订单行和订单号达人/退款标签仍由纯函数口径驱动。
-- 商品、订单和数据分析的表格搜索、分页、吸顶控制带、横向滚动外壳和空状态已收敛到 `src/react/components/ui/table-tools.tsx`，不再依赖旧 `ot-table-*` 全局 CSS。
+- 视觉系统收敛二期已推进：商品、订单和数据分析的表格搜索、分页、吸顶控制带、横向滚动外壳和空状态已收敛到 `src/react/components/ui/table-tools.tsx`；商品/订单导出账号选择已收敛到 `ExportOptions`；商品/订单账号标签栏已收敛到 `AccountTabsBar`；表格状态标签、连接状态和同步状态已收敛到 `Badge`；利润计算器模式 tabs 已使用 `TabsTrigger` primitive 承载外观，不再依赖旧 `.calc-tab` CSS。
+- 旧 React CSS 仍保留分模块样式，但已经从约 4.4k 行收敛到约 4.1k 行；剩余主要是计算器表单布局、商品 SKU 编辑器、订单多明细表单和数据分析图表周边的页面特定样式，继续拆时应按清晰组件边界推进，避免为了删行数过度设计。
+- 当前不再依赖旧 `ot-table-*`、`.btn`、旧 modal/action、`.ot-export-*`、`.ot-acc-*`、`.ot-empty`、`.chip`、`.workspace-chip`、`.calc-tab` 这些全局视觉样式。
 - `scripts/preview-smoke.mjs` 已适配完整 React SPA：首页 HTTP smoke 检查单根 React 入口、SEO meta、Firebase/SheetJS 脚本、构建产物和静态页面；运行后交互由 Playwright 覆盖。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前以 `src/*.mjs` 作为唯一主站业务源码。
@@ -917,7 +919,18 @@ ECharts 图表：
 - 订单弹窗、账号弹窗、导出弹层和数据存储说明弹窗都由 React 渲染。
 - 旧 `src/orders/sync.mjs` 已删除，订单同步语义以 React 订单页和 `src/orders/provider-firestore.mjs` 为准。
 
-### 9.8 TypeScript 策略
+### 9.8 视觉系统收敛二期
+
+当前状态：阶段性完成。
+
+- 新增/完善 shared primitives：`TableToolbar`、`TableSearch`、`TablePager`、`TableViewport`、`TableFrame`、`EmptyState`、`ExportOptions`、`AccountTabsBar`、`Badge`。
+- 商品管理和订单管理共享账号标签栏、导出账号选择、表格控制带、空状态和状态 badge。
+- `DialogActions` 已进入 Dialog primitive，弹窗底部按钮不再依赖旧 `.actions` / modal CSS。
+- 旧 `.btn`、`.modal-*`、`ot-table-*`、`.ot-export-*`、`.ot-acc-*`、`.ot-empty`、`.chip`、`.workspace-chip`、`.calc-tab` 已从运行样式中移除。
+- 每个阶段均已运行 `npm test`、`npm run build`、`git diff --check` 和 `npm run release:check`，Playwright release smoke 通过。
+- 后续如果继续收敛，优先考虑边界清楚的组件：商品 SKU 编辑器、订单多明细编辑器、数据分析上传区或计算器 row/field 网格；不要一次性大删 CSS。
+
+### 9.9 TypeScript 策略
 
 TypeScript 不追求一步 strict。
 

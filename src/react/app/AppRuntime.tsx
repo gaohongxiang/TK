@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { FormField } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
+import { Toast } from '@/components/ui/toast';
 import { useEffect, useState } from 'react';
 import { TKFirestoreConnection } from '../../firestore-connection.mjs';
 
@@ -20,7 +21,7 @@ type DisconnectOptions = {
 let toastTimer = 0;
 const modalCopyClass = 'text-[13px] leading-[1.75] text-[var(--muted)]';
 
-function ReactIsland() {
+function AppRuntime() {
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [rulesMessage, setRulesMessage] = useState('当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则。');
@@ -104,7 +105,7 @@ function ReactIsland() {
   }, []);
 
   return (
-    <div data-react-island-ready="true">
+    <div data-app-runtime-ready="true">
       <Dialog id="app-firestore-modal" open={connectionOpen} titleId="app-firestore-title" onOpenChange={setConnectionOpen}>
         <DialogContent style={{ maxWidth: 560 }}>
           <DialogTitle id="app-firestore-title">连接 Firebase Firestore</DialogTitle>
@@ -177,15 +178,9 @@ function ReactIsland() {
         </DialogContent>
       </Dialog>
 
-      <div
-        id="toast"
-        data-slot="toast"
-        className={`fixed bottom-6 left-1/2 z-[200] -translate-x-1/2 rounded-[10px] border bg-[var(--panel)] px-[18px] py-2.5 text-[13px] shadow-[var(--shadow)] ${toast.visible ? 'show block' : 'hidden'} ${toast.type === 'error' ? 'border-[var(--danger)] text-[var(--danger)]' : 'border-[var(--ok)] text-[var(--ok)]'}`}
-      >
-        {toast.message}
-      </div>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} />
     </div>
   );
 }
 
-export { ReactIsland };
+export { AppRuntime };

@@ -2,178 +2,59 @@ const path = require('path');
 const assert = require('assert');
 const { pathToFileURL } = require('url');
 
-globalThis.FormData = class FormData {
-  constructor(target) {
-    this.target = target;
-  }
-
-  entries() {
-    return this.target.entries();
-  }
-};
-
-function makeField(initialValue = '') {
-  const listeners = {};
-  return {
-    value: initialValue,
-    dataset: {},
-    readOnly: false,
-    disabled: false,
-    addEventListener(type, handler) {
-      listeners[type] = handler;
-    },
-    trigger(type) {
-      if (listeners[type]) listeners[type]();
-    }
-  };
-}
-
-const fields = {
-  orderDate: makeField('2026-04-23'),
-  purchaseDate: makeField('2026-04-23'),
-  latestWarehouse: makeField(''),
-  warning: makeField(''),
-  quantity: makeField('2'),
-  purchasePrice: makeField('19.8'),
-  salePrice: makeField('600'),
-  creatorCommissionRate: makeField('10'),
-  creatorCommission: makeField(''),
-  estimatedShippingFee: makeField('6.5'),
-  estimatedProfit: makeField(''),
-  orderStatus: makeField('未采购'),
-  company: makeField(''),
-  tracking: makeField('')
-};
-
-fields.latestWarehouse.readOnly = true;
-fields.warning.readOnly = true;
-fields.creatorCommission.readOnly = true;
-fields.estimatedProfit.readOnly = true;
-
-const form = {
-  onsubmit: null,
-  reset: () => {},
-  querySelector(selector) {
-    if (selector === '[name="下单时间"]') return fields.orderDate;
-    if (selector === '[name="采购日期"]') return fields.purchaseDate;
-    if (selector === '[name="最晚到仓时间"]') return fields.latestWarehouse;
-    if (selector === '[name="订单预警"]') return fields.warning;
-    if (selector === '[name="数量"]') return fields.quantity;
-    if (selector === '[name="采购价格"]') return fields.purchasePrice;
-    if (selector === '[name="售价"]') return fields.salePrice;
-    if (selector === '[name="达人佣金率"]') return fields.creatorCommissionRate;
-    if (selector === '[name="达人佣金"]') return fields.creatorCommission;
-    if (selector === '[name="预估运费"]') return fields.estimatedShippingFee;
-    if (selector === '[name="预估利润"]') return fields.estimatedProfit;
-    if (selector === '[name="订单状态"]') return fields.orderStatus;
-    if (selector === '[name="快递公司"]') return fields.company;
-    if (selector === '[name="快递单号"]') return fields.tracking;
-    return null;
-  },
-  querySelectorAll() {
-    return [];
-  },
-  entries() {
-    return [
-      ['账号', '账号A'],
-      ['订单号', 'ORDER-2'],
-      ['产品名称', '测试产品'],
-      ['下单时间', fields.orderDate.value],
-      ['采购日期', fields.purchaseDate.value],
-      ['数量', fields.quantity.value],
-      ['采购价格', fields.purchasePrice.value],
-      ['售价', fields.salePrice.value],
-      ['达人佣金率', fields.creatorCommissionRate.value],
-      ['达人佣金', fields.creatorCommission.value],
-      ['预估运费', fields.estimatedShippingFee.value],
-      ['预估利润', fields.estimatedProfit.value],
-      ['订单状态', fields.orderStatus.value],
-      ['快递公司', fields.company.value],
-      ['快递单号', fields.tracking.value]
-    ][Symbol.iterator]();
-  }
-};
-
-const dom = {
-  '#ot-form': form,
-  '#ot-modal': {
-    classList: {
-      add: () => {},
-      remove: () => {}
-    },
-    addEventListener: () => {}
-  },
-  '#ot-cancel': null,
-  '#ot-acc-select': null
-};
-
-const state = {
-  orders: [],
-  editingId: null,
-  activeAccount: '__all__',
-  accounts: ['账号A']
-};
-
 (async () => {
-  const { OrderTrackerCrud } = await import(pathToFileURL(path.join(__dirname, '..', 'src', 'orders', 'crud.mjs')).href);
-  const crudTools = OrderTrackerCrud.create({
-    state,
-    constants: {
-      ORDER_STATUS_OPTIONS: ['未采购', '已采购', '在途', '已入仓']
-    },
-    helpers: {
-      $: selector => dom[selector] || null,
-      uid: () => 'new-order-id',
-      nowIso: () => '2026-04-23T10:00:00.000Z',
-      todayStr: () => '2026-04-23',
-      addDays: () => '2026-04-29',
-      computeWarning: () => ({ text: '-' }),
-      getPricingExchangeRate: () => 20,
-      normalizeOrderRecord: value => value,
-      escapeHtml: value => String(value),
-      normalizeStatusValue: value => String(value || '').trim(),
-      detectCourierCompany: () => '',
-      maybeAutoDetectCourierFromForm: () => '',
-      getOrderFormCourierFields: () => ({ tracking: fields.tracking, company: fields.company }),
-      showDatePicker: () => {}
-    },
-    ui: {
-      getUniqueAccounts: () => state.accounts,
-      promptAddAccount: async () => null,
-      addAccount: () => false,
-      markAccountsDirty: () => {},
-      markOrderAccountsDirty: () => {},
-      commitLocalOrders: async () => {},
-      toast: () => {}
-    }
-  });
+  const {
+    computeCreatorCommissionValue,
+    computeEstimatedProfitValue,
+    resolveCourierAutodetectState
+  } = await import(pathToFileURL(path.join(__dirname, '..', 'src', 'orders', 'crud.mjs')).href);
 
-  crudTools.bindEvents();
+  assert.equal(
+    computeCreatorCommissionValue({
+      salePrice: '600',
+      creatorCommissionRate: '10',
+      exchangeRate: 20
+    }),
+    '3',
+    '达人佣金纯函数需要按日元售价、佣金率和汇率折算人民币'
+  );
 
-  fields.salePrice.trigger('input');
-  assert.equal(fields.creatorCommission.value, '3', '输入达人佣金率后应自动回填达人佣金');
-  assert.equal(fields.estimatedProfit.value, '0.7', '输入日元售价、采购价、达人佣金率、预估运费后应按汇率自动回填人民币利润');
+  assert.equal(
+    computeEstimatedProfitValue({
+      salePrice: '600',
+      purchasePrice: '19.8',
+      estimatedShippingFee: '6.5',
+      creatorCommissionRate: '10',
+      exchangeRate: 20
+    }),
+    '0.7',
+    '预估利润纯函数需要扣除采购价、预估运费和达人佣金'
+  );
 
-  fields.estimatedShippingFee.value = '7';
-  fields.estimatedShippingFee.trigger('change');
-  assert.equal(fields.estimatedProfit.value, '0.2', '修改预估运费后应实时更新人民币利润');
+  assert.equal(
+    computeEstimatedProfitValue({
+      salePrice: '600',
+      purchasePrice: '19.8',
+      estimatedShippingFee: '',
+      creatorCommissionRate: '10',
+      exchangeRate: 20
+    }),
+    '',
+    '缺少任一金额字段时预估利润纯函数应返回空字符串'
+  );
 
-  fields.estimatedShippingFee.value = '';
-  fields.estimatedShippingFee.trigger('change');
-  assert.equal(fields.estimatedProfit.value, '', '缺少任一金额字段时不应计算预估利润');
+  assert.deepEqual(
+    resolveCourierAutodetectState({
+      trackingNo: 'SF123',
+      currentCompany: '',
+      autoDetectedCourier: '',
+      detectCourierCompany: value => value.startsWith('SF') ? '顺丰快递' : ''
+    }),
+    { courierCompany: '顺丰快递', autoDetectedCourier: '顺丰快递' },
+    '快递自动识别纯函数需要保存识别出的快递公司和自动识别状态'
+  );
 
-  fields.estimatedShippingFee.value = '7';
-  fields.estimatedShippingFee.trigger('change');
-  assert.equal(fields.estimatedProfit.value, '0.2', '重新补齐金额字段后应恢复人民币利润计算');
-
-  await form.onsubmit({
-    preventDefault: () => {},
-    target: form
-  });
-
-  assert.equal(state.orders[0]['达人佣金'], '3', '保存订单时应同步写入达人佣金');
-  assert.equal(state.orders[0]['预估利润'], '0.2', '保存订单时应按汇率折算后扣除达人佣金的人民币利润写入预估利润');
-  console.log('orders crud profit autofill behavior ok');
+  console.log('orders crud profit helper behavior ok');
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;

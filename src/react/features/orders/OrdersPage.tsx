@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { showAppToast } from '@/app/toast';
 import { OrderTrackerProviderFirestore } from '../../../orders/provider-firestore.mjs';
@@ -225,139 +226,6 @@ function formatProductSize(source: Record<string, any> | null) {
   if (direct) return direct.replace(/\*/g, '×');
   const values = [source.lengthCm, source.widthCm, source.heightCm].map(value => String(value || '').trim()).filter(Boolean);
   return values.length === 3 ? values.join('×') : '';
-}
-
-type SearchOption = {
-  value: string;
-  label: string;
-  searchLabel?: string;
-};
-
-function SearchableCombo({
-  disabled = false,
-  hiddenField,
-  options,
-  placeholder,
-  role,
-  searchPlaceholder,
-  value,
-  onChange
-}: {
-  disabled?: boolean;
-  hiddenField: string;
-  options: SearchOption[];
-  placeholder: string;
-  role: string;
-  searchPlaceholder: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const searchRef = useRef<HTMLInputElement | null>(null);
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [panelStyle, setPanelStyle] = useState<Record<string, string>>({});
-  const selected = options.find(option => option.value === value) || null;
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return options;
-    return options.filter(option => String(option.searchLabel || option.label || option.value).toLowerCase().includes(needle));
-  }, [options, query]);
-
-  function positionPanel() {
-    const rect = triggerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const viewportGap = 12;
-    const width = Math.max(rect.width, 260);
-    const left = Math.min(Math.max(viewportGap, rect.left), Math.max(viewportGap, window.innerWidth - width - viewportGap));
-    const spaceBelow = window.innerHeight - rect.bottom - viewportGap;
-    const maxHeight = Math.max(180, Math.min(320, spaceBelow || 280));
-    setPanelStyle({
-      top: `${rect.bottom + 6}px`,
-      left: `${left}px`,
-      width: `${width}px`,
-      maxHeight: `${maxHeight}px`
-    });
-  }
-
-  useEffect(() => {
-    if (!open) return undefined;
-    positionPanel();
-    searchRef.current?.focus();
-    const closeOnPointer = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    const reposition = () => positionPanel();
-    document.addEventListener('mousedown', closeOnPointer);
-    document.addEventListener('keydown', closeOnEscape);
-    window.addEventListener('resize', reposition);
-    window.addEventListener('scroll', reposition, true);
-    return () => {
-      document.removeEventListener('mousedown', closeOnPointer);
-      document.removeEventListener('keydown', closeOnEscape);
-      window.removeEventListener('resize', reposition);
-      window.removeEventListener('scroll', reposition, true);
-    };
-  }, [open]);
-
-  return (
-    <div ref={rootRef} className={cn('tk-search-select', open ? 'is-open' : '', disabled ? 'is-disabled' : '', !value ? 'is-empty' : '')} data-item-role={role}>
-      <input type="hidden" data-item-field={hiddenField} value={value} readOnly />
-      <button
-        ref={triggerRef}
-        type="button"
-        className="tk-search-select-trigger"
-        data-role="trigger"
-        disabled={disabled}
-        onClick={() => {
-          if (disabled) return;
-          setOpen(value => !value);
-        }}
-      >
-        <span className="tk-search-select-trigger-label" data-role="label">{selected?.label || (value ? `${value}（已不存在）` : placeholder)}</span>
-        <span className="tk-search-select-trigger-icon" aria-hidden="true">▾</span>
-      </button>
-      <div className="tk-search-select-panel" data-role="panel" style={panelStyle}>
-        <div className="tk-search-select-search">
-          <input ref={searchRef} type="text" data-role="search" placeholder={searchPlaceholder} value={query} onChange={event => setQuery(event.target.value)} />
-        </div>
-        <div className="tk-search-select-options" data-role="options">
-          <button
-            type="button"
-            className={cn('tk-search-select-option', !value ? 'is-active' : '')}
-            data-option-value=""
-            onClick={() => {
-              onChange('');
-              setQuery('');
-              setOpen(false);
-            }}
-          >
-            <span className="tk-search-select-option-label">{placeholder}</span>
-          </button>
-          {filtered.map(option => (
-            <button
-              type="button"
-              className={cn('tk-search-select-option', option.value === value ? 'is-active' : '')}
-              data-option-value={option.value}
-              key={option.value}
-              onClick={() => {
-                onChange(option.value);
-                setQuery('');
-                setOpen(false);
-              }}
-            >
-              <span className="tk-search-select-option-label">{option.label}</span>
-            </button>
-          ))}
-          {!filtered.length ? <div className="tk-search-select-empty">没有匹配项</div> : null}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function createEmptyOrderItem(): OrderItemDraft {
@@ -583,7 +451,7 @@ function ProductCombo({
     options.push({ value, label: `${value}（已不存在）`, searchLabel: value });
   }
   return (
-    <SearchableCombo
+    <SearchableSelect
       hiddenField="productTkId"
       options={options}
       placeholder="- 不关联商品 -"
@@ -618,7 +486,7 @@ function SkuCombo({
     options.push({ value, label: `${value}（已不存在）`, searchLabel: value });
   }
   return (
-    <SearchableCombo
+    <SearchableSelect
       disabled={!product || !skus.length}
       hiddenField="productSkuId"
       options={options}

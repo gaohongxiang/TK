@@ -47,7 +47,7 @@
 - `src/react/styles.css` 接管主站样式入口，并按模块导入 `src/react/styles/*.css`。
 - 利润计算器、商品管理、订单管理、数据分析都由 React 页面渲染。
 - `src/*.mjs` 继续作为业务纯函数、Firestore provider、解析器和导出逻辑来源。
-- 已删除旧 DOM 入口和旧 React island 二次挂载入口，构建产物不发布旧 `dist/js/`。
+- 已删除旧 DOM 入口和旧 React 二次挂载入口，构建产物不发布旧 `dist/js/`。
 
 ### 2. 文档站
 

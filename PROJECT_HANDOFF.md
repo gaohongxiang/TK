@@ -108,7 +108,7 @@ modern-react-spa
 - 商品管理已迁到完整 React 页面：React 接管连接状态、账号筛选、表格、分页、新增/编辑商品弹窗、SKU 编辑、CSV 导出和商品变更广播；继续复用现有 Firestore provider、商品表格纯函数、SKU 表单纯函数和运费核心，不改变 Firestore 数据结构。
 - 订单管理已迁到完整 React 页面；继续复用现有 Firestore provider、订单共享计算、导出、表格筛选和同步纯函数，不改变 Firestore 数据结构。
 - `index.html` 当前只保留 `#root`、`/src/react/main.tsx`、Firebase compat SDK 和 SheetJS；不再加载旧 DOM 入口。
-- 已删除旧运行时入口和旧 React island 二次挂载文件：`src/main.mjs`、`src/calc/index.mjs`、`src/orders/index.mjs`、`src/products/index.mjs`、`src/analytics/index.mjs`、`src/analytics/charts.mjs`、`src/react/features/analytics/mountAnalytics.tsx`、`src/react/features/products/ProductsTable.tsx`、`src/react/features/products/mountProductsTable.tsx`。
+- 已删除旧运行时入口和旧 React 二次挂载文件：`src/main.mjs`、`src/calc/index.mjs`、`src/orders/index.mjs`、`src/products/index.mjs`、`src/analytics/index.mjs`、`src/analytics/charts.mjs`、`src/react/features/analytics/mountAnalytics.tsx`、`src/react/features/products/ProductsTable.tsx`、`src/react/features/products/mountProductsTable.tsx`。
 - `src/orders/table.mjs` 和 `src/products/table.mjs` 已收缩为纯 helper，不再暴露 DOM `render` 壳或挂旧全局表格视图。
 - 商品主表已使用本地 shadcn 风格 `Table` / `Button` primitives；商品导出弹层由 React 控制，CSV 行构建和文件名继续复用 `src/products/export.mjs`。
 - 订单摘要已保留收入、支出、利润、退款和达人佣金口径；退款订单行和订单号达人/退款标签仍由纯函数口径驱动。
@@ -556,7 +556,7 @@ npm run release:check
 - `src/global-settings.mjs` 已在浏览器里挂回 `window.TKGlobalSettings` 并初始化 `window.__tkGlobalSettingsStore`。
 - `src/shipping-core.mjs` 已在浏览器里挂回 `window.TKShippingCore`。
 - `src/shared/html.mjs` 和 `src/shared/format.mjs` 已在浏览器里挂回 `window.TKHtml`、`window.TKFormat`。
-- `src/main.mjs` 已统一导入 `global-settings`、`shipping-core`、`shared/html`、`shared/format`、`table-controls`、`searchable-select`、`data-sources/registry` 这些基础 ESM。
+- 历史阶段中 `src/main.mjs` 曾统一导入 `global-settings`、`shipping-core`、`shared/html`、`shared/format`、`table-controls`、`searchable-select`、`data-sources/registry` 这些基础 ESM；当前完整 React SPA 已删除该入口。
 - `index.html` 已移除旧 `js/global-settings.js`、`js/shipping-core.js`、`js/shared/html.js`、`js/shared/format.js` 页面加载；旧文件暂时保留为历史参考和回退。
 
 当前已验证通过：
@@ -632,7 +632,7 @@ npm run release:check
 
 订单最复杂，最后迁移。
 
-当前状态：M5 已继续推进到 React SPA 运行入口。订单页面现在由 `src/react/features/orders/OrdersPage.tsx` 直接接管 Firestore 连接、商品关联、表格、账号标签、订单弹窗、账号弹窗、CSV 导出和数据存储说明弹窗；全局 Firestore 连接、规则提示、退出确认和 Toast 由 `src/react/app/ReactIsland.tsx` 渲染。`index.html` 不再加载 `/src/orders/index.mjs`、`/src/firestore-connection.mjs` 或 `/src/orders/firestore-rules.mjs`，旧订单 ESM 模块暂时保留为已测试的业务 helper、历史参考和回退材料。
+当前状态：M5 已继续推进到 React SPA 运行入口。订单页面现在由 `src/react/features/orders/OrdersPage.tsx` 直接接管 Firestore 连接、商品关联、表格、账号标签、订单弹窗、账号弹窗、CSV 导出和数据存储说明弹窗；全局 Firestore 连接、规则提示、退出确认和 Toast 由 `src/react/app/AppRuntime.tsx` 渲染。`index.html` 不再加载 `/src/orders/index.mjs`、`/src/firestore-connection.mjs` 或 `/src/orders/firestore-rules.mjs`，旧订单 ESM 模块暂时保留为已测试的业务 helper、历史参考和回退材料。
 
 顺序：
 
@@ -677,7 +677,7 @@ npm run release:check
 - `tests/orders-firestore-rules.test.js` 已新增动态 `import()` 断言，确认 ESM 内置规则和文档规则保持一致。
 - 新增 `src/orders/form-utils.mjs`，提供订单弹窗商品/SKU 标签、商品默认参数合并、订单明细草稿归一化、旧版订单明细恢复、金额/尺寸解析等纯函数 ESM 导出，并在浏览器里挂回 `window.OrderTrackerFormUtils`。
 - `tests/orders-form-utils-module.test.js` 已新增动态 `import()` 断言，确认订单表单纯函数 ESM 输出和旧 `OrderTrackerFormUtils` 一致。
-- 新增 `src/firestore-connection.mjs`，提供全局 Firestore 配置解析、本地存储迁移、复制规则、配置变更广播和 React UI 注册 API，并在浏览器里继续挂回 `window.TKFirestoreConnection`；弹窗本体已迁到 `src/react/app/ReactIsland.tsx`。
+- 新增 `src/firestore-connection.mjs`，提供全局 Firestore 配置解析、本地存储迁移、复制规则、配置变更广播和 React UI 注册 API，并在浏览器里继续挂回 `window.TKFirestoreConnection`；弹窗本体已迁到 `src/react/app/AppRuntime.tsx`。
 - `tests/firestore-connection-module.test.js` 已改为动态 `import()` 断言，确认 Firestore 连接 ESM 模块可直接导入、可解析 `firebaseConfig`，并保留旧全局 API。
 - `src/orders/provider-firestore.mjs` 已直接注册 `TKDataSourceRegistry.registerProvider('orders', ...)`，旧 `js/orders/provider-firestore.js` 不再负责页面运行链路。
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载；React SPA 阶段也已移除 `<script type="module" src="/src/orders/index.mjs"></script>`，订单运行入口改为 `src/react/features/orders/OrdersPage.tsx`。
@@ -732,7 +732,7 @@ npm run release:check
 - 新增 `src/data-sources/registry.mjs`，提供数据源注册表 ESM 导出，并由 `src/main.mjs` 挂回 `window.TKDataSourceRegistry`，保证旧 Firestore provider 注册顺序不变。
 - `index.html` 已移除旧 `js/table-controls.js` 和 `js/data-sources/registry.js` 页面加载；旧文件已随旧目录统一清理。
 - `tests/shared-utils.test.js`、`tests/data-source-registry.test.js`、`tests/orders-table-view.test.js`、`tests/products-view-ui.test.js` 已覆盖这两个基础模块的 ESM 导出、入口挂载和旧页面加载移除。
-- 新增 `src/searchable-select.mjs`，提供订单商品/SKU 可搜索下拉框 ESM 导出，并由 `src/main.mjs` 挂回 `window.TKSearchSelect`。
+- 订单商品/SKU 可搜索下拉已进入 `src/react/components/ui/searchable-select.tsx`，旧 DOM 版 `src/searchable-select.mjs` 已清理。
 - `index.html` 已移除旧 `js/searchable-select.js` 页面加载；旧文件已随旧目录统一清理。
 - `tests/shared-utils.test.js` 和 `tests/orders-crud-module.test.js` 已覆盖可搜索下拉框 ESM 导出、入口挂载和旧页面加载移除。
 
@@ -838,7 +838,7 @@ src/
   react/
     main.tsx
     app/
-      ReactIsland.tsx
+      AppRuntime.tsx
     components/
       ui/
       charts/
@@ -861,7 +861,7 @@ src/
 
 ### 9.4 第一阶段：React 基础设施
 
-目标：让项目能同时运行现有 ESM 页面和 React island。
+目标：让项目能同时运行现有 ESM 页面和 React 局部挂载。
 
 已新增依赖：
 
@@ -879,7 +879,7 @@ tailwind.config.ts
 postcss.config.js
 vite.config.mjs
 src/react/main.tsx
-src/react/app/ReactIsland.tsx
+src/react/app/AppRuntime.tsx
 ```
 
 原则：
@@ -1010,7 +1010,7 @@ npm run release:check
 - 项目能安装 React/TS/Tailwind 依赖。
 - Vite build 通过。
 - 旧页面功能不变。
-- 存在 React island，可独立挂载。
+- 存在 React 局部挂载，可独立挂载。
 
 数据分析 React 化完成标准：
 
@@ -1734,7 +1734,7 @@ Excel 必须本地解析。
 
 处理：
 
-- 先做 React island，不替换全站入口。
+- 先做 React 局部挂载，不替换全站入口。（历史阶段；当前完整 React SPA 已替换全站入口）
 - Tailwind 样式作用域和 `src/react/styles/` 分模块样式要重点检查。
 - 第一阶段只迁数据分析页。（已完成；当前分支已进入完整 React SPA 和视觉系统收敛）
 - ECharts 只在数据分析页使用。

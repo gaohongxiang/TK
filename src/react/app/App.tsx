@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ReactIsland } from './ReactIsland';
+import { AppRuntime } from './AppRuntime';
 import { CalculatorApp } from '../features/calculator/CalculatorApp';
 import { OrdersPage } from '../features/orders/OrdersPage';
 import { ProductsPage } from '../features/products/ProductsPage';
@@ -155,7 +155,7 @@ function App({
           <span>TK 电商工具箱 © <span id="yr">{year}</span></span>
         </footer>
       </div>
-      <ReactIsland />
+      <AppRuntime />
     </>
   );
 }

@@ -10,14 +10,8 @@ const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'reac
 
 assert.match(
   source,
-  /const OrderTrackerCrud = \{/,
-  'ESM 订单 CRUD 模块需要保留 OrderTrackerCrud 命名导出'
-);
-
-assert.match(
-  source,
-  /function create\(\{ state, constants, helpers, ui \}\)/,
-  'ESM 订单 CRUD 模块需要暴露运行版 create 工厂'
+  /const OrderTrackerCrud = Object\.freeze\(\{/,
+  'ESM 订单 CRUD helper 模块需要保留 OrderTrackerCrud 命名导出'
 );
 
 assert.match(
@@ -34,7 +28,7 @@ assert.match(
 
 assert.match(
   source,
-  /export \{[\s\S]*OrderTrackerCrud[\s\S]*buildItemProductOptions[\s\S]*deriveOrderItemSummaryFields[\s\S]*computeEstimatedProfitValue[\s\S]*\}/,
+  /export \{[\s\S]*OrderTrackerCrud[\s\S]*buildItemProductOptions[\s\S]*computeEstimatedProfitValue[\s\S]*deriveOrderItemSummaryFields[\s\S]*\}/,
   'ESM 订单 CRUD 工具模块需要导出命名空间和关键纯函数'
 );
 
@@ -44,99 +38,18 @@ assert.match(
   'ESM 订单 CRUD 模块需要直接导入订单表单工具'
 );
 
-assert.match(
+assert.doesNotMatch(
   source,
-  /window\.OrderTrackerCrud = OrderTrackerCrud/,
-  'ESM 订单 CRUD 模块需要挂回旧全局命名空间'
-);
-
-assert.match(
-  source,
-  /function openModal\(/,
-  '订单 CRUD 模块需要包含弹窗打开逻辑'
-);
-
-assert.match(
-  source,
-  /function updateProductSelect\(/,
-  '订单 CRUD 模块需要包含商品选择下拉渲染逻辑'
-);
-
-assert.match(
-  source,
-  /function updateSkuSelect\(/,
-  '订单 CRUD 模块需要包含 SKU 选择下拉渲染逻辑'
-);
-
-assert.match(
-  source,
-  /function applyOrderSnapshot\(/,
-  '订单 CRUD 模块需要在选择商品或 SKU 后自动带出快照字段'
-);
-
-assert.match(
-  source,
-  /function syncOrderSpecFromQuantity\(/,
-  '订单 CRUD 模块需要根据数量联动重量和尺寸提示'
-);
-
-assert.match(
-  source,
-  /function renderOrderItems\(/,
-  '订单 CRUD 模块需要支持多条订单明细行渲染'
-);
-
-assert.match(
-  source,
-  /async function deleteOrder\(/,
-  '订单 CRUD 模块需要包含删除逻辑'
-);
-
-assert.match(
-  source,
-  /function bindEvents\(/,
-  '订单 CRUD 模块需要包含表单事件绑定逻辑'
+  /window\.OrderTrackerCrud|function create\(\{ state, constants, helpers, ui \}\)|function openModal\(|function bindEvents\(|TKSearchSelect/,
+  '完整 React SPA 重建后订单 CRUD helper 不应再保留旧 DOM 运行时或全局下拉依赖'
 );
 
 const crudModulePromise = import(pathToFileURL(esmPath).href);
 
 (async () => {
 const crudModule = await crudModulePromise;
-const crudTools = crudModule.OrderTrackerCrud.create({
-  state: {},
-  constants: {
-    ORDER_STATUS_OPTIONS: []
-  },
-  helpers: {
-    $: () => null,
-    uid: () => 'id',
-    todayStr: () => '2026-04-19',
-    addDays: () => '2026-04-25',
-    computeWarning: () => ({ text: '-' }),
-    normalizeOrderRecord: value => value,
-    escapeHtml: value => String(value),
-    normalizeStatusValue: value => String(value || '').trim(),
-    detectCourierCompany: () => '',
-    maybeAutoDetectCourierFromForm: () => '',
-    getOrderFormCourierFields: () => ({}),
-    showDatePicker: () => {}
-  },
-  ui: {
-    getUniqueAccounts: () => [],
-    promptAddAccount: async () => null,
-    addAccount: () => false,
-    markAccountsDirty: () => {},
-    markOrderAccountsDirty: () => {},
-    commitLocalOrders: async () => {},
-    resetTablePage: () => {},
-    toast: () => {}
-  }
-});
-
-assert.equal(typeof crudTools.openModal, 'function', 'CRUD 模块需要返回 openModal');
-assert.equal(typeof crudTools.closeModal, 'function', 'CRUD 模块需要返回 closeModal');
-assert.equal(typeof crudTools.deleteOrder, 'function', 'CRUD 模块需要返回 deleteOrder');
-assert.equal(typeof crudTools.bindEvents, 'function', 'CRUD 模块需要返回 bindEvents');
+assert.equal(typeof crudModule.OrderTrackerCrud.buildItemProductOptions, 'function', 'CRUD helper 命名空间需要暴露 buildItemProductOptions');
+assert.equal(typeof crudModule.OrderTrackerCrud.computeEstimatedProfitValue, 'function', 'CRUD helper 命名空间需要暴露 computeEstimatedProfitValue');
 })().catch(error => {
   console.error(error);
   process.exit(1);
@@ -180,40 +93,10 @@ assert.match(
   '订单弹窗需要支持新增订单明细行'
 );
 
-assert.match(
-  source,
-  /function copyTrackingNumberFromRow\(/,
-  '订单 CRUD 模块需要支持订单明细里的快递单号复制'
-);
-
-assert.match(
-  source,
-  /function rememberOrderItemDrafts\(/,
-  '订单 CRUD 模块需要缓存订单明细草稿，避免异步刷新商品资料时丢失快递单号'
-);
-
-assert.match(
-  source,
-  /async function prepareProductsBeforeEditing\(/,
-  '订单弹窗应在进入可编辑状态前准备商品资料，避免打开后后台刷新抢焦点'
-);
-
-assert.match(
-  source,
-  /async function openModal[\s\S]{0,220}await prepareProductsBeforeEditing\(\);/,
-  '订单弹窗需要先准备商品资料再渲染订单明细'
-);
-
 assert.doesNotMatch(
   source,
-  /function refreshProductsInOpenModal\(/,
-  '订单弹窗打开后不应再启动后台商品资料刷新去触碰编辑区'
-);
-
-assert.doesNotMatch(
-  source,
-  /shouldDeferItemOptionRefresh|markOrderItemFieldInteraction|pointerdown[\s\S]{0,260}data-item-field/,
-  '订单弹窗不应依赖延迟抢焦点补丁，应从流程上避免后台刷新编辑区'
+  /refreshProductsInOpenModal|shouldDeferItemOptionRefresh|markOrderItemFieldInteraction|pointerdown[\s\S]{0,260}data-item-field/,
+  '订单 CRUD helper 不应再保留旧 DOM 编辑区刷新和抢焦点补丁'
 );
 
 assert.doesNotMatch(
@@ -242,7 +125,7 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /function SearchableCombo\([\s\S]*data-role="trigger"[\s\S]*data-option-value/,
+  /from '@\/components\/ui\/searchable-select'[\s\S]*<SearchableSelect[\s\S]*role="product-combobox"[\s\S]*<SearchableSelect[\s\S]*role="sku-combobox"/,
   'React 订单页需要提供可搜索商品和 SKU 下拉组件'
 );
 

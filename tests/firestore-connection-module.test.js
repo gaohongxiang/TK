@@ -4,7 +4,7 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'src', 'firestore-connection.mjs'), 'utf8');
-const reactIslandSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
+const appRuntimeSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'AppRuntime.tsx'), 'utf8');
 
 assert.match(
   source,
@@ -43,7 +43,7 @@ assert.match(
 );
 
 assert.match(
-  reactIslandSource,
+  appRuntimeSource,
   /function applyDisconnect\([\s\S]*TKFirestoreConnection\.clearConfig\(\)[\s\S]*setDisconnectOpen\(false\)/,
   '确认退出数据库后需要清除本地连接配置并关闭站内确认弹层'
 );

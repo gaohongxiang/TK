@@ -13,7 +13,7 @@ const reactProductsPageSource = fs.readFileSync(path.join(root, 'src', 'react', 
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const reactAppShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
-const reactIslandSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
+const appRuntimeSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'AppRuntime.tsx'), 'utf8');
 const reactButtonSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
 const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
 const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
@@ -227,9 +227,9 @@ assert.match(
 );
 
 assert.match(
-  reactIslandSource,
+  appRuntimeSource,
   /id="app-firestore-rules-modal"/,
-  'React island 需要提供全局 Firestore 规则更新提示弹层'
+  'AppRuntime 需要提供全局 Firestore 规则更新提示弹层'
 );
 
 assert.doesNotMatch(
@@ -409,7 +409,7 @@ assert.match(
 assert.ok(
   !fs.existsSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'ProductsTable.tsx'))
     && !fs.existsSync(path.join(__dirname, '..', 'src', 'react', 'features', 'products', 'mountProductsTable.tsx')),
-  '完整 React SPA 重建后商品表格不应再通过独立 React island 二次挂载'
+  '完整 React SPA 重建后商品表格不应再通过独立 React 二次挂载'
 );
 
 assert.match(

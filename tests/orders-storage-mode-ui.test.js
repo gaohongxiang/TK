@@ -11,7 +11,7 @@ const calculatorSource = fs.readFileSync(path.join(root, 'src', 'react', 'featur
 const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const productsPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const connectionSource = fs.readFileSync(path.join(root, 'src', 'firestore-connection.mjs'), 'utf8');
-const reactIslandSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
+const appRuntimeSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'AppRuntime.tsx'), 'utf8');
 const cssSource = readReactStyleSource(root);
 const formPrimitiveSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'form.tsx'), 'utf8');
 
@@ -22,7 +22,7 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  reactIslandSource,
+  appRuntimeSource,
   /Firebase Firestore/,
   '页面需要保留 Firebase Firestore 作为唯一云端数据源'
 );
@@ -34,13 +34,13 @@ assert.match(
 );
 
 assert.match(
-  reactIslandSource,
+  appRuntimeSource,
   /id="app-firestore-modal"/,
-  'React island 需要提供全局 Firestore 连接弹层'
+  'AppRuntime 需要提供全局 Firestore 连接弹层'
 );
 
 assert.match(
-  reactIslandSource,
+  appRuntimeSource,
   /id="app-firestore-disconnect-modal"[\s\S]*退出当前数据库？[\s\S]*id="app-firestore-disconnect-project"[\s\S]*id="app-cancel-firestore-disconnect"[\s\S]*id="app-confirm-firestore-disconnect"/,
   '退出数据库需要使用 React 站内确认弹层，并展示当前 Firebase 项目'
 );
@@ -58,25 +58,25 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  reactIslandSource,
+  appRuntimeSource,
   /id="app-firestore-config"/,
   'React 全局 Firestore 连接弹层需要提供 firebaseConfig 输入框'
 );
 
 assert.match(
-  reactIslandSource,
+  appRuntimeSource,
   /apiKey[\s\S]*authDomain[\s\S]*projectId[\s\S]*appId/s,
   'React 全局 Firestore 连接弹层需要提示常见配置字段'
 );
 
 assert.match(
-  reactIslandSource,
+  appRuntimeSource,
   /id="app-open-firebase-console"/,
   'React 全局 Firestore 连接弹层需要提供打开 Firebase Console 按钮'
 );
 
 assert.match(
-  reactIslandSource,
+  appRuntimeSource,
   /id="app-copy-firestore-rules"/,
   'React 全局 Firestore 连接弹层需要提供复制 Firestore 规则按钮'
 );
@@ -232,7 +232,7 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  reactIslandSource,
+  appRuntimeSource,
   /data-rules-url="docs\/firebase\/order-tracker-firestore\.rules"/,
   '复制 Firestore 规则按钮需要指向文档里的规则文件'
 );

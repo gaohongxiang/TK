@@ -53,19 +53,12 @@
     justify-content: flex-start;
   }
 
-  .calc-result-table,
-  .ship-rate {
-    font-size: 13px
-  }
-
   .calc-result-table {
     font-size: 12px
   }
 
   .calc-result-table th,
-  .calc-result-table td,
-  .ship-rate th,
-  .ship-rate td {
+  .calc-result-table td {
     padding: 9px 6px
   }
 
@@ -74,18 +67,7 @@
     padding-inline: 4px
   }
 
-  .calc-result-table th,
-  .ship-rate th {
+  .calc-result-table th {
     font-size: 10.5px
-  }
-
-  .ship-ref {
-    overflow-x: auto;
-    margin: 18px -16px 0;
-    padding: 0 16px
-  }
-
-  .ship-rate {
-    min-width: 640px
   }
 }

@@ -257,6 +257,23 @@ const calcResultOrigStrongCellClass = cn(calcResultOrigCellClass, 'font-bold tex
 const calcDetailsSummaryClass = 'cursor-pointer py-1.5 text-[13px] text-[var(--muted)] hover:text-[var(--text)] group-open:mb-2.5';
 const profitPositiveClass = 'profit-pos font-semibold text-[var(--ok)]';
 const profitNegativeClass = 'profit-neg font-semibold text-[var(--danger)]';
+const referenceCardClass = 'ship-calc mt-[18px]';
+const commissionCardClass = 'commission-ref mt-[18px]';
+const referenceMetaClass = 'ship-meta mb-3.5 flex flex-wrap gap-2.5 rounded-[10px] border border-dashed border-[var(--border)] bg-[var(--panel2)] px-3.5 py-3 text-[12.5px] text-[var(--muted)]';
+const referenceMetaStrongClass = 'font-semibold text-[var(--text)]';
+const referenceMetaSepClass = 'sep opacity-40';
+const shipRateWrapClass = 'ship-rate-wrap mt-4 min-w-0 max-w-full overflow-x-auto [-webkit-overflow-scrolling:touch] max-[640px]:-mx-4 max-[640px]:mt-[18px] max-[640px]:px-4';
+const shipRateTitleClass = 'ship-rate-title mb-2.5 text-[11px] uppercase tracking-[1px] text-[var(--muted)]';
+const shipRateTableClass = 'ship-rate mt-1.5 w-full border-collapse text-[13.5px] tabular-nums max-[640px]:min-w-[640px] max-[640px]:text-[13px]';
+const shipRateHeadClass = 'border-b border-[var(--border)] bg-[var(--panel2)] px-2 py-[11px] text-[11.5px] font-semibold uppercase tracking-[.4px] text-[var(--muted)] max-[640px]:px-1.5 max-[640px]:py-[9px] max-[640px]:text-[10.5px]';
+const shipRateCellClass = 'whitespace-nowrap px-2 py-[11px] max-[640px]:px-1.5 max-[640px]:py-[9px]';
+const shipRateWeightCellClass = cn(shipRateCellClass, 'w font-bold text-[var(--warn)]');
+const shipRateEvenCellClass = 'bg-[rgba(110,168,255,.04)]';
+const commissionGridClass = 'commission-grid grid grid-cols-2 gap-3 max-[768px]:grid-cols-1';
+const commissionGroupClass = 'commission-group grid grid-cols-[68px_minmax(0,1fr)] items-start gap-3 rounded-xl border border-[var(--border)] bg-[rgba(110,168,255,.05)] px-3.5 py-3 max-[768px]:grid-cols-[56px_minmax(0,1fr)] max-[768px]:gap-2.5 max-[768px]:px-3 max-[768px]:py-[11px]';
+const commissionRateBadgeClass = 'commission-rate-badge inline-flex min-h-[34px] items-center justify-center rounded-full bg-[var(--panel2)] px-2.5 text-[15px] font-bold text-[var(--accent)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--line)_86%,white_14%)] tabular-nums max-[768px]:min-h-[30px] max-[768px]:text-[13.5px]';
+const commissionTagsClass = 'commission-tags flex flex-wrap gap-2 max-[768px]:gap-1.5';
+const commissionTagClass = 'inline-flex min-h-[30px] items-center whitespace-nowrap rounded-full bg-[rgba(255,255,255,.78)] px-2.5 text-[12.5px] leading-[1.2] text-[var(--text)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--border)_86%,white_14%)] max-[768px]:min-h-7 max-[768px]:px-[9px] max-[768px]:text-xs';
 
 function calcProfitClass(value: number) {
   if (value > 0) return profitPositiveClass;
@@ -613,58 +630,58 @@ function ReferenceCards() {
   const special = SHIPPING_RULES.special.bands;
   return (
     <>
-      <Card className="ship-calc">
+      <Card className={referenceCardClass}>
         <CardTitle>新版海外运费参考表</CardTitle>
-        <div className="ship-meta">
-          <span><b>使用新规</b> 2026/04/24 00:00（GMT+8）起生效</span>
-          <span className="sep">·</span>
+        <div className={referenceMetaClass}>
+          <span><b className={referenceMetaStrongClass}>使用新规</b> 2026/04/24 00:00（GMT+8）起生效</span>
+          <span className={referenceMetaSepClass}>·</span>
           <span>50g 起重，按 g 计费</span>
-          <span className="sep">·</span>
+          <span className={referenceMetaSepClass}>·</span>
           <span>当体积重 &gt; 1.5 × 实重时，按体积重计费</span>
         </div>
-        <div className="ship-rate-wrap">
-          <div className="ship-rate-title">2026/04/24 起新版价卡</div>
-          <Table className="ship-rate tabular-nums">
+        <div className={shipRateWrapClass}>
+          <div className={shipRateTitleClass}>2026/04/24 起新版价卡</div>
+          <Table className={shipRateTableClass}>
             <TableHeader>
               <TableRow>
-                <TableHead>重量区间</TableHead>
-                <TableHead>普货基础费</TableHead>
-                <TableHead>普货重量费</TableHead>
-                <TableHead>特货基础费</TableHead>
-                <TableHead>特货重量费</TableHead>
+                <TableHead className={shipRateHeadClass}>重量区间</TableHead>
+                <TableHead className={shipRateHeadClass}>普货基础费</TableHead>
+                <TableHead className={shipRateHeadClass}>普货重量费</TableHead>
+                <TableHead className={shipRateHeadClass}>特货基础费</TableHead>
+                <TableHead className={shipRateHeadClass}>特货重量费</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {general.map((band, index) => (
                 <TableRow key={band.range}>
-                  <TableCell className="w">{band.range}</TableCell>
-                  <TableCell>{band.parcel} 円</TableCell>
-                  <TableCell>{band.perKg} 円/kg</TableCell>
-                  <TableCell>{special[index].parcel} 円</TableCell>
-                  <TableCell>{special[index].perKg} 円/kg</TableCell>
+                  <TableCell className={cn(shipRateWeightCellClass, index % 2 ? shipRateEvenCellClass : '')}>{band.range}</TableCell>
+                  <TableCell className={cn(shipRateCellClass, index % 2 ? shipRateEvenCellClass : '')}>{band.parcel} 円</TableCell>
+                  <TableCell className={cn(shipRateCellClass, index % 2 ? shipRateEvenCellClass : '')}>{band.perKg} 円/kg</TableCell>
+                  <TableCell className={cn(shipRateCellClass, index % 2 ? shipRateEvenCellClass : '')}>{special[index].parcel} 円</TableCell>
+                  <TableCell className={cn(shipRateCellClass, index % 2 ? shipRateEvenCellClass : '')}>{special[index].perKg} 円/kg</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       </Card>
-      <Card className="commission-ref">
+      <Card className={commissionCardClass}>
         <CardTitle>TK 佣金费率参考表</CardTitle>
-        <div className="ship-meta">
-          <span><b>类目佣金率参考</b> 用于达人佣金率和类目判断</span>
-          <span className="sep">·</span>
+        <div className={referenceMetaClass}>
+          <span><b className={referenceMetaStrongClass}>类目佣金率参考</b> 用于达人佣金率和类目判断</span>
+          <span className={referenceMetaSepClass}>·</span>
           <span>最终请以店铺后台实时显示为准</span>
         </div>
-        <div className="commission-grid">
+        <div className={commissionGridClass}>
           {[
             ['7%', ['汽车与摩托车', '电脑办公', '食品饮料', '家电', '手机与数码', '家具', '家装建材']],
             ['9%', ['图书&杂志&音频', '收藏品', '居家日用*', '厨房用品', '家纺布艺', '五金工具']],
             ['10%', ['母婴用品*', '美妆个护*', '保健', '珠宝与衍生品', '鞋靴', '运动与户外', '玩具和爱好']],
             ['12%', ['时尚配件', '儿童时尚', '箱包', '男装与男士内衣', '穆斯林服饰', '宠物用品*', '女装与女士内衣']]
           ].map(([rate, tags]) => (
-            <div className="commission-group" key={rate as string}>
-              <div className="commission-rate-badge tabular-nums">{rate}</div>
-              <div className="commission-tags">{(tags as string[]).map(tag => <span key={tag}>{tag}</span>)}</div>
+            <div className={commissionGroupClass} key={rate as string}>
+              <div className={commissionRateBadgeClass}>{rate}</div>
+              <div className={commissionTagsClass}>{(tags as string[]).map(tag => <span className={commissionTagClass} key={tag}>{tag}</span>)}</div>
             </div>
           ))}
         </div>

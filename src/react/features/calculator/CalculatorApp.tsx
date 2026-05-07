@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { FormField } from '@/components/ui/form';
+import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
@@ -207,7 +207,7 @@ function Field({
 const calcPanelClass = 'calc-panel active block';
 const calcLayoutClass = 'calc-layout-grid grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-[18px] [&>*]:min-w-0 max-[860px]:grid-cols-1';
 const calcFormSectionClass = 'calc-form-section mt-[18px]';
-const calcDetailsGridClass = 'row quad calc-details-grid mt-2.5';
+const calcDetailsGridClass = 'calc-details-grid mt-2.5';
 
 function ShippingInline({
   state,
@@ -333,21 +333,21 @@ function PricingNewPanel({
       <div className={calcLayoutClass}>
         <Card>
           <h2>定价输入</h2>
-          <div className="row triple">
+          <FormRow columns={3} className="triple">
             <Field id="costNew" label="采购价 ¥" className="expense-field" value={state.costNew} onChange={value => updateNumber('costNew', value)} />
             <Field id="overseasShippingNew" label="海外运费 ¥" className="expense-field" value={state.overseasShippingNew} onChange={value => updateNumber('overseasShippingNew', value)} />
             <FormField htmlFor="totalCostNew" label={<>总费用 ¥<span className="var">采购价+海外运费</span></>} className="expense-field">
               <Input id="totalCostNew" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
             </FormField>
-          </div>
+          </FormRow>
           <ShippingInline state={state} onNumber={updateNumber} onCargo={updateCargo} onImport={importShipping} />
           <div className={calcFormSectionClass}>
-            <div className="row triple">
+            <FormRow columns={3} className="triple">
               <Field id="feeNew" label="TK 平台手续费（%）" value={state.feeNew} onChange={value => updateNumber('feeNew', value)} />
               <Field id="creatorRateNew" label="达人佣金率（%）" value={state.creatorRateNew} onChange={value => updateNumber('creatorRateNew', value)} />
               <Field id="rateNew" label="日元汇率" value={state.rateNew} onChange={value => updateNumber('rateNew', value)} />
-            </div>
-            <div className="row pricing-anchor-row">
+            </FormRow>
+            <FormRow columns={3} className="pricing-anchor-row mt-[18px] gap-[14px] max-[900px]:grid-cols-1">
               <FormField htmlFor="anchorNew" label="基准折扣档位" hint="用于按该折扣反推原价">
                 <Select id="anchorNew" value={anchor} onChange={event => updateNumber('anchorNew', event.target.value)}>
                   {discounts.map(discount => <option value={discount} key={discount}>{formatDiscount(discount)}</option>)}
@@ -361,7 +361,7 @@ function PricingNewPanel({
                   onChange={event => setState(prev => ({ ...prev, discountsNew: parseDiscounts(event.target.value) }))}
                 />
               </FormField>
-            </div>
+            </FormRow>
           </div>
           <div hidden aria-hidden="true">
             <Input id="origPriceNew" inputMode="decimal" autoComplete="off" value={Math.round(origPrice)} readOnly />
@@ -431,26 +431,26 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
       <div className={calcLayoutClass}>
         <Card>
           <h2>核心输入</h2>
-          <div className="row">
+          <FormRow>
             <Field id="cost" label="采购价（人民币 ¥）" className="primary" value={state.cost} onChange={value => updateNumber('cost', value)} />
             <Field id="targetMargin" label="目标利润率（倍）" value={state.targetMargin} hint="人民币到手价 ÷ 采购价，例如 1.4 表示到手价 = 1.4 × 采购价" onChange={value => updateNumber('targetMargin', value)} />
-          </div>
-          <div className="row">
+          </FormRow>
+          <FormRow className="mt-[18px] max-[768px]:mt-3">
             <FormField htmlFor="anchor" label="基准折扣档位" hint="以该档位为目标利润率的基准来反推原价">
               <Select id="anchor" value={anchor} onChange={event => updateNumber('anchor', event.target.value)}>
                 {discounts.map(discount => <option value={discount} key={discount}>{formatDiscount(discount)}</option>)}
               </Select>
             </FormField>
             <Field id="origPrice" label="商品原价（円）" className="readonly" value={Math.round(origPrice)} readOnly />
-          </div>
+          </FormRow>
           <details open className="calc-details">
             <summary>全局参数（平台手续费 / 汇率 / 运费 / 折扣档位）</summary>
-            <div className={calcDetailsGridClass}>
+            <FormRow columns={4} className={calcDetailsGridClass}>
               <Field id="fee" label="TK 平台手续费（%）" value={state.fee} onChange={value => updateNumber('fee', value)} />
               <Field id="rate" label="日元汇率（1元 = ? 円）" value={state.rate} onChange={value => updateNumber('rate', value)} />
               <Field id="shipping" label="100g 运费+贴单费（¥）" value={state.shipping} onChange={value => updateNumber('shipping', value)} />
               <Field id="creatorRate" label="达人佣金率（%）" value={state.creatorRate} onChange={value => updateNumber('creatorRate', value)} />
-            </div>
+            </FormRow>
           </details>
         </Card>
         <Card>
@@ -496,23 +496,23 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
       <div className={calcLayoutClass}>
         <Card>
           <h2>成交输入</h2>
-          <div className="row">
+          <FormRow>
             <Field id="salePrice" label="实际售价（円）" className="success" value={state.salePrice || ''} onChange={value => updateNumber('salePrice', value)} />
             <FormField htmlFor="totalCostReview" label={<>总费用 ¥<span className="var">采购价+海外运费</span></>} className="expense-field">
               <Input id="totalCostReview" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
             </FormField>
-          </div>
+          </FormRow>
           <div className={calcFormSectionClass}>
-            <div className="row">
+            <FormRow>
               <Field id="costReview" label="采购价 ¥" className="expense-field" value={state.costNew} onChange={value => updateNumber('costNew', value)} />
               <Field id="shippingReview" label="海外运费 ¥" className="expense-field" value={state.overseasShippingNew} onChange={value => updateNumber('overseasShippingNew', value)} />
-            </div>
+            </FormRow>
           </div>
           <div className={calcFormSectionClass}>
-            <div className="row">
+            <FormRow>
               <Field id="creatorRateReview" label="达人佣金率（%）" value={state.creatorRateNew} onChange={value => updateNumber('creatorRateNew', value)} />
               <Field id="saleCommissionReview" label="达人佣金 ¥" className="expense-field" value={result ? result.creatorCommission.toFixed(2) : ''} readOnly />
-            </div>
+            </FormRow>
           </div>
           <div className={calcFormSectionClass}>
             <ShippingInline state={state} onNumber={updateNumber} onCargo={value => setState(prev => ({ ...prev, shipCargoTypeNew: value }))} onImport={importShipping} prefix="Review" />

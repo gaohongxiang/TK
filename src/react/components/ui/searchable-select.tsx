@@ -81,12 +81,22 @@ function SearchableSelect({
   }, [open]);
 
   return (
-    <div ref={rootRef} data-slot="searchable-select" className={cn('tk-search-select', open ? 'is-open' : '', disabled ? 'is-disabled' : '', !value ? 'is-empty' : '')} data-item-role={role}>
+    <div
+      ref={rootRef}
+      data-slot="searchable-select"
+      className={cn(
+        'tk-search-select relative w-full',
+        open ? 'is-open z-[120]' : '',
+        disabled ? 'is-disabled' : '',
+        !value ? 'is-empty' : ''
+      )}
+      data-item-role={role}
+    >
       {hiddenField ? <input type="hidden" data-item-field={hiddenField} value={value} readOnly /> : null}
       <button
         ref={triggerRef}
         type="button"
-        className="tk-search-select-trigger"
+        className="tk-search-select-trigger flex h-10 min-h-10 w-full items-center justify-between gap-3 rounded-[10px] border border-[color-mix(in_srgb,var(--border)_82%,white)] bg-[color-mix(in_srgb,var(--panel2)_38%,white)] px-3 text-left text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
         data-role="trigger"
         disabled={disabled}
         onClick={() => {
@@ -94,17 +104,35 @@ function SearchableSelect({
           setOpen(current => !current);
         }}
       >
-        <span className="tk-search-select-trigger-label" data-role="label">{selected?.label || (value ? `${value}（已不存在）` : placeholder)}</span>
-        <span className="tk-search-select-trigger-icon" aria-hidden="true">▾</span>
+        <span className={cn('tk-search-select-trigger-label min-w-0 flex-1 truncate text-center text-[13.5px]', !value ? 'text-[var(--muted)]' : '')} data-role="label">{selected?.label || (value ? `${value}（已不存在）` : placeholder)}</span>
+        <span className="tk-search-select-trigger-icon shrink-0 text-xs text-[var(--muted)]" aria-hidden="true">▾</span>
       </button>
-      <div className="tk-search-select-panel" data-role="panel" style={panelStyle}>
-        <div className="tk-search-select-search">
-          <input ref={searchRef} type="text" data-role="search" placeholder={searchPlaceholder} value={query} onChange={event => setQuery(event.target.value)} />
+      <div
+        className={cn(
+          'tk-search-select-panel fixed left-0 top-0 z-[420] w-[280px] rounded-[14px] border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel)_96%,white)] shadow-[0_18px_36px_rgba(19,29,52,.08)]',
+          open ? 'block' : 'hidden'
+        )}
+        data-role="panel"
+        style={panelStyle}
+      >
+        <div className="tk-search-select-search border-b border-[color-mix(in_srgb,var(--border)_88%,white)] p-2.5">
+          <input
+            ref={searchRef}
+            type="text"
+            data-role="search"
+            className="h-[38px] min-h-[38px] w-full rounded-[10px] border border-[var(--border)] bg-[var(--panel2)] px-3 text-[13px] text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(110,168,255,.2)]"
+            placeholder={searchPlaceholder}
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+          />
         </div>
-        <div className="tk-search-select-options" data-role="options">
+        <div className="tk-search-select-options max-h-60 overflow-auto p-2" data-role="options">
           <button
             type="button"
-            className={cn('tk-search-select-option', !value ? 'is-active' : '')}
+            className={cn(
+              'tk-search-select-option w-full rounded-[10px] border-0 bg-transparent px-3 py-2.5 text-left text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,var(--panel2))]',
+              !value ? 'is-active bg-[color-mix(in_srgb,var(--accent)_10%,var(--panel2))]' : ''
+            )}
             data-option-value=""
             onClick={() => {
               onChange('');
@@ -117,7 +145,10 @@ function SearchableSelect({
           {filtered.map(option => (
             <button
               type="button"
-              className={cn('tk-search-select-option', option.value === value ? 'is-active' : '')}
+              className={cn(
+                'tk-search-select-option w-full rounded-[10px] border-0 bg-transparent px-3 py-2.5 text-left text-[var(--text)] hover:bg-[color-mix(in_srgb,var(--accent)_10%,var(--panel2))]',
+                option.value === value ? 'is-active bg-[color-mix(in_srgb,var(--accent)_10%,var(--panel2))]' : ''
+              )}
               data-option-value={option.value}
               key={option.value}
               onClick={() => {
@@ -129,7 +160,7 @@ function SearchableSelect({
               <span className="tk-search-select-option-label">{option.label}</span>
             </button>
           ))}
-          {!filtered.length ? <div className="tk-search-select-empty">没有匹配项</div> : null}
+          {!filtered.length ? <div className="tk-search-select-empty p-3 text-[12.5px] text-[var(--muted)]">没有匹配项</div> : null}
         </div>
       </div>
     </div>

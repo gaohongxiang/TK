@@ -177,39 +177,27 @@
   letter-spacing: .04em;
 }
 
-.ot-item-edit-row .tk-search-select,
 .ot-item-edit-row .field input,
 .ot-item-edit-row .field select {
   width: 100%;
 }
 
-.ot-item-edit-row .tk-search-select-trigger,
 .ot-item-edit-row .field input,
 .ot-item-edit-row .field select {
   min-height: 40px;
   height: 40px;
 }
 
-.ot-item-edit-row .tk-search-select-trigger-label,
 .ot-item-edit-row .field input,
 .ot-item-edit-row .field select {
   text-align: center;
 }
 
-.ot-item-edit-row .tk-search-select-trigger,
 .ot-item-edit-row .field select {
   padding: 0 12px;
   border-radius: 10px;
   border-color: color-mix(in srgb, var(--border) 82%, white);
   background: color-mix(in srgb, var(--panel2) 38%, white);
-}
-
-.ot-item-edit-row .tk-search-select-trigger-label {
-  font-size: 13.5px;
-}
-
-.ot-item-edit-row .tk-search-select.is-open {
-  z-index: 120;
 }
 
 .ot-item-inline-actions {

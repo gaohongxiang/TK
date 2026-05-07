@@ -1,71 +1,3 @@
-.pl-table .mono {
-  white-space: nowrap;
-}
-
-.pl-image-cell {
-  width: 74px;
-}
-
-.pl-image {
-  width: 48px;
-  height: 48px;
-  object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--panel2);
-}
-
-.pl-image-placeholder {
-  display: inline-flex;
-  width: 48px;
-  height: 48px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  border: 1px dashed var(--border);
-  color: var(--muted);
-}
-
-.pl-link-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.pl-table th,
-.pl-table td {
-  text-align: center;
-  vertical-align: middle;
-}
-
-.pl-table .pl-image-cell,
-.pl-table .pl-link-actions {
-  justify-content: center;
-}
-
-.products-react-id {
-  min-width: 140px;
-}
-
-.products-react-name-cell {
-  min-width: 220px;
-  max-width: 360px;
-}
-
-.products-react-name-cell>div {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.products-react-actions {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
 .pl-product-row.is-expandable {
   cursor: pointer;
 }
@@ -80,18 +12,6 @@
 
 .pl-product-row.is-expanded td {
   background: color-mix(in srgb, var(--accent) 5%, var(--panel));
-}
-
-.pl-row-seq {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pl-expand-caret {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1;
 }
 
 .pl-sku-list {
@@ -190,14 +110,4 @@
   border-color: color-mix(in srgb, var(--expense) 88%, white);
   background: color-mix(in srgb, var(--expense) 10%, white);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--expense) 16%, transparent);
-}
-
-.ot-profit-value.is-profit-positive {
-  color: var(--ok);
-  font-weight: 700;
-}
-
-.ot-profit-value.is-profit-negative {
-  color: var(--expense);
-  font-weight: 700;
 }

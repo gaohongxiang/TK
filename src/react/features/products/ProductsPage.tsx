@@ -97,6 +97,17 @@ const productSkuFeeValueClass = 'pl-sku-fee-value text-[13px] font-bold text-[va
 const productSkuFeeSubClass = 'pl-sku-fee-sub text-[11px] leading-[1.35] text-[var(--muted)] empty:hidden';
 const productSkuFeeNoteClass = 'pl-sku-fee-note text-[11px] leading-[1.35] text-[var(--expense)] empty:hidden';
 const productSkuActionsCellClass = 'pl-sku-cell-actions w-[72px] text-right';
+const productTableClass = 'pl-table products-react-table table-auto [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_td]:text-center [&_td]:align-middle [&_th]:text-center [&_th]:align-middle';
+const productSeqClass = 'pl-row-seq inline-flex items-center gap-2';
+const productExpandCaretClass = 'pl-expand-caret text-xs leading-none text-[var(--muted)]';
+const productImageCellClass = 'pl-image-cell w-[74px]';
+const productImageClass = 'pl-image products-react-image h-12 w-12 rounded-[10px] border border-[var(--border)] bg-[var(--panel2)] object-cover';
+const productImagePlaceholderClass = 'pl-image-placeholder products-react-image-placeholder inline-flex h-12 w-12 items-center justify-center rounded-[10px] border border-dashed border-[var(--border)] text-[var(--muted)]';
+const productIdCellClass = 'mono products-react-id min-w-[140px]';
+const productNameCellClass = 'products-react-name-cell min-w-[220px] max-w-[360px]';
+const productNameTextClass = 'truncate';
+const productLinkActionsClass = 'pl-link-actions products-react-link-actions flex flex-wrap items-center justify-center gap-1.5';
+const productActionsClass = 'products-react-actions inline-flex items-center justify-center gap-1.5';
 const EMPTY_PRODUCT_FORM: ProductFormDraft = {
   accountName: '',
   tkId: '',
@@ -263,7 +274,7 @@ function ProductsTableView({
             />
           ) : (
             <TableFrame className="products-react-table-inner min-w-[920px] rounded-none border-0 bg-transparent">
-              <Table className={cn('pl-table products-react-table table-auto [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap', showAccount ? 'is-all-accounts' : 'is-account-scoped')}>
+              <Table className={cn(productTableClass, showAccount ? 'is-all-accounts' : 'is-account-scoped')}>
               <TableHeader>
                 <TableRow>
                   <TableHead>
@@ -302,19 +313,19 @@ function ProductsTableView({
                       }}
                     >
                       <TableCell className="mono">
-                        <div className="pl-row-seq">
+                        <div className={productSeqClass}>
                           <span>{seqNum}</span>
-                          {isExpandable ? <span className="pl-expand-caret" aria-hidden="true">{isExpanded ? '▾' : '▸'}</span> : null}
+                          {isExpandable ? <span className={productExpandCaretClass} aria-hidden="true">{isExpanded ? '▾' : '▸'}</span> : null}
                         </div>
                       </TableCell>
-                      <TableCell className="pl-image-cell">
+                      <TableCell className={productImageCellClass}>
                         {product.imageUrl
-                          ? <img src={String(product.imageUrl)} alt={String(product.name || product.tkId || '商品图片')} className="pl-image products-react-image" />
-                          : <span className="pl-image-placeholder products-react-image-placeholder">-</span>}
+                          ? <img src={String(product.imageUrl)} alt={String(product.name || product.tkId || '商品图片')} className={productImageClass} />
+                          : <span className={productImagePlaceholderClass}>-</span>}
                       </TableCell>
                       {showAccount ? <TableCell><Badge className="products-react-account-chip">{ProductLibraryTable.formatText(product.accountName)}</Badge></TableCell> : null}
-                      <TableCell className="mono products-react-id">{ProductLibraryTable.formatText(product.tkId)}</TableCell>
-                      <TableCell className="products-react-name-cell"><div>{ProductLibraryTable.formatText(product.name)}</div></TableCell>
+                      <TableCell className={productIdCellClass}>{ProductLibraryTable.formatText(product.tkId)}</TableCell>
+                      <TableCell className={productNameCellClass}><div className={productNameTextClass}>{ProductLibraryTable.formatText(product.name)}</div></TableCell>
                       <TableCell>{ProductLibraryTable.getCargoTypeLabel(defaults?.cargoType)}</TableCell>
                       <TableCell className="products-react-actions-cell min-w-[92px]">
                         <span className={cn(productSkuCountPillClass, isExpandable ? productSkuCountExpandableClass : '')} title={isExpandable ? '点击展开 SKU 明细' : undefined}>
@@ -323,7 +334,7 @@ function ProductsTableView({
                       </TableCell>
                       <TableCell>
                         {link1688 ? (
-                          <div className="pl-link-actions products-react-link-actions">
+                          <div className={productLinkActionsClass}>
                             <Button asChild size="smIcon" title="打开 1688 链接" aria-label="打开 1688 链接">
                               <a href={link1688} target="_blank" rel="noreferrer"><ExternalLink size={14} strokeWidth={2} /></a>
                             </Button>
@@ -334,7 +345,7 @@ function ProductsTableView({
                         ) : '-'}
                       </TableCell>
                       <TableCell>
-                        <div className="products-react-actions">
+                        <div className={productActionsClass}>
                           <Button size="smIcon" data-edit={tkId} title="编辑商品" aria-label="编辑商品" onClick={() => onEdit(tkId)}>
                             <Pencil size={14} strokeWidth={2} />
                           </Button>

@@ -517,6 +517,14 @@ const orderItemSelectClass = '!h-10 !min-h-10 rounded-[10px] border-[color-mix(i
 const orderItemInlineActionsClass = 'ot-item-inline-actions ml-1.5 inline-flex items-center gap-1.5';
 const orderItemInlineButtonClass = 'ot-item-inline-btn ot-item-copy-btn inline-flex h-4 w-4 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[var(--accent)] hover:text-[color-mix(in_srgb,var(--accent)_82%,black)] [&_svg]:h-3.5 [&_svg]:w-3.5';
 
+function getProfitValueClass(tone: string) {
+  return cn(
+    `ot-profit-value is-${tone}`,
+    tone === 'profit-positive' ? 'font-bold text-[var(--ok)]' : '',
+    tone === 'profit-negative' ? 'font-bold text-[var(--expense)]' : ''
+  );
+}
+
 function OrderItemsEditor({
   draft,
   products,
@@ -874,7 +882,7 @@ function OrdersTable({
                         <TableCell dangerouslySetInnerHTML={{ __html: buildSaleCellMarkup(order) }} />
                         <TableCell>{formatTableCellValue(order['采购价格'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['预估运费'])}</TableCell>
-                        <TableCell><span className={`ot-profit-value is-${getProfitCellToneClass(profit)}`}>{formatTableMoneyValue(profit) || '-'}</span></TableCell>
+                        <TableCell><span className={getProfitValueClass(getProfitCellToneClass(profit))}>{formatTableMoneyValue(profit) || '-'}</span></TableCell>
                         <TableCell>{formatTableCellValue(order['重量'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['尺寸'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['订单状态'])}</TableCell>

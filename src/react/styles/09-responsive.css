@@ -328,23 +328,6 @@
     font-size: 10.5px
   }
 
-  .formula-card {
-    padding: 18px
-  }
-
-  .formula-item {
-    padding: 12px 14px;
-    gap: 10px
-  }
-
-  .formula-eq {
-    font-size: 13px
-  }
-
-  .ot-formula .f-rule {
-    margin-left: 0
-  }
-
   .ship-ref {
     overflow-x: auto;
     margin: 18px -16px 0;

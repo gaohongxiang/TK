@@ -649,7 +649,7 @@ function CalculatorApp() {
               ].map(([key, label]) => (
                 <TabsTrigger
                   active={state.calcTab === key}
-                  className={`calc-tab ${state.calcTab === key ? 'active' : ''}`.trim()}
+                  className="flex-1 border-transparent bg-transparent px-3 py-1 text-[12.5px] font-semibold leading-[1.2] text-[var(--muted)] hover:border-[color-mix(in_srgb,var(--border)_86%,transparent)] hover:bg-[color-mix(in_srgb,var(--panel2)_50%,transparent)] hover:text-[var(--text)] data-[state=active]:border-[color-mix(in_srgb,var(--border)_84%,transparent)] data-[state=active]:bg-[color-mix(in_srgb,var(--panel2)_72%,transparent)] data-[state=active]:text-[var(--text)]"
                   data-calc-tab={key}
                   key={key}
                   onClick={() => setState(prev => ({ ...prev, calcTab: key }))}

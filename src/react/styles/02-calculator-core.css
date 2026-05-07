@@ -34,33 +34,6 @@
   flex-wrap: wrap
 }
 
-.calc-tab {
-  padding: 4px 12px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12.5px;
-  line-height: 1.2;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all .15s
-}
-
-.calc-tab:hover {
-  border-color: color-mix(in srgb, var(--border) 86%, transparent);
-  background: color-mix(in srgb, var(--panel2) 50%, transparent);
-  color: var(--text)
-}
-
-.calc-tab.active {
-  background: color-mix(in srgb, var(--panel2) 72%, transparent);
-  color: var(--text);
-  border-color: color-mix(in srgb, var(--border) 84%, transparent);
-  font-weight: 600
-}
-
 .calc-shared {
   margin-bottom: 18px
 }

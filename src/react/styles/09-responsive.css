@@ -186,11 +186,6 @@
     min-width: 0;
   }
 
-  .calc-tab {
-    flex: 1 1 auto;
-    text-align: center
-  }
-
   .pricing-ship-inline-inputs {
     grid-template-columns: 1fr 1fr
   }

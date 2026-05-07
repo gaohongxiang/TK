@@ -1,5 +1,6 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -279,7 +280,7 @@ function ProductsTableView({
                           ? <img src={String(product.imageUrl)} alt={String(product.name || product.tkId || '商品图片')} className="pl-image products-react-image" />
                           : <span className="pl-image-placeholder products-react-image-placeholder">-</span>}
                       </TableCell>
-                      {showAccount ? <TableCell><span className="chip muted products-react-account-chip">{ProductLibraryTable.formatText(product.accountName)}</span></TableCell> : null}
+                      {showAccount ? <TableCell><Badge className="products-react-account-chip">{ProductLibraryTable.formatText(product.accountName)}</Badge></TableCell> : null}
                       <TableCell className="mono products-react-id">{ProductLibraryTable.formatText(product.tkId)}</TableCell>
                       <TableCell className="products-react-name-cell"><div>{ProductLibraryTable.formatText(product.name)}</div></TableCell>
                       <TableCell>{ProductLibraryTable.getCargoTypeLabel(defaults?.cargoType)}</TableCell>

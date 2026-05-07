@@ -1,5 +1,6 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
+import { Badge, badgeToneMap } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -842,14 +843,15 @@ function OrdersTable({
                     const profit = computeOrderEstimatedProfit(order, exchangeRate);
                     const courierSummary = buildOrderCourierSummary(order, 'company', 'full');
                     const trackingSummary = buildOrderCourierSummary(order, 'tracking', 'full');
+                    const warningTone = badgeToneMap[(warn.cls || 'muted') as keyof typeof badgeToneMap] || 'default';
                     return (
                       <TableRow key={String(order.id)} className={isOrderRefunded(order) ? 'is-refunded' : undefined}>
                         <TableCell className="text-[var(--muted)]">{seqNum}</TableCell>
-                        {isAll ? <TableCell><span className="chip muted">{formatTableCellValue(order['账号'])}</span></TableCell> : null}
+                        {isAll ? <TableCell><Badge>{formatTableCellValue(order['账号'])}</Badge></TableCell> : null}
                         <TableCell>{formatTableCellValue(order['下单时间'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['采购日期'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['最晚到仓时间'])}</TableCell>
-                        <TableCell><span className={`chip ${warn.cls || ''}`}>{warn.text || '-'}</span></TableCell>
+                        <TableCell><Badge variant={warningTone}>{warn.text || '-'}</Badge></TableCell>
                         <TableCell dangerouslySetInnerHTML={{ __html: buildOrderNoCellMarkup(order) }} />
                         <TableCell className="orders-react-product-cell" title={String(order['产品名称'] || '')}>{formatTableCellValue(order['产品名称'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['数量'])}</TableCell>

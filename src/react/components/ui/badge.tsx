@@ -11,7 +11,8 @@ const badgeVariants = cva(
         success: 'border-[color-mix(in_srgb,var(--ok)_38%,var(--border))] bg-[color-mix(in_srgb,var(--ok)_12%,var(--panel))] text-[var(--ok)]',
         warning: 'border-[color-mix(in_srgb,var(--warn)_42%,var(--border))] bg-[color-mix(in_srgb,var(--warn)_12%,var(--panel))] text-[var(--warn)]',
         danger: 'border-[color-mix(in_srgb,var(--danger)_42%,var(--border))] bg-[color-mix(in_srgb,var(--danger)_10%,var(--panel))] text-[var(--danger)]',
-        accent: 'border-[color-mix(in_srgb,var(--accent)_36%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_10%,var(--panel))] text-[var(--accent)]'
+        accent: 'border-[color-mix(in_srgb,var(--accent)_36%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_10%,var(--panel))] text-[var(--accent)]',
+        info: 'border-[color-mix(in_srgb,var(--accent)_36%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_12%,var(--panel))] text-[var(--accent)]'
       }
     },
     defaultVariants: {
@@ -21,6 +22,16 @@ const badgeVariants = cva(
 );
 
 type BadgeProps = HTMLAttributes<HTMLSpanElement> & VariantProps<typeof badgeVariants>;
+
+const badgeToneMap = {
+  ok: 'success',
+  success: 'success',
+  warn: 'warning',
+  warning: 'warning',
+  danger: 'danger',
+  info: 'info',
+  muted: 'default'
+} as const;
 
 function Badge({ className, variant, ...props }: BadgeProps) {
   return (
@@ -34,4 +45,5 @@ function Badge({ className, variant, ...props }: BadgeProps) {
 
 export { Badge };
 export { badgeVariants };
+export { badgeToneMap };
 export type { BadgeProps };

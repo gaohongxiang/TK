@@ -91,6 +91,12 @@ const productSkuExpandedTableClass = 'pl-sku-expanded-table min-w-[560px] w-full
 const productSkuExpandedHeadCellClass = 'border-b border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel)_86%,white)] px-2.5 py-[7px] text-left align-middle text-[11px] font-normal uppercase tracking-[.08em] text-[var(--muted)]';
 const productSkuExpandedCellClass = 'border-b border-[color-mix(in_srgb,var(--border)_88%,white)] px-2.5 py-[7px] text-left align-middle text-[12.5px]';
 const productSkuExpandedSkuMainClass = 'pl-sku-expanded-sku-main font-semibold text-[var(--text)]';
+const productSkuEmptyClass = 'pl-sku-empty px-1 pb-0.5 pt-3 text-[12.5px] text-[var(--muted)]';
+const productSkuFeeStackClass = 'pl-sku-fee-stack flex flex-col items-center gap-0.5 text-center';
+const productSkuFeeValueClass = 'pl-sku-fee-value text-[13px] font-bold text-[var(--text)]';
+const productSkuFeeSubClass = 'pl-sku-fee-sub text-[11px] leading-[1.35] text-[var(--muted)] empty:hidden';
+const productSkuFeeNoteClass = 'pl-sku-fee-note text-[11px] leading-[1.35] text-[var(--expense)] empty:hidden';
+const productSkuActionsCellClass = 'pl-sku-cell-actions w-[72px] text-right';
 const EMPTY_PRODUCT_FORM: ProductFormDraft = {
   accountName: '',
   tkId: '',
@@ -605,7 +611,7 @@ function SkuEditorList({
   const pricingContext = useMemo(() => ensureGlobalSettingsStore(window).getPricingContext(), []);
 
   if (!draft.skus.length) {
-    return <div className="pl-sku-list" id="pl-sku-list"><div className="pl-sku-empty">请先添加 SKU；每个 SKU 单独维护重量、尺寸和预估运费。</div></div>;
+    return <div className="pl-sku-list" id="pl-sku-list"><div className={productSkuEmptyClass}>请先添加 SKU；每个 SKU 单独维护重量、尺寸和预估运费。</div></div>;
   }
 
   return (
@@ -678,15 +684,15 @@ function SkuEditorList({
                     />
                   </TableCell>
                   <TableCell>
-                    <div className="pl-sku-fee-stack">
-                      <span className="pl-sku-fee-value" data-sku-estimated-fee>{snapshot.estimatedShippingFee ? `¥ ${snapshot.estimatedShippingFee}` : '-'}</span>
-                      <span className="pl-sku-fee-sub" data-sku-charge-weight>{snapshot.chargeWeightKg ? `计费重 ${snapshot.chargeWeightKg} kg` : ''}</span>
-                      <span className="pl-sku-fee-note" data-sku-note>
+                    <div className={productSkuFeeStackClass}>
+                      <span className={productSkuFeeValueClass} data-sku-estimated-fee>{snapshot.estimatedShippingFee ? `¥ ${snapshot.estimatedShippingFee}` : '-'}</span>
+                      <span className={productSkuFeeSubClass} data-sku-charge-weight>{snapshot.chargeWeightKg ? `计费重 ${snapshot.chargeWeightKg} kg` : ''}</span>
+                      <span className={productSkuFeeNoteClass} data-sku-note>
                         {!useDefaults && sizeText.trim() && !dimensions.isComplete ? '尺寸请按 长×宽×高 填写' : snapshot.shippingNote}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="pl-sku-cell-actions">
+                  <TableCell className={productSkuActionsCellClass}>
                     <Button size="sm" variant="danger" data-sku-remove={index} onClick={() => onRemoveSku(index)}>删除</Button>
                   </TableCell>
                 </TableRow>

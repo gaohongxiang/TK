@@ -192,64 +192,6 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--expense) 16%, transparent);
 }
 
-.pl-sku-cell-toggle {
-  min-width: 112px;
-}
-
-.pl-sku-cell-actions {
-  width: 72px;
-  text-align: right;
-}
-
-.pl-sku-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.pl-sku-toggle input {
-  margin: 0;
-}
-
-.pl-sku-fee-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: center;
-  text-align: center;
-}
-
-.pl-sku-fee-value {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.pl-sku-fee-sub {
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.35;
-}
-
-.pl-sku-fee-note {
-  font-size: 11px;
-  color: var(--expense);
-  line-height: 1.35;
-}
-
-.pl-sku-fee-note:empty,
-.pl-sku-fee-sub:empty {
-  display: none;
-}
-
-.pl-sku-empty {
-  padding: 12px 4px 2px;
-  color: var(--muted);
-  font-size: 12.5px;
-}
-
 .ot-profit-value.is-profit-positive {
   color: var(--ok);
   font-weight: 700;

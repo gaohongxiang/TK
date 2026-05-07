@@ -363,39 +363,39 @@ function PricingNewPanel({
         </Card>
         <Card>
           <h2>各折扣档位定价 / 利润一览</h2>
-          <table className="mono calc-result-table">
-            <thead>
-              <tr>
-                <th>折扣</th>
-                <th>日元售价</th>
-                <th>人民币到手</th>
-                <th>利润</th>
-                <th>利润率</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyNew">
-              <tr className="orig-row">
-                <td>原价</td>
-                <td className="orig-price-cell">{formatMoney(origPrice, 0)} 円</td>
-                <td>{formatCny(origRow.cnyNet, 2)}</td>
-                <td className={origRow.profit > 0 ? 'profit-pos' : origRow.profit < 0 ? 'profit-neg' : ''}>{formatCny(origRow.profit, 2)}</td>
-                <td>{formatMargin(origRow.margin)}</td>
-              </tr>
+          <Table className="mono calc-result-table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>折扣</TableHead>
+                <TableHead>日元售价</TableHead>
+                <TableHead>人民币到手</TableHead>
+                <TableHead>利润</TableHead>
+                <TableHead>利润率</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody id="tbodyNew">
+              <TableRow className="orig-row">
+                <TableCell>原价</TableCell>
+                <TableCell className="orig-price-cell">{formatMoney(origPrice, 0)} 円</TableCell>
+                <TableCell>{formatCny(origRow.cnyNet, 2)}</TableCell>
+                <TableCell className={origRow.profit > 0 ? 'profit-pos' : origRow.profit < 0 ? 'profit-neg' : ''}>{formatCny(origRow.profit, 2)}</TableCell>
+                <TableCell>{formatMargin(origRow.margin)}</TableCell>
+              </TableRow>
               {rows.map(row => {
                 const isAnchor = Math.abs(row.discount - anchor) < 1e-9;
                 const profitClass = row.profit > 0 ? 'profit-pos' : row.profit < 0 ? 'profit-neg' : '';
                 return (
-                  <tr className={isAnchor ? 'anchor' : ''} key={row.discount}>
-                    <td>{formatDiscount(row.discount)}{isAnchor ? ' ★' : ''}</td>
-                    <td>{formatMoney(row.jpyPrice, 0)} 円</td>
-                    <td>{formatCny(row.cnyNet, 2)}</td>
-                    <td className={profitClass}>{formatCny(row.profit, 2)}</td>
-                    <td>{formatMargin(row.margin)}</td>
-                  </tr>
+                  <TableRow className={isAnchor ? 'anchor' : ''} key={row.discount}>
+                    <TableCell>{formatDiscount(row.discount)}{isAnchor ? ' ★' : ''}</TableCell>
+                    <TableCell>{formatMoney(row.jpyPrice, 0)} 円</TableCell>
+                    <TableCell>{formatCny(row.cnyNet, 2)}</TableCell>
+                    <TableCell className={profitClass}>{formatCny(row.profit, 2)}</TableCell>
+                    <TableCell>{formatMargin(row.margin)}</TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
           <div className="calc-formula-block">
             <div className="calc-formula-title">◇ 公式</div>
             <div className="calc-formula-list">
@@ -449,26 +449,26 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
         </Card>
         <Card>
           <h2>各折扣档位定价 / 利润一览</h2>
-          <table className="mono calc-result-table">
-            <thead>
-              <tr>
-                <th>折扣</th>
-                <th>日元售价</th>
-                <th>人民币到手</th>
-                <th>利润率</th>
-              </tr>
-            </thead>
-            <tbody id="tbody">
+          <Table className="mono calc-result-table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>折扣</TableHead>
+                <TableHead>日元售价</TableHead>
+                <TableHead>人民币到手</TableHead>
+                <TableHead>利润率</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody id="tbody">
               {rows.map(row => (
-                <tr className={Math.abs(row.discount - anchor) < 1e-9 ? 'anchor' : ''} key={row.discount}>
-                  <td>{formatDiscount(row.discount)}</td>
-                  <td>{formatMoney(row.jpyPrice, 0)} 円</td>
-                  <td>{formatCny(row.cnyNet, 2)}</td>
-                  <td>{formatMargin(row.margin)}</td>
-                </tr>
+                <TableRow className={Math.abs(row.discount - anchor) < 1e-9 ? 'anchor' : ''} key={row.discount}>
+                  <TableCell>{formatDiscount(row.discount)}</TableCell>
+                  <TableCell>{formatMoney(row.jpyPrice, 0)} 円</TableCell>
+                  <TableCell>{formatCny(row.cnyNet, 2)}</TableCell>
+                  <TableCell>{formatMargin(row.margin)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </Card>
       </div>
     </div>

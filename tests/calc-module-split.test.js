@@ -34,6 +34,18 @@ assert.match(
   'React 利润计算器需要复用现有公式和运费核心，并保留关键 DOM id 以维持体验连续性'
 );
 
+assert.match(
+  reactCalculatorSource,
+  /from '@\/components\/ui\/table'[\s\S]*<Table className="mono calc-result-table"[\s\S]*<TableBody id="tbodyNew"[\s\S]*<TableBody id="tbody"/,
+  'React 利润计算器结果表需要使用共享 Table primitive'
+);
+
+assert.doesNotMatch(
+  reactCalculatorSource,
+  /<table className="mono calc-result-table"/,
+  '利润计算器结果表不应继续使用原生 table'
+);
+
 (async () => {
   assert.match(reactCalculatorSource, /rateNew:\s*23\.5[\s\S]*calcTab:\s*'pricingNew'/, 'React 利润计算器需要保留原默认汇率和默认新定价 tab');
 

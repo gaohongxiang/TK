@@ -438,22 +438,6 @@ nav.modules a.active {
   line-height: 1.4
 }
 
-.field input,
-.field select,
-.field textarea {
-  width: 100%;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--panel2);
-  color: var(--text);
-  font: inherit;
-  outline: none;
-  transition: border-color .15s, box-shadow .15s, background .15s;
-  -webkit-appearance: none;
-  appearance: none
-}
-
 .field input[type=number],
 .field input[inputmode=decimal] {
   font-variant-numeric: tabular-nums
@@ -463,69 +447,6 @@ nav.modules a.active {
   .row.pricing-anchor-row {
     grid-template-columns: 1fr
   }
-}
-
-.field input:focus,
-.field select:focus,
-.field textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(110, 168, 255, .2)
-}
-
-.field.readonly input {
-  background: linear-gradient(180deg, rgba(138, 255, 207, .18), rgba(138, 255, 207, .08));
-  border-color: rgba(138, 255, 207, .42);
-  color: var(--accent2);
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: .5px
-}
-
-.field.readonly input:focus {
-  border-color: var(--accent2);
-  box-shadow: 0 0 0 3px rgba(138, 255, 207, .18)
-}
-
-.field.primary input {
-  background: linear-gradient(180deg, rgba(255, 200, 87, .18), rgba(255, 200, 87, .08));
-  border-color: rgba(255, 200, 87, .55);
-  color: var(--warn);
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: .5px
-}
-
-.field.primary input:focus {
-  border-color: var(--warn);
-  box-shadow: 0 0 0 3px rgba(255, 200, 87, .22)
-}
-
-.field.expense-field input {
-  background: linear-gradient(180deg, rgba(240, 138, 134, .18), rgba(240, 138, 134, .08));
-  border-color: rgba(240, 138, 134, .48);
-  color: var(--expense);
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: .5px
-}
-
-.field.expense-field input:focus {
-  border-color: var(--expense);
-  box-shadow: 0 0 0 3px rgba(240, 138, 134, .18)
-}
-
-.field.success input {
-  background: linear-gradient(180deg, rgba(138, 255, 207, .18), rgba(138, 255, 207, .08));
-  border-color: rgba(138, 255, 207, .42);
-  color: var(--accent2);
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: .5px
-}
-
-.field.success input:focus {
-  border-color: var(--accent2);
-  box-shadow: 0 0 0 3px rgba(138, 255, 207, .18)
 }
 
 .pricing-ship-inline {
@@ -4899,19 +4820,6 @@ table.ship td.actual {
 
   .row+.row {
     margin-top: 12px
-  }
-
-  .field input,
-  .field select,
-  .field textarea {
-    padding: 10px 12px;
-    font-size: 16px
-  }
-
-  .field.readonly input,
-  .field.primary input,
-  .field.success input {
-    font-size: 19px
   }
 
   table {

@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -161,6 +162,14 @@ function chargeRuleText(quote: ReturnType<typeof computeShippingQuote>) {
   return `${formatNumberValue(quote.volumeWeightKg, 3)} ${useVolume ? '>' : '<='} ${formatNumberValue(quote.actualWeightKg, 3)} × 1.5，${useVolume ? '按体积重计费' : '按实重计费'}`;
 }
 
+function inputToneForField(className: string, readOnly: boolean) {
+  if (className.includes('expense-field')) return 'expense';
+  if (className.includes('primary')) return 'primary';
+  if (className.includes('success')) return 'success';
+  if (className.includes('readonly') || readOnly) return 'readonly';
+  return 'default';
+}
+
 function Field({
   id,
   label,
@@ -179,18 +188,17 @@ function Field({
   readOnly?: boolean;
 }) {
   return (
-    <div className={`field ${className}`.trim()}>
-      <label htmlFor={id}>{label}</label>
+    <FormField htmlFor={id} label={label} hint={hint} className={className}>
       <Input
         id={id}
         inputMode="decimal"
         autoComplete="off"
+        tone={inputToneForField(className, readOnly)}
         value={value}
         readOnly={readOnly}
         onChange={event => onChange?.(event.target.value)}
       />
-      {hint ? <div className="hint">{hint}</div> : null}
-    </div>
+    </FormField>
   );
 }
 
@@ -225,13 +233,12 @@ function ShippingInline({
         <div className="pricing-ship-inline-alert mono" id={`shipChargeReason${suffix}`}>{quote.alerts[0]?.text || ''}</div>
       </div>
       <div className="pricing-ship-inline-inputs">
-        <div className="field">
-          <label htmlFor={cargoId}>货物类型</label>
+        <FormField htmlFor={cargoId} label="货物类型">
           <Select id={cargoId} value={state.shipCargoTypeNew} onChange={event => onCargo(event.target.value as CargoType)}>
             <option value="general">普货</option>
             <option value="special">特货</option>
           </Select>
-        </div>
+        </FormField>
         <Field id={weightId} label="实重（g）" value={state.shipActualWeightNew} onChange={value => onNumber('shipActualWeightNew', value)} />
         <Field id={lengthId} label="长（cm）" value={state.shipLengthNew} onChange={value => onNumber('shipLengthNew', value)} />
         <Field id={widthId} label="宽（cm）" value={state.shipWidthNew} onChange={value => onNumber('shipWidthNew', value)} />
@@ -262,10 +269,9 @@ function ShippingInline({
       </div>
       <div className="pricing-ship-inline-summary">
         <div className="pricing-ship-inline-summary-fields">
-          <div className="field">
-            <label htmlFor={`shipBand${suffix}`}>命中价卡区间</label>
+          <FormField htmlFor={`shipBand${suffix}`} label="命中价卡区间">
             <Input id={`shipBand${suffix}`} value={quote.band?.range || '-'} readOnly />
-          </div>
+          </FormField>
           <Field id={`shippingMultiplier${suffix}`} label="运费倍率" value={state.shippingMultiplierNew} onChange={value => onNumber('shippingMultiplierNew', value)} />
           <Field id={`labelFee${suffix}`} label="贴单费 ¥" value={state.labelFeeNew} onChange={value => onNumber('labelFeeNew', value)} />
         </div>
@@ -323,10 +329,9 @@ function PricingNewPanel({
           <div className="row triple">
             <Field id="costNew" label="采购价 ¥" className="expense-field" value={state.costNew} onChange={value => updateNumber('costNew', value)} />
             <Field id="overseasShippingNew" label="海外运费 ¥" className="expense-field" value={state.overseasShippingNew} onChange={value => updateNumber('overseasShippingNew', value)} />
-            <div className="field expense-field">
-              <label htmlFor="totalCostNew">总费用 ¥<span className="var">采购价+海外运费</span></label>
+            <FormField htmlFor="totalCostNew" label={<>总费用 ¥<span className="var">采购价+海外运费</span></>} className="expense-field">
               <Input id="totalCostNew" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
-            </div>
+            </FormField>
           </div>
           <ShippingInline state={state} onNumber={updateNumber} onCargo={updateCargo} onImport={importShipping} />
           <div style={{ marginTop: 18 }}>
@@ -336,23 +341,19 @@ function PricingNewPanel({
               <Field id="rateNew" label="日元汇率" value={state.rateNew} onChange={value => updateNumber('rateNew', value)} />
             </div>
             <div className="row pricing-anchor-row" style={{ marginTop: 18 }}>
-              <div className="field">
-                <label htmlFor="anchorNew">基准折扣档位</label>
+              <FormField htmlFor="anchorNew" label="基准折扣档位" hint="用于按该折扣反推原价">
                 <Select id="anchorNew" value={anchor} onChange={event => updateNumber('anchorNew', event.target.value)}>
                   {discounts.map(discount => <option value={discount} key={discount}>{formatDiscount(discount)}</option>)}
                 </Select>
-                <div className="hint">用于按该折扣反推原价</div>
-              </div>
+              </FormField>
               <Field id="targetMarginNew" label="目标利润率（倍）" value={state.targetMarginNew} hint="总费用倍数" onChange={value => updateNumber('targetMarginNew', value)} />
-              <div className="field">
-                <label htmlFor="discountsNew">折扣档位（逗号分隔）</label>
+              <FormField htmlFor="discountsNew" label="折扣档位（逗号分隔）" hint="支持 0.38 或 38%；档位可增删">
                 <Input
                   id="discountsNew"
                   value={state.discountsNew.join(',')}
                   onChange={event => setState(prev => ({ ...prev, discountsNew: parseDiscounts(event.target.value) }))}
                 />
-                <div className="hint">支持 0.38 或 38%；档位可增删</div>
-              </div>
+              </FormField>
             </div>
           </div>
           <div hidden aria-hidden="true">
@@ -428,13 +429,11 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
             <Field id="targetMargin" label="目标利润率（倍）" value={state.targetMargin} hint="人民币到手价 ÷ 采购价，例如 1.4 表示到手价 = 1.4 × 采购价" onChange={value => updateNumber('targetMargin', value)} />
           </div>
           <div className="row">
-            <div className="field">
-              <label htmlFor="anchor">基准折扣档位</label>
+            <FormField htmlFor="anchor" label="基准折扣档位" hint="以该档位为目标利润率的基准来反推原价">
               <Select id="anchor" value={anchor} onChange={event => updateNumber('anchor', event.target.value)}>
                 {discounts.map(discount => <option value={discount} key={discount}>{formatDiscount(discount)}</option>)}
               </Select>
-              <div className="hint">以该档位为目标利润率的基准来反推原价</div>
-            </div>
+            </FormField>
             <Field id="origPrice" label="商品原价（円）" className="readonly" value={Math.round(origPrice)} readOnly />
           </div>
           <details open style={{ marginTop: 16 }}>
@@ -492,10 +491,9 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
           <h2>成交输入</h2>
           <div className="row">
             <Field id="salePrice" label="实际售价（円）" className="success" value={state.salePrice || ''} onChange={value => updateNumber('salePrice', value)} />
-            <div className="field expense-field">
-              <label htmlFor="totalCostReview">总费用 ¥<span className="var">采购价+海外运费</span></label>
+            <FormField htmlFor="totalCostReview" label={<>总费用 ¥<span className="var">采购价+海外运费</span></>} className="expense-field">
               <Input id="totalCostReview" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
-            </div>
+            </FormField>
           </div>
           <div style={{ marginTop: 18 }}>
             <div className="row">

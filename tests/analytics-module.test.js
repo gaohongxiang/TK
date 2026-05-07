@@ -100,6 +100,12 @@ assert.doesNotMatch(
   'React ECharts 迁移后不应继续保留旧手写 SVG 图表样式块'
 );
 
+assert.doesNotMatch(
+  styleSource,
+  /\.field input,\s*\n\.field select,\s*\n\.field textarea|\.field\.expense-field input|\.field\.primary input|\.field\.success input|\.field\.readonly input/,
+  '通用输入框和计算器 tone 样式应由 React Input/FormField primitives 接管'
+);
+
 assert.match(
   styleSource,
   /\.analytics-react-overview[\s\S]*height:\s*332px[\s\S]*\.analytics-react-funnel-summary/,

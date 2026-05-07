@@ -230,13 +230,13 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /<label>订单号 \*<\/label>[\s\S]*<Input name="订单号" required/,
+  /<FormField label="订单号 \*"[\s\S]*<Input name="订单号" required/,
   '订单号需要是必填字段'
 );
 
 assert.match(
   ordersPageSource,
-  /<label>总重量\(g\)[\s\S]*id="ot-weight-hint"[\s\S]*<\/label>[\s\S]*name="重量"/,
+  /<FormField label=\{<>总重量\(g\)[\s\S]*id="ot-weight-hint"[\s\S]*<\/span><\/>\}[\s\S]*name="重量"/,
   '订单弹窗需要展示多件重量自动折算提示'
 );
 

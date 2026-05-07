@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -688,39 +689,34 @@ function OrderItemsEditor({
             >
               ×
             </button>
-            <div className="field ot-item-field ot-item-span-3">
-              <label>关联商品</label>
+            <FormField label="关联商品" className="ot-item-field ot-item-span-3">
               <ProductCombo value={item.productTkId} accountName={draft.accountName} products={products} onChange={value => handleProductChange(index, value)} />
-            </div>
-            <div className="field ot-item-field ot-item-span-3">
-              <label>关联SKU</label>
+            </FormField>
+            <FormField label="关联SKU" className="ot-item-field ot-item-span-3">
               <SkuCombo value={item.productSkuId} product={product} onChange={value => handleSkuChange(index, item.productTkId, value)} />
               <input type="hidden" data-item-field="productSkuName" value={item.productSkuName} readOnly />
-            </div>
-            <div className="field ot-item-field ot-item-span-3">
-              <label>商品名称</label>
+            </FormField>
+            <FormField label="商品名称" className="ot-item-field ot-item-span-3">
               <Input className="pl-sku-inline-input" data-item-field="productName" value={item.productName} onChange={event => updateItem(index, { productName: event.target.value })} />
-            </div>
-            <div className="field ot-item-field ot-item-span-3">
-              <label>快递公司</label>
+            </FormField>
+            <FormField label="快递公司" className="ot-item-field ot-item-span-3">
               <Select data-item-field="courierCompany" value={item.courierCompany} onChange={event => updateItem(index, { courierCompany: event.target.value })}>
                 {COURIER_OPTIONS.map(option => <option value={option} key={option}>{option || '- 未填写 -'}</option>)}
               </Select>
-            </div>
-            <div className="field ot-item-field ot-item-span-3">
-              <label>数量</label>
+            </FormField>
+            <FormField label="数量" className="ot-item-field ot-item-span-3">
               <Input type="number" className="pl-sku-inline-input" data-item-field="quantity" min="1" step="1" value={item.quantity} onChange={event => updateItem(index, { quantity: event.target.value })} />
-            </div>
-            <div className="field ot-item-field ot-item-span-3">
-              <label>单件重量(g)</label>
+            </FormField>
+            <FormField label="单件重量(g)" className="ot-item-field ot-item-span-3">
               <Input className="pl-sku-inline-input" data-item-field="unitWeightG" value={item.unitWeightG} onChange={event => updateItem(index, { unitWeightG: event.target.value })} />
-            </div>
-            <div className="field ot-item-field ot-item-span-3">
-              <label>单件尺寸(cm)</label>
+            </FormField>
+            <FormField label="单件尺寸(cm)" className="ot-item-field ot-item-span-3">
               <Input className="pl-sku-inline-input" data-item-field="unitSizeText" value={item.unitSizeText} placeholder="20×15×10" onChange={event => updateItem(index, { unitSizeText: event.target.value })} />
-            </div>
-            <div className="field ot-item-field ot-item-span-3">
-              <label>
+            </FormField>
+            <FormField
+              className="ot-item-field ot-item-span-3"
+              label={
+                <>
                 快递单号
                 <span className="ot-item-inline-actions">
                   <button
@@ -740,7 +736,9 @@ function OrderItemsEditor({
                     <Copy size={14} strokeWidth={2} />
                   </button>
                 </span>
-              </label>
+                </>
+              }
+            >
               <Input
                 className="pl-sku-inline-input"
                 data-item-field="trackingNo"
@@ -752,7 +750,7 @@ function OrderItemsEditor({
                   updateItem(index, { trackingNo, courierCompany: detected || item.courierCompany });
                 }}
               />
-            </div>
+            </FormField>
           </div>
         );
       })}
@@ -1073,8 +1071,7 @@ function OrderModal({
         <DialogTitle id="ot-modal-title">{editingId ? '编辑订单' : '新增订单'}</DialogTitle>
         <form id="ot-form" autoComplete="off" onSubmit={event => { event.preventDefault(); onSubmit(); }}>
           <div className="row">
-            <div className="field">
-              <label>账号 *</label>
+            <FormField label="账号 *">
               <Select name="账号" id="ot-acc-select" required value={draft.accountName} onChange={event => {
                 if (event.target.value === '__ADD__') {
                   onAddAccount();
@@ -1086,25 +1083,21 @@ function OrderModal({
                 {accounts.map(account => <option value={account} key={account}>{account}</option>)}
                 <option value="__ADD__">+ 添加账号</option>
               </Select>
-            </div>
-            <div className="field">
-              <label>订单号 *</label>
+            </FormField>
+            <FormField label="订单号 *">
               <Input name="订单号" required value={draft.orderNo} onChange={event => updateDraft({ orderNo: event.target.value }, false)} />
-            </div>
+            </FormField>
           </div>
           <div className="row triple">
-            <div className="field">
-              <label>下单时间 *</label>
+            <FormField label="下单时间 *">
               <Input type="date" name="下单时间" required value={draft.orderedAt} onChange={event => updateDraft({ orderedAt: event.target.value })} />
-            </div>
-            <div className="field">
-              <label>采购日期</label>
+            </FormField>
+            <FormField label="采购日期">
               <Input type="date" name="采购日期" value={draft.purchaseDate} onChange={event => updateDraft({ purchaseDate: event.target.value }, false)} />
-            </div>
-            <div className="field">
-              <label>最晚到仓时间 <span className="kbd">自动</span></label>
+            </FormField>
+            <FormField label={<>最晚到仓时间 <span className="kbd">自动</span></>}>
               <Input type="date" name="最晚到仓时间" readOnly value={draft.latestWarehouseAt} />
-            </div>
+            </FormField>
           </div>
           <section className="ot-item-block">
             <div className="ot-item-block-head">
@@ -1122,29 +1115,24 @@ function OrderModal({
             <input type="hidden" name="数量" id="ot-total-quantity-hidden" value={computeItemTotals(draft.items).quantity || ''} readOnly />
           </section>
           <div className="row triple">
-            <div className="field">
-              <label>总件数</label>
+            <FormField label="总件数">
               <Input id="ot-total-quantity" readOnly value={computeItemTotals(draft.items).quantity || ''} />
-            </div>
-            <div className="field">
-              <label>总重量(g) <span className="ot-inline-hint" id="ot-weight-hint">{computeItemTotals(draft.items).quantity > 1 ? '已按各 SKU 单件重量 × 数量汇总' : ''}</span></label>
+            </FormField>
+            <FormField label={<>总重量(g) <span className="ot-inline-hint" id="ot-weight-hint">{computeItemTotals(draft.items).quantity > 1 ? '已按各 SKU 单件重量 × 数量汇总' : ''}</span></>}>
               <Input name="重量" value={draft.weightText} onChange={event => updateDraft({ weightText: event.target.value })} />
-            </div>
-            <div className="field">
-              <label>总尺寸(cm) <span className="ot-inline-hint">多个订单明细时请自行调整尺寸</span></label>
+            </FormField>
+            <FormField label={<>总尺寸(cm) <span className="ot-inline-hint">多个订单明细时请自行调整尺寸</span></>}>
               <Input name="尺寸" value={draft.sizeText} onChange={event => updateDraft({ sizeText: event.target.value })} />
-            </div>
+            </FormField>
           </div>
           <div className="row quint ot-money-row-top">
-            <div className="field ot-refund-field">
-              <label>是否退款</label>
+            <FormField label="是否退款" className="ot-refund-field">
               <label className="ot-refund-toggle">
                 <input type="checkbox" id="ot-is-refunded" name="是否退款" value="1" checked={draft.isRefunded} onChange={event => updateDraft({ isRefunded: event.target.checked })} />
                 <span className="ot-refund-toggle-knob" aria-hidden="true"></span>
               </label>
-            </div>
-            <div className={cn('field ot-sale-field', draft.isRefunded ? 'is-refunded' : '')}>
-              <label>总售价（日元）</label>
+            </FormField>
+            <FormField label="总售价（日元）" className={cn('ot-sale-field', draft.isRefunded ? 'is-refunded' : '')}>
               <div className="ot-sale-input-wrap">
                 <Input type="number" id="ot-total-sale" name="售价" min="0" step="0.01" readOnly={draft.isRefunded} value={draft.salePrice} onChange={event => updateDraft({ salePrice: event.target.value })} />
                 <div className="ot-sale-input-refund" aria-hidden="true">
@@ -1152,40 +1140,33 @@ function OrderModal({
                   <span className="ot-sale-input-zero">0</span>
                 </div>
               </div>
-            </div>
-            <div className="field">
-              <label>总采购额（元）</label>
+            </FormField>
+            <FormField label="总采购额（元）">
               <Input type="number" id="ot-total-purchase" name="采购价格" min="0" step="0.01" value={draft.purchasePrice} onChange={event => updateDraft({ purchasePrice: event.target.value })} />
-            </div>
-            <div className="field">
-              <label>预估总海外运费（元）</label>
+            </FormField>
+            <FormField label="预估总海外运费（元）">
               <Input type="number" name="预估运费" min="0" step="0.01" value={draft.estimatedShippingFee} onChange={event => updateDraft({ estimatedShippingFee: event.target.value })} />
-            </div>
-            <div className="field">
-              <label>预估利润（人民币） <span className="kbd">自动</span></label>
+            </FormField>
+            <FormField label={<>预估利润（人民币） <span className="kbd">自动</span></>}>
               <Input type="number" name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
-            </div>
+            </FormField>
           </div>
           <div className="row quad ot-meta-row">
-            <div className="field">
-              <label>达人佣金率（%）</label>
+            <FormField label="达人佣金率（%）">
               <Input type="number" name="达人佣金率" min="0" step="0.01" value={draft.creatorCommissionRate} onChange={event => updateDraft({ creatorCommissionRate: event.target.value })} />
-            </div>
-            <div className="field">
-              <label>达人佣金（元） <span className="kbd">自动</span></label>
+            </FormField>
+            <FormField label={<>达人佣金（元） <span className="kbd">自动</span></>}>
               <Input type="number" name="达人佣金" step="0.01" readOnly value={draft.creatorCommission} />
-            </div>
-            <div className="field">
-              <label>订单状态</label>
+            </FormField>
+            <FormField label="订单状态">
               <Select name="订单状态" value={draft.orderStatus} onChange={event => updateDraft({ orderStatus: event.target.value })}>
                 <option value="">- 请选择 -</option>
                 {ORDER_STATUS_OPTIONS.map(status => <option value={status} key={status}>{status}</option>)}
               </Select>
-            </div>
-            <div className="field">
-              <label>订单预警 <span className="kbd">自动</span></label>
+            </FormField>
+            <FormField label={<>订单预警 <span className="kbd">自动</span></>}>
               <Input name="订单预警" readOnly value={draft.warningText} />
-            </div>
+            </FormField>
           </div>
           <div className="actions">
             <Button id="ot-cancel" onClick={() => onOpenChange(false)}>取消</Button>
@@ -1216,10 +1197,9 @@ function AddAccountModal({
         <DialogTitle>添加新账号</DialogTitle>
         <form id="ot-add-acc-form" autoComplete="off" onSubmit={event => { event.preventDefault(); onConfirm(); }}>
           <div className="row">
-            <div className="field full" style={{ gridColumn: '1/-1' }}>
-              <label>新账号名称</label>
+            <FormField label="新账号名称" full>
               <Input id="ot-new-acc-input" value={value} placeholder="例如：US-TK-01" required onChange={event => onValueChange(event.target.value)} />
-            </div>
+            </FormField>
           </div>
           <div className="actions" style={{ marginTop: 20 }}>
             <Button id="ot-add-acc-cancel" onClick={() => onOpenChange(false)}>取消</Button>

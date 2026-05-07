@@ -10,6 +10,7 @@ const productsPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 're
 const connectionSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'firestore-connection.mjs'), 'utf8');
 const reactIslandSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'ReactIsland.tsx'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+const formPrimitiveSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'form.tsx'), 'utf8');
 
 assert.doesNotMatch(
   indexSource,
@@ -123,6 +124,24 @@ assert.match(
   calculatorSource,
   /from '@\/components\/ui\/button'[\s\S]*from '@\/components\/ui\/tabs'|from '@\/components\/ui\/tabs'[\s\S]*from '@\/components\/ui\/button'/,
   '利润计算器模式切换和帮助弹窗按钮需要使用共享 Button/Tabs primitives'
+);
+
+assert.match(
+  formPrimitiveSource,
+  /data-slot="form-field"[\s\S]*<Label[\s\S]*data-slot="form-field-hint"/s,
+  'FormField primitive 需要统一字段容器、Label 和 hint'
+);
+
+assert.match(
+  calculatorSource,
+  /from '@\/components\/ui\/form'[\s\S]*<FormField htmlFor=\{id\}[\s\S]*<FormField htmlFor=\{cargoId\}[\s\S]*<FormField htmlFor="totalCostNew"[\s\S]*<FormField htmlFor="anchor"/,
+  '利润计算器字段包装需要收敛到 FormField primitive，并保留关键输入 id'
+);
+
+assert.doesNotMatch(
+  calculatorSource,
+  /<label htmlFor=|<div className="hint">/,
+  '利润计算器不应再直接手写 label/hint 字段包装'
 );
 
 assert.match(

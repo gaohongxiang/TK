@@ -1,6 +1,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { FormField } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useState } from 'react';
 import { TKFirestoreConnection } from '../../firestore-connection.mjs';
@@ -114,8 +115,7 @@ function ReactIsland() {
             </AlertDescription>
           </Alert>
           <div className="row" style={{ marginTop: 14 }}>
-            <div className="field full" style={{ gridColumn: '1/-1' }}>
-              <label htmlFor="app-firestore-config">Firebase config</label>
+            <FormField htmlFor="app-firestore-config" label="Firebase config" full>
               <Textarea
                 id="app-firestore-config"
                 rows={8}
@@ -129,7 +129,7 @@ function ReactIsland() {
                 value={configText}
                 onChange={event => setConfigText(event.target.value)}
               />
-            </div>
+            </FormField>
           </div>
           <div className="ot-setup-guide-actions" style={{ marginTop: 10 }}>
             <Button id="app-open-firebase-console" size="sm" onClick={() => TKFirestoreConnection.openConsole()}>打开 Firebase Console</Button>

@@ -135,6 +135,7 @@ assert.match(
   'card.tsx',
   'checkbox.tsx',
   'dialog.tsx',
+  'form.tsx',
   'input.tsx',
   'label.tsx',
   'select.tsx',
@@ -150,6 +151,7 @@ assert.match(
   'button.tsx',
   'card.tsx',
   'dialog.tsx',
+  'form.tsx',
   'input.tsx',
   'select.tsx',
   'textarea.tsx',
@@ -161,6 +163,12 @@ assert.match(
   assert.match(source, /data-slot=/, `${file} 需要暴露 data-slot，便于后续 UI 收敛和测试`);
   assert.match(source, /var\(--|color-mix\(in_srgb|class-variance-authority|cn\(/, `${file} 需要复用现有 token 或 Tailwind/cva 样式`);
 });
+
+assert.match(
+  fs.readFileSync(path.join(uiRoot, 'input.tsx'), 'utf8'),
+  /inputVariants[\s\S]*tone:[\s\S]*readonly[\s\S]*primary[\s\S]*expense[\s\S]*success/s,
+  'Input primitive 需要承接计算器的重点/费用/成功/只读视觉状态'
+);
 
 assert.match(
   reactToast,

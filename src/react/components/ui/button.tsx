@@ -11,7 +11,7 @@ const buttonVariants = cva('', {
       danger: 'border border-[var(--danger)] bg-transparent text-[var(--danger)] hover:bg-[var(--danger)] hover:text-white',
       accentSoft: 'border border-[color-mix(in_srgb,var(--accent)_28%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_12%,var(--panel))] font-semibold text-[color-mix(in_srgb,var(--accent)_82%,var(--text))] hover:border-[color-mix(in_srgb,var(--accent)_42%,var(--border))] hover:bg-[color-mix(in_srgb,var(--accent)_20%,var(--panel))]',
       ghost: 'border border-transparent bg-transparent text-[var(--muted)] hover:bg-[var(--panel2)] hover:text-[var(--text)]',
-      plain: ''
+      plain: 'appearance-none border-0 bg-transparent p-0 text-[inherit] shadow-none'
     },
     size: {
       none: '',

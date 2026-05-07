@@ -330,9 +330,18 @@
     font-size: 13px
   }
 
+  .calc-result-table {
+    font-size: 12px
+  }
+
   th,
   td {
     padding: 9px 6px
+  }
+
+  .calc-result-table th,
+  .calc-result-table td {
+    padding-inline: 4px
   }
 
   th {

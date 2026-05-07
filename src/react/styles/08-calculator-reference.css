@@ -268,7 +268,10 @@
 
 .ship-rate-wrap {
   margin-top: 16px;
-  overflow-x: auto
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch
 }
 
 .ship-rate-title {

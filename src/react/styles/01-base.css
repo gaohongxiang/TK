@@ -77,6 +77,7 @@ a {
 }
 
 .app-main {
+  min-width: 0;
   outline: none
 }
 
@@ -279,5 +280,9 @@ nav.modules a.active {
 .grid {
   display: grid;
   gap: 18px;
-  grid-template-columns: 1.1fr 1fr
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr)
+}
+
+.grid>* {
+  min-width: 0
 }

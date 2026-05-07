@@ -256,6 +256,18 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
+  /from '@\/components\/ui\/table'[\s\S]*<Table className="analytics-detail-table"[\s\S]*<TableHeader>[\s\S]*<TableBody>/,
+  '数据分析明细表需要使用共享 Table primitive'
+);
+
+assert.doesNotMatch(
+  reactAnalyticsSource,
+  /<table className="ot-table analytics-detail-table"/,
+  '数据分析明细表不应继续使用 legacy ot-table 原生表格'
+);
+
+assert.match(
+  reactAnalyticsSource,
   /<Card className="analytics-chart-card analytics-overview-card"[\s\S]*<Badge className="analytics-chip muted"[\s\S]*<Alert variant="info" className="analytics-privacy-strip"[\s\S]*<Card id="analytics-empty"/,
   '数据分析页面应在保留现有 class 的前提下，把卡片、标签和提示容器收敛到 primitives'
 );

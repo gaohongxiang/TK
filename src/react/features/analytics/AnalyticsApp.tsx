@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, TableViewport } from '@/components/ui/table-tools';
 import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsRecord } from './types';
 import { buildFunnelStages, buildOpportunityScatterOption, buildOverviewOption, DIAGNOSIS_COLORS } from './chartOptions';
@@ -112,35 +113,35 @@ function DiagnosisCards({ records }: { records: AnalyticsRecord[] }) {
 function DetailTable({ records }: { records: AnalyticsRecord[] }) {
   const rows = useMemo(() => [...records].sort((a, b) => b.gmv - a.gmv || b.exposureTotal - a.exposureTotal).slice(0, 50), [records]);
   return (
-    <table className="ot-table analytics-detail-table">
-      <thead>
-        <tr>
-          <th>商品</th>
-          <th>GMV</th>
-          <th>订单</th>
-          <th>总曝光</th>
-          <th>总浏览</th>
-          <th>点击率</th>
-          <th>诊断</th>
-        </tr>
-      </thead>
-      <tbody>
+    <Table className="analytics-detail-table">
+      <TableHeader>
+        <TableRow>
+          <TableHead>商品</TableHead>
+          <TableHead>GMV</TableHead>
+          <TableHead>订单</TableHead>
+          <TableHead>总曝光</TableHead>
+          <TableHead>总浏览</TableHead>
+          <TableHead>点击率</TableHead>
+          <TableHead>诊断</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {rows.map(record => (
-          <tr key={record.id || record.name}>
-            <td title={record.name}>
+          <TableRow key={record.id || record.name}>
+            <TableCell title={record.name}>
               <div className="analytics-product-name">{shortenText(record.name, 64)}</div>
               <div className="analytics-product-id">{record.id}</div>
-            </td>
-            <td>{formatYen(record.gmv)}</td>
-            <td>{formatInteger(record.orders)}</td>
-            <td>{formatInteger(record.exposureTotal)}</td>
-            <td>{formatInteger(record.pageViewsTotal)}</td>
-            <td>{formatPercent(record.overallCtr)}</td>
-            <td><Badge className={`analytics-tag is-${record.diagnosis.tone}`}>{record.diagnosis.label}</Badge></td>
-          </tr>
+            </TableCell>
+            <TableCell>{formatYen(record.gmv)}</TableCell>
+            <TableCell>{formatInteger(record.orders)}</TableCell>
+            <TableCell>{formatInteger(record.exposureTotal)}</TableCell>
+            <TableCell>{formatInteger(record.pageViewsTotal)}</TableCell>
+            <TableCell>{formatPercent(record.overallCtr)}</TableCell>
+            <TableCell><Badge className={`analytics-tag is-${record.diagnosis.tone}`}>{record.diagnosis.label}</Badge></TableCell>
+          </TableRow>
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }
 

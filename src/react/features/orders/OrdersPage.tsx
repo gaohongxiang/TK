@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, storageHelpButtonClass, syncStatusClass } from '@/components/ui/status-strip';
 import { EmptyState, TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { showAppToast } from '@/app/toast';
@@ -533,6 +534,39 @@ const orderSaleCurrentClass = 'ot-sale-current font-semibold text-[#c44e4e]';
 const orderOrderNoCellClass = 'ot-order-no-cell inline-flex min-w-0 flex-nowrap items-center gap-1.5';
 const orderOrderNoTextClass = 'ot-order-no-text min-w-0';
 const orderTagClass = 'ot-order-tag ot-order-tag-creator inline-flex h-[18px] items-center justify-center whitespace-nowrap rounded-full border border-[rgba(196,78,78,.22)] bg-[rgba(196,78,78,.12)] px-[7px] text-[10.5px] font-bold leading-none tracking-[.04em] text-[#b5525e] opacity-[.98]';
+const orderSetupCardClass = 'ot-setup mx-auto max-w-[880px]';
+const orderHeaderRowClass = 'ot-header-row mb-3.5 last:mb-0';
+const orderSummaryContainerClass = 'mb-0';
+const orderSummarySurfaceClass = 'ot-summary-surface rounded-2xl border border-[var(--border)] bg-[linear-gradient(180deg,rgba(110,168,255,.07),rgba(138,255,207,.04))] px-0 py-[18px] max-[768px]:p-4';
+const orderSummaryGridClass = 'ot-summary-grid relative grid grid-cols-2 gap-0 after:pointer-events-none after:absolute after:bottom-1.5 after:left-1/2 after:top-1.5 after:w-px after:-translate-x-1/2 after:bg-[color-mix(in_srgb,var(--border)_86%,white)] max-[768px]:grid-cols-1 max-[768px]:gap-3.5 max-[768px]:after:hidden max-[640px]:gap-3';
+const orderSummarySectionClass = 'ot-summary-section min-w-0 px-[38px] pb-0.5 pt-1 max-[768px]:px-0 max-[768px]:py-0 [&+&]:border-l-0 max-[768px]:[&+&]:border-t max-[768px]:[&+&]:border-[color-mix(in_srgb,var(--border)_86%,white)] max-[768px]:[&+&]:pt-4';
+const orderSummaryHeadClass = 'ot-summary-head flex items-start justify-between gap-3 max-[768px]:flex-col max-[768px]:gap-1';
+const orderSummaryLabelClass = 'ot-summary-label text-[11.5px] font-semibold uppercase tracking-[.7px] text-[var(--muted)]';
+const orderSummaryMetaClass = 'ot-summary-meta-inline text-right text-xs leading-[1.45] text-[var(--muted)] max-[768px]:text-left';
+const orderSummaryHeroClass = 'ot-summary-hero mt-[18px] flex items-baseline justify-between gap-4 border-l-[3px] border-[color-mix(in_srgb,var(--accent)_50%,var(--border))] pl-4';
+const orderSummaryHeroLabelClass = 'ot-summary-hero-label block flex-1 text-[13px] leading-normal text-[color-mix(in_srgb,var(--muted)_86%,var(--text))]';
+const orderSummaryHeroValueClass = 'ot-summary-hero-value block flex-none text-right text-3xl font-extrabold leading-[1.05] tracking-normal text-[var(--text)] max-[640px]:text-[22px]';
+const orderSummaryLedgerClass = 'ot-summary-ledger mt-[18px] grid grid-cols-[minmax(0,.84fr)_minmax(0,1.16fr)] gap-3 border-t border-[color-mix(in_srgb,var(--border)_82%,white)] pt-3.5 max-[640px]:grid-cols-1';
+const orderSummaryLedgerItemClass = 'ot-summary-ledger-item min-w-0';
+const orderSummaryLedgerIncomeClass = cn(orderSummaryLedgerItemClass, 'is-income');
+const orderSummaryLedgerExpenseClass = cn(orderSummaryLedgerItemClass, 'is-expense');
+const orderSummaryLedgerLabelClass = 'ot-summary-ledger-label block text-[10.5px] uppercase tracking-[.18em] text-[var(--muted)]';
+const orderSummaryLedgerValueClass = 'ot-summary-ledger-value mt-[7px] block text-lg font-bold leading-[1.15] text-[var(--text)]';
+const orderSummaryLedgerIncomeValueClass = cn(orderSummaryLedgerValueClass, 'text-[var(--ok)]');
+const orderSummaryLedgerExpenseValueClass = cn(orderSummaryLedgerValueClass, 'text-[var(--expense)]');
+const orderSummaryLedgerNoteClass = 'ot-summary-ledger-note mt-[7px] block overflow-hidden text-ellipsis whitespace-nowrap text-[10.5px] leading-[1.35] tracking-normal text-[var(--muted)] max-[768px]:whitespace-normal max-[640px]:whitespace-normal';
+
+function orderSummaryHeroClassForMetric(metric: any) {
+  if (metric?.total > 0) return cn(orderSummaryHeroClass, 'is-profit-positive border-[color-mix(in_srgb,var(--ok)_82%,var(--border))]');
+  if (metric?.total < 0) return cn(orderSummaryHeroClass, 'is-profit-negative border-[color-mix(in_srgb,var(--expense)_84%,var(--border))]');
+  return cn(orderSummaryHeroClass, 'is-neutral');
+}
+
+function orderSummaryHeroValueClassForMetric(metric: any) {
+  if (metric?.total > 0) return cn(orderSummaryHeroValueClass, 'text-[var(--ok)]');
+  if (metric?.total < 0) return cn(orderSummaryHeroValueClass, 'text-[var(--expense)]');
+  return orderSummaryHeroValueClass;
+}
 
 function getProfitValueClass(tone: string) {
   return cn(
@@ -767,25 +801,25 @@ function OrdersSummary({
     meta: string
   ) {
     return (
-      <section className="ot-summary-section">
-        <div className="ot-summary-head">
-          <div className="ot-summary-label">{title}</div>
-          <div className="ot-summary-meta-inline">{meta}</div>
+      <section className={orderSummarySectionClass}>
+        <div className={orderSummaryHeadClass}>
+          <div className={orderSummaryLabelClass}>{title}</div>
+          <div className={orderSummaryMetaClass}>{meta}</div>
         </div>
-        <div className={`ot-summary-hero is-${profitMetric?.total > 0 ? 'profit-positive' : profitMetric?.total < 0 ? 'profit-negative' : 'neutral'}`}>
-          <span className="ot-summary-hero-label">预估总利润</span>
-          <strong className="ot-summary-hero-value">{formatSummaryMetric(profitMetric)}</strong>
+        <div className={orderSummaryHeroClassForMetric(profitMetric)}>
+          <span className={orderSummaryHeroLabelClass}>预估总利润</span>
+          <strong className={orderSummaryHeroValueClassForMetric(profitMetric)}>{formatSummaryMetric(profitMetric)}</strong>
         </div>
-        <div className="ot-summary-ledger">
-          <div className="ot-summary-ledger-item is-income">
-            <span className="ot-summary-ledger-label">收入</span>
-            <strong className="ot-summary-ledger-value">{formatSummaryMetric(saleMetric)}</strong>
-            <span className="ot-summary-ledger-note">{buildIncomeNote(grossMetric, refundMetric)}</span>
+        <div className={orderSummaryLedgerClass}>
+          <div className={orderSummaryLedgerIncomeClass}>
+            <span className={orderSummaryLedgerLabelClass}>收入</span>
+            <strong className={orderSummaryLedgerIncomeValueClass}>{formatSummaryMetric(saleMetric)}</strong>
+            <span className={orderSummaryLedgerNoteClass}>{buildIncomeNote(grossMetric, refundMetric)}</span>
           </div>
-          <div className="ot-summary-ledger-item is-expense">
-            <span className="ot-summary-ledger-label">支出</span>
-            <strong className="ot-summary-ledger-value">{count ? `¥ ${expenseTotal.toFixed(2)}` : '-'}</strong>
-            <span className="ot-summary-ledger-note">采购 · 运费 · 达人</span>
+          <div className={orderSummaryLedgerExpenseClass}>
+            <span className={orderSummaryLedgerLabelClass}>支出</span>
+            <strong className={orderSummaryLedgerExpenseValueClass}>{count ? `¥ ${expenseTotal.toFixed(2)}` : '-'}</strong>
+            <span className={orderSummaryLedgerNoteClass}>采购 · 运费 · 达人</span>
           </div>
         </div>
       </section>
@@ -793,8 +827,8 @@ function OrdersSummary({
   }
 
   return (
-    <div className="ot-summary-surface">
-      <div className="ot-summary-grid">
+    <div className={orderSummarySurfaceClass}>
+      <div className={orderSummaryGridClass}>
         {card(
           activeAccount !== '__all__' || searchQuery ? `当前筛选${activeAccount !== '__all__' ? ` · 账号：${activeAccount}` : ''}${searchQuery ? ` · 搜索：${searchQuery}` : ''}` : '当前筛选',
           summary.filteredProfitMetric,
@@ -1516,7 +1550,7 @@ function OrdersPage() {
       />
 
       {!connected ? (
-        <Card className="ot-setup" id="ot-setup">
+        <Card className={orderSetupCardClass} id="ot-setup">
           <EmptyState
             className="py-[60px]"
             title="尚未连接 Firebase 数据源"
@@ -1528,30 +1562,30 @@ function OrdersPage() {
       ) : null}
 
       {connected ? <Card id="ot-main">
-        <div id="ot-header-status-row" className="ot-header-row ot-header-status-row">
-          <div className="ot-bar">
-            <div className="left">
+        <div id="ot-header-status-row" className={cn(orderHeaderRowClass, 'ot-header-status-row')}>
+          <div className={statusStripClass}>
+            <div className={statusStripLeftClass}>
               <Badge id="ot-user" className="min-h-[30px] text-[var(--text)] font-semibold">已连接 · {projectId || 'Firebase Firestore'}</Badge>
-              <Badge id="ot-sync" className={cn('sync min-h-[30px] text-xs text-[var(--muted)]', syncClass)}>{syncText}</Badge>
-              <Button id="ot-refresh" variant="plain" className="calc-help-icon ot-refresh-inline" aria-label="刷新订单数据" title="刷新订单数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void connectUsingGlobalConfig()}>
+              <Badge id="ot-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge>
+              <Button id="ot-refresh" variant="plain" className={refreshButtonClass(loading)} aria-label="刷新订单数据" title="刷新订单数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void connectUsingGlobalConfig()}>
                 <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
               </Button>
-              <Button id="ot-storage-help-btn" variant="plain" className="calc-help-icon ot-storage-help-btn" aria-controls="ot-storage-help-modal" aria-haspopup="dialog" aria-label="数据存储说明" title="数据存储说明" onClick={() => setStorageHelpOpen(true)}>
+              <Button id="ot-storage-help-btn" variant="plain" className={storageHelpButtonClass} aria-controls="ot-storage-help-modal" aria-haspopup="dialog" aria-label="数据存储说明" title="数据存储说明" onClick={() => setStorageHelpOpen(true)}>
                 <HelpCircle size={15} strokeWidth={2} aria-hidden="true" />
               </Button>
             </div>
-            <div className="right">
+            <div className={statusStripRightClass}>
               <Button id="ot-export" size="sm" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
               <Button id="ot-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
             </div>
           </div>
         </div>
-        <div id="ot-header-summary-row" className="ot-header-row ot-header-summary-row">
-          <div id="ot-summary-container">
+        <div id="ot-header-summary-row" className={cn(orderHeaderRowClass, 'ot-header-summary-row')}>
+          <div id="ot-summary-container" className={orderSummaryContainerClass}>
             <OrdersSummary orders={orders} activeAccount={activeAccount} searchQuery={searchQuery} sortOrder={sortOrder} exchangeRate={exchangeRate} />
           </div>
         </div>
-        <div id="ot-header-accounts-row" className="ot-header-row ot-header-accounts-row">
+        <div id="ot-header-accounts-row" className={cn(orderHeaderRowClass, 'ot-header-accounts-row')}>
           <AccountTabsBar
             id="ot-acc-tabs"
             activeKey={activeAccount}

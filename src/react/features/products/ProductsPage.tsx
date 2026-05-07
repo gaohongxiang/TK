@@ -8,6 +8,7 @@ import { ExportOptions } from '@/components/ui/export-options';
 import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, syncStatusClass } from '@/components/ui/status-strip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { showAppToast, type ToastType } from '@/app/toast';
@@ -1252,16 +1253,16 @@ function ProductsPage() {
       ) : null}
 
       {connected ? <div id="pl-main">
-        <div className="ot-header-status-row ot-bar mb-3">
-          <div className="left min-w-0 flex-wrap">
+        <div className={cn('ot-header-status-row mb-3', statusStripClass)}>
+          <div className={cn(statusStripLeftClass, 'min-w-0 flex-wrap')}>
             <Badge className="min-h-[30px] min-w-0 max-w-full truncate text-[var(--text)] font-semibold" id="pl-user">
               {projectId ? `已连接 · ${projectId} · Firestore` : '已连接 · Firebase Firestore'}
             </Badge>
-            <Badge id="pl-sync" className={cn('sync min-h-[30px] text-xs text-[var(--muted)]', syncClass)}>{syncText}</Badge>
+            <Badge id="pl-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge>
             <Button
               id="pl-refresh"
               variant="plain"
-              className="calc-help-icon ot-refresh-inline"
+              className={refreshButtonClass(loading)}
               disabled={loading}
               aria-label="刷新商品数据"
               title="刷新商品数据"
@@ -1275,7 +1276,7 @@ function ProductsPage() {
               <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
             </Button>
           </div>
-          <div className="right">
+          <div className={statusStripRightClass}>
             <Button id="pl-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
             <Button id="pl-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
           </div>

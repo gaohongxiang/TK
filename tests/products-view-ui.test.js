@@ -110,7 +110,7 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /ot-header-status-row ot-bar[\s\S]*className="left min-w-0 flex-wrap"[\s\S]*id="pl-user"[\s\S]*id="pl-sync"[\s\S]*id="pl-refresh"[\s\S]*className="right"[\s\S]*id="pl-export"[\s\S]*id="pl-disconnect-firestore"[\s\S]*<AccountTabsBar[\s\S]*id="pl-acc-tabs"[\s\S]*actionsId="pl-acc-actions"[\s\S]*id="pl-add"/,
+  /ot-header-status-row[\s\S]*statusStripClass[\s\S]*statusStripLeftClass[\s\S]*id="pl-user"[\s\S]*id="pl-sync"[\s\S]*id="pl-refresh"[\s\S]*statusStripRightClass[\s\S]*id="pl-export"[\s\S]*id="pl-disconnect-firestore"[\s\S]*<AccountTabsBar[\s\S]*id="pl-acc-tabs"[\s\S]*actionsId="pl-acc-actions"[\s\S]*id="pl-add"/,
   'React 商品管理顶部需要和订单管理一致：连接、同步和图标刷新在左侧，账号栏和新增商品走 AccountTabsBar'
 );
 
@@ -176,7 +176,7 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /id="pl-refresh"[\s\S]*variant="plain"[\s\S]*className="calc-help-icon ot-refresh-inline"[\s\S]*aria-label="刷新商品数据"[\s\S]*<RefreshCw/,
+  /id="pl-refresh"[\s\S]*variant="plain"[\s\S]*className=\{refreshButtonClass\(loading\)\}[\s\S]*aria-label="刷新商品数据"[\s\S]*<RefreshCw/,
   '商品库刷新按钮需要复用订单页的图标按钮样式与位置语义'
 );
 

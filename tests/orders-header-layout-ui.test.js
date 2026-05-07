@@ -12,6 +12,7 @@ const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'com
 const reactExportOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'export-options.tsx'), 'utf8');
 const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
 const reactTableToolsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'table-tools.tsx'), 'utf8');
+const statusStripSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'status-strip.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const tableSource = fs.readFileSync(path.join(root, 'src', 'orders', 'table.mjs'), 'utf8');
@@ -144,20 +145,20 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  cssSource,
-  /\.ot-refresh-inline/,
-  '样式表需要定义顶部内联刷新图标按钮'
+  statusStripSource,
+  /refreshIconButtonClass = 'calc-help-icon ot-refresh-inline[\s\S]*bg-transparent/,
+  '共享状态栏 primitive 需要定义顶部内联刷新图标按钮'
 );
 
 assert.match(
-  cssSource,
-  /\.ot-refresh-inline\s*\{[\s\S]*background:\s*transparent;/,
+  statusStripSource,
+  /refreshIconButtonClass = 'calc-help-icon ot-refresh-inline[\s\S]*bg-transparent/,
   '刷新图标按钮需要去掉灰底'
 );
 
 assert.match(
-  cssSource,
-  /\.ot-refresh-inline\.is-spinning[\s\S]*ot-refresh-spin/,
+  statusStripSource,
+  /refreshIconBusyClass = 'is-spinning[\s\S]*animate-spin/,
   '刷新图标按钮在刷新时需要持续转圈'
 );
 

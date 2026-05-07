@@ -4,7 +4,7 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'orders', 'form-utils.mjs'), 'utf8');
-const crudSource = fs.readFileSync(path.join(root, 'src', 'orders', 'crud.mjs'), 'utf8');
+const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -32,9 +32,9 @@ assert.match(
 );
 
 assert.match(
-  crudSource,
-  /import \{ OrderTrackerFormUtils \} from '\.\/form-utils\.mjs'/,
-  '订单 CRUD ESM 需要直接接入 OrderTrackerFormUtils'
+  ordersPageSource,
+  /normalizeOrderItems\(order\?\.items \|\| \[\]\)[\s\S]*function ProductCombo\([\s\S]*function SkuCombo\(/,
+  'React 订单页需要直接接管订单明细恢复、商品下拉和 SKU 下拉'
 );
 
 assert.match(
@@ -56,9 +56,9 @@ assert.match(
 );
 
 assert.doesNotMatch(
-  crudSource,
-  /function createOrderItemDraft\(|function resolveProductSnapshotSource\(|function parseSizeText\(/,
-  '订单 CRUD 不应继续内联已经拆出的纯函数'
+  ordersPageSource,
+  /from '..\/..\/..\/orders\/crud\.mjs'|from ['"]\.\/crud\.mjs['"]/,
+  'React 订单页不应再依赖已删除的 orders/crud 过渡模块'
 );
 
 assert.doesNotMatch(

@@ -645,8 +645,8 @@ npm run release:check
 - `tests/orders-export-module.test.js` 已新增动态 `import()` 断言，验证 ESM 导出模块的账号选项、文件名、CSV 表头、CSV 双引号转义、未关联账号筛选，以及达人佣金/预估利润按当前汇率计算。
 - 完整 React SPA 重建后已删除 `src/orders/tabs.mjs`，订单账号标签栏、账号计数和新增订单入口由 React 订单页直接渲染。
 - `tests/orders-tabs-module.test.js` 已改为断言旧订单账号标签 DOM runtime 不存在，并保护 React 订单页直接接管账号标签栏。
-- 新增 `src/orders/crud.mjs`，提供订单弹窗运行版 `OrderTrackerCrud.create()`，并导出快递选项、商品/SKU 选项、明细草稿缓存合并、明细数量/商品摘要/总重量汇总、快递自动识别状态、达人佣金和预估利润计算等工具函数。
-- `tests/orders-crud-module.test.js` 已新增动态 `import()` 断言，验证 ESM CRUD 的运行版工厂、商品/SKU 选项、明细汇总、达人佣金/预估利润计算和明细快递识别规则。
+- 完整 React SPA 重建后已删除 `src/orders/crud.mjs` 过渡模块；订单弹窗交互由 React 订单页直接实现，复用 `src/orders/shared.mjs` 和 `src/orders/form-utils.mjs` 的真实纯函数入口。
+- `tests/orders-crud-module.test.js` 已改为断言旧 CRUD 过渡模块不存在，并保护 React 订单页的明细区、商品/SKU 搜索下拉、重量汇总和快递自动识别；`tests/orders-react-form-behavior.test.js` 覆盖订单表单关键纯函数和 React 页面直连逻辑。
 - 完整 React SPA 重建后已删除 `src/orders/session.mjs`，Firestore 配置变化、连接按钮、刷新按钮 loading 和连接状态由 React 订单页直接接管。
 - `tests/orders-session-module.test.js` 已改为断言旧订单会话 DOM runtime 不存在，并保护 React 订单页直接接管配置变化、连接和刷新状态。
 - 新增 `src/orders/provider-firestore.mjs`，提供 Firestore 配置解析/序列化、显示名、items 归一化、旧结构清洗识别、订单拉取映射、订单写入 doc 构造等 ESM 纯函数，并保留 `OrderTrackerProviderFirestore.create()` 兼容壳。
@@ -667,7 +667,7 @@ npm run release:check
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载；React SPA 阶段也已移除 `<script type="module" src="/src/orders/index.mjs"></script>`，订单运行入口改为 `src/react/features/orders/OrdersPage.tsx`。
 - `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js`、`js/orders/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `index.html` 已移除旧 `js/orders/sync.js` 的页面加载，订单入口直接 import `src/orders/sync.mjs`。
-- `index.html` 已移除旧 `js/orders/crud.js` 的页面加载，订单入口直接 import `src/orders/crud.mjs`。
+- `index.html` 已移除旧 `js/orders/crud.js` 的页面加载；订单弹窗运行入口改为 `src/react/features/orders/OrdersPage.tsx`，不再保留 `src/orders/crud.mjs` 过渡层。
 - `index.html` 已移除旧 `js/firestore-connection.js`、`/src/firestore-connection.mjs` 和 `/src/orders/firestore-rules.mjs` 的页面加载；连接模块和规则文本现在由 React 入口依赖图加载。
 - 新增 `tests/orders-index-module.test.js`，验证订单 ESM 入口可直接 import、懒初始化、挂回全局，以及旧订单 index 普通脚本不再由主页面加载。
 
@@ -1521,7 +1521,6 @@ js/orders/export.js
 js/orders/shared.js
 src/orders/firestore-rules.mjs
 src/orders/form-utils.mjs
-src/orders/crud.mjs
 src/orders/sync.mjs
 src/orders/table.mjs
 ```

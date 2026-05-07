@@ -4743,7 +4743,7 @@ table.ship td.actual {
     grid-template-columns: 32px minmax(0, 1fr);
   }
 
-  .analytics-react-status .btn {
+  .analytics-react-status [data-slot="button"] {
     grid-column: 2;
     justify-self: start;
   }

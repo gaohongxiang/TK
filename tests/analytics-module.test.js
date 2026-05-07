@@ -200,6 +200,24 @@ assert.match(
 );
 
 assert.match(
+  reactAppSource,
+  /from '@\/components\/ui\/button'[\s\S]*from '@\/components\/ui\/card'|from '@\/components\/ui\/card'[\s\S]*from '@\/components\/ui\/button'/,
+  '数据分析懒加载状态需要使用共享 Card/Button primitives'
+);
+
+assert.match(
+  reactAppSource,
+  /<Card className=\{`analytics-react-status[\s\S]*<Button size="sm" data-analytics-retry/,
+  '数据分析懒加载状态不应再手写 legacy card/btn 元素'
+);
+
+assert.doesNotMatch(
+  reactAppSource,
+  /className=\{`card analytics-react-status|className="btn sm"/,
+  'App 层不应继续直接绑定 legacy card/btn class'
+);
+
+assert.match(
   reactAnalyticsRouteSource,
   /<AnalyticsApp[\s\S]*analyzer=\{TKAnalyticsAnalyzer\}[\s\S]*parser=\{TKAnalyticsParser\}/,
   'React 数据分析需要通过路由组件挂载 parser/analyzer'

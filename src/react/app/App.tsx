@@ -5,6 +5,8 @@ import { OrdersPage } from '../features/orders/OrdersPage';
 import { ProductsPage } from '../features/products/ProductsPage';
 import { AppShell } from '../layouts/AppShell';
 import { TKAppConfig } from '../../app-config.mjs';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 type ModuleItem = {
   key: string;
@@ -56,14 +58,14 @@ function AnalyticsStatus({
 }) {
   const isError = state === 'error';
   return (
-    <section className={`card analytics-react-status ${isError ? 'is-error' : 'is-loading'}`} data-analytics-lazy-state={state}>
+    <Card className={`analytics-react-status ${isError ? 'is-error' : 'is-loading'}`} data-analytics-lazy-state={state}>
       <div className="analytics-react-status-mark" aria-hidden="true" />
       <div>
         <h2>{isError ? '数据分析加载失败' : '正在加载数据分析'}</h2>
         <p>{isError ? '图表模块没有加载成功，请检查网络后重试。' : '正在按需加载图表模块，稍等片刻。'}</p>
       </div>
-      {isError ? <button type="button" className="btn sm" data-analytics-retry onClick={onRetry}>重试</button> : null}
-    </section>
+      {isError ? <Button size="sm" data-analytics-retry onClick={onRetry}>重试</Button> : null}
+    </Card>
   );
 }
 

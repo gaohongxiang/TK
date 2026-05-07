@@ -1195,10 +1195,10 @@ function ProductsPage() {
       <div id="pl-main" style={{ display: connected ? undefined : 'none' }}>
         <div className="ot-header-status-row ot-bar mb-3">
           <div className="left min-w-0 flex-wrap">
-            <span className="workspace-chip workspace-chip-connection min-w-0 max-w-full truncate" id="pl-user">
+            <Badge className="min-h-[30px] min-w-0 max-w-full truncate text-[var(--text)] font-semibold" id="pl-user">
               {projectId ? `已连接 · ${projectId} · Firestore` : '已连接 · Firebase Firestore'}
-            </span>
-            <span id="pl-sync" className={`sync workspace-chip workspace-chip-sync ${syncClass}`}>{syncText}</span>
+            </Badge>
+            <Badge id="pl-sync" className={cn('sync min-h-[30px] text-xs text-[var(--muted)]', syncClass)}>{syncText}</Badge>
             <Button
               id="pl-refresh"
               variant="plain"

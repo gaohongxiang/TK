@@ -1462,8 +1462,8 @@ function OrdersPage() {
         <div id="ot-header-status-row" className="ot-header-row ot-header-status-row">
           <div className="ot-bar">
             <div className="left">
-              <span className="workspace-chip workspace-chip-connection" id="ot-user">已连接 · {projectId || 'Firebase Firestore'}</span>
-              <span className={`sync workspace-chip workspace-chip-sync ${syncClass}`} id="ot-sync">{syncText}</span>
+              <Badge id="ot-user" className="min-h-[30px] text-[var(--text)] font-semibold">已连接 · {projectId || 'Firebase Firestore'}</Badge>
+              <Badge id="ot-sync" className={cn('sync min-h-[30px] text-xs text-[var(--muted)]', syncClass)}>{syncText}</Badge>
               <Button id="ot-refresh" variant="plain" className="calc-help-icon ot-refresh-inline" aria-label="刷新订单数据" title="刷新订单数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void connectUsingGlobalConfig()}>
                 <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
               </Button>

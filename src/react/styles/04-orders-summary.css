@@ -19,143 +19,11 @@
   border: 1px solid var(--border)
 }
 
-.ot-setup-intro {
-  margin: 0 0 16px;
-  color: var(--muted);
-  line-height: 1.75
-}
-
-.ot-storage-modes {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 16px
-}
-
-.ot-storage-mode {
-  position: relative;
-  display: block;
-  padding: 14px 15px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel2);
-  cursor: pointer;
-  transition: border-color .15s, box-shadow .15s, transform .15s
-}
-
-.ot-storage-mode:hover {
-  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
-  transform: translateY(-1px)
-}
-
-.ot-storage-mode input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none
-}
-
-.ot-storage-mode.active {
-  border-color: color-mix(in srgb, var(--accent) 54%, var(--border));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent)
-}
-
-.ot-storage-mode-title {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--text);
-  font-weight: 700
-}
-
-.ot-storage-mode-copy {
-  display: block;
-  color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.6
-}
-
-.ot-setup-copy-block {
-  margin-bottom: 16px
-}
-
-.ot-setup-guide {
-  padding: 14px 15px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--panel2) 78%, white);
-}
-
-.ot-setup-guide-title {
-  margin-bottom: 10px;
-  color: var(--text);
-  font-weight: 700
-}
-
-.ot-setup-guide-list {
-  margin: 0;
-  padding-left: 20px;
-  color: var(--text)
-}
-
-.ot-setup-guide-list li {
-  margin: 0 0 10px;
-  line-height: 1.7
-}
-
-.ot-setup-guide-list li:last-child {
-  margin-bottom: 0
-}
-
-.ot-setup-guide-list strong {
-  display: block;
-  margin-bottom: 2px
-}
-
-.ot-setup-guide-list span {
-  display: block;
-  color: var(--muted);
-  font-size: 13px
-}
-
-.ot-setup-guide-note {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--border);
-  color: var(--muted);
-  line-height: 1.7;
-  font-size: 13px
-}
-
 .ot-setup-guide-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 12px
-}
-
-.ot-setup-primary-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 20px;
-}
-
-.ot-setup-primary-actions [data-slot="button"] {
-  min-width: 176px;
-}
-
-.ot-setup-secondary-action {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--border);
-}
-
-.ot-setup-secondary-copy {
-  color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.65;
 }
 
 .ot-header-row {
@@ -256,27 +124,6 @@
 
 .sync.error {
   color: var(--danger)
-}
-
-.ot-storage-note {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel2);
-}
-
-.ot-storage-note .title {
-  font-size: 12px;
-  color: var(--accent);
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.ot-storage-note .text {
-  color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.7;
 }
 
 #ot-summary-container {
@@ -433,47 +280,6 @@
 
 .ot-summary-ledger-item.is-expense .ot-summary-ledger-value {
   color: var(--expense);
-}
-
-.ot-summary-refund {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px dashed color-mix(in srgb, rgba(196, 78, 78, .22) 78%, white);
-}
-
-.ot-summary-refund-label {
-  color: #b56565;
-  font-size: 10.5px;
-  letter-spacing: .18em;
-  text-transform: uppercase;
-}
-
-.ot-summary-refund-value {
-  color: #c44e4e;
-  font-size: 16px;
-  line-height: 1.1;
-  font-weight: 700;
-}
-
-.ot-summary-refund-note {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.pl-toolbar {
-  margin: 16px 0 14px;
-}
-
-.pl-search {
-  display: block;
-}
-
-.pl-search input {
-  width: min(460px, 100%);
 }
 
 .products-react-sku-surface {

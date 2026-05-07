@@ -208,6 +208,14 @@ const calcPanelClass = 'calc-panel active block';
 const calcLayoutClass = 'calc-layout-grid grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-[18px] [&>*]:min-w-0 max-[860px]:grid-cols-1';
 const calcFormSectionClass = 'calc-form-section mt-[18px]';
 const calcDetailsGridClass = 'calc-details-grid mt-2.5';
+const calcToolbarClass = 'calc-toolbar mb-2.5 flex flex-wrap items-center justify-center gap-0 max-[768px]:items-stretch';
+const calcSubnavClass = 'calc-subnav flex w-full min-w-0 items-center rounded-2xl border border-[color-mix(in_srgb,var(--border)_78%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_74%,transparent),color-mix(in_srgb,var(--panel)_92%,transparent))] px-2.5 py-1 shadow-[0_8px_20px_rgba(14,20,44,.07)] max-[768px]:px-[11px] max-[768px]:py-2.5';
+const calcTabbarClass = 'calc-tabbar flex w-full items-center justify-start gap-2';
+const calcTabsClass = 'calc-tabs flex w-full flex-wrap gap-2.5 max-[768px]:w-auto max-[768px]:min-w-0 max-[768px]:flex-1';
+const knownSaleItemClass = 'known-sale-item flex flex-col justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel2)] px-3.5 py-3';
+const knownSaleLabelClass = 'label text-[11px] uppercase tracking-[1px] text-[var(--muted)]';
+const knownSaleValueClass = 'value mono text-xl font-bold leading-[1.2] text-[var(--text)] max-[768px]:text-lg';
+const reviewFormulaClass = 'review-formula mono mt-3.5 grid gap-[3px] border-t border-dashed border-[var(--border)] pt-3 text-[11.5px] leading-[1.35] text-[var(--muted)]';
 
 function ShippingInline({
   state,
@@ -521,20 +529,20 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
         <Card>
           <CardTitle>利润复盘</CardTitle>
           <div className="known-sale-grid review-metrics grid grid-cols-3 items-stretch gap-3 [&>*]:min-w-0 max-[860px]:grid-cols-2 max-[768px]:grid-cols-1">
-            <div className="known-sale-item">
-              <div className="label">人民币到手</div>
-              <div className="value mono max-[768px]:text-lg" id="saleNet">{result ? formatCny(result.cnyNet, 2) : '-'}</div>
+            <div className={knownSaleItemClass}>
+              <div className={knownSaleLabelClass}>人民币到手</div>
+              <div className={knownSaleValueClass} id="saleNet">{result ? formatCny(result.cnyNet, 2) : '-'}</div>
             </div>
-            <div className="known-sale-item">
-              <div className="label">利润</div>
-              <div className={`value mono max-[768px]:text-lg ${profitClass}`.trim()} id="saleProfit">{result ? formatCny(result.profit, 2) : '-'}</div>
+            <div className={knownSaleItemClass}>
+              <div className={knownSaleLabelClass}>利润</div>
+              <div className={cn(knownSaleValueClass, profitClass === 'profit-pos' ? 'text-[var(--ok)]' : '', profitClass === 'profit-neg' ? 'text-[var(--danger)]' : '')} id="saleProfit">{result ? formatCny(result.profit, 2) : '-'}</div>
             </div>
-            <div className="known-sale-item">
-              <div className="label">利润率</div>
-              <div className={`value mono max-[768px]:text-lg ${profitClass}`.trim()} id="saleMargin">{result ? formatMargin(result.margin) : '-'}</div>
+            <div className={knownSaleItemClass}>
+              <div className={knownSaleLabelClass}>利润率</div>
+              <div className={cn(knownSaleValueClass, profitClass === 'profit-pos' ? 'text-[var(--ok)]' : '', profitClass === 'profit-neg' ? 'text-[var(--danger)]' : '')} id="saleMargin">{result ? formatMargin(result.margin) : '-'}</div>
             </div>
           </div>
-          <div className="review-formula mono">
+          <div className={reviewFormulaClass}>
             <div>总费用 = 采购价 + 海外运费</div>
             <div>达人佣金 = 实际售价 × 达人佣金率</div>
             <div>人民币到手 =（实际售价 − 达人佣金）÷ 日元汇率</div>
@@ -642,10 +650,10 @@ function CalculatorApp() {
         kicker="定价 / 汇率 / 海外运费"
         description="根据各项参数统一测算售价、利润，以及确定售价复盘实际利润"
       />
-      <div className="calc-toolbar">
-        <div className="calc-subnav">
-          <div className="calc-tabbar">
-            <TabsList className="calc-tabs" role="tablist" aria-label="利润计算模式">
+      <div className={calcToolbarClass}>
+        <div className={calcSubnavClass}>
+          <div className={calcTabbarClass}>
+            <TabsList className={calcTabsClass} role="tablist" aria-label="利润计算模式">
               {[
                 ['pricing', '定价旧'],
                 ['pricingNew', '定价新'],

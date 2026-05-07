@@ -78,31 +78,6 @@
     padding: 6px 11px
   }
 
-  .calc-subnav {
-    min-width: 0;
-    width: 100%;
-    padding: 10px 11px;
-  }
-
-  .calc-tabbar {
-    align-items: center;
-    justify-content: flex-start;
-  }
-
-  .calc-toolbar {
-    align-items: stretch
-  }
-
-  .calc-tabbar {
-    width: 100%;
-  }
-
-  .calc-tabs {
-    flex: 1 1 auto;
-    width: auto;
-    min-width: 0;
-  }
-
   .pricing-ship-inline-inputs {
     grid-template-columns: 1fr 1fr
   }

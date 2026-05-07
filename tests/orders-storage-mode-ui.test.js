@@ -96,7 +96,7 @@ assert.match(
 
 assert.match(
   calculatorSource,
-  /className="calc-toolbar"[\s\S]*className="calc-subnav"/,
+  /const calcToolbarClass = 'calc-toolbar[\s\S]*const calcSubnavClass = 'calc-subnav[\s\S]*className=\{calcToolbarClass\}[\s\S]*className=\{calcSubnavClass\}/,
   'React 利润计算器需要将模式切换条放在独立的页内工具行里'
 );
 
@@ -120,7 +120,7 @@ assert.match(
 
 assert.match(
   calculatorSource,
-  /className="calc-tabs"[\s\S]*利润复盘[\s\S]*id="calc-help-btn"/,
+  /const calcTabsClass = 'calc-tabs[\s\S]*className=\{calcTabsClass\}[\s\S]*利润复盘[\s\S]*id="calc-help-btn"/,
   'React 利润计算器说明图标需要紧跟在利润复盘后面'
 );
 
@@ -150,7 +150,7 @@ assert.doesNotMatch(
 
 assert.match(
   calculatorSource,
-  /<TabsList className="calc-tabs"[\s\S]*<TabsTrigger[\s\S]*className="flex-1[\s\S]*data-calc-tab=\{key\}[\s\S]*<Button[\s\S]*id="calc-help-btn"[\s\S]*<Button id="calc-help-close"/,
+  /<TabsList className=\{calcTabsClass\}[\s\S]*<TabsTrigger[\s\S]*className="flex-1[\s\S]*data-calc-tab=\{key\}[\s\S]*<Button[\s\S]*id="calc-help-btn"[\s\S]*<Button id="calc-help-close"/,
   '利润计算器页内标签、帮助图标和帮助弹窗确认按钮需要收敛到共享 primitives'
 );
 
@@ -185,8 +185,8 @@ assert.match(
 );
 
 assert.match(
-  cssSource,
-  /\.calc-toolbar\s*\{[\s\S]*margin-bottom:\s*10px/s,
+  calculatorSource,
+  /const calcToolbarClass = 'calc-toolbar mb-2\.5/,
   '利润计算器的定价框和正文区域之间需要更紧凑'
 );
 

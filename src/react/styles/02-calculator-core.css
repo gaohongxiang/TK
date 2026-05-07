@@ -1,39 +1,3 @@
-.calc-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  margin-bottom: 10px;
-  flex-wrap: wrap
-}
-
-.calc-subnav {
-  display: flex;
-  align-items: center;
-  padding: 4px 10px;
-  width: 100%;
-  min-width: 0;
-  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-  border-radius: 16px;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--panel2) 74%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
-  box-shadow: 0 8px 20px rgba(14, 20, 44, .07);
-}
-
-.calc-tabbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  justify-content: flex-start
-}
-
-.calc-tabs {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap
-}
-
 .pricing-ship-inline-inputs>*,
 .pricing-ship-inline-metrics>*,
 .pricing-ship-inline-summary>*,
@@ -328,50 +292,6 @@
 .calc-result-table .orig-row td.orig-price-cell {
   color: var(--accent2);
   font-weight: 700
-}
-
-.known-sale-item {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--panel2)
-}
-
-.known-sale-item .label {
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--muted)
-}
-
-.known-sale-item .value {
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--text)
-}
-
-.known-sale-item .value.profit-pos {
-  color: var(--ok)
-}
-
-.known-sale-item .value.profit-neg {
-  color: var(--danger)
-}
-
-.review-formula {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--border);
-  display: grid;
-  gap: 3px;
-  font-size: 11.5px;
-  line-height: 1.35;
-  color: var(--muted)
 }
 
 .kbd {

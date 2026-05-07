@@ -8,6 +8,7 @@ const root = path.join(__dirname, '..');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
+const reactExportOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'export-options.tsx'), 'utf8');
 const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
 const reactTableToolsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'table-tools.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
@@ -47,8 +48,8 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /from '@\/components\/ui\/checkbox'[\s\S]*from '@\/components\/ui\/tabs'|from '@\/components\/ui\/tabs'[\s\S]*from '@\/components\/ui\/checkbox'/,
-  '订单管理账号标签和导出弹层需要开始使用共享 Checkbox/Tabs primitives'
+  /from '@\/components\/ui\/export-options'[\s\S]*from '@\/components\/ui\/tabs'|from '@\/components\/ui\/tabs'[\s\S]*from '@\/components\/ui\/export-options'/,
+  '订单管理账号标签和导出弹层需要使用共享 ExportOptions/Tabs primitives'
 );
 
 assert.match(
@@ -59,14 +60,14 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /<Checkbox id="ot-export-all"[\s\S]*<Checkbox[\s\S]*className="ot-export-checkbox"/,
-  '订单导出账号选择需要迁到共享 Checkbox primitive'
+  /<ExportOptions[\s\S]*allCheckboxId="ot-export-all"[\s\S]*checkboxClassName="ot-export-checkbox"/,
+  '订单导出账号选择需要迁到共享 ExportOptions primitive'
 );
 
 assert.match(
-  reactTabsSource + reactCheckboxSource,
-  /data-slot="tabs-trigger"[\s\S]*data-slot="checkbox"/,
-  '共享 Tabs 和 Checkbox primitives 需要暴露 data-slot'
+  reactTabsSource + reactCheckboxSource + reactExportOptionsSource,
+  /data-slot="tabs-trigger"[\s\S]*data-slot="checkbox"[\s\S]*data-slot="export-options"/,
+  '共享 Tabs、Checkbox 和 ExportOptions primitives 需要暴露 data-slot'
 );
 
 assert.doesNotMatch(

@@ -1,8 +1,8 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { ExportOptions } from '@/components/ui/export-options';
 import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -723,7 +723,6 @@ function ExportModal({
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
-  const allChecked = options.length > 0 && options.every(option => selected.has(option.key));
   return (
     <Dialog id="pl-export-modal" open={open} titleId="pl-export-title" onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[460px]">
@@ -731,41 +730,15 @@ function ExportModal({
         <Alert variant="info" className={modalCopyClass}>
           <AlertDescription>可勾选一个或多个账号；如果当前已经切到某个账号，会默认选中该账号。</AlertDescription>
         </Alert>
-        <div className="ot-export-selectors">
-          <label className="ot-export-option ot-export-option-all">
-            <span className="ot-export-option-main">
-              <Checkbox
-                id="pl-export-all"
-                checked={allChecked}
-                onChange={event => {
-                  onSelectedChange(event.target.checked ? new Set(options.map(option => option.key)) : new Set());
-                }}
-              />
-              <span>全部账号</span>
-            </span>
-          </label>
-          <div id="pl-export-options" className="ot-export-options">
-            {options.map(option => (
-              <label className="ot-export-option" key={option.key}>
-                <span className="ot-export-option-main">
-                  <Checkbox
-                    className="pl-export-checkbox"
-                    value={option.key}
-                    checked={selected.has(option.key)}
-                    onChange={event => {
-                      const next = new Set(selected);
-                      if (event.target.checked) next.add(option.key);
-                      else next.delete(option.key);
-                      onSelectedChange(next);
-                    }}
-                  />
-                  <span className="ot-export-option-name">{option.label}</span>
-                </span>
-                <span className="ot-export-option-count">{option.count} 个商品</span>
-              </label>
-            ))}
-          </div>
-        </div>
+        <ExportOptions
+          allCheckboxId="pl-export-all"
+          checkboxClassName="pl-export-checkbox"
+          countLabel={count => `${count} 个商品`}
+          options={options}
+          optionsId="pl-export-options"
+          selected={selected}
+          onSelectedChange={onSelectedChange}
+        />
         <DialogActions>
           <Button id="pl-export-cancel" onClick={() => onOpenChange(false)}>取消</Button>
           <Button id="pl-export-confirm" variant="primary" onClick={onConfirm}>导出 CSV</Button>

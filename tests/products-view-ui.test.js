@@ -15,6 +15,7 @@ const reactAppShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'lay
 const appRuntimeSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'AppRuntime.tsx'), 'utf8');
 const reactButtonSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
 const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
+const reactExportOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'export-options.tsx'), 'utf8');
 const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
 const reactTableSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'table.tsx'), 'utf8');
 const reactTableToolsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'table-tools.tsx'), 'utf8');
@@ -192,26 +193,26 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /id="pl-export-modal"[\s\S]*id="pl-export-options"[\s\S]*id="pl-export-confirm"/,
+  /id="pl-export-modal"[\s\S]*<ExportOptions[\s\S]*optionsId="pl-export-options"[\s\S]*id="pl-export-confirm"/,
   'React 商品库需要提供按账号选择的导出 CSV 弹层'
 );
 
 assert.match(
   reactProductsPageSource,
-  /from '@\/components\/ui\/checkbox'[\s\S]*from '@\/components\/ui\/tabs'|from '@\/components\/ui\/tabs'[\s\S]*from '@\/components\/ui\/checkbox'/,
-  '商品管理账号标签和导出弹层需要开始使用共享 Checkbox/Tabs primitives'
+  /from '@\/components\/ui\/export-options'[\s\S]*from '@\/components\/ui\/tabs'|from '@\/components\/ui\/tabs'[\s\S]*from '@\/components\/ui\/export-options'/,
+  '商品管理账号标签和导出弹层需要使用共享 ExportOptions/Tabs primitives'
 );
 
 assert.match(
   reactProductsPageSource,
-  /<TabsTrigger[\s\S]*data-pl-acc=\{account\}[\s\S]*<Checkbox[\s\S]*id="pl-export-all"[\s\S]*<Checkbox[\s\S]*className="pl-export-checkbox"/,
-  '商品管理账号筛选和导出账号选择需要迁到共享 TabsTrigger 与 Checkbox，减少旧基础标签依赖'
+  /<TabsTrigger[\s\S]*data-pl-acc=\{account\}[\s\S]*<ExportOptions[\s\S]*allCheckboxId="pl-export-all"[\s\S]*checkboxClassName="pl-export-checkbox"/,
+  '商品管理账号筛选和导出账号选择需要迁到共享 TabsTrigger 与 ExportOptions，减少旧基础标签依赖'
 );
 
 assert.match(
-  reactTabsSource + reactCheckboxSource,
-  /data-slot="tabs-trigger"[\s\S]*data-slot="checkbox"/,
-  '共享 Tabs 和 Checkbox primitives 需要暴露 data-slot'
+  reactTabsSource + reactCheckboxSource + reactExportOptionsSource,
+  /data-slot="tabs-trigger"[\s\S]*data-slot="checkbox"[\s\S]*data-slot="export-options"/,
+  '共享 Tabs、Checkbox 和 ExportOptions primitives 需要暴露 data-slot'
 );
 
 assert.match(
@@ -336,7 +337,7 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /id="pl-export-modal"[\s\S]*id="pl-export-options"[\s\S]*id="pl-export-confirm"/,
+  /id="pl-export-modal"[\s\S]*<ExportOptions[\s\S]*optionsId="pl-export-options"[\s\S]*id="pl-export-confirm"/,
   'React 商品库需要直接负责导出账号选择弹层'
 );
 

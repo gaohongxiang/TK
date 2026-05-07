@@ -35,7 +35,7 @@ assert.match(
 
 assert.match(
   reactProductsSource,
-  /id="pl-export-modal"[\s\S]*id="pl-export-options"[\s\S]*id="pl-export-confirm"/,
+  /id="pl-export-modal"[\s\S]*<ExportOptions[\s\S]*optionsId="pl-export-options"[\s\S]*id="pl-export-confirm"/,
   'React 商品页需要直接接管商品 CSV 导出弹层'
 );
 

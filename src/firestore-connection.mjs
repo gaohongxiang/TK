@@ -268,12 +268,6 @@ const TKFirestoreConnection = {
   bind
 };
 
-if (typeof window !== 'undefined') {
-  window.TKFirestoreConnection = TKFirestoreConnection;
-} else if (globalThis.window) {
-  globalThis.window.TKFirestoreConnection = TKFirestoreConnection;
-}
-
 export {
   TKFirestoreConnection,
   parseConfigInput,

@@ -60,10 +60,10 @@ assert.match(
   '全局 Firestore 连接模块需要广播配置变化事件'
 );
 
-assert.match(
+assert.doesNotMatch(
   source,
-  /window\.TKFirestoreConnection\s*=\s*TKFirestoreConnection/,
-  'Firestore 连接 ESM 模块需要挂到 window 上，供订单和商品库直接调用'
+  /window\.TKFirestoreConnection|globalThis\.window\.TKFirestoreConnection/,
+  'Firestore 连接模块不应再挂旧 window.TKFirestoreConnection，全站应通过 ESM import 使用'
 );
 
 (async () => {

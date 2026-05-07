@@ -178,8 +178,8 @@ assert.match(
 
 assert.match(
   toastBus,
-  /TKFirestoreConnection\?\.showToast\?\.\(message, type\)/,
-  '商品、订单等 React 页面 Toast 需要走全局 AppRuntime showToast 入口'
+  /import \{ TKFirestoreConnection \} from '..\/..\/firestore-connection\.mjs'[\s\S]*TKFirestoreConnection\.showToast\(message, type\)/,
+  '商品、订单等 React 页面 Toast 需要通过 ESM Firestore 连接模块进入 AppRuntime showToast'
 );
 
 assert.match(

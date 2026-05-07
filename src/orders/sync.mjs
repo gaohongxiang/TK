@@ -4,6 +4,7 @@ import {
   normalizeOrderList,
   ordersEqual
 } from './shared.mjs';
+import { TKFirestoreConnection } from '../firestore-connection.mjs';
 
 function latestIso(values) {
   return (values || []).filter(Boolean).sort().slice(-1)[0] || '';
@@ -414,7 +415,7 @@ function create({ state, constants, helpers, ui }) {
     const message = String(error?.message || '').trim();
     if (code.includes('permission-denied') || /Missing or insufficient permissions/i.test(message)) {
       const next = '当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则，确保 orders、order_accounts、sync_state 和 products 都已放行。';
-      window.TKFirestoreConnection?.notifyRulesUpdateNeeded?.(next);
+      TKFirestoreConnection.notifyRulesUpdateNeeded(next);
       return next;
     }
     return message || fallback;

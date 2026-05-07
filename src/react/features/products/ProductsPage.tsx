@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { showAppToast, type ToastType } from '@/app/toast';
+import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
 import { ProductLibraryExport, csvEscape } from '../../../products/export.mjs';
 import {
@@ -107,7 +108,7 @@ function clampPage(currentPage: number, pageSize: number, totalItems: number) {
 }
 
 function readGlobalConfig() {
-  return globalThis.window?.TKFirestoreConnection?.getConfig?.() || null;
+  return TKFirestoreConnection.getConfig() || null;
 }
 
 function showToast(message: string, type: ToastType = 'ok') {
@@ -898,7 +899,7 @@ function ProductsPage() {
     const message = String(err?.message || '').trim();
     if (code.includes('permission-denied') || /Missing or insufficient permissions/i.test(message)) {
       const next = '当前 Firebase 项目的 Firestore 规则还没放行 products 集合。请打开 Firebase Console → Firestore Database → Rules，重新复制并发布最新规则。';
-      window.TKFirestoreConnection?.notifyRulesUpdateNeeded?.(next);
+      TKFirestoreConnection.notifyRulesUpdateNeeded(next);
       return next;
     }
     return message || fallback;
@@ -996,8 +997,7 @@ function ProductsPage() {
       return;
     }
     try {
-      if (window.TKFirestoreConnection?.copyText) await window.TKFirestoreConnection.copyText(text);
-      else await navigator.clipboard.writeText(text);
+      await TKFirestoreConnection.copyText(text);
       showToast('链接已复制');
     } catch (error) {
       showToast((error as Error)?.message || '复制失败', 'error');
@@ -1256,7 +1256,7 @@ function ProductsPage() {
         <div className="ot-setup-content">
           <h2>商品管理</h2>
           <p>先连接你的 Firebase Firestore。商品和订单共用同一个 Firebase 项目，本站不保存你的商品资料。</p>
-          <Button id="pl-open-connection" variant="primary" onClick={() => window.TKFirestoreConnection?.open?.()}>连接 Firebase</Button>
+          <Button id="pl-open-connection" variant="primary" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>
         </div>
       </Card>
 
@@ -1286,7 +1286,7 @@ function ProductsPage() {
           </div>
           <div className="right">
             <Button id="pl-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-            <Button id="pl-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => window.TKFirestoreConnection?.requestDisconnect?.()}>退出数据库</Button>
+            <Button id="pl-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
           </div>
         </div>
 

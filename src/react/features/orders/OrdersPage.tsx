@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { showAppToast } from '@/app/toast';
+import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
 import { OrderTrackerProviderFirestore } from '../../../orders/provider-firestore.mjs';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
 import {
@@ -145,7 +146,7 @@ function toAccountSlot(value: unknown) {
 }
 
 function readGlobalConfig() {
-  return window.TKFirestoreConnection?.getConfig?.() || null;
+  return TKFirestoreConnection.getConfig() || null;
 }
 
 function showToast(message: string, type: 'ok' | 'error' = 'ok') {
@@ -599,7 +600,7 @@ function OrderItemsEditor({
                         showToast('这条明细还没有快递单号', 'error');
                         return;
                       }
-                      void window.TKFirestoreConnection?.copyText?.(item.trackingNo).then(() => showToast('已复制快递单号')).catch(() => showToast('复制失败，请手动复制', 'error'));
+                      void TKFirestoreConnection.copyText(item.trackingNo).then(() => showToast('已复制快递单号')).catch(() => showToast('复制失败，请手动复制', 'error'));
                     }}
                   >
                     <Copy size={14} strokeWidth={2} />
@@ -1206,7 +1207,7 @@ function OrdersPage() {
     const message = String(err?.message || '').trim();
     if (String(err?.code || '').includes('permission-denied') || /Missing or insufficient permissions/i.test(message)) {
       const next = '当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则，确保 orders、order_accounts、sync_state 和 products 都已放行。';
-      window.TKFirestoreConnection?.notifyRulesUpdateNeeded?.(next);
+      TKFirestoreConnection.notifyRulesUpdateNeeded(next);
       return next;
     }
     return message || fallback;
@@ -1487,7 +1488,7 @@ function OrdersPage() {
         <div className="ot-empty">
           <div style={{ fontSize: 15, marginBottom: 6 }}>尚未连接 Firebase 数据源</div>
           <div style={{ fontSize: 12.5, marginBottom: 14 }}>订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。</div>
-          <Button id="ot-open-connection" variant="primary" onClick={() => window.TKFirestoreConnection?.open?.()}>连接 Firebase</Button>
+          <Button id="ot-open-connection" variant="primary" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>
         </div>
       </Card>
 
@@ -1506,7 +1507,7 @@ function OrdersPage() {
             </div>
             <div className="right">
               <Button id="ot-export" size="sm" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-              <Button id="ot-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => window.TKFirestoreConnection?.requestDisconnect?.()}>退出数据库</Button>
+              <Button id="ot-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
             </div>
           </div>
         </div>

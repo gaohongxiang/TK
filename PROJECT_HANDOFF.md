@@ -580,7 +580,7 @@ npm run release:check
 
 商品管理依赖 Firestore 和 SKU UI。
 
-当前状态：已完成商品管理 ESM 入口切换。`index.html` 现在通过 `/src/products/index.mjs` 加载商品管理入口；旧 `js/products/index.js` 文件暂时保留为历史参考和回退，不再进入主页面加载链。
+当前状态：已完成商品管理 React SPA 入口切换。商品管理由 `src/react/features/products/ProductsPage.tsx` 直接接管，`index.html` 不再加载 `/src/products/index.mjs` 或旧 `js/products/index.js`。
 
 迁移顺序：
 
@@ -591,29 +591,28 @@ npm run release:check
 
 已完成：
 
-- 新增 `src/products/table.mjs`，提供商品表格筛选、排序、SKU 默认值合并、SKU 标签/尺寸/运费格式化、表格渲染壳等 ESM 导出。
-- `src/products/table.mjs` 已在浏览器里挂回 `window.ProductLibraryTableView`，供过渡期兼容。
-- `tests/products-view-ui.test.js` 已新增动态 `import()` 断言，确认商品表格 ESM 纯函数和旧 `ProductLibraryTableView.deriveDisplayedProducts` 排序结果一致，并覆盖 ESM 渲染壳存在。
-- 新增 `src/products/accounts.mjs`，提供商品账号归并、账号槽、账号下拉和账号标签渲染的 ESM 导出，并在浏览器里挂回 `window.ProductLibraryAccounts`。
+- 新增 `src/products/table.mjs`，提供商品表格筛选、排序、SKU 默认值合并、SKU 标签/尺寸/运费格式化等纯函数 ESM 导出。
+- `src/products/table.mjs` 已收敛为纯 ESM helper，不再挂旧 `window.ProductLibraryTableView` 或 DOM render。
+- `tests/products-view-ui.test.js` 已新增动态 `import()` 断言，确认商品表格 ESM 纯函数排序、筛选和 React 渲染壳存在。
+- 新增 `src/products/accounts.mjs`，提供商品账号归并、账号槽和账号列表等纯函数 ESM 导出；账号下拉和账号标签由 React 商品页直接渲染，不再挂旧 `window.ProductLibraryAccounts`。
 - 新增 `src/products/form-utils.mjs`，提供商品 CRUD/SKU 弹窗的尺寸解析、批量 SKU 草稿、SKU 名称匹配、运费快照、SKU 默认值判断等纯函数 ESM 导出。
-- `tests/products-form-utils-module.test.js` 已新增动态 `import()` 断言，确认商品 CRUD 纯函数 ESM 输出和旧 `ProductLibraryFormUtils` 一致。
-- `src/products/form-utils.mjs` 已在浏览器里挂回 `window.ProductLibraryFormUtils`，旧文件暂时保留为历史参考和回退。
+- `tests/products-form-utils-module.test.js` 已新增动态 `import()` 断言，确认商品表单纯函数 ESM 输出稳定。
+- `src/products/form-utils.mjs` 已收敛为纯 ESM helper，不再挂旧 `window.ProductLibraryFormUtils`。
 - `index.html` 已移除旧 `js/products/form-utils.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - 新增 `src/products/provider-firestore.mjs`，提供商品 Firestore provider 的配置解析、展示名、商品/SKU 归一化、Firestore 写入 doc 构造、`create/init/pullProducts/upsertProduct/deleteProduct` 的 ESM 导出。
 - `tests/products-provider-firestore-module.test.js` 已新增动态 `import()` 断言，确认 provider 纯函数 ESM 的配置解析和商品/SKU 文档映射保持旧行为。
 - `src/products/provider-firestore.mjs` 已在浏览器里挂回 `window.ProductLibraryProviderFirestore`，并注册 `TKDataSourceRegistry.registerProvider('products', ...)`。
-- `src/products/index.mjs` 和 `src/orders/products.mjs` 已导入商品 provider ESM；订单商品桥接不再依赖旧普通脚本加载顺序。
-- 新增 `src/products/index.mjs`，提供商品管理 ESM 入口，并通过 `window.ProductLibrary` 挂回给旧 hash 路由调用。
-- `src/products/index.mjs` 采用懒初始化，避免 ESM 入口执行早于旧 `js/products/*` 子模块时出现 `undefined.create`。
-- `index.html` 已移除旧 `js/products/index.js` 的页面加载，改为 `<script type="module" src="/src/products/index.mjs"></script>`。
+- `src/orders/products.mjs` 已导入商品 provider ESM；订单商品桥接不再依赖旧普通脚本加载顺序。
+- 完整 React SPA 重建后已删除 `src/products/index.mjs`，商品管理入口由 `src/react/features/products/ProductsPage.tsx` 接管。
+- `index.html` 已移除旧 `js/products/index.js` 的页面加载，商品管理不再通过旧 hash DOM 入口启动。
 - `index.html` 已移除旧 `js/products/provider-firestore.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `index.html` 已移除旧 `js/products/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `index.html` 已移除旧 `js/products/accounts.js` 页面加载；旧文件暂时保留为历史参考和回退。
-- 新增 `src/products/export.mjs`，提供商品导出账号选择、CSV 行构建、CSV 下载和导出相关纯函数的 ESM 导出，并在浏览器里挂回 `window.ProductLibraryExport`。
-- `tests/products-export-module.test.js` 已新增动态 `import()` 断言，确认商品导出 ESM 输出和旧 `ProductLibraryExport` 账号选项、CSV 行构建行为一致。
+- 新增 `src/products/export.mjs`，提供商品导出账号选项、CSV 行构建、文件名和 CSV 转义等纯函数 ESM 导出；账号选择弹层和 CSV 下载由 React 商品页直接处理，不再挂旧 `window.ProductLibraryExport`。
+- `tests/products-export-module.test.js` 已新增动态 `import()` 断言，确认商品导出 ESM 账号选项、CSV 行构建行为稳定，并阻止 DOM 弹层/下载逻辑回流到 helper。
 - `index.html` 已移除旧 `js/products/export.js` 页面加载；旧文件暂时保留为历史参考和回退。
-- 新增 `src/products/crud.mjs`，提供商品弹窗、SKU 编辑、保存/删除事件绑定的 ESM 导出，并在浏览器里挂回 `window.ProductLibraryCrud`。
-- `tests/products-crud-module.test.js` 已新增动态 `import()` 断言，确认商品 CRUD ESM 兼容导出的尺寸解析、批量 SKU、名称匹配和运费快照行为与旧模块一致。
+- 完整 React SPA 重建后已删除 `src/products/crud.mjs`，商品弹窗、SKU 编辑、保存/删除事件绑定由 React 商品页接管。
+- `tests/products-crud-module.test.js` 已改为断言旧商品 CRUD DOM runtime 不存在，并确认尺寸解析、批量 SKU、名称匹配和运费快照等纯函数行为稳定。
 - `index.html` 已移除旧 `js/products/crud.js` 页面加载；旧文件暂时保留为历史参考和回退。
 
 当前已验证通过：
@@ -1356,7 +1355,7 @@ npm run build
 - 新增 `js/products/form-utils.js`，负责商品弹窗尺寸解析、批量 SKU 草稿生成、SKU 名称匹配、商品/SKU 物流参数判断和预估运费快照等纯函数。
 - 新增 `tests/products-form-utils-module.test.js`，覆盖商品 SKU 表单纯函数模块、CRUD 接入和 `index.html` 加载顺序。
 - `js/products/index.js` 从约 650 行降到约 350 行，目前只保留连接、加载、主渲染、事件编排。
-- `js/products/crud.js` 已移除 SKU 表单纯函数内联实现，改为通过 `ProductLibraryFormUtils` 调用。
+- `js/products/crud.js` 曾移除 SKU 表单纯函数内联实现，改为通过 `ProductLibraryFormUtils` 调用；在 modern React SPA 分支里，旧商品 CRUD runtime 已被删除，React 商品页直接 import `src/products/form-utils.mjs`。
 - 新增 `js/orders/products.js`，负责订单弹窗读取商品资料、按账号筛商品、按 TK ID 查商品、Firestore 配置变化时清理商品缓存。
 - `js/orders/index.js` 从约 570 行降到约 515 行，产品桥接逻辑不再内联在入口文件。
 - 新增 `js/orders/form-utils.js`，负责订单弹窗商品/SKU 标签、商品默认参数合并、订单明细草稿归一化、旧版订单明细恢复、金额/尺寸解析等纯函数。
@@ -1552,7 +1551,6 @@ js/products/provider-firestore.js
 js/products/accounts.js
 js/products/form-utils.js
 js/products/table.js
-src/products/crud.mjs
 src/products/export.mjs
 ```
 

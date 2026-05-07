@@ -4,7 +4,6 @@ const assert = require('assert');
 
 const root = path.join(__dirname, '..');
 const srcSource = fs.readFileSync(path.join(root, 'src', 'products', 'form-utils.mjs'), 'utf8');
-const srcCrudSource = fs.readFileSync(path.join(root, 'src', 'products', 'crud.mjs'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
@@ -37,34 +36,16 @@ assert.match(
   '路线二 M4 需要提供商品 CRUD 纯函数 ESM 导出'
 );
 
-assert.match(
-  srcSource,
-  /window\.ProductLibraryFormUtils = ProductLibraryFormUtils/,
-  '商品 CRUD 纯函数 ESM 模块需要挂回旧全局命名空间'
-);
-
-assert.match(
-  srcCrudSource,
-  /from '\.\/form-utils\.mjs'/,
-  '商品 CRUD ESM 需要直接导入商品表单工具'
-);
-
 assert.doesNotMatch(
-  srcCrudSource,
-  /function parseSizeInput\(|function buildBatchSkuDrafts\(|function matchesBatchSkuName\(|function buildEstimatedShippingSnapshot\(|function skuUsesProductDefaults\(/,
-  '商品库 CRUD ESM 不应继续内联已经拆出的 SKU 表单纯函数'
+  srcSource,
+  /window\.ProductLibraryFormUtils|document\.|querySelector|innerHTML|classList|addEventListener/,
+  '商品 CRUD 纯函数 ESM 模块不应再挂旧全局命名空间或访问 DOM'
 );
 
 assert.doesNotMatch(
   htmlSource,
   /<script src="js\/products\/form-utils\.js" defer><\/script>/,
   'index.html 不应再加载旧商品表单工具普通脚本'
-);
-
-assert.match(
-  srcCrudSource,
-  /create\(\{ state, helpers, ui \}\)/,
-  '商品 CRUD ESM 需要保留弹窗与保存工厂入口'
 );
 
 assert.doesNotMatch(

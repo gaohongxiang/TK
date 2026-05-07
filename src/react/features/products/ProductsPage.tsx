@@ -12,6 +12,11 @@ import { showAppToast, type ToastType } from '@/app/toast';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
 import { ProductLibraryExport, csvEscape } from '../../../products/export.mjs';
 import {
+  normalizeAccountName,
+  toAccountSlot,
+  uniqueAccounts
+} from '../../../products/accounts.mjs';
+import {
   buildBatchSkuDrafts,
   buildEstimatedShippingSnapshot,
   formatSizeInput,
@@ -57,7 +62,6 @@ type ProductFormDraft = {
 };
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
-const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
 const modalCopyClass = 'mb-4 text-[13px] leading-[1.75] text-[var(--muted)]';
 const EMPTY_PRODUCT_FORM: ProductFormDraft = {
   accountName: '',
@@ -93,26 +97,6 @@ function createEmptySku(): ProductDraftSku {
     chargeWeightKg: '',
     shippingNote: ''
   };
-}
-
-function normalizeAccountName(value: unknown) {
-  return String(value || '').trim();
-}
-
-function toAccountSlot(value: unknown) {
-  return normalizeAccountName(value) || UNASSIGNED_ACCOUNT_SLOT;
-}
-
-function uniqueAccounts(values: unknown[] = []) {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  values.forEach(value => {
-    const normalized = normalizeAccountName(value);
-    if (!normalized || seen.has(normalized)) return;
-    seen.add(normalized);
-    result.push(normalized);
-  });
-  return result;
 }
 
 function clampPage(currentPage: number, pageSize: number, totalItems: number) {

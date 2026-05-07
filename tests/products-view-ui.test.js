@@ -8,7 +8,6 @@ const root = path.join(__dirname, '..');
 const srcTableSource = fs.readFileSync(path.join(root, 'src', 'products', 'table.mjs'), 'utf8');
 const srcAccountsSource = fs.readFileSync(path.join(root, 'src', 'products', 'accounts.mjs'), 'utf8');
 const srcExportSource = fs.readFileSync(path.join(root, 'src', 'products', 'export.mjs'), 'utf8');
-const srcCrudSource = fs.readFileSync(path.join(root, 'src', 'products', 'crud.mjs'), 'utf8');
 const reactProductsPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
@@ -311,9 +310,9 @@ assert.match(
 );
 
 assert.match(
-  srcExportSource,
-  /function exportProductsCsv\(/,
-  '商品库需要提供 CSV 导出逻辑'
+  reactProductsPageSource,
+  /function confirmExport\([\s\S]*new Blob\(\[[^\]]+csv\][\s\S]*link\.download = productExporter\.buildProductExportFilename/,
+  'React 商品库需要直接负责 CSV 下载逻辑'
 );
 
 assert.match(
@@ -335,15 +334,15 @@ assert.match(
 );
 
 assert.match(
-  srcExportSource,
-  /function promptProductExportAccounts\(/,
-  '商品库导出需要提供账号选择流程'
+  reactProductsPageSource,
+  /id="pl-export-modal"[\s\S]*id="pl-export-options"[\s\S]*id="pl-export-confirm"/,
+  'React 商品库需要直接负责导出账号选择弹层'
 );
 
 assert.match(
   srcAccountsSource,
-  /function renderAccountTabs\(/,
-  '商品库账号标签渲染需要从入口文件拆到账号模块'
+  /function getAllProductAccounts\(/,
+  '商品库账号模块需要保留账号纯函数'
 );
 
 assert.match(

@@ -164,10 +164,6 @@ const ProductLibraryFormUtils = {
   tokenizeSkuName
 };
 
-if (typeof window !== 'undefined') {
-  window.ProductLibraryFormUtils = ProductLibraryFormUtils;
-}
-
 export {
   ProductLibraryFormUtils,
   parseSizeInput,

@@ -1,28 +1,24 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
+const { pathToFileURL } = require('url');
 
 const root = path.join(__dirname, '..');
-const srcSource = fs.readFileSync(path.join(root, 'src', 'products', 'export.mjs'), 'utf8');
+const exportPath = path.join(root, 'src', 'products', 'export.mjs');
+const srcSource = fs.readFileSync(exportPath, 'utf8');
 const reactProductsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
-assert.match(
+assert.doesNotMatch(
   srcSource,
-  /function promptProductExportAccounts\(/,
-  '商品导出 ESM 模块需要负责账号选择流程'
+  /function promptProductExportAccounts\(|function exportProductsCsv\(|document\.|querySelector|innerHTML|classList|createElement|RootBlob|globalThis\.Blob|globalThis\.URL|window\.ProductLibraryExport/,
+  '商品导出 ESM 模块应保持纯函数，不应再包含旧 DOM 弹层、下载动作或全局暴露'
 );
 
 assert.match(
   srcSource,
   /function buildProductExportRows\(/,
   '商品导出 ESM 模块需要负责 CSV 行构建'
-);
-
-assert.match(
-  srcSource,
-  /async function exportProductsCsv\(/,
-  '商品导出 ESM 模块需要暴露 CSV 导出入口'
 );
 
 assert.match(
@@ -44,15 +40,15 @@ assert.match(
 );
 
 assert.match(
-  srcSource,
-  /const ProductLibraryExport = \{/,
-  '路线二 M4 需要提供商品导出 ESM 模块'
+  reactProductsSource,
+  /new Blob\(\[[^\]]+csv\][\s\S]*URL\.createObjectURL[\s\S]*link\.download = productExporter\.buildProductExportFilename/,
+  'React 商品页需要负责浏览器下载动作'
 );
 
 assert.match(
   srcSource,
-  /window\.ProductLibraryExport = ProductLibraryExport/,
-  '商品导出 ESM 模块需要挂回旧全局命名空间'
+  /const ProductLibraryExport = \{/,
+  '路线二 M4 需要提供商品导出 ESM 模块'
 );
 
 assert.match(
@@ -112,7 +108,7 @@ function plain(value) {
 }
 
 (async () => {
-  const module = await import(path.join(root, 'src', 'products', 'export.mjs'));
+  const module = await import(pathToFileURL(exportPath).href);
   assert.strictEqual(typeof module.ProductLibraryExport.create, 'function', '商品导出 ESM 需要暴露 create 工厂');
   assert.strictEqual(module.csvEscape('a"b'), '"a""b"', '商品导出 ESM 需要保留 CSV 转义行为');
   assert.strictEqual(module.formatSizeText({ sizeText: '10*8*6' }), '10×8×6', '商品导出 ESM 需要保留尺寸格式化行为');

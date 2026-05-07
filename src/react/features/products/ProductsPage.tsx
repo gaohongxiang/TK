@@ -1182,17 +1182,19 @@ function ProductsPage() {
 
   return (
     <section className="products-page" data-react-products-page-ready="true">
-      <Card id="pl-disconnected" style={{ display: connected ? 'none' : undefined }}>
-        <EmptyState
-          className="py-[60px]"
-          title="商品管理"
-          description="先连接你的 Firebase Firestore。商品和订单共用同一个 Firebase 项目，本站不保存你的商品资料。"
-        >
-          <Button id="pl-open-connection" variant="primary" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>
-        </EmptyState>
-      </Card>
+      {!connected ? (
+        <Card id="pl-disconnected">
+          <EmptyState
+            className="py-[60px]"
+            title="商品管理"
+            description="先连接你的 Firebase Firestore。商品和订单共用同一个 Firebase 项目，本站不保存你的商品资料。"
+          >
+            <Button id="pl-open-connection" variant="primary" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>
+          </EmptyState>
+        </Card>
+      ) : null}
 
-      <div id="pl-main" style={{ display: connected ? undefined : 'none' }}>
+      {connected ? <div id="pl-main">
         <div className="ot-header-status-row ot-bar mb-3">
           <div className="left min-w-0 flex-wrap">
             <Badge className="min-h-[30px] min-w-0 max-w-full truncate text-[var(--text)] font-semibold" id="pl-user">
@@ -1254,7 +1256,7 @@ function ProductsPage() {
           onEdit={openProductModal}
           onDelete={deleteProduct}
         />
-      </div>
+      </div> : null}
 
       <ProductModal
         open={modalOpen}

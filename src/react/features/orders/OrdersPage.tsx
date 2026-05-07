@@ -1448,17 +1448,19 @@ function OrdersPage() {
         </div>
       </div>
 
-      <Card className="ot-setup" id="ot-setup" style={{ display: connected ? 'none' : undefined }}>
-        <EmptyState
-          className="py-[60px]"
-          title="尚未连接 Firebase 数据源"
-          description="订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。"
-        >
-          <Button id="ot-open-connection" variant="primary" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>
-        </EmptyState>
-      </Card>
+      {!connected ? (
+        <Card className="ot-setup" id="ot-setup">
+          <EmptyState
+            className="py-[60px]"
+            title="尚未连接 Firebase 数据源"
+            description="订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。"
+          >
+            <Button id="ot-open-connection" variant="primary" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>
+          </EmptyState>
+        </Card>
+      ) : null}
 
-      <Card id="ot-main" style={{ display: connected ? undefined : 'none' }}>
+      {connected ? <Card id="ot-main">
         <div id="ot-header-status-row" className="ot-header-row ot-header-status-row">
           <div className="ot-bar">
             <div className="left">
@@ -1511,7 +1513,7 @@ function OrdersPage() {
           onEdit={openOrderModal}
           onDelete={deleteOrder}
         />
-      </Card>
+      </Card> : null}
 
       <OrderModal
         open={modalOpen}

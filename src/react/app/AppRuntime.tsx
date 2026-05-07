@@ -141,7 +141,9 @@ function AppRuntime() {
           </div>
           <DialogActions>
             <Button id="app-close-firestore-modal" onClick={() => setConnectionOpen(false)}>取消</Button>
-            <Button id="app-clear-firestore-config" variant="danger" style={{ display: TKFirestoreConnection.getConfig()?.projectId ? undefined : 'none' }} onClick={() => TKFirestoreConnection.requestDisconnect({ closeModal: true })}>退出数据库</Button>
+            {TKFirestoreConnection.getConfig()?.projectId ? (
+              <Button id="app-clear-firestore-config" variant="danger" onClick={() => TKFirestoreConnection.requestDisconnect({ closeModal: true })}>退出数据库</Button>
+            ) : null}
             <Button id="app-save-firestore-config" variant="primary" onClick={saveConnection}>连接并开始使用</Button>
           </DialogActions>
         </DialogContent>

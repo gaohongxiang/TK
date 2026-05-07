@@ -458,10 +458,8 @@ src/
 
 当前状态：本地进行中，第一步已完成并通过验证。
 
-先迁移：
+历史迁移顺序：
 
-- `shared/html`
-- `shared/format`
 - `shared/firebase-config`
 - analytics parser/analyzer
 
@@ -469,11 +467,9 @@ src/
 
 已完成：
 
-- 新增 `src/shared/html.mjs`，提供 `TKHtml`、`escape`、`shorten` 的 ESM 导出。
-- 新增 `src/shared/format.mjs`，提供 `TKFormat`、`integer`、`yen`、`percent` 的 ESM 导出。
 - 新增 `src/analytics/parser.mjs`，提供 `TKAnalyticsParser` 和解析纯函数 ESM 导出。
 - 新增 `src/analytics/analyzer.mjs`，通过 `import { CHANNELS } from './parser.mjs'` 读取 parser 元信息，并提供 `TKAnalyticsAnalyzer` 和分析纯函数 ESM 导出。
-- `tests/shared-utils.test.js` 和 `tests/analytics-module.test.js` 已新增动态 `import()` 断言，确认 M1 模块可被 Node 直接作为 ESM 导入。
+- `tests/shared-utils.test.js` 现在保护未使用的旧 shared 迁移壳层不再回归，并确认 React analytics 使用本地格式化 helper；`tests/analytics-module.test.js` 继续确认 analytics parser/analyzer 可被 Node 直接作为 ESM 导入。
 - 旧 `js/` 浏览器脚本链暂未替换，页面仍走原有 `<script defer>` 和 `window.Xxx` 全局兼容路径。
 
 当前已验证通过：
@@ -546,9 +542,8 @@ npm run release:check
 - 旧 `src/calc/index.mjs` 已删除；`index.html` 已移除旧 `js/calc/shared.js`、`js/calc/shipping.js`、`js/calc/legacy.js`、`js/calc/pricing.js`、`js/calc/index.js` 以及 `/src/calc/index.mjs` 的页面加载。
 - `src/global-settings.mjs` 已收敛为 ESM helper，并只初始化浏览器共享设置 store `window.__tkGlobalSettingsStore`，不再挂旧 `window.TKGlobalSettings` API。
 - `src/shipping-core.mjs` 已收敛为纯 ESM helper，不再挂旧 `window.TKShippingCore`。
-- `src/shared/html.mjs` 和 `src/shared/format.mjs` 已收敛为纯 ESM helper，不再挂旧 `window.TKHtml`、`window.TKFormat`。
-- 历史阶段中 `src/main.mjs` 曾统一导入 `global-settings`、`shipping-core`、`shared/html`、`shared/format`、`table-controls`、`searchable-select`、`data-sources/registry` 这些基础 ESM；当前完整 React SPA 已删除该入口，并已删除旧 `src/table-controls.mjs`、`src/data-sources/registry.mjs`。
-- `index.html` 已移除旧 `js/global-settings.js`、`js/shipping-core.js`、`js/shared/html.js`、`js/shared/format.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- 历史阶段中 `src/main.mjs` 曾统一导入 `global-settings`、`shipping-core`、`shared/html`、`shared/format`、`table-controls`、`searchable-select`、`data-sources/registry` 这些基础 ESM；当前完整 React SPA 已删除该入口，并已删除旧 `src/shared/html.mjs`、`src/shared/format.mjs`、`src/table-controls.mjs`、`src/data-sources/registry.mjs`。
+- `index.html` 已移除旧 `js/global-settings.js`、`js/shipping-core.js`、`js/shared/html.js`、`js/shared/format.js` 页面加载；旧 `js/` 源目录已统一清理。
 
 当前已验证通过：
 

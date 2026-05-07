@@ -13,6 +13,7 @@ const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.ts
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const reactAppShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
 const appRuntimeSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'AppRuntime.tsx'), 'utf8');
+const reactAccountTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'account-tabs-bar.tsx'), 'utf8');
 const reactButtonSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'button.tsx'), 'utf8');
 const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
 const reactExportOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'export-options.tsx'), 'utf8');
@@ -103,14 +104,14 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /id="pl-acc-actions"[\s\S]*id="pl-add"/,
+  /actionsId="pl-acc-actions"[\s\S]*id="pl-add"/,
   '商品库新增商品按钮需要放在账号标签同一行'
 );
 
 assert.match(
   reactProductsPageSource,
-  /ot-header-status-row ot-bar[\s\S]*className="left min-w-0 flex-wrap"[\s\S]*id="pl-user"[\s\S]*id="pl-sync"[\s\S]*id="pl-refresh"[\s\S]*className="right"[\s\S]*id="pl-export"[\s\S]*id="pl-disconnect-firestore"[\s\S]*pl-account-tabs-row flex items-center justify-between[\s\S]*ot-acc-tabs flex min-w-0 flex-1[\s\S]*ot-acc-actions flex shrink-0/,
-  'React 商品管理顶部需要和订单管理一致：连接、同步和图标刷新在左侧，导出与退出在右侧'
+  /ot-header-status-row ot-bar[\s\S]*className="left min-w-0 flex-wrap"[\s\S]*id="pl-user"[\s\S]*id="pl-sync"[\s\S]*id="pl-refresh"[\s\S]*className="right"[\s\S]*id="pl-export"[\s\S]*id="pl-disconnect-firestore"[\s\S]*<AccountTabsBar[\s\S]*id="pl-acc-tabs"[\s\S]*actionsId="pl-acc-actions"[\s\S]*id="pl-add"/,
+  'React 商品管理顶部需要和订单管理一致：连接、同步和图标刷新在左侧，账号栏和新增商品走 AccountTabsBar'
 );
 
 assert.match(
@@ -199,20 +200,26 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /from '@\/components\/ui\/export-options'[\s\S]*from '@\/components\/ui\/tabs'|from '@\/components\/ui\/tabs'[\s\S]*from '@\/components\/ui\/export-options'/,
-  '商品管理账号标签和导出弹层需要使用共享 ExportOptions/Tabs primitives'
+  /from '@\/components\/ui\/account-tabs-bar'[\s\S]*from '@\/components\/ui\/export-options'|from '@\/components\/ui\/export-options'[\s\S]*from '@\/components\/ui\/account-tabs-bar'/,
+  '商品管理账号标签和导出弹层需要使用共享 AccountTabsBar/ExportOptions primitives'
 );
 
 assert.match(
   reactProductsPageSource,
-  /<TabsTrigger[\s\S]*data-pl-acc=\{account\}[\s\S]*<ExportOptions[\s\S]*allCheckboxId="pl-export-all"[\s\S]*checkboxClassName="pl-export-checkbox"/,
+  /dataAttrs:\s*\{\s*'data-pl-acc': account\s*\}[\s\S]*<AccountTabsBar[\s\S]*items=\{accountTabItems\}/,
   '商品管理账号筛选和导出账号选择需要迁到共享 TabsTrigger 与 ExportOptions，减少旧基础标签依赖'
 );
 
 assert.match(
-  reactTabsSource + reactCheckboxSource + reactExportOptionsSource,
-  /data-slot="tabs-trigger"[\s\S]*data-slot="checkbox"[\s\S]*data-slot="export-options"/,
-  '共享 Tabs、Checkbox 和 ExportOptions primitives 需要暴露 data-slot'
+  reactProductsPageSource,
+  /<ExportOptions[\s\S]*allCheckboxId="pl-export-all"[\s\S]*checkboxClassName="pl-export-checkbox"/,
+  '商品管理导出账号选择需要迁到共享 ExportOptions'
+);
+
+assert.match(
+  reactTabsSource + reactCheckboxSource + reactExportOptionsSource + reactAccountTabsSource,
+  /data-slot="tabs-trigger"[\s\S]*data-slot="checkbox"[\s\S]*data-slot="export-options"[\s\S]*data-slot="account-tabs-bar"/,
+  '共享 Tabs、Checkbox、ExportOptions 和 AccountTabsBar primitives 需要暴露 data-slot'
 );
 
 assert.match(

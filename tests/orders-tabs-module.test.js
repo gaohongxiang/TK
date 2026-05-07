@@ -22,8 +22,8 @@ assert.doesNotMatch(
 
 assert.match(
   ordersPageSource,
-  /const allAccounts = useMemo\([\s\S]*uniqueAccounts[\s\S]*id="ot-acc-tabs"[\s\S]*id="ot-tab-add"[\s\S]*id="ot-add"/,
-  'React 订单页需要直接渲染账号标签栏和新增订单入口'
+  /const allAccounts = useMemo\([\s\S]*uniqueAccounts[\s\S]*<AccountTabsBar[\s\S]*id="ot-acc-tabs"[\s\S]*id: 'ot-tab-add'[\s\S]*id="ot-add"/,
+  'React 订单页需要通过 AccountTabsBar 渲染账号标签栏和新增订单入口'
 );
 
 assert.match(

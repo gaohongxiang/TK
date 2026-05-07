@@ -7,6 +7,7 @@ const root = path.join(__dirname, '..');
 
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
+const reactAccountTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'account-tabs-bar.tsx'), 'utf8');
 const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
 const reactExportOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'export-options.tsx'), 'utf8');
 const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
@@ -30,32 +31,32 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /id="ot-acc-tabs-all"/,
+  /allTabsId="ot-acc-tabs-all"/,
   '账号区需要提供固定的全部标签容器'
 );
 
 assert.match(
   ordersPageSource,
-  /id="ot-acc-tabs-scroll"/,
+  /scrollId="ot-acc-tabs-scroll"/,
   '账号区需要提供横向滚动的账号容器'
 );
 
 assert.match(
   ordersPageSource,
-  /id="ot-acc-actions"[\s\S]*id="ot-add"/,
+  /actionsId="ot-acc-actions"[\s\S]*id="ot-add"/,
   '账号区右侧需要固定显示新增订单按钮'
 );
 
 assert.match(
   ordersPageSource,
-  /from '@\/components\/ui\/export-options'[\s\S]*from '@\/components\/ui\/tabs'|from '@\/components\/ui\/tabs'[\s\S]*from '@\/components\/ui\/export-options'/,
-  '订单管理账号标签和导出弹层需要使用共享 ExportOptions/Tabs primitives'
+  /from '@\/components\/ui\/account-tabs-bar'[\s\S]*from '@\/components\/ui\/export-options'|from '@\/components\/ui\/export-options'[\s\S]*from '@\/components\/ui\/account-tabs-bar'/,
+  '订单管理账号标签和导出弹层需要使用共享 AccountTabsBar/ExportOptions primitives'
 );
 
 assert.match(
   ordersPageSource,
-  /<Tabs[\s\S]*id="ot-acc-tabs"[\s\S]*<TabsTrigger[\s\S]*active=\{activeAccount === '__all__'\}[\s\S]*<TabsList[\s\S]*ot-acc-tabs-scroll-inner[\s\S]*<TabsTrigger[\s\S]*active=\{activeAccount === account\}/,
-  '订单账号筛选需要迁到共享 Tabs/TabsTrigger，同时保留现有账号区 DOM 语义'
+  /<AccountTabsBar[\s\S]*id="ot-acc-tabs"[\s\S]*allTabsId="ot-acc-tabs-all"[\s\S]*scrollId="ot-acc-tabs-scroll"[\s\S]*actionsId="ot-acc-actions"/,
+  '订单账号筛选需要迁到共享 AccountTabsBar，同时保留现有账号区 DOM 语义'
 );
 
 assert.match(
@@ -65,9 +66,9 @@ assert.match(
 );
 
 assert.match(
-  reactTabsSource + reactCheckboxSource + reactExportOptionsSource,
-  /data-slot="tabs-trigger"[\s\S]*data-slot="checkbox"[\s\S]*data-slot="export-options"/,
-  '共享 Tabs、Checkbox 和 ExportOptions primitives 需要暴露 data-slot'
+  reactTabsSource + reactCheckboxSource + reactExportOptionsSource + reactAccountTabsSource,
+  /data-slot="tabs-trigger"[\s\S]*data-slot="checkbox"[\s\S]*data-slot="export-options"[\s\S]*data-slot="account-tabs-bar"/,
+  '共享 Tabs、Checkbox、ExportOptions 和 AccountTabsBar primitives 需要暴露 data-slot'
 );
 
 assert.doesNotMatch(
@@ -131,21 +132,15 @@ assert.ok(
 );
 
 assert.match(
-  cssSource,
-  /\.ot-acc-shell/,
-  '样式表需要定义账号行三段结构'
+  reactAccountTabsSource,
+  /grid-cols-\[minmax\(0,1fr\)_auto\][\s\S]*<Tabs[\s\S]*id=\{id\}[\s\S]*overflow-x-auto[\s\S]*id=\{actionsId\}/,
+  'AccountTabsBar primitive 需要接管账号行三段结构、横向滚动和右侧动作区'
 );
 
-assert.match(
+assert.doesNotMatch(
   cssSource,
-  /\.ot-acc-tabs-scroll/,
-  '样式表需要定义账号横向滚动区域'
-);
-
-assert.match(
-  cssSource,
-  /\.ot-acc-actions[\s\S]*margin-left: 16px/,
-  '样式表需要让账号区和新增订单按钮之间保留明显间距'
+  /\.ot-acc-shell|\.ot-acc-tabs-scroll|\.ot-acc-actions|\.ot-acc-tabs \.tab/,
+  '账号标签布局和 tab 外观不应继续依赖旧 ot-acc CSS'
 );
 
 assert.match(

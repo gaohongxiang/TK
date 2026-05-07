@@ -1,4 +1,5 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -9,7 +10,6 @@ import { Select } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { EmptyState, TableFrame, TablePager, TableSearch, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { showAppToast } from '@/app/toast';
 import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
 import { OrderTrackerProviderFirestore } from '../../../orders/provider-firestore.mjs';
@@ -1158,6 +1158,11 @@ function OrdersPage() {
 
   const allAccounts = useMemo(() => uniqueAccounts([...accounts, ...orders.map(order => order['账号'])]).sort((left, right) => left.localeCompare(right)), [accounts, orders]);
   const exportOptions = useMemo(() => getExportAccountOptions({ accounts: allAccounts, orders, constants: { UNASSIGNED_ACCOUNT_SLOT } }), [allAccounts, orders]);
+  const accountTabItems = useMemo(() => allAccounts.map(account => ({
+    key: account,
+    label: account,
+    count: orders.filter(order => normalizeAccountName(order['账号']) === account).length
+  })), [allAccounts, orders]);
 
   const formatFirestoreError = useCallback((error: unknown, fallback = '订单管理操作失败') => {
     const err = error as { code?: string; message?: string };
@@ -1474,26 +1479,18 @@ function OrdersPage() {
           </div>
         </div>
         <div id="ot-header-accounts-row" className="ot-header-row ot-header-accounts-row">
-          <Tabs className="ot-acc-tabs ot-acc-shell" id="ot-acc-tabs">
-            <div className="ot-acc-tabs-all" id="ot-acc-tabs-all">
-              <TabsTrigger active={activeAccount === '__all__'} className={cn('tab', activeAccount === '__all__' ? 'active' : '')} onClick={() => { setActiveAccount('__all__'); setCurrentPage(1); }}>
-                全部<span className="tab-count">({orders.length})</span>
-              </TabsTrigger>
-            </div>
-            <div className="ot-acc-tabs-scroll" id="ot-acc-tabs-scroll">
-              <TabsList className="ot-acc-tabs-scroll-inner">
-                {allAccounts.map(account => (
-                  <TabsTrigger active={activeAccount === account} className={cn('tab', activeAccount === account ? 'active' : '')} key={account} onClick={() => { setActiveAccount(account); setCurrentPage(1); }}>
-                    {account}<span className="tab-count">({orders.filter(order => normalizeAccountName(order['账号']) === account).length})</span>
-                  </TabsTrigger>
-                ))}
-                <button className="tab-add" id="ot-tab-add" title="添加账号" type="button" onClick={() => setAccountModalOpen(true)}>+</button>
-              </TabsList>
-            </div>
-            <div className="ot-acc-actions" id="ot-acc-actions">
-              <Button id="ot-add" variant="primary" onClick={() => openOrderModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增订单</Button>
-            </div>
-          </Tabs>
+          <AccountTabsBar
+            id="ot-acc-tabs"
+            activeKey={activeAccount}
+            allCount={orders.length}
+            allTabsId="ot-acc-tabs-all"
+            scrollId="ot-acc-tabs-scroll"
+            items={accountTabItems}
+            addAccountButton={{ id: 'ot-tab-add', title: '添加账号', onClick: () => setAccountModalOpen(true) }}
+            actionsId="ot-acc-actions"
+            onChange={account => { setActiveAccount(account); setCurrentPage(1); }}
+            actions={<Button id="ot-add" variant="primary" onClick={() => openOrderModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增订单</Button>}
+          />
         </div>
         <OrdersTable
           orders={orders}

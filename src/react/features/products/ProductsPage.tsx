@@ -1,4 +1,5 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -8,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, TableFrame, TablePager, TableSearch, TableToolbar, TableViewport } from '@/components/ui/table-tools';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { showAppToast, type ToastType } from '@/app/toast';
 import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
@@ -140,43 +140,6 @@ function ProductPager({
       onPageSizeChange={onPageSizeChange}
       onPageChange={onPageChange}
     />
-  );
-}
-
-function AccountTabs({
-  activeAccount,
-  accounts,
-  products,
-  onChange
-}: {
-  activeAccount: string;
-  accounts: string[];
-  products: ProductRecord[];
-  onChange: (value: string) => void;
-}) {
-  const countMap = useMemo(() => {
-    const counts: Record<string, number> = {};
-    products.forEach(product => {
-      const account = normalizeAccountName(product?.accountName);
-      if (account) counts[account] = (counts[account] || 0) + 1;
-    });
-    return counts;
-  }, [products]);
-
-  return (
-    <Tabs className="ot-acc-tabs-scroll-inner">
-      {accounts.length ? accounts.map(account => (
-        <TabsTrigger
-          active={account === activeAccount}
-          className={cn('tab', account === activeAccount ? 'active' : '')}
-          data-pl-acc={account}
-          key={account}
-          onClick={() => onChange(account)}
-        >
-          {account}<span className="tab-count">({countMap[account] || 0})</span>
-        </TabsTrigger>
-      )) : <span className="ot-acc-empty">暂无账号，先去订单管理添加账号或在已有商品里关联账号</span>}
-    </Tabs>
   );
 }
 
@@ -835,6 +798,19 @@ function ProductsPage() {
     () => productExporter.getProductExportAccountOptions(),
     [productExporter]
   );
+  const accountTabItems = useMemo(() => {
+    const counts: Record<string, number> = {};
+    products.forEach(product => {
+      const account = normalizeAccountName(product?.accountName);
+      if (account) counts[account] = (counts[account] || 0) + 1;
+    });
+    return allAccounts.map(account => ({
+      key: account,
+      label: account,
+      count: counts[account] || 0,
+      dataAttrs: { 'data-pl-acc': account }
+    }));
+  }, [allAccounts, products]);
 
   const notifyProductsChanged = useCallback((detail: Record<string, unknown> = {}) => {
     window.dispatchEvent(new CustomEvent('tk-products-changed', {
@@ -1243,33 +1219,20 @@ function ProductsPage() {
           </div>
         </div>
 
-        <div className="ot-account-tabs-row pl-account-tabs-row flex items-center justify-between gap-3 border-b border-[var(--border)] pb-3 mb-3 max-[768px]:flex-col max-[768px]:items-stretch">
-          <div className="ot-acc-tabs flex min-w-0 flex-1 items-center gap-2 border-0 p-0" id="pl-acc-tabs">
-            <div id="pl-acc-tabs-all" className="shrink-0">
-              <TabsTrigger
-                active={activeAccount === '__all__'}
-                className={cn('tab', activeAccount === '__all__' ? 'active' : '')}
-                data-pl-acc="__all__"
-                onClick={() => { setActiveAccount('__all__'); setCurrentPage(1); }}
-              >
-                全部<span className="tab-count">({products.length})</span>
-              </TabsTrigger>
-            </div>
-            <div id="pl-acc-tabs-scroll" className="ot-acc-tabs-scroll min-w-0 flex-1">
-              <TabsList>
-                <AccountTabs
-                  activeAccount={activeAccount}
-                  accounts={allAccounts}
-                  products={products}
-                  onChange={account => { setActiveAccount(account); setCurrentPage(1); }}
-                />
-              </TabsList>
-            </div>
-          </div>
-          <div className="ot-acc-actions flex shrink-0 items-center justify-end gap-2 ml-0 max-[768px]:w-full" id="pl-acc-actions">
-            <Button id="pl-add" variant="primary" onClick={() => openProductModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增商品</Button>
-          </div>
-        </div>
+        <AccountTabsBar
+          id="pl-acc-tabs"
+          className="pl-account-tabs-row mb-3"
+          activeKey={activeAccount}
+          allCount={products.length}
+          allDataAttrs={{ 'data-pl-acc': '__all__' }}
+          allTabsId="pl-acc-tabs-all"
+          scrollId="pl-acc-tabs-scroll"
+          actionsId="pl-acc-actions"
+          items={accountTabItems}
+          emptyText="暂无账号，先去订单管理添加账号或在已有商品里关联账号"
+          onChange={account => { setActiveAccount(account); setCurrentPage(1); }}
+          actions={<Button id="pl-add" variant="primary" onClick={() => openProductModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增商品</Button>}
+        />
 
         <ProductsTableView
           products={products}

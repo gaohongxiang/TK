@@ -360,7 +360,7 @@ test.describe('release browser smoke', () => {
     await expectNoOverlap(page, '#pl-sync', '#pl-refresh', 'product sync text and refresh button should not overlap');
     await expectNoOverlap(page, '#pl-acc-tabs', '#pl-add', 'product account tabs and add button should not overlap');
     await page.locator('#pl-add').click();
-    await expect(page.locator('#pl-modal')).toHaveClass(/show/);
+    await expect(page.locator('#pl-modal')).toBeVisible();
     await page.locator('#pl-account-select').selectOption('Test-Account');
     await page.locator('#pl-form [name="tkId"]').fill('TK-E2E-001');
     await page.locator('#pl-form [name="name"]').fill('E2E 测试雨衣');
@@ -368,7 +368,7 @@ test.describe('release browser smoke', () => {
     await page.locator('#pl-batch-size').fill('20x15x10');
     await page.locator('#pl-sku-list [data-sku-field="skuName"]').fill('白 / S');
     await page.locator('#pl-form button[type="submit"]').click();
-    await expect(page.locator('#pl-modal')).not.toHaveClass(/show/);
+    await expect(page.locator('#pl-modal')).not.toBeVisible();
     await expect(page.locator('#pl-table-container')).toContainText('TK-E2E-001');
 
     await page.locator('#pl-table-container button[data-edit="TK-E2E-001"]').click();
@@ -381,7 +381,7 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#ot-main')).toBeVisible();
     await expect(page.locator('#ot-sync')).toContainText('已同步');
     await page.locator('#ot-add').click();
-    await expect(page.locator('#ot-modal')).toHaveClass(/show/);
+    await expect(page.locator('#ot-modal')).toBeVisible();
     await page.locator('#ot-acc-select').selectOption('Test-Account');
     await page.locator('#ot-form [name="订单号"]').fill('ORDER-E2E-001');
 
@@ -442,18 +442,18 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#ot-sync')).toContainText('已同步');
 
     await page.locator('#ot-disconnect-firestore').click();
-    await expect(page.locator('#app-firestore-disconnect-modal')).toHaveClass(/show/);
+    await expect(page.locator('#app-firestore-disconnect-modal')).toBeVisible();
     await expect(page.locator('#app-firestore-disconnect-project')).toHaveText('tk-e2e');
     expect(nativeDialogs).toEqual([]);
 
     await page.locator('#app-cancel-firestore-disconnect').click();
-    await expect(page.locator('#app-firestore-disconnect-modal')).not.toHaveClass(/show/);
+    await expect(page.locator('#app-firestore-disconnect-modal')).not.toBeVisible();
     await expect(page.evaluate(() => JSON.parse(localStorage.getItem('tk.firestore.cfg.v1') || '{}').projectId)).resolves.toBe('tk-e2e');
     await expect(page.locator('#ot-main')).toBeVisible();
 
     await page.locator('#ot-disconnect-firestore').click();
     await page.locator('#app-confirm-firestore-disconnect').click();
-    await expect(page.locator('#app-firestore-disconnect-modal')).not.toHaveClass(/show/);
+    await expect(page.locator('#app-firestore-disconnect-modal')).not.toBeVisible();
     await expect(page.locator('#ot-setup')).toBeVisible();
     await expect(page.locator('#ot-open-connection')).toBeVisible();
     await expect(page.evaluate(() => localStorage.getItem('tk.firestore.cfg.v1'))).resolves.toBeNull();

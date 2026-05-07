@@ -5,7 +5,7 @@ import { DEFAULT_CONSTANTS, SHIPPING_RULES, computeCalculatedShippingCost, compu
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -679,7 +679,7 @@ function CalculatorApp() {
       {activePanel}
       <ReferenceCards />
       <Dialog id="calc-help-modal" open={helpOpen} titleId="calc-help-title" onOpenChange={setHelpOpen}>
-        <DialogContent style={{ maxWidth: 560 }}>
+        <DialogContent className="max-w-[560px]">
           <DialogTitle id="calc-help-title">定价旧 / 定价新 / 利润复盘有什么区别？</DialogTitle>
           <Alert variant="info" className="calc-help-copy">
             <AlertDescription>
@@ -688,9 +688,9 @@ function CalculatorApp() {
             <div className="calc-help-item"><div className="k">利润复盘</div><div className="v">适合订单已经成交、商品售价已经确定时使用，直接复盘人民币到手、利润和利润率。</div></div>
             </AlertDescription>
           </Alert>
-          <div className="actions">
+          <DialogActions>
             <Button id="calc-help-close" variant="primary" onClick={() => setHelpOpen(false)}>知道了</Button>
-          </div>
+          </DialogActions>
         </DialogContent>
       </Dialog>
     </div>

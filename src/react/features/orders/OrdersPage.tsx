@@ -2,7 +2,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -1016,10 +1016,10 @@ function OrderModal({
               <Input name="订单预警" readOnly value={draft.warningText} />
             </FormField>
           </div>
-          <div className="actions">
+          <DialogActions>
             <Button id="ot-cancel" onClick={() => onOpenChange(false)}>取消</Button>
             <Button type="submit" variant="primary">保存</Button>
-          </div>
+          </DialogActions>
         </form>
       </DialogContent>
     </Dialog>
@@ -1041,7 +1041,7 @@ function AddAccountModal({
 }) {
   return (
     <Dialog id="ot-add-acc-modal" open={open} onOpenChange={onOpenChange}>
-      <DialogContent style={{ maxWidth: 400 }}>
+      <DialogContent className="max-w-[400px]">
         <DialogTitle>添加新账号</DialogTitle>
         <form id="ot-add-acc-form" autoComplete="off" onSubmit={event => { event.preventDefault(); onConfirm(); }}>
           <div className="row">
@@ -1049,10 +1049,10 @@ function AddAccountModal({
               <Input id="ot-new-acc-input" value={value} placeholder="例如：US-TK-01" required onChange={event => onValueChange(event.target.value)} />
             </FormField>
           </div>
-          <div className="actions" style={{ marginTop: 20 }}>
+          <DialogActions>
             <Button id="ot-add-acc-cancel" onClick={() => onOpenChange(false)}>取消</Button>
             <Button type="submit" variant="primary">确定</Button>
-          </div>
+          </DialogActions>
         </form>
       </DialogContent>
     </Dialog>
@@ -1077,7 +1077,7 @@ function ExportModal({
   const allChecked = options.length > 0 && options.every(option => selected.has(option.key));
   return (
     <Dialog id="ot-export-modal" open={open} titleId="ot-export-title" onOpenChange={onOpenChange}>
-      <DialogContent style={{ maxWidth: 460 }}>
+      <DialogContent className="max-w-[460px]">
         <DialogTitle id="ot-export-title">选择要导出的账号</DialogTitle>
         <Alert variant="info" className={modalCopyClass}>
           <AlertDescription>可勾选一个或多个账号；如果有未关联订单，也可以单独导出。</AlertDescription>
@@ -1111,10 +1111,10 @@ function ExportModal({
             ))}
           </div>
         </div>
-        <div className="actions">
+        <DialogActions>
           <Button id="ot-export-cancel" onClick={() => onOpenChange(false)}>取消</Button>
           <Button id="ot-export-confirm" variant="primary" onClick={onConfirm}>导出 CSV</Button>
-        </div>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   );
@@ -1123,7 +1123,7 @@ function ExportModal({
 function StorageHelpModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog id="ot-storage-help-modal" open={open} titleId="ot-storage-help-title" onOpenChange={onOpenChange}>
-      <DialogContent style={{ maxWidth: 560 }}>
+      <DialogContent className="max-w-[560px]">
         <DialogTitle id="ot-storage-help-title">数据存储说明</DialogTitle>
         <Alert variant="info" className="calc-help-copy">
           <AlertDescription>
@@ -1133,9 +1133,9 @@ function StorageHelpModal({ open, onOpenChange }: { open: boolean; onOpenChange:
           <div className="calc-help-item"><div className="k">团队共用</div><div className="v">同一个 Firebase 项目可以给团队成员共用，但当前方案没有成员级权限隔离。</div></div>
           </AlertDescription>
         </Alert>
-        <div className="actions">
+        <DialogActions>
           <Button id="ot-storage-help-close" variant="primary" onClick={() => onOpenChange(false)}>知道了</Button>
-        </div>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   );

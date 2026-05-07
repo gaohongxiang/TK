@@ -1,6 +1,6 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { FormField } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Toast } from '@/components/ui/toast';
@@ -107,7 +107,7 @@ function AppRuntime() {
   return (
     <div data-app-runtime-ready="true">
       <Dialog id="app-firestore-modal" open={connectionOpen} titleId="app-firestore-title" onOpenChange={setConnectionOpen}>
-        <DialogContent style={{ maxWidth: 560 }}>
+        <DialogContent className="max-w-[560px]">
           <DialogTitle id="app-firestore-title">连接 Firebase Firestore</DialogTitle>
           <Alert variant="info" className={modalCopyClass}>
             <AlertDescription>
@@ -139,16 +139,16 @@ function AppRuntime() {
               {copyingRules ? '复制中…' : '复制 Firestore 规则'}
             </Button>
           </div>
-          <div className="actions">
+          <DialogActions>
             <Button id="app-close-firestore-modal" onClick={() => setConnectionOpen(false)}>取消</Button>
             <Button id="app-clear-firestore-config" variant="danger" style={{ display: TKFirestoreConnection.getConfig()?.projectId ? undefined : 'none' }} onClick={() => TKFirestoreConnection.requestDisconnect({ closeModal: true })}>退出数据库</Button>
             <Button id="app-save-firestore-config" variant="primary" onClick={saveConnection}>连接并开始使用</Button>
-          </div>
+          </DialogActions>
         </DialogContent>
       </Dialog>
 
       <Dialog id="app-firestore-rules-modal" open={rulesOpen} titleId="app-firestore-rules-title" onOpenChange={setRulesOpen}>
-        <DialogContent style={{ maxWidth: 520 }}>
+        <DialogContent className="max-w-[520px]">
           <DialogTitle id="app-firestore-rules-title">需要更新 Firestore 规则</DialogTitle>
           <Alert variant="warning" className={modalCopyClass} id="app-firestore-rules-copy">
             <AlertDescription>{rulesMessage}</AlertDescription>
@@ -157,24 +157,24 @@ function AppRuntime() {
             <Button id="app-rules-open-firebase-console" size="sm" onClick={() => TKFirestoreConnection.openConsole()}>打开 Firebase Console</Button>
             <Button id="app-rules-copy-firestore-rules" size="sm" disabled={copyingRules} onClick={() => void copyRules()}>{copyingRules ? '复制中…' : '复制 Firestore 规则'}</Button>
           </div>
-          <div className="actions">
+          <DialogActions>
             <Button id="app-close-firestore-rules-modal" variant="primary" onClick={() => setRulesOpen(false)}>我知道了</Button>
-          </div>
+          </DialogActions>
         </DialogContent>
       </Dialog>
 
       <Dialog id="app-firestore-disconnect-modal" open={disconnectOpen} titleId="app-firestore-disconnect-title" onOpenChange={setDisconnectOpen}>
-        <DialogContent style={{ maxWidth: 460 }}>
+        <DialogContent className="max-w-[460px]">
           <DialogTitle id="app-firestore-disconnect-title">退出当前数据库？</DialogTitle>
           <Alert variant="warning" className={modalCopyClass}>
             <AlertDescription>
               当前项目：<strong id="app-firestore-disconnect-project">{disconnectProject}</strong>。退出后只会清除本浏览器保存的 Firebase 连接配置，不会删除 Firestore 里的商品和订单。
             </AlertDescription>
           </Alert>
-          <div className="actions">
+          <DialogActions>
             <Button id="app-cancel-firestore-disconnect" onClick={() => setDisconnectOpen(false)}>取消</Button>
             <Button id="app-confirm-firestore-disconnect" variant="danger" onClick={applyDisconnect}>退出数据库</Button>
-          </div>
+          </DialogActions>
         </DialogContent>
       </Dialog>
 

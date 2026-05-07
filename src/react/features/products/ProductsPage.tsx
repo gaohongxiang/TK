@@ -2,7 +2,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -581,10 +581,10 @@ function ProductModal({
             </div>
             <SkuEditorList draft={draft} invalid={invalid} onSkuChange={updateSku} onRemoveSku={onRemoveSku} />
           </div>
-          <div className="actions">
+          <DialogActions>
             <Button id="pl-cancel" onClick={() => onOpenChange(false)}>取消</Button>
             <Button type="submit" variant="primary">保存</Button>
-          </div>
+          </DialogActions>
         </form>
       </DialogContent>
     </Dialog>
@@ -726,7 +726,7 @@ function ExportModal({
   const allChecked = options.length > 0 && options.every(option => selected.has(option.key));
   return (
     <Dialog id="pl-export-modal" open={open} titleId="pl-export-title" onOpenChange={onOpenChange}>
-      <DialogContent style={{ maxWidth: 460 }}>
+      <DialogContent className="max-w-[460px]">
         <DialogTitle id="pl-export-title">选择要导出的账号</DialogTitle>
         <Alert variant="info" className={modalCopyClass}>
           <AlertDescription>可勾选一个或多个账号；如果当前已经切到某个账号，会默认选中该账号。</AlertDescription>
@@ -766,10 +766,10 @@ function ExportModal({
             ))}
           </div>
         </div>
-        <div className="actions">
+        <DialogActions>
           <Button id="pl-export-cancel" onClick={() => onOpenChange(false)}>取消</Button>
           <Button id="pl-export-confirm" variant="primary" onClick={onConfirm}>导出 CSV</Button>
-        </div>
+        </DialogActions>
       </DialogContent>
     </Dialog>
   );

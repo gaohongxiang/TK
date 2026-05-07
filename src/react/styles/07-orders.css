@@ -390,35 +390,6 @@ table.ot tbody tr.is-refunded:hover {
   margin-bottom: 12px
 }
 
-/* —— Modal —— */
-.modal-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(5, 8, 24, .7);
-  backdrop-filter: blur(4px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 16px
-}
-
-.modal-mask.show {
-  display: flex
-}
-
-.modal {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  width: 100%;
-  max-width: 720px;
-  max-height: 92vh;
-  overflow: auto;
-  padding: 24px;
-  box-shadow: var(--shadow)
-}
-
 .ot-item-block {
   margin: 10px 0 8px;
   display: flex;
@@ -592,29 +563,6 @@ table.ot tbody tr.is-refunded:hover {
   white-space: nowrap;
 }
 
-.modal h3 {
-  margin: 0 0 16px;
-  font-size: 16px
-}
-
-.modal .row {
-  grid-template-columns: 1fr 1fr
-}
-
-.modal .row.triple {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.modal .row.quad {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.modal .row.quint {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
-}
-
 .ot-money-row-top {
   grid-template-columns: minmax(72px, 84px) repeat(4, minmax(0, 1fr)) !important;
 }
@@ -775,17 +723,6 @@ table.ot tbody tr.is-refunded:hover {
   background: rgba(196, 78, 78, .12);
   border: 1px solid rgba(196, 78, 78, .22);
   opacity: .98;
-}
-
-.modal .full {
-  grid-column: 1/-1
-}
-
-.modal .actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 20px
 }
 
 .ot-export-selectors {

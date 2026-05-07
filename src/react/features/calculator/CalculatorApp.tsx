@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import { calcLegacyRow, calcPricingRow, calcSalePrice, deriveLegacyOrigPrice, derivePricingOrigPrice } from '../../../calc/formulas.mjs';
 import { ensureGlobalSettingsStore } from '../../../global-settings.mjs';
 import { DEFAULT_CONSTANTS, SHIPPING_RULES, computeCalculatedShippingCost, computeShippingQuote } from '../../../shipping-core.mjs';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { FormField, FormRow } from '@/components/ui/form';
+import { HelpItem, HelpStack } from '@/components/ui/help-stack';
 import { Input } from '@/components/ui/input';
 import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
@@ -685,13 +685,11 @@ function CalculatorApp() {
       <Dialog id="calc-help-modal" open={helpOpen} titleId="calc-help-title" onOpenChange={setHelpOpen}>
         <DialogContent className="max-w-[560px]">
           <DialogTitle id="calc-help-title">定价旧 / 定价新 / 利润复盘有什么区别？</DialogTitle>
-          <Alert variant="info" className="calc-help-copy">
-            <AlertDescription>
-            <div className="calc-help-item"><div className="k">定价旧</div><div className="v">按旧口径快速反推原价、各折扣售价和利润率，适合粗算、对比和保留原来的计算习惯。</div></div>
-            <div className="calc-help-item"><div className="k">定价新</div><div className="v">以目标利润率为核心，根据采购价、海外运费、平台手续费、达人佣金率、汇率和折扣档位反推原价。</div></div>
-            <div className="calc-help-item"><div className="k">利润复盘</div><div className="v">适合订单已经成交、商品售价已经确定时使用，直接复盘人民币到手、利润和利润率。</div></div>
-            </AlertDescription>
-          </Alert>
+          <HelpStack>
+            <HelpItem label="定价旧">按旧口径快速反推原价、各折扣售价和利润率，适合粗算、对比和保留原来的计算习惯。</HelpItem>
+            <HelpItem label="定价新">以目标利润率为核心，根据采购价、海外运费、平台手续费、达人佣金率、汇率和折扣档位反推原价。</HelpItem>
+            <HelpItem label="利润复盘">适合订单已经成交、商品售价已经确定时使用，直接复盘人民币到手、利润和利润率。</HelpItem>
+          </HelpStack>
           <DialogActions>
             <Button id="calc-help-close" variant="primary" onClick={() => setHelpOpen(false)}>知道了</Button>
           </DialogActions>

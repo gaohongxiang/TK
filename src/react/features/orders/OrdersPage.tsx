@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ExportOptions } from '@/components/ui/export-options';
 import { FormField, FormRow } from '@/components/ui/form';
+import { HelpItem, HelpStack } from '@/components/ui/help-stack';
 import { Input } from '@/components/ui/input';
 import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
@@ -1107,14 +1108,12 @@ function StorageHelpModal({ open, onOpenChange }: { open: boolean; onOpenChange:
     <Dialog id="ot-storage-help-modal" open={open} titleId="ot-storage-help-title" onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[560px]">
         <DialogTitle id="ot-storage-help-title">数据存储说明</DialogTitle>
-        <Alert variant="info" className="calc-help-copy">
-          <AlertDescription>
-          <div className="calc-help-item"><div className="k">本地优先</div><div className="v">订单管理和商品管理都会先使用 Firestore 自带的离线缓存，再同步到你自己的 Firebase Firestore 项目。</div></div>
-          <div className="calc-help-item"><div className="k">可选远端</div><div className="v">当前只支持 Firebase Firestore。工具本身不会把订单或商品资料存到我的数据库里。</div></div>
-          <div className="calc-help-item"><div className="k">恢复方式</div><div className="v">请保存好自己的 <code>firebaseConfig</code>。换浏览器或换设备后，用同一套远端配置即可恢复。</div></div>
-          <div className="calc-help-item"><div className="k">团队共用</div><div className="v">同一个 Firebase 项目可以给团队成员共用，但当前方案没有成员级权限隔离。</div></div>
-          </AlertDescription>
-        </Alert>
+        <HelpStack>
+          <HelpItem label="本地优先">订单管理和商品管理都会先使用 Firestore 自带的离线缓存，再同步到你自己的 Firebase Firestore 项目。</HelpItem>
+          <HelpItem label="可选远端">当前只支持 Firebase Firestore。工具本身不会把订单或商品资料存到我的数据库里。</HelpItem>
+          <HelpItem label="恢复方式">请保存好自己的 <code>firebaseConfig</code>。换浏览器或换设备后，用同一套远端配置即可恢复。</HelpItem>
+          <HelpItem label="团队共用">同一个 Firebase 项目可以给团队成员共用，但当前方案没有成员级权限隔离。</HelpItem>
+        </HelpStack>
         <DialogActions>
           <Button id="ot-storage-help-close" variant="primary" onClick={() => onOpenChange(false)}>知道了</Button>
         </DialogActions>

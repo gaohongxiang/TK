@@ -374,33 +374,6 @@
   color: var(--muted)
 }
 
-.calc-help-copy {
-  display: grid;
-  gap: 12px
-}
-
-.calc-help-item {
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--panel2)
-}
-
-.calc-help-item .k {
-  margin-bottom: 6px;
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 700
-}
-
-.calc-help-item .v {
-  color: var(--text);
-  font-size: 13.5px;
-  line-height: 1.7
-}
-
 .kbd {
   font: 11px/1 ui-monospace, Consolas, monospace;
   padding: 3px 6px;

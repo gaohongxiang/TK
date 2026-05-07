@@ -516,6 +516,18 @@ const orderItemInputClass = '!h-10 !min-h-10 text-center';
 const orderItemSelectClass = '!h-10 !min-h-10 rounded-[10px] border-[color-mix(in_srgb,var(--border)_82%,white)] bg-[color-mix(in_srgb,var(--panel2)_38%,white)] px-3 text-center';
 const orderItemInlineActionsClass = 'ot-item-inline-actions ml-1.5 inline-flex items-center gap-1.5';
 const orderItemInlineButtonClass = 'ot-item-inline-btn ot-item-copy-btn inline-flex h-4 w-4 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[var(--accent)] hover:text-[color-mix(in_srgb,var(--accent)_82%,black)] [&_svg]:h-3.5 [&_svg]:w-3.5';
+const orderInlineHintClass = 'ot-inline-hint ml-1.5 inline whitespace-nowrap text-[11px] font-medium text-[var(--muted)]';
+const orderMoneyRowClass = 'quint ot-money-row-top mt-[18px] !grid-cols-[minmax(72px,84px)_repeat(4,minmax(0,1fr))] max-[768px]:mt-3';
+const orderMetaRowClass = 'quad ot-meta-row mt-[18px] !grid-cols-4 max-[768px]:mt-3';
+const orderRefundToggleClass = 'ot-refund-toggle flex min-h-10 w-[76px] cursor-pointer items-center justify-start bg-transparent p-0';
+const orderRefundInputClass = 'absolute opacity-0 pointer-events-none';
+const orderRefundKnobClass = 'ot-refund-toggle-knob relative h-10 w-[76px] flex-none rounded-full bg-[color-mix(in_srgb,var(--panel2)_84%,white_16%)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--line)_88%,white_12%)] transition-[background-color,box-shadow,transform] after:absolute after:left-1 after:top-1 after:h-8 after:w-8 after:rounded-full after:bg-white after:shadow-[0_1px_4px_rgba(15,23,42,.18)] after:transition-[left] group-hover:bg-[color-mix(in_srgb,var(--panel2)_74%,white_26%)]';
+const orderRefundKnobCheckedClass = 'bg-[linear-gradient(135deg,#f0b1b1,#de6a6a)] shadow-[inset_0_0_0_1px_rgba(196,78,78,.18)] after:left-[calc(100%-36px)]';
+const orderSaleFieldClass = 'ot-sale-field';
+const orderSaleInputWrapClass = 'ot-sale-input-wrap relative';
+const orderSaleInputRefundClass = 'ot-sale-input-refund pointer-events-none absolute inset-0 hidden items-center justify-between gap-2.5 rounded-xl bg-[color-mix(in_srgb,#fff5f5_78%,var(--panel2)_22%)] px-3 shadow-[inset_0_0_0_1px_rgba(196,78,78,.16)]';
+const orderSaleInputOriginalClass = 'ot-sale-input-original tabular-nums text-[var(--muted)] line-through decoration-[1.2px]';
+const orderSaleInputZeroClass = 'ot-sale-input-zero tabular-nums font-bold text-[#c44e4e]';
 
 function getProfitValueClass(tone: string) {
   return cn(
@@ -993,26 +1005,26 @@ function OrderModal({
             <FormField label="总件数">
               <Input id="ot-total-quantity" readOnly value={computeItemTotals(draft.items).quantity || ''} />
             </FormField>
-            <FormField label={<>总重量(g) <span className="ot-inline-hint" id="ot-weight-hint">{computeItemTotals(draft.items).quantity > 1 ? '已按各 SKU 单件重量 × 数量汇总' : ''}</span></>}>
+            <FormField label={<>总重量(g) <span className={orderInlineHintClass} id="ot-weight-hint">{computeItemTotals(draft.items).quantity > 1 ? '已按各 SKU 单件重量 × 数量汇总' : ''}</span></>}>
               <Input name="重量" value={draft.weightText} onChange={event => updateDraft({ weightText: event.target.value })} />
             </FormField>
-            <FormField label={<>总尺寸(cm) <span className="ot-inline-hint">多个订单明细时请自行调整尺寸</span></>}>
+            <FormField label={<>总尺寸(cm) <span className={orderInlineHintClass}>多个订单明细时请自行调整尺寸</span></>}>
               <Input name="尺寸" value={draft.sizeText} onChange={event => updateDraft({ sizeText: event.target.value })} />
             </FormField>
           </FormRow>
-          <FormRow columns={5} className="quint ot-money-row-top mt-[18px] max-[768px]:mt-3">
+          <FormRow columns={5} className={orderMoneyRowClass}>
             <FormField label="是否退款" className="ot-refund-field">
-              <label className="ot-refund-toggle">
-                <input type="checkbox" id="ot-is-refunded" name="是否退款" value="1" checked={draft.isRefunded} onChange={event => updateDraft({ isRefunded: event.target.checked })} />
-                <span className="ot-refund-toggle-knob" aria-hidden="true"></span>
+              <label className={cn('group', orderRefundToggleClass)}>
+                <input className={orderRefundInputClass} type="checkbox" id="ot-is-refunded" name="是否退款" value="1" checked={draft.isRefunded} onChange={event => updateDraft({ isRefunded: event.target.checked })} />
+                <span className={cn(orderRefundKnobClass, draft.isRefunded ? orderRefundKnobCheckedClass : '')} aria-hidden="true"></span>
               </label>
             </FormField>
-            <FormField label="总售价（日元）" className={cn('ot-sale-field', draft.isRefunded ? 'is-refunded' : '')}>
-              <div className="ot-sale-input-wrap">
-                <Input type="number" id="ot-total-sale" name="售价" min="0" step="0.01" readOnly={draft.isRefunded} value={draft.salePrice} onChange={event => updateDraft({ salePrice: event.target.value })} />
-                <div className="ot-sale-input-refund" aria-hidden="true">
-                  <span className="ot-sale-input-original">{draft.salePrice || '-'}</span>
-                  <span className="ot-sale-input-zero">0</span>
+            <FormField label="总售价（日元）" className={cn(orderSaleFieldClass, draft.isRefunded ? 'is-refunded' : '')}>
+              <div className={orderSaleInputWrapClass}>
+                <Input className={draft.isRefunded ? 'opacity-0 pointer-events-none' : ''} type="number" id="ot-total-sale" name="售价" min="0" step="0.01" readOnly={draft.isRefunded} value={draft.salePrice} onChange={event => updateDraft({ salePrice: event.target.value })} />
+                <div className={cn(orderSaleInputRefundClass, draft.isRefunded ? 'flex' : '')} aria-hidden="true">
+                  <span className={orderSaleInputOriginalClass}>{draft.salePrice || '-'}</span>
+                  <span className={orderSaleInputZeroClass}>0</span>
                 </div>
               </div>
             </FormField>
@@ -1026,7 +1038,7 @@ function OrderModal({
               <Input type="number" name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
             </FormField>
           </FormRow>
-          <FormRow columns={4} className="quad ot-meta-row mt-[18px] max-[768px]:mt-3">
+          <FormRow columns={4} className={orderMetaRowClass}>
             <FormField label="达人佣金率（%）">
               <Input type="number" name="达人佣金率" min="0" step="0.01" value={draft.creatorCommissionRate} onChange={event => updateDraft({ creatorCommissionRate: event.target.value })} />
             </FormField>

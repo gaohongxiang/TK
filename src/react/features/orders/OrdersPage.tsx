@@ -1,8 +1,11 @@
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { showAppToast } from '@/app/toast';
 import { OrderTrackerProviderFirestore } from '../../../orders/provider-firestore.mjs';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
@@ -1248,11 +1251,13 @@ function ExportModal({
     <Dialog id="ot-export-modal" open={open} titleId="ot-export-title" onOpenChange={onOpenChange}>
       <DialogContent style={{ maxWidth: 460 }}>
         <DialogTitle id="ot-export-title">选择要导出的账号</DialogTitle>
-        <div className="modal-copy" style={{ marginBottom: 16 }}>可勾选一个或多个账号；如果有未关联订单，也可以单独导出。</div>
+        <Alert variant="info" className="modal-copy mb-4">
+          <AlertDescription>可勾选一个或多个账号；如果有未关联订单，也可以单独导出。</AlertDescription>
+        </Alert>
         <div className="ot-export-selectors">
           <label className="ot-export-option ot-export-option-all">
             <span className="ot-export-option-main">
-              <input id="ot-export-all" type="checkbox" checked={allChecked} onChange={event => onSelectedChange(event.target.checked ? new Set(options.map(option => option.key)) : new Set())} />
+              <Checkbox id="ot-export-all" checked={allChecked} onChange={event => onSelectedChange(event.target.checked ? new Set(options.map(option => option.key)) : new Set())} />
               <span>全部账号</span>
             </span>
           </label>
@@ -1260,8 +1265,7 @@ function ExportModal({
             {options.map(option => (
               <label className="ot-export-option" key={option.key}>
                 <span className="ot-export-option-main">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     className="ot-export-checkbox"
                     value={option.key}
                     checked={selected.has(option.key)}
@@ -1293,12 +1297,14 @@ function StorageHelpModal({ open, onOpenChange }: { open: boolean; onOpenChange:
     <Dialog id="ot-storage-help-modal" open={open} titleId="ot-storage-help-title" onOpenChange={onOpenChange}>
       <DialogContent style={{ maxWidth: 560 }}>
         <DialogTitle id="ot-storage-help-title">数据存储说明</DialogTitle>
-        <div className="calc-help-copy">
+        <Alert variant="info" className="calc-help-copy">
+          <AlertDescription>
           <div className="calc-help-item"><div className="k">本地优先</div><div className="v">订单管理和商品管理都会先使用 Firestore 自带的离线缓存，再同步到你自己的 Firebase Firestore 项目。</div></div>
           <div className="calc-help-item"><div className="k">可选远端</div><div className="v">当前只支持 Firebase Firestore。工具本身不会把订单或商品资料存到我的数据库里。</div></div>
           <div className="calc-help-item"><div className="k">恢复方式</div><div className="v">请保存好自己的 <code>firebaseConfig</code>。换浏览器或换设备后，用同一套远端配置即可恢复。</div></div>
           <div className="calc-help-item"><div className="k">团队共用</div><div className="v">同一个 Firebase 项目可以给团队成员共用，但当前方案没有成员级权限隔离。</div></div>
-        </div>
+          </AlertDescription>
+        </Alert>
         <div className="actions">
           <Button id="ot-storage-help-close" variant="primary" onClick={() => onOpenChange(false)}>知道了</Button>
         </div>
@@ -1661,26 +1667,26 @@ function OrdersPage() {
           </div>
         </div>
         <div id="ot-header-accounts-row" className="ot-header-row ot-header-accounts-row">
-          <div className="ot-acc-tabs ot-acc-shell" id="ot-acc-tabs">
+          <Tabs className="ot-acc-tabs ot-acc-shell" id="ot-acc-tabs">
             <div className="ot-acc-tabs-all" id="ot-acc-tabs-all">
-              <button type="button" className={cn('tab', activeAccount === '__all__' ? 'active' : '')} onClick={() => { setActiveAccount('__all__'); setCurrentPage(1); }}>
+              <TabsTrigger active={activeAccount === '__all__'} className={cn('tab', activeAccount === '__all__' ? 'active' : '')} onClick={() => { setActiveAccount('__all__'); setCurrentPage(1); }}>
                 全部<span className="tab-count">({orders.length})</span>
-              </button>
+              </TabsTrigger>
             </div>
             <div className="ot-acc-tabs-scroll" id="ot-acc-tabs-scroll">
-              <div className="ot-acc-tabs-scroll-inner">
+              <TabsList className="ot-acc-tabs-scroll-inner">
                 {allAccounts.map(account => (
-                  <button type="button" className={cn('tab', activeAccount === account ? 'active' : '')} key={account} onClick={() => { setActiveAccount(account); setCurrentPage(1); }}>
+                  <TabsTrigger active={activeAccount === account} className={cn('tab', activeAccount === account ? 'active' : '')} key={account} onClick={() => { setActiveAccount(account); setCurrentPage(1); }}>
                     {account}<span className="tab-count">({orders.filter(order => normalizeAccountName(order['账号']) === account).length})</span>
-                  </button>
+                  </TabsTrigger>
                 ))}
                 <button className="tab-add" id="ot-tab-add" title="添加账号" type="button" onClick={() => setAccountModalOpen(true)}>+</button>
-              </div>
+              </TabsList>
             </div>
             <div className="ot-acc-actions" id="ot-acc-actions">
               <Button id="ot-add" variant="primary" onClick={() => openOrderModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增订单</Button>
             </div>
-          </div>
+          </Tabs>
         </div>
         <OrdersTable
           orders={orders}

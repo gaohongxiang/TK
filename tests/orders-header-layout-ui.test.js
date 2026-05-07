@@ -4,6 +4,8 @@ const assert = require('assert');
 
 const indexSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
+const reactCheckboxSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
+const reactTabsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const tabsSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'orders', 'tabs.mjs'), 'utf8');
@@ -39,6 +41,30 @@ assert.match(
   ordersPageSource,
   /id="ot-acc-actions"[\s\S]*id="ot-add"/,
   '账号区右侧需要固定显示新增订单按钮'
+);
+
+assert.match(
+  ordersPageSource,
+  /from '@\/components\/ui\/checkbox'[\s\S]*from '@\/components\/ui\/tabs'|from '@\/components\/ui\/tabs'[\s\S]*from '@\/components\/ui\/checkbox'/,
+  '订单管理账号标签和导出弹层需要开始使用共享 Checkbox/Tabs primitives'
+);
+
+assert.match(
+  ordersPageSource,
+  /<Tabs[\s\S]*id="ot-acc-tabs"[\s\S]*<TabsTrigger[\s\S]*active=\{activeAccount === '__all__'\}[\s\S]*<TabsList[\s\S]*ot-acc-tabs-scroll-inner[\s\S]*<TabsTrigger[\s\S]*active=\{activeAccount === account\}/,
+  '订单账号筛选需要迁到共享 Tabs/TabsTrigger，同时保留现有账号区 DOM 语义'
+);
+
+assert.match(
+  ordersPageSource,
+  /<Checkbox id="ot-export-all"[\s\S]*<Checkbox[\s\S]*className="ot-export-checkbox"/,
+  '订单导出账号选择需要迁到共享 Checkbox primitive'
+);
+
+assert.match(
+  reactTabsSource + reactCheckboxSource,
+  /data-slot="tabs-trigger"[\s\S]*data-slot="checkbox"/,
+  '共享 Tabs 和 Checkbox primitives 需要暴露 data-slot'
 );
 
 assert.doesNotMatch(

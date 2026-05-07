@@ -8,6 +8,7 @@ import { useMemo, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { TableViewport } from '@/components/ui/table-tools';
 import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsRecord } from './types';
 import { buildFunnelStages, buildOpportunityScatterOption, buildOverviewOption, DIAGNOSIS_COLORS } from './chartOptions';
 import { formatInteger, formatPercent, formatYen, shortenText } from './format';
@@ -239,9 +240,9 @@ function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
           <h2>商品明细</h2>
           <Badge className="analytics-chip muted">{analysis.records.length} 个商品 · 仅展示前 50</Badge>
         </div>
-        <div className="ot-table-wrap analytics-table-wrap">
+        <TableViewport className="analytics-table-wrap">
           <DetailTable records={analysis.records} />
-        </div>
+        </TableViewport>
       </Card>
     </section>
   );

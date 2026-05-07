@@ -26,8 +26,8 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - 工具站提供页面、计算、分析和本地交互能力。
 - 用户业务数据只进入用户自己的 Firebase Firestore。
 - 本站、Cloudflare Pages、未来可能的 Workers 都不保存用户业务数据。
-- 当前原生 JS + Vite ESM 模块体系已稳定；路线一轻模块化和路线二标准模块化主体已完成。
-- 当前已在 `modern-react-spa` 分支启动完整 React SPA 重建；这是独立现代化分支，不动 `main`，完成验收后再合并。
+- 原生 JS + Vite ESM 路线已作为历史基线完成。
+- 当前 `modern-react-spa` 分支已完成完整 React SPA 重建，正在做视觉系统和旧 CSS 依赖收敛；这是独立现代化分支，不动 `main`，完成验收后再合并。
 
 ## 2. 当前硬性决策
 
@@ -63,6 +63,8 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - lucide-react。
 
 当前选择暂不使用 Next.js。原因是主站仍是静态工具站，用户业务数据在用户自己的 Firebase Firestore，数据分析 Excel 只在浏览器本地解析；当前不需要 SSR、Server Components 或后端 API 路由。先用 Vite React 保持部署边界简单。
+
+当前也暂不使用 TanStack Table。商品和订单表格先用本地 shadcn 风格 `Table` primitive、共享 `table-tools` 控件和既有纯函数完成；只有后续出现复杂列配置、虚拟滚动或大量交互排序筛选需求时再评估。
 
 重建原则：
 
@@ -106,12 +108,13 @@ modern-react-spa
 - 利润计算器已迁到 `src/react/features/calculator/CalculatorApp.tsx`，复用现有公式和运费核心。
 - 数据分析页已迁到 React + ECharts，并由 `src/react/features/analytics/AnalyticsRoute.tsx` 按需懒加载；`src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 仍作为纯函数来源复用。
 - 商品管理已迁到完整 React 页面：React 接管连接状态、账号筛选、表格、分页、新增/编辑商品弹窗、SKU 编辑、CSV 导出和商品变更广播；继续复用现有 Firestore provider、商品表格纯函数、SKU 表单纯函数和运费核心，不改变 Firestore 数据结构。
-- 订单管理已迁到完整 React 页面；继续复用现有 Firestore provider、订单共享计算、导出、表格筛选和同步纯函数，不改变 Firestore 数据结构。
+- 订单管理已迁到完整 React 页面；继续复用现有 Firestore provider、订单共享计算、导出和表格筛选 helper，不改变 Firestore 数据结构；旧订单同步运行壳层已删除，保存流程由 React 订单页直接调用 provider。
 - `index.html` 当前只保留 `#root`、`/src/react/main.tsx`、Firebase compat SDK 和 SheetJS；不再加载旧 DOM 入口。
 - 已删除旧运行时入口和旧 React 二次挂载文件：`src/main.mjs`、`src/calc/index.mjs`、`src/orders/index.mjs`、`src/products/index.mjs`、`src/analytics/index.mjs`、`src/analytics/charts.mjs`、`src/react/features/analytics/mountAnalytics.tsx`、`src/react/features/products/ProductsTable.tsx`、`src/react/features/products/mountProductsTable.tsx`。
 - `src/orders/table.mjs` 和 `src/products/table.mjs` 已收缩为纯 helper，不再暴露 DOM `render` 壳或挂旧全局表格视图。
 - 商品主表已使用本地 shadcn 风格 `Table` / `Button` primitives；商品导出弹层由 React 控制，CSV 行构建和文件名继续复用 `src/products/export.mjs`。
 - 订单摘要已保留收入、支出、利润、退款和达人佣金口径；退款订单行和订单号达人/退款标签仍由纯函数口径驱动。
+- 商品、订单和数据分析的表格搜索、分页、吸顶控制带、横向滚动外壳和空状态已收敛到 `src/react/components/ui/table-tools.tsx`，不再依赖旧 `ot-table-*` 全局 CSS。
 - `scripts/preview-smoke.mjs` 已适配完整 React SPA：首页 HTTP smoke 检查单根 React 入口、SEO meta、Firebase/SheetJS 脚本、构建产物和静态页面；运行后交互由 Playwright 覆盖。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前以 `src/*.mjs` 作为唯一主站业务源码。
@@ -239,7 +242,7 @@ Build output directory: .vitepress/dist
 | --- | --- | --- | --- | --- | --- |
 | 轻模块化 | 1-2 天 | 原生 JS + `<script defer>` + Vite 构建 | 已完成 | 低 | 降低单文件压力，保持现有稳定性 |
 | 标准模块化 | 3-5 天 | Vite 原生 ES Modules + `import/export` | 主体已完成，进入真实数据验收期 | 中 | 依赖关系清晰，减少全局变量 |
-| React 渐进迁移 | 1-3 周 | Vite + React + TypeScript + Tailwind + shadcn/ui + ECharts + TanStack Table | 启动规划，先数据分析 | 中高 | UI 质感、图表、表格和长期维护性提升 |
+| 完整 React SPA | 1-3 周 | Vite + React + TypeScript + Tailwind + shadcn/ui + ECharts | 已完成第一轮重建，进入视觉系统收敛 | 中高 | UI 质感、图表、表格和长期维护性提升 |
 
 旧渐进迁移原则已经被 `modern-react-spa` 分支的新路线取代：
 
@@ -456,7 +459,7 @@ src/
 
 #### M1：迁移纯工具
 
-当前状态：本地进行中，第一步已完成并通过验证。
+当前状态：已完成。完整 React SPA 已接管主站，旧 `js/` 浏览器脚本链和旧全局兼容层已清理。
 
 历史迁移顺序：
 
@@ -470,7 +473,7 @@ src/
 - 新增 `src/analytics/parser.mjs`，提供 `TKAnalyticsParser` 和解析纯函数 ESM 导出。
 - 新增 `src/analytics/analyzer.mjs`，通过 `import { CHANNELS } from './parser.mjs'` 读取 parser 元信息，并提供 `TKAnalyticsAnalyzer` 和分析纯函数 ESM 导出。
 - `tests/shared-utils.test.js` 现在保护未使用的旧 shared 迁移壳层不再回归，并确认 React analytics 使用本地格式化 helper；`tests/analytics-module.test.js` 继续确认 analytics parser/analyzer 可被 Node 直接作为 ESM 导入。
-- 旧 `js/` 浏览器脚本链暂未替换，页面仍走原有 `<script defer>` 和 `window.Xxx` 全局兼容路径。
+- 旧 `js/` 浏览器脚本链已替换，页面不再走 `<script defer>` 本地业务脚本或 `window.Xxx` 全局兼容入口。
 
 当前已验证通过：
 
@@ -492,23 +495,12 @@ npm run release:check
 - `analytics/analyzer`
 - `analytics/index`
 
-然后让 `src/main.js` 挂载：
-
-```js
-window.TKAnalytics = TKAnalytics;
-```
-
-过渡期可继续提供全局对象，避免 `app.js` 一次大改。
-
 已完成：
 
-- 新增 `src/analytics/index.mjs`，通过 ESM `import` 接入 `parser`、`analyzer`、共享 HTML 和格式化工具。
-- `src/analytics/index.mjs` 导出 `createAnalyticsModule`、`TKAnalytics` 和 `registerAnalyticsProvider`。
-- 数据分析页已由 React 入口直接接入 parser/analyzer，不再通过旧 `TKDataSourceRegistry` 注册方式。
-- `index.html` 已把数据分析的三段旧普通脚本替换为 `<script type="module" src="/src/analytics/index.mjs"></script>`。
-- 旧 `js/analytics/*.js` 暂时保留，作为兼容参考和回退点，不再由主页面加载。
-- Vite 构建已开始打包数据分析 ESM 入口；构建提示里不再包含 `js/analytics/parser.js`、`js/analytics/analyzer.js`、`js/analytics/index.js`。
-- `tests/analytics-module.test.js` 和 `tests/main-build-contract.test.js` 已覆盖数据分析 ESM 入口、provider 注册和“不上传/不持久化 Excel”的边界。
+- 数据分析页已由 React 入口直接接入 `src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs`，不再通过旧 `TKDataSourceRegistry` 注册方式。
+- 旧 `src/analytics/index.mjs`、`src/analytics/charts.mjs` 和旧 `js/analytics/*.js` 已删除。
+- Vite 构建只打包 React 数据分析路由和 parser/analyzer 纯函数；构建产物不包含旧 `js/analytics/*`。
+- `tests/analytics-module.test.js` 和 `tests/main-build-contract.test.js` 已覆盖 React 数据分析入口和“不上传/不持久化 Excel”的边界。
 
 当前已验证通过：
 
@@ -557,10 +549,7 @@ node tests/shipping-core-module.test.js
 npm run release:check
 ```
 
-下一步：
-
-- 进入 M4 商品管理迁移。
-- 暂时不要删除旧 `js/calc/*.js`，等商品/订单依赖边界更清楚且线上稳定后再统一清理。
+下一步：利润计算器已完成迁移，后续只按功能需求迭代，不再恢复旧 calc DOM 壳层。
 
 #### M4：迁移商品管理
 
@@ -584,22 +573,20 @@ npm run release:check
 - 新增 `src/products/form-utils.mjs`，提供商品 CRUD/SKU 弹窗的尺寸解析、批量 SKU 草稿、SKU 名称匹配、运费快照、SKU 默认值判断等纯函数 ESM 导出。
 - `tests/products-form-utils-module.test.js` 已新增动态 `import()` 断言，确认商品表单纯函数 ESM 输出稳定。
 - `src/products/form-utils.mjs` 已收敛为纯 ESM helper，不再挂旧 `window.ProductLibraryFormUtils`。
-- `index.html` 已移除旧 `js/products/form-utils.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 已移除旧 `js/products/form-utils.js` 页面加载；旧 `js/` 源目录已统一清理。
 - 新增 `src/products/provider-firestore.mjs`，提供商品 Firestore provider 的配置解析、展示名、商品/SKU 归一化、Firestore 写入 doc 构造、`create/init/pullProducts/upsertProduct/deleteProduct` 的 ESM 导出。
 - `tests/products-provider-firestore-module.test.js` 已新增动态 `import()` 断言，确认 provider 纯函数 ESM 的配置解析和商品/SKU 文档映射保持旧行为。
 - `src/products/provider-firestore.mjs` 已收敛为纯 ESM provider，不再挂旧 `window.ProductLibraryProviderFirestore` 或注册 `TKDataSourceRegistry`；商品页和订单页直接 import 使用。
 - 订单商品资料读取已由 React 订单页直接导入商品 provider ESM，不再依赖旧普通脚本加载顺序。
 - 完整 React SPA 重建后已删除 `src/products/index.mjs`，商品管理入口由 `src/react/features/products/ProductsPage.tsx` 接管。
 - `index.html` 已移除旧 `js/products/index.js` 的页面加载，商品管理不再通过旧 hash DOM 入口启动。
-- `index.html` 已移除旧 `js/products/provider-firestore.js` 页面加载；旧文件暂时保留为历史参考和回退。
-- `index.html` 已移除旧 `js/products/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
-- `index.html` 已移除旧 `js/products/accounts.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 已移除旧 `js/products/provider-firestore.js`、`js/products/table.js`、`js/products/accounts.js` 页面加载；旧 `js/` 源目录已统一清理。
 - 新增 `src/products/export.mjs`，提供商品导出账号选项、CSV 行构建、文件名和 CSV 转义等纯函数 ESM 导出；账号选择弹层和 CSV 下载由 React 商品页直接处理，不再挂旧 `window.ProductLibraryExport`。
 - `tests/products-export-module.test.js` 已新增动态 `import()` 断言，确认商品导出 ESM 账号选项、CSV 行构建行为稳定，并阻止 DOM 弹层/下载逻辑回流到 helper。
-- `index.html` 已移除旧 `js/products/export.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 已移除旧 `js/products/export.js` 页面加载；旧 `js/` 源目录已统一清理。
 - 完整 React SPA 重建后已删除 `src/products/crud.mjs`，商品弹窗、SKU 编辑、保存/删除事件绑定由 React 商品页接管。
 - `tests/products-crud-module.test.js` 已改为断言旧商品 CRUD DOM runtime 不存在，并确认尺寸解析、批量 SKU、名称匹配和运费快照等纯函数行为稳定。
-- `index.html` 已移除旧 `js/products/crud.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 已移除旧 `js/products/crud.js` 页面加载；旧商品 CRUD runtime 已删除。
 
 当前已验证通过：
 
@@ -617,7 +604,7 @@ npm run release:check
 
 订单最复杂，最后迁移。
 
-当前状态：M5 已继续推进到 React SPA 运行入口。订单页面现在由 `src/react/features/orders/OrdersPage.tsx` 直接接管 Firestore 连接、商品关联、表格、账号标签、订单弹窗、账号弹窗、CSV 导出和数据存储说明弹窗；全局 Firestore 连接、规则提示、退出确认和 Toast 由 `src/react/app/AppRuntime.tsx` 渲染。`index.html` 不再加载 `/src/orders/index.mjs`、`/src/firestore-connection.mjs` 或 `/src/orders/firestore-rules.mjs`，旧订单 ESM 模块暂时保留为已测试的业务 helper、历史参考和回退材料。
+当前状态：M5 已完成到 React SPA 运行入口。订单页面现在由 `src/react/features/orders/OrdersPage.tsx` 直接接管 Firestore 连接、商品关联、表格、账号标签、订单弹窗、账号弹窗、CSV 导出和数据存储说明弹窗；全局 Firestore 连接、规则提示、退出确认和 Toast 由 `src/react/app/AppRuntime.tsx` 渲染。`index.html` 不再加载 `/src/orders/index.mjs`、`/src/firestore-connection.mjs` 或 `/src/orders/firestore-rules.mjs`；旧订单运行壳层已删除，只保留仍被 React 页面复用的业务 helper/provider。
 
 顺序：
 
@@ -653,8 +640,7 @@ npm run release:check
 - `tests/orders-provider-firestore-module.test.js` 已新增动态 `import()` 断言，验证 ESM provider 的配置解析、显示名、items 清洗、拉取订单字段映射、写入 doc 汇总和空字段处理。
 - 完整 React SPA 重建后已删除 `src/orders/sync.mjs` 旧同步运行壳层；React 订单页直接使用 Firestore provider 拉远端快照、计算 upsert/delete/account 变更，并用 `waitForCommit: false` 投递 SDK 本地写入队列。
 - `tests/orders-react-sync-contract.test.js` 已新增断言，保护订单页直连 `pullSnapshot()` / `pushChanges()`、后台 `commitPromise` 和 provider 的 cursor/seq 能力；`tests/orders-sync-provider-contract.test.js` 已改为保护 provider 同步接口而不是旧 sync 壳层。
-- 新增 `src/orders/index.mjs`，提供订单管理 ESM 入口，导出 `createOrderTracker`、`getOrderTracker` 和 `OrderTracker`，并通过 `window.OrderTracker` 挂回给旧 hash 路由调用。
-- `src/orders/index.mjs` 采用懒初始化，直接 `import` 已完整迁移的 `shared`、`provider-firestore`、`export`、`tabs`、`session`、`sync`、`crud` ESM helper。
+- 完整 React SPA 重建后已删除 `src/orders/index.mjs`，订单运行入口由 `src/react/features/orders/OrdersPage.tsx` 接管，不再挂旧 `window.OrderTracker`。
 - 完整 React SPA 重建后已删除 `src/orders/products.mjs`，订单页直接通过 `ProductLibraryProviderFirestore` 拉取商品资料，监听 `tk-products-changed` 并在页面内完成商品关联。
 - `tests/orders-products-module.test.js` 已改为断言旧订单商品桥接 runtime 不存在，并保护 React 订单页直接读取商品资料、监听商品变更和按账号/TK ID 关联商品。
 - 新增 `src/orders/firestore-rules.mjs`，提供页面内置 Firestore 规则文本的 ESM 导出；Firestore 连接模块直接 import 规则文本，不再挂旧 `window.ORDER_TRACKER_FIRESTORE_RULES`。
@@ -665,7 +651,7 @@ npm run release:check
 - `tests/firestore-connection-module.test.js` 已改为动态 `import()` 断言，确认 Firestore 连接 ESM 模块可直接导入、可解析 `firebaseConfig`，并保护不要回退到旧全局 API。
 - `src/orders/provider-firestore.mjs` 已收敛为纯 ESM provider，不再注册 `TKDataSourceRegistry`；React 订单页直接 import 使用。
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载；React SPA 阶段也已移除 `<script type="module" src="/src/orders/index.mjs"></script>`，订单运行入口改为 `src/react/features/orders/OrdersPage.tsx`。
-- `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js`、`js/orders/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
+- `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js`、`js/orders/table.js` 页面加载；旧 `js/` 源目录已统一清理。
 - `index.html` 已移除旧 `js/orders/sync.js` 的页面加载；订单同步运行入口改为 `src/react/features/orders/OrdersPage.tsx`，不再保留 `src/orders/sync.mjs` 过渡层。
 - `index.html` 已移除旧 `js/orders/crud.js` 的页面加载；订单弹窗运行入口改为 `src/react/features/orders/OrdersPage.tsx`，不再保留 `src/orders/crud.mjs` 过渡层。
 - `index.html` 已移除旧 `js/firestore-connection.js`、`/src/firestore-connection.mjs` 和 `/src/orders/firestore-rules.mjs` 的页面加载；连接模块和规则文本现在由 React 入口依赖图加载。
@@ -694,23 +680,22 @@ npm run release:check
 
 下一步：
 
-- M5 进入观察期。不要急着删除旧 `js/orders/index.js` 或旧 helper；先让 release/e2e 稳定后，再考虑统一清理旧入口参考文件。
-- `js/orders/sync.js` 和 `src/orders/sync.mjs` 均已清理；后续订单同步语义以 React 订单页和 `src/orders/provider-firestore.mjs` 为准。
+- M5 进入观察期。旧订单入口和同步/CRUD 运行壳层已清理，后续不要恢复双入口。
+- 后续订单同步语义以 React 订单页和 `src/orders/provider-firestore.mjs` 为准。
 
 ### 8.5 标准模块化期间的构建变化
 
 当前状态：主站页面入口已完成 ESM 切换，构建产物不再发布旧业务 `js/` 目录。
 
 ```html
-<script type="module" src="/src/main.mjs"></script>
+<script type="module" src="/src/react/main.tsx"></script>
 ```
 
 已完成：
 
 - 新增 `src/app-config.mjs`，提供 `TKAppConfig` ESM 导出；React App 直接 import 使用，不再挂旧 `window.TKAppConfig`。
-- 新增 `src/main.mjs`，负责年份、文档链接、模块配置表、hash 路由、`aria-current` 同步，以及进入 orders/products/analytics 时调用对应全局入口。
-- `src/main.mjs` 保持 `DOMContentLoaded` 后再执行初始路由，避免 ESM 与旧 `defer` helper 混合期间漏掉业务入口挂载。
-- `index.html` 已移除旧 `js/app-config.js` 和 `js/app.js` 页面加载，改为 `/src/main.mjs`。
+- 完整 React SPA 重建后已删除 `src/main.mjs`，主站入口改为 `/src/react/main.tsx`。
+- `index.html` 已移除旧 `js/app-config.js` 和 `js/app.js` 页面加载，改为 `/src/react/main.tsx`。
 - 旧 `js/app-config.js` 和 `js/app.js` 源文件已随旧目录统一清理，不再维护双入口。
 - `tests/app-config.test.js`、`tests/main-build-contract.test.js`、`scripts/preview-smoke.mjs` 已更新为覆盖 ESM 主入口和 Vite build 产物。
 - 完整 React SPA 重建后已删除 `src/table-controls.mjs` 和 `src/data-sources/registry.mjs`；表格控制带由 React 页面和 primitives 直接渲染，Firestore provider 由页面直接 import。
@@ -720,7 +705,7 @@ npm run release:check
 - `index.html` 已移除旧 `js/searchable-select.js` 页面加载；旧文件已随旧目录统一清理。
 - `tests/shared-utils.test.js` 和 `tests/orders-crud-module.test.js` 已覆盖可搜索下拉框 ESM 导出、入口挂载和旧页面加载移除。
 
-- 利润计算器、商品管理、订单管理、数据分析、Firestore 连接和基础共享工具都已由 `/src/*.mjs` 加载。
+- 利润计算器、商品管理、订单管理、数据分析、Firestore 连接和基础共享工具都已由 React 入口依赖图加载。
 - `index.html` 已不再列本地 `js/*.js` 普通脚本。
 - `scripts/copy-main-assets.mjs` 不再复制旧 `js/` 到 `dist/js/`，只补充正式站点需要稳定访问的 `/logo.png`。
 - `public/_headers` 已移除旧 `/js/*` 缓存规则。
@@ -751,34 +736,33 @@ git diff --check
 
 主要风险：
 
-- 全局变量消失导致旧模块找不到依赖。
-- defer 顺序迁移到 import 后执行时机变化。
+- 全局变量消失导致旧模块找不到依赖。当前旧本地业务入口已清理，风险主要来自文档或后续改动误恢复旧链路。
+- defer 顺序迁移到 import 后执行时机变化。当前主站只保留 React 入口，本地业务脚本不再混用 defer。
 - Vite dev 和 build 路径差异。
 - 测试大量需要更新。
 - 订单同步副作用更难排查。
 
 处理原则：
 
-- 先保留 `window.Xxx` 兼容层。
-- 一次只迁移一个模块。
-- 订单最后迁移。
-- 遇到复杂问题不要硬推进，先回到轻模块化稳定版本。
+- 不恢复 `window.Xxx` 兼容层或旧本地 `js/` 双入口。
+- 一次只改一个模块或一个页面，继续保持 `npm test`、`npm run build`、`git diff --check`、`npm run release:check`。
+- 订单相关改动需要重点检查 Firestore provider、商品关联和快递/利润字段。
 
 ### 8.8 标准模块化完成标准
 
 完成时应满足：
 
-- 主站入口为 `src/main.mjs`。已完成。
-- 大多数业务模块使用 `import/export`。已完成。
+- 主站入口为 `src/react/main.tsx`。已完成。
+- 业务模块使用 React 入口依赖图和 ESM `import/export`。已完成。
 - `index.html` 不再列大量 `js/*.js` 脚本。已完成。
 - 旧 `js/` 源目录已清理，构建产物也不发布 `dist/js/`。已完成。
 - `scripts/copy-main-assets.mjs` 不再复制业务 `js/`。已完成。
 - `npm test` 通过。
 - `npm run build` 通过。
 
-## 9. 路线三：React 渐进迁移，1-3 周
+## 9. 路线三：完整 React SPA，1-3 周
 
-路线三目标是提升主站 UI 质感、图表能力、复杂表格能力和长期维护性。当前不再把 TypeScript 单独作为最后一步，而是随 React 迁移一起引入。
+路线三目标是提升主站 UI 质感、图表能力、复杂表格能力和长期维护性。当前 `modern-react-spa` 分支已完成完整 React SPA 第一轮重建，并进入视觉系统和旧 CSS 依赖收敛阶段。
 
 ### 9.1 技术选型
 
@@ -791,13 +775,13 @@ TypeScript
 Tailwind CSS
 shadcn/ui
 ECharts
-TanStack Table
 lucide-react
 ```
 
 暂不选择：
 
 - Next.js：当前主站是静态工具站，不需要 SSR、Server Components 或 API routes。
+- TanStack Table：当前商品/订单表格已由本地 `Table` primitive、共享 `table-tools` 控件和既有纯函数支撑，暂不为库而重写数据逻辑。
 - Ant Design：成型快，但视觉容易变成通用后台，和当前工具站的自定义体验不完全匹配。
 - 全量 Mantine/Bootstrap：先不引入整套外观，避免一次性改动过大。
 
@@ -805,17 +789,17 @@ lucide-react
 
 ### 9.2 触发条件
 
-路线三已经由用户确认启动，但执行时必须满足：
+路线三已经由用户确认启动并完成第一轮重建，后续收敛时仍必须满足：
 
-- 当前 ESM 版本可构建、可测试。
+- 当前 React SPA 可构建、可测试。
 - 不改变 Firebase 数据结构。
 - 不改变数据分析隐私边界。
-- 一次只迁一个页面或一个局部入口。
-- 每一步都能回退到上一版。
+- 一次只改一个页面或一类共享组件。
+- 每一步都通过测试后本地提交。
 
 ### 9.3 目录规划
 
-新增 React 代码，不直接打散现有 `src/orders`、`src/products` 运行链路：
+当前 React 代码结构：
 
 ```text
 src/
@@ -830,10 +814,6 @@ src/
     features/
       analytics/
         AnalyticsApp.tsx
-        AnalyticsDashboard.tsx
-        AnalyticsUpload.tsx
-        analytics-model.ts
-        analytics-charts.ts
       products/
       orders/
     lib/
@@ -841,11 +821,11 @@ src/
       format.ts
 ```
 
-现有 `src/analytics/parser.mjs` 和 `src/analytics/analyzer.mjs` 先保留，React 数据分析页可先复用它们。后续稳定后，再把 analytics 纯函数迁到 TypeScript。
+现有 `src/analytics/parser.mjs`、`src/analytics/analyzer.mjs`、`src/products/*.mjs`、`src/orders/*.mjs` 和 `src/calc/formulas.mjs` 作为纯函数/helper/provider 保留，React 页面直接 import 使用。后续只在有明确收益时再把纯函数迁到 TypeScript。
 
 ### 9.4 第一阶段：React 基础设施
 
-目标：让项目能同时运行现有 ESM 页面和 React 局部挂载。
+目标：建立完整 React SPA 入口和基础运行层。
 
 已新增依赖：
 
@@ -866,12 +846,11 @@ src/react/main.tsx
 src/react/app/AppRuntime.tsx
 ```
 
-原则：
+当前状态：
 
-- `index.html` 仍保留现有模块 DOM。
-- 只新增一个 React mount 容器，例如 `#analytics-react-root`。
-- React mount 失败不能影响利润计算器、商品管理、订单管理。
-- 旧数据分析 ESM 入口保留 provider/纯函数兼容，但页面存在 `#analytics-react-root` 时不再绑定 DOM 事件。
+- `index.html` 只保留 `#root`、`/src/react/main.tsx`、Firebase compat SDK 和 SheetJS。
+- 利润计算器、商品管理、订单管理、数据分析都由 React App Shell 渲染。
+- 旧 DOM 入口和旧 React 二次挂载文件已删除。
 
 ### 9.5 第二阶段：迁移数据分析页
 
@@ -913,16 +892,12 @@ ECharts 图表：
 
 ### 9.6 第三阶段：商品管理 React 化
 
-触发条件：
+当前状态：已完成。
 
-- React 数据分析页真实 Excel 验收通过。
-- 不再需要保留旧数据分析 UI。
-
-技术：
-
-- TanStack Table 处理商品表格、排序、搜索、分页。
-- shadcn Dialog/Form/Tabs/Button/Input/Select。
-- 保留现有 `src/products/provider-firestore.mjs` 和 Firestore 文档结构。
+- 商品页由 `src/react/features/products/ProductsPage.tsx` 接管。
+- 商品表格使用本地 `Table` primitive 和共享 `table-tools` 搜索/分页/滚动外壳。
+- shadcn 风格 Dialog/Form/Tabs/Button/Input/Select/Checkbox 等 primitives 已接入。
+- 继续保留现有 `src/products/provider-firestore.mjs` 和 Firestore 文档结构。
 
 ### 9.7 第四阶段：订单管理 React 化
 
@@ -935,12 +910,12 @@ ECharts 图表：
 - 利润计算。
 - 多明细订单。
 
-迁移原则：
+当前状态：已完成。
 
-- 先把订单表格迁到 React/TanStack Table。
-- 再迁订单弹窗。
-- 最后才考虑 sync/provider 类型化。
-- 旧 `src/orders/sync.mjs` 已在完整 React SPA 阶段删除。
+- 订单页由 `src/react/features/orders/OrdersPage.tsx` 接管。
+- 订单表格使用本地 `Table` primitive 和共享 `table-tools` 搜索/分页/滚动外壳。
+- 订单弹窗、账号弹窗、导出弹层和数据存储说明弹窗都由 React 渲染。
+- 旧 `src/orders/sync.mjs` 已删除，订单同步语义以 React 订单页和 `src/orders/provider-firestore.mjs` 为准。
 
 ### 9.8 TypeScript 策略
 
@@ -1038,12 +1013,12 @@ git diff --check
 
 当前状态：已完成。
 
-需要改：
+历史改动范围：
 
 - `index.html`
-- `js/orders/index.js`
-- `js/orders/provider-supabase.js`
-- `js/data-sources/registry.js`
+- 旧 `js/orders/index.js`
+- 旧 `js/orders/provider-supabase.js`
+- 旧 `js/data-sources/registry.js`
 - `tests/data-source-registry.test.js`
 - `README.md`
 - `PROJECT_HANDOFF.md`
@@ -1071,7 +1046,7 @@ if (mode === 'firestore') return providerFirestore;
 return null;
 ```
 
-4. 从 `js/orders/provider-supabase.js` 处理注册逻辑。
+4. 从旧 Supabase provider 处理注册逻辑。
 
 推荐做法：
 
@@ -1677,7 +1652,7 @@ npm run release:check
 
 ### 14.3 Supabase 遗留代码
 
-当前仓库有 `js/orders/provider-supabase.js`。
+当前 `modern-react-spa` 分支已无旧 `js/orders/provider-supabase.js` 活跃文件或加载路径。
 
 风险：
 
@@ -1687,7 +1662,7 @@ npm run release:check
 处理：
 
 - Phase 1 先从活跃路径撤掉。
-- 是否删除文件由用户决定。
+- 不恢复 Supabase 活跃路径。
 - 文档只写 Firebase-only。
 
 ### 14.4 数据分析隐私
@@ -1702,21 +1677,20 @@ Excel 必须本地解析。
 
 - 测试继续禁止 `fetch`、`XMLHttpRequest`、`sendBeacon`、`firebase`、`Firestore`、`localStorage.setItem` 出现在 analytics 模块。
 
-### 14.5 React 渐进迁移
+### 14.5 React SPA 收敛
 
 风险：
 
 - 一次改太多，测试难定位。
 - Tailwind/shadcn 全局样式可能影响现有原生 CSS。
-- React mount 时机可能和现有 hash 路由、`window.TKAnalytics` 入口冲突。
 - 数据分析迁移时误引入上传、缓存或远端保存逻辑。
-- 商品/订单过早 React 化可能碰到 Firestore 离线缓存和同步副作用。
+- 商品/订单改动可能碰到 Firestore 离线缓存和同步副作用。
 
 处理：
 
-- 先做 React 局部挂载，不替换全站入口。（历史阶段；当前完整 React SPA 已替换全站入口）
-- Tailwind 样式作用域和 `src/react/styles/` 分模块样式要重点检查。
-- 第一阶段只迁数据分析页。（已完成；当前分支已进入完整 React SPA 和视觉系统收敛）
+- 当前全站入口已是 React SPA，不恢复旧 DOM/全局脚本双入口。
+- Tailwind 样式、primitives 和 `src/react/styles/` 分模块样式要重点检查。
+- 视觉系统收敛优先抽共享 primitives，再删除旧 CSS；每一步跑 `npm test`、`npm run build`、`git diff --check` 和大阶段 `npm run release:check`。
 - ECharts 只在数据分析页使用。
 - 商品/订单保持现有 ESM 运行链路，等数据分析稳定后再迁。
 - 每一步跑 `npm test`、`npm run build`、相关 e2e。

@@ -47,7 +47,7 @@ const orders = [
 
 assert.match(
   ordersPageSource,
-  /<th>总售价\(円\)<\/th>[\s\S]*<th>总采购额\(¥\)<\/th>[\s\S]*<th>预估总海外运费\(¥\)<\/th>[\s\S]*<th>预估总利润\(¥\)<\/th>/,
+  /<TableHead>总售价\(円\)<\/TableHead>[\s\S]*<TableHead>总采购额\(¥\)<\/TableHead>[\s\S]*<TableHead>预估总海外运费\(¥\)<\/TableHead>[\s\S]*<TableHead>预估总利润\(¥\)<\/TableHead>/,
   '表格需要按订单总额口径展示金额列，并保持售价在采购额前面'
 );
 
@@ -95,8 +95,8 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /function OrdersTable\([\s\S]*id="ot-table-container"[\s\S]*orders-react-table/,
-  'React 订单页需要直接渲染订单表格'
+  /function OrdersTable\([\s\S]*id="ot-table-container"[\s\S]*<Table className="orders-react-table"/,
+  'React 订单页需要通过共享 Table primitive 直接渲染订单表格'
 );
 
 assert.doesNotMatch(
@@ -113,8 +113,8 @@ assert.doesNotMatch(
 
 assert.match(
   ordersPageSource,
-  /id="ot-table-toolbar-container"[\s\S]*id="ot-table-search-input"/,
-  'React 订单页需要直接渲染搜索和分页控制'
+  /id="ot-table-toolbar-container"[\s\S]*<TableSearch[\s\S]*id="ot-table-search-input"/,
+  'React 订单页需要通过共享 TableSearch 渲染搜索和分页控制'
 );
 
 assert.match(

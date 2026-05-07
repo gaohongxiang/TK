@@ -7,6 +7,8 @@ import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
+import { EmptyState, TableFrame, TablePager, TableSearch, TableToolbar, TableViewport } from '@/components/ui/table-tools';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { showAppToast } from '@/app/toast';
 import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
@@ -51,7 +53,6 @@ import {
   HelpCircle,
   Plus,
   RefreshCw,
-  Search
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ProductRecord, ProductSku } from '../products/types';
@@ -642,19 +643,14 @@ function ProductPager({
   onPageChange: (delta: number) => void;
 }) {
   return (
-    <div className="ot-table-pagination">
-      <label className="ot-page-size">
-        <span>每页</span>
-        <span className="ot-page-size-control">
-          <select value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}>
-            {PAGE_SIZE_OPTIONS.map(size => <option value={size} key={size}>{size}</option>)}
-          </select>
-        </span>
-      </label>
-      <Button size="sm" disabled={currentPage <= 1} onClick={() => onPageChange(-1)}>上一页</Button>
-      <span className="ot-page-indicator">{currentPage} / {totalPages}</span>
-      <Button size="sm" disabled={currentPage >= totalPages} onClick={() => onPageChange(1)}>下一页</Button>
-    </div>
+    <TablePager
+      pageSize={pageSize}
+      pageSizeOptions={PAGE_SIZE_OPTIONS}
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onPageSizeChange={onPageSizeChange}
+      onPageChange={onPageChange}
+    />
   );
 }
 
@@ -781,7 +777,6 @@ function OrdersTable({
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
-  const [composing, setComposing] = useState(false);
   const { isAll, sorted } = useMemo(() => deriveDisplayedOrders({ orders, activeAccount, searchQuery, sortOrder }), [activeAccount, orders, searchQuery, sortOrder]);
   const pageState = clampPage(currentPage, pageSize, sorted.length);
   const startIndex = (pageState.currentPage - 1) * pageState.pageSize;
@@ -792,69 +787,54 @@ function OrdersTable({
   return (
     <>
       <div id="ot-table-toolbar-container">
-        <div className="ot-table-toolbar ot-sticky-controls">
-          <div className="ot-sticky-controls-inner">
-            <div className="ot-table-toolbar-left">
-              <label className="ot-table-search">
-                <span className="ot-table-search-icon" aria-hidden="true"><Search size={15} strokeWidth={2} /></span>
-                <input
-                  id="ot-table-search-input"
-                  type="text"
-                  placeholder=" "
-                  value={searchQuery}
-                  autoComplete="off"
-                  onCompositionStart={() => setComposing(true)}
-                  onCompositionEnd={event => {
-                    setComposing(false);
-                    onSearchChange(event.currentTarget.value);
-                  }}
-                  onChange={event => {
-                    if (!composing) onSearchChange(event.target.value);
-                  }}
-                />
-                <span className="ot-table-search-hint">搜索下单时间 / 订单号 / 产品 / 快递</span>
-              </label>
-            </div>
-            <div className="ot-table-toolbar-right">
-              <ProductPager pageSize={pageState.pageSize} currentPage={pageState.currentPage} totalPages={pageState.totalPages} onPageSizeChange={onPageSizeChange} onPageChange={onPageChange} />
-            </div>
-          </div>
-        </div>
+        <TableToolbar
+          left={(
+            <TableSearch
+              id="ot-table-search-input"
+              hint="搜索下单时间 / 订单号 / 产品 / 快递"
+              value={searchQuery}
+              onChange={onSearchChange}
+            />
+          )}
+          right={(
+            <ProductPager pageSize={pageState.pageSize} currentPage={pageState.currentPage} totalPages={pageState.totalPages} onPageSizeChange={onPageSizeChange} onPageChange={onPageChange} />
+          )}
+        />
       </div>
-      <div className="ot-table-wrap">
+      <TableViewport>
         <div id="ot-table-container">
           {!sorted.length ? (
-            <div className="ot-empty">
-              <div style={{ fontSize: 15, marginBottom: 6 }}>{searchQuery ? '没有匹配的订单' : activeAccount !== '__all__' ? `账号「${activeAccount}」下还没有订单` : '还没有订单'}</div>
-              <div style={{ fontSize: 12.5 }}>{searchQuery ? '试试更换关键词' : '点击右上角「+ 新增订单」开始记录'}</div>
-            </div>
+            <EmptyState
+              title={searchQuery ? '没有匹配的订单' : activeAccount !== '__all__' ? `账号「${activeAccount}」下还没有订单` : '还没有订单'}
+              description={searchQuery ? '试试更换关键词' : '点击右上角「+ 新增订单」开始记录'}
+            />
           ) : (
-            <div className="ot-table-inner">
-              <table className="ot orders-react-table">
-                <thead>
-                  <tr>
-                    <th><button type="button" id="ot-sort-btn" className="orders-react-sort" title={sortTitle} onClick={onSortToggle}># {sortIcon}</button></th>
-                    {isAll ? <th>账号</th> : null}
-                    <th>下单时间</th>
-                    <th>采购日期</th>
-                    <th>最晚到仓</th>
-                    <th>订单预警</th>
-                    <th>订单号</th>
-                    <th>产品名称</th>
-                    <th>数量</th>
-                    <th>总售价(円)</th>
-                    <th>总采购额(¥)</th>
-                    <th>预估总海外运费(¥)</th>
-                    <th>预估总利润(¥)</th>
-                    <th>总重量</th>
-                    <th>总尺寸</th>
-                    <th>订单状态</th>
-                    <th>快递公司</th>
-                    <th>快递单号</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <TableFrame>
+              <Table className="orders-react-table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead><Button variant="plain" id="ot-sort-btn" className="orders-react-sort" title={sortTitle} onClick={onSortToggle}># {sortIcon}</Button></TableHead>
+                    {isAll ? <TableHead>账号</TableHead> : null}
+                    <TableHead>下单时间</TableHead>
+                    <TableHead>采购日期</TableHead>
+                    <TableHead>最晚到仓</TableHead>
+                    <TableHead>订单预警</TableHead>
+                    <TableHead>订单号</TableHead>
+                    <TableHead>产品名称</TableHead>
+                    <TableHead>数量</TableHead>
+                    <TableHead>总售价(円)</TableHead>
+                    <TableHead>总采购额(¥)</TableHead>
+                    <TableHead>预估总海外运费(¥)</TableHead>
+                    <TableHead>预估总利润(¥)</TableHead>
+                    <TableHead>总重量</TableHead>
+                    <TableHead>总尺寸</TableHead>
+                    <TableHead>订单状态</TableHead>
+                    <TableHead>快递公司</TableHead>
+                    <TableHead>快递单号</TableHead>
+                    <TableHead>操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {paged.map((order, index) => {
                     const absoluteIndex = startIndex + index;
                     const seqNum = sortOrder === 'asc' ? absoluteIndex + 1 : sorted.length - absoluteIndex;
@@ -863,47 +843,45 @@ function OrdersTable({
                     const courierSummary = buildOrderCourierSummary(order, 'company', 'full');
                     const trackingSummary = buildOrderCourierSummary(order, 'tracking', 'full');
                     return (
-                      <tr key={String(order.id)} className={isOrderRefunded(order) ? 'is-refunded' : undefined}>
-                        <td style={{ color: 'var(--muted)' }}>{seqNum}</td>
-                        {isAll ? <td><span className="chip muted">{formatTableCellValue(order['账号'])}</span></td> : null}
-                        <td>{formatTableCellValue(order['下单时间'])}</td>
-                        <td>{formatTableCellValue(order['采购日期'])}</td>
-                        <td>{formatTableCellValue(order['最晚到仓时间'])}</td>
-                        <td><span className={`chip ${warn.cls || ''}`}>{warn.text || '-'}</span></td>
-                        <td dangerouslySetInnerHTML={{ __html: buildOrderNoCellMarkup(order) }} />
-                        <td className="orders-react-product-cell" title={String(order['产品名称'] || '')}>{formatTableCellValue(order['产品名称'])}</td>
-                        <td>{formatTableCellValue(order['数量'])}</td>
-                        <td dangerouslySetInnerHTML={{ __html: buildSaleCellMarkup(order) }} />
-                        <td>{formatTableCellValue(order['采购价格'])}</td>
-                        <td>{formatTableCellValue(order['预估运费'])}</td>
-                        <td><span className={`ot-profit-value is-${getProfitCellToneClass(profit)}`}>{formatTableMoneyValue(profit) || '-'}</span></td>
-                        <td>{formatTableCellValue(order['重量'])}</td>
-                        <td>{formatTableCellValue(order['尺寸'])}</td>
-                        <td>{formatTableCellValue(order['订单状态'])}</td>
-                        <td title={courierSummary}>{formatTableCellValue(courierSummary)}</td>
-                        <td title={trackingSummary}>{formatTableCellValue(trackingSummary)}</td>
-                        <td>
+                      <TableRow key={String(order.id)} className={isOrderRefunded(order) ? 'is-refunded' : undefined}>
+                        <TableCell className="text-[var(--muted)]">{seqNum}</TableCell>
+                        {isAll ? <TableCell><span className="chip muted">{formatTableCellValue(order['账号'])}</span></TableCell> : null}
+                        <TableCell>{formatTableCellValue(order['下单时间'])}</TableCell>
+                        <TableCell>{formatTableCellValue(order['采购日期'])}</TableCell>
+                        <TableCell>{formatTableCellValue(order['最晚到仓时间'])}</TableCell>
+                        <TableCell><span className={`chip ${warn.cls || ''}`}>{warn.text || '-'}</span></TableCell>
+                        <TableCell dangerouslySetInnerHTML={{ __html: buildOrderNoCellMarkup(order) }} />
+                        <TableCell className="orders-react-product-cell" title={String(order['产品名称'] || '')}>{formatTableCellValue(order['产品名称'])}</TableCell>
+                        <TableCell>{formatTableCellValue(order['数量'])}</TableCell>
+                        <TableCell dangerouslySetInnerHTML={{ __html: buildSaleCellMarkup(order) }} />
+                        <TableCell>{formatTableCellValue(order['采购价格'])}</TableCell>
+                        <TableCell>{formatTableCellValue(order['预估运费'])}</TableCell>
+                        <TableCell><span className={`ot-profit-value is-${getProfitCellToneClass(profit)}`}>{formatTableMoneyValue(profit) || '-'}</span></TableCell>
+                        <TableCell>{formatTableCellValue(order['重量'])}</TableCell>
+                        <TableCell>{formatTableCellValue(order['尺寸'])}</TableCell>
+                        <TableCell>{formatTableCellValue(order['订单状态'])}</TableCell>
+                        <TableCell title={courierSummary}>{formatTableCellValue(courierSummary)}</TableCell>
+                        <TableCell title={trackingSummary}>{formatTableCellValue(trackingSummary)}</TableCell>
+                        <TableCell>
                           <Button size="sm" data-edit={String(order.id)} onClick={() => onEdit(String(order.id))}>编辑</Button>
                           <Button size="sm" variant="danger" data-del={String(order.id)} onClick={() => onDelete(String(order.id))}>删除</Button>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+              </Table>
+            </TableFrame>
           )}
         </div>
-      </div>
+      </TableViewport>
       <div id="ot-table-footer-toolbar-container">
-        <div className="ot-table-toolbar ot-table-toolbar-bottom">
-          <div className="ot-sticky-controls-inner">
-            <div />
-            <div className="ot-table-toolbar-right">
-              <ProductPager pageSize={pageState.pageSize} currentPage={pageState.currentPage} totalPages={pageState.totalPages} onPageSizeChange={onPageSizeChange} onPageChange={onPageChange} />
-            </div>
-          </div>
-        </div>
+        <TableToolbar
+          bottom
+          right={(
+            <ProductPager pageSize={pageState.pageSize} currentPage={pageState.currentPage} totalPages={pageState.totalPages} onPageSizeChange={onPageSizeChange} onPageChange={onPageChange} />
+          )}
+        />
       </div>
     </>
   );
@@ -937,7 +915,7 @@ function OrderModal({
 
   return (
     <Dialog id="ot-modal" open={open} onOpenChange={onOpenChange} titleId="ot-modal-title">
-      <DialogContent className="modal-order">
+      <DialogContent className="max-w-[880px]">
         <DialogTitle id="ot-modal-title">{editingId ? '编辑订单' : '新增订单'}</DialogTitle>
         <form id="ot-form" autoComplete="off" onSubmit={event => { event.preventDefault(); onSubmit(); }}>
           <div className="row">

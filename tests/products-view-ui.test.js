@@ -17,6 +17,7 @@ const reactButtonSource = fs.readFileSync(path.join(root, 'src', 'react', 'compo
 const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
 const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
 const reactTableSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'table.tsx'), 'utf8');
+const reactTableToolsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'table-tools.tsx'), 'utf8');
 const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.mjs'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const styleSource = readReactStyleSource(root);
@@ -431,7 +432,8 @@ assert.match(
 
 [
   /table-auto/,
-  /products-react-search w-full max-w-\[520px\]/,
+  /from '@\/components\/ui\/table-tools'/,
+  /<TableSearch[\s\S]*products-react-search w-full max-w-\[520px\]/,
   /inline-flex/,
   /TableHead>SKU数<\/TableHead>/
 ].forEach(pattern => {
@@ -460,10 +462,16 @@ assert.match(
   '本地 Table primitive 需要用 Tailwind class 表达基础样式，同时保留现有 ot 表格 class'
 );
 
+assert.match(
+  reactTableToolsSource,
+  /function TableToolbar[\s\S]*function TableSearch[\s\S]*function TablePager[\s\S]*function TableViewport[\s\S]*function EmptyState/,
+  '表格工具栏、搜索、分页、滚动外壳和空状态需要收敛到共享 React primitives'
+);
+
 assert.doesNotMatch(
   styleSource,
-  /\.products-react-table\s*\{[\s\S]*\.products-react-empty\s*\{/,
-  '商品 React 表格样式不应继续集中写在旧 css/style.css'
+  /\.ot-table-toolbar|\.ot-table-search|\.ot-table-wrap|\.ot-table-pagination/,
+  '表格工具栏、搜索、分页和滚动外壳不应继续依赖旧 ot-* 全局 CSS'
 );
 
 assert.match(
@@ -480,8 +488,8 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /onCompositionStart[\s\S]*onCompositionEnd[\s\S]*onSearchChange/,
-  'React 商品搜索需要保留中文输入法 composition 保护'
+  /<TableSearch[\s\S]*onChange=\{onSearchChange\}/,
+  'React 商品搜索需要通过共享 TableSearch 复用中文输入法 composition 保护'
 );
 
 assert.doesNotMatch(

@@ -7,6 +7,7 @@ import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { EmptyState, TableFrame, TablePager, TableSearch, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { showAppToast, type ToastType } from '@/app/toast';
 import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
@@ -35,7 +36,6 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  Search,
   Trash2,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -131,19 +131,15 @@ function ProductPager({
   compact?: boolean;
 }) {
   return (
-    <div className={cn('ot-table-pagination products-react-pager inline-flex items-center gap-2 flex-wrap', compact ? 'is-compact' : '')}>
-      <label className="ot-page-size">
-        <span>每页</span>
-        <span className="ot-page-size-control">
-          <select value={pageSize} onChange={event => onPageSizeChange(Number(event.target.value))}>
-            {PAGE_SIZE_OPTIONS.map(size => <option value={size} key={size}>{size}</option>)}
-          </select>
-        </span>
-      </label>
-      <Button size="sm" disabled={currentPage <= 1} onClick={() => onPageChange(-1)}>上一页</Button>
-      <span className="ot-page-indicator">{currentPage} / {totalPages}</span>
-      <Button size="sm" disabled={currentPage >= totalPages} onClick={() => onPageChange(1)}>下一页</Button>
-    </div>
+    <TablePager
+      className={cn('products-react-pager', compact ? 'is-compact' : '')}
+      pageSize={pageSize}
+      pageSizeOptions={PAGE_SIZE_OPTIONS}
+      currentPage={currentPage}
+      totalPages={totalPages}
+      onPageSizeChange={onPageSizeChange}
+      onPageChange={onPageChange}
+    />
   );
 }
 
@@ -217,7 +213,6 @@ function ProductsTableView({
   onEdit: (tkId: string) => void;
   onDelete: (tkId: string) => void;
 }) {
-  const [composing, setComposing] = useState(false);
   const displayed = useMemo(() => ProductLibraryTable.deriveDisplayedProducts({
     products,
     activeAccount,
@@ -234,58 +229,44 @@ function ProductsTableView({
 
   return (
     <>
-      <div id="pl-toolbar" className="ot-table-toolbar ot-sticky-controls pl-sticky-controls products-react-toolbar">
-        <div className="ot-sticky-controls-inner products-react-toolbar-inner gap-3 max-[640px]:gap-2.5 max-[900px]:items-start">
-          <div className="ot-table-toolbar-left">
-            <label className="ot-table-search products-react-search w-full max-w-[520px]">
-              <span className="ot-table-search-icon" aria-hidden="true"><Search size={15} strokeWidth={2} /></span>
-              <input
-                id="pl-table-search-input"
-                type="text"
-                placeholder=" "
-                value={searchQuery}
-                autoComplete="off"
-                onCompositionStart={() => setComposing(true)}
-                onCompositionEnd={event => {
-                  setComposing(false);
-                  onSearchChange(event.currentTarget.value);
-                }}
-                onChange={event => {
-                  if (!composing) onSearchChange(event.currentTarget.value);
-                }}
-              />
-              <span className="ot-table-search-hint">搜索 TK ID / 名称 / 1688 链接</span>
-            </label>
-          </div>
-          <div className="ot-table-toolbar-right">
-            <ProductPager
-              pageSize={pageState.pageSize}
-              currentPage={pageState.currentPage}
-              totalPages={pageState.totalPages}
-              onPageSizeChange={onPageSizeChange}
-              onPageChange={onPageChange}
-            />
-          </div>
-        </div>
-      </div>
+      <TableToolbar
+        id="pl-toolbar"
+        className="products-react-toolbar"
+        innerClassName="products-react-toolbar-inner gap-3 max-[640px]:gap-2.5 max-[900px]:items-start"
+        left={(
+          <TableSearch
+            id="pl-table-search-input"
+            className="products-react-search w-full max-w-[520px]"
+            hint="搜索 TK ID / 名称 / 1688 链接"
+            value={searchQuery}
+            onChange={onSearchChange}
+          />
+        )}
+        right={(
+          <ProductPager
+            pageSize={pageState.pageSize}
+            currentPage={pageState.currentPage}
+            totalPages={pageState.totalPages}
+            onPageSizeChange={onPageSizeChange}
+            onPageChange={onPageChange}
+          />
+        )}
+      />
 
-      <div className="ot-table-wrap products-react-table-wrap products-react-table-shell">
+      <TableViewport className="products-react-table-wrap products-react-table-shell">
         <div id="pl-table-container" data-react-products-table-ready="true">
           {!displayed.length ? (
-            <div className="ot-empty products-react-empty min-h-[180px]">
-              <div className="mb-1.5 text-[15px]">
-                {searchQuery.trim()
-                  ? '没有匹配的商品'
-                  : activeAccount !== '__all__'
-                    ? `账号「${activeAccount}」下还没有商品`
-                    : '还没有商品资料'}
-              </div>
-              <span className="text-[12.5px] text-[var(--muted)]">
-                {searchQuery.trim() ? '试试更换关键词' : '点击右上角「+ 新增商品」开始记录'}
-              </span>
-            </div>
+            <EmptyState
+              className="products-react-empty min-h-[180px]"
+              title={searchQuery.trim()
+                ? '没有匹配的商品'
+                : activeAccount !== '__all__'
+                  ? `账号「${activeAccount}」下还没有商品`
+                  : '还没有商品资料'}
+              description={searchQuery.trim() ? '试试更换关键词' : '点击右上角「+ 新增商品」开始记录'}
+            />
           ) : (
-            <div className="ot-table-inner products-react-table-inner rounded-none border-0 bg-transparent">
+            <TableFrame className="products-react-table-inner rounded-none border-0 bg-transparent">
               <Table className={cn('pl-table products-react-table table-auto', showAccount ? 'is-all-accounts' : 'is-account-scoped')}>
               <TableHeader>
                 <TableRow>
@@ -408,27 +389,26 @@ function ProductsTableView({
                 );
               })}
               </Table>
-            </div>
+            </TableFrame>
           )}
         </div>
-      </div>
+      </TableViewport>
 
       <div id="pl-table-footer-toolbar-container">
-        <div className="ot-table-toolbar ot-table-toolbar-bottom products-react-footer-toolbar mt-3">
-          <div className="ot-sticky-controls-inner">
-            <div />
-            <div className="ot-table-toolbar-right">
-              <ProductPager
-                compact
-                pageSize={pageState.pageSize}
-                currentPage={pageState.currentPage}
-                totalPages={pageState.totalPages}
-                onPageSizeChange={onPageSizeChange}
-                onPageChange={onPageChange}
-              />
-            </div>
-          </div>
-        </div>
+        <TableToolbar
+          bottom
+          className="products-react-footer-toolbar"
+          right={(
+            <ProductPager
+              compact
+              pageSize={pageState.pageSize}
+              currentPage={pageState.currentPage}
+              totalPages={pageState.totalPages}
+              onPageSizeChange={onPageSizeChange}
+              onPageChange={onPageChange}
+            />
+          )}
+        />
       </div>
     </>
   );

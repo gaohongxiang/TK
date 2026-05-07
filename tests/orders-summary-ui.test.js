@@ -40,7 +40,7 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /<th>总售价\(円\)<\/th>[\s\S]*<th>总采购额\(¥\)<\/th>[\s\S]*<th>预估总海外运费\(¥\)<\/th>[\s\S]*<th>预估总利润\(¥\)<\/th>/,
+  /<TableHead>总售价\(円\)<\/TableHead>[\s\S]*<TableHead>总采购额\(¥\)<\/TableHead>[\s\S]*<TableHead>预估总海外运费\(¥\)<\/TableHead>[\s\S]*<TableHead>预估总利润\(¥\)<\/TableHead>/,
   '订单表头需要保留销售、采购、运费、利润金额列'
 );
 

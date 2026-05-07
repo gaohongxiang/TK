@@ -9,6 +9,7 @@ const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const reactCheckboxSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'checkbox.tsx'), 'utf8');
 const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'tabs.tsx'), 'utf8');
+const reactTableToolsSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'table-tools.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const tableSource = fs.readFileSync(path.join(root, 'src', 'orders', 'table.mjs'), 'utf8');
@@ -165,27 +166,33 @@ assert.match(
 );
 
 assert.match(
-  cssSource,
-  /\.ot-sticky-controls/,
-  '样式表需要定义表格控制带吸顶样式'
+  ordersPageSource,
+  /from '@\/components\/ui\/table-tools'[\s\S]*<TableToolbar[\s\S]*<TableSearch/,
+  '订单表格控制带需要使用共享 table-tools primitives'
 );
 
 assert.match(
-  cssSource,
-  /\.ot-table-wrap\s*\{[^}]*margin:\s*0;[^}]*\}/,
-  '表格横向滚动区不应再用负边距撑到卡片最边缘'
+  ordersPageSource,
+  /function ProductPager[\s\S]*<TablePager/,
+  '订单分页需要通过共享 TablePager primitive 渲染'
 );
 
 assert.match(
+  reactTableToolsSource,
+  /function TableToolbar[\s\S]*sticky top-3[\s\S]*function TableViewport[\s\S]*overflow-x-auto/,
+  '共享 table-tools 需要承载吸顶控制带和横向滚动外壳'
+);
+
+assert.doesNotMatch(
   cssSource,
-  /\.ot-table-wrap\s*\{[^}]*padding:\s*0 2px;[^}]*\}/,
-  '表格横向滚动区需要和吸顶控制带保持接近的可视宽度'
+  /\.ot-table-toolbar|\.ot-table-search|\.ot-table-wrap|\.ot-table-pagination/,
+  '表格控制带、搜索、分页和横向滚动不应继续依赖旧 ot-* 全局 CSS'
 );
 
 assert.match(
-  cssSource,
-  /\.ot-table-search[\s\S]*width: 320px/,
-  '搜索框需要加长到更适合桌面端输入的宽度'
+  reactTableToolsSource,
+  /w-80[\s\S]*max-\[768px\]:w-full/,
+  '共享表格搜索框需要保留桌面 320px 和移动端全宽布局'
 );
 
 console.log('orders header layout ui contract ok');

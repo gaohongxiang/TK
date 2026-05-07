@@ -120,6 +120,18 @@ assert.match(
 );
 
 assert.match(
+  calculatorSource,
+  /from '@\/components\/ui\/button'[\s\S]*from '@\/components\/ui\/tabs'|from '@\/components\/ui\/tabs'[\s\S]*from '@\/components\/ui\/button'/,
+  '利润计算器模式切换和帮助弹窗按钮需要使用共享 Button/Tabs primitives'
+);
+
+assert.match(
+  calculatorSource,
+  /<TabsList className="calc-tabs"[\s\S]*<TabsTrigger[\s\S]*data-calc-tab=\{key\}[\s\S]*<Button[\s\S]*id="calc-help-btn"[\s\S]*<Button id="calc-help-close"/,
+  '利润计算器页内标签、帮助图标和帮助弹窗确认按钮需要收敛到共享 primitives'
+);
+
+assert.match(
   cssSource,
   /\.app-header\s*\{[\s\S]*justify-content:\s*flex-start[\s\S]*flex-wrap:\s*nowrap/s,
   '顶部头部需要保持单行布局，品牌在左导航在右'

@@ -31,16 +31,10 @@ assert.match(
   'ESM Firestore provider 需要导出命名空间和关键纯函数'
 );
 
-assert.match(
+assert.doesNotMatch(
   esmSource,
-  /window\.OrderTrackerProviderFirestore = OrderTrackerProviderFirestore/,
-  'ESM Firestore provider 需要挂回旧全局命名空间'
-);
-
-assert.match(
-  esmSource,
-  /TKDataSourceRegistry\.registerProvider\('orders'[\s\S]*module:\s*OrderTrackerProviderFirestore[\s\S]*localFirst:\s*true/,
-  'ESM Firestore provider 需要登记为订单 Firestore 数据源'
+  /window\.OrderTrackerProviderFirestore|TKDataSourceRegistry|registerProvider\(/,
+  '订单 Firestore provider 应保持纯 ESM 导出，不应再挂旧全局或自动注册'
 );
 
 assert.match(

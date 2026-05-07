@@ -17,16 +17,10 @@ assert.match(
   '路线二 M4 需要提供商品 Firestore provider ESM 导出和 create 工厂'
 );
 
-assert.match(
+assert.doesNotMatch(
   srcSource,
-  /window\.ProductLibraryProviderFirestore = ProductLibraryProviderFirestore/,
-  '商品 Firestore provider ESM 需要挂回旧全局命名空间'
-);
-
-assert.match(
-  srcSource,
-  /TKDataSourceRegistry\.registerProvider\('products'[\s\S]*module:\s*ProductLibraryProviderFirestore[\s\S]*localFirst:\s*true/,
-  '商品 Firestore provider ESM 需要登记为商品 Firestore 数据源'
+  /window\.ProductLibraryProviderFirestore|TKDataSourceRegistry|registerProvider\(/,
+  '商品 Firestore provider 应保持纯 ESM 导出，不应再挂旧全局或自动注册'
 );
 
 assert.match(

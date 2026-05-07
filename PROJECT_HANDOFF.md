@@ -508,7 +508,7 @@ window.TKAnalytics = TKAnalytics;
 
 - 新增 `src/analytics/index.mjs`，通过 ESM `import` 接入 `parser`、`analyzer`、共享 HTML 和格式化工具。
 - `src/analytics/index.mjs` 导出 `createAnalyticsModule`、`TKAnalytics` 和 `registerAnalyticsProvider`。
-- 浏览器中自动挂载 `window.TKAnalytics`，并兼容旧的 `TKDataSourceRegistry` 注册方式。
+- 数据分析页已由 React 入口直接接入 parser/analyzer，不再通过旧 `TKDataSourceRegistry` 注册方式。
 - `index.html` 已把数据分析的三段旧普通脚本替换为 `<script type="module" src="/src/analytics/index.mjs"></script>`。
 - 旧 `js/analytics/*.js` 暂时保留，作为兼容参考和回退点，不再由主页面加载。
 - Vite 构建已开始打包数据分析 ESM 入口；构建提示里不再包含 `js/analytics/parser.js`、`js/analytics/analyzer.js`、`js/analytics/index.js`。
@@ -556,7 +556,7 @@ npm run release:check
 - `src/global-settings.mjs` 已在浏览器里挂回 `window.TKGlobalSettings` 并初始化 `window.__tkGlobalSettingsStore`。
 - `src/shipping-core.mjs` 已在浏览器里挂回 `window.TKShippingCore`。
 - `src/shared/html.mjs` 和 `src/shared/format.mjs` 已在浏览器里挂回 `window.TKHtml`、`window.TKFormat`。
-- 历史阶段中 `src/main.mjs` 曾统一导入 `global-settings`、`shipping-core`、`shared/html`、`shared/format`、`table-controls`、`searchable-select`、`data-sources/registry` 这些基础 ESM；当前完整 React SPA 已删除该入口。
+- 历史阶段中 `src/main.mjs` 曾统一导入 `global-settings`、`shipping-core`、`shared/html`、`shared/format`、`table-controls`、`searchable-select`、`data-sources/registry` 这些基础 ESM；当前完整 React SPA 已删除该入口，并已删除旧 `src/table-controls.mjs`、`src/data-sources/registry.mjs`。
 - `index.html` 已移除旧 `js/global-settings.js`、`js/shipping-core.js`、`js/shared/html.js`、`js/shared/format.js` 页面加载；旧文件暂时保留为历史参考和回退。
 
 当前已验证通过：
@@ -601,7 +601,7 @@ npm run release:check
 - `index.html` 已移除旧 `js/products/form-utils.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - 新增 `src/products/provider-firestore.mjs`，提供商品 Firestore provider 的配置解析、展示名、商品/SKU 归一化、Firestore 写入 doc 构造、`create/init/pullProducts/upsertProduct/deleteProduct` 的 ESM 导出。
 - `tests/products-provider-firestore-module.test.js` 已新增动态 `import()` 断言，确认 provider 纯函数 ESM 的配置解析和商品/SKU 文档映射保持旧行为。
-- `src/products/provider-firestore.mjs` 已在浏览器里挂回 `window.ProductLibraryProviderFirestore`，并注册 `TKDataSourceRegistry.registerProvider('products', ...)`。
+- `src/products/provider-firestore.mjs` 已收敛为纯 ESM provider，不再挂旧 `window.ProductLibraryProviderFirestore` 或注册 `TKDataSourceRegistry`；商品页和订单页直接 import 使用。
 - 订单商品资料读取已由 React 订单页直接导入商品 provider ESM，不再依赖旧普通脚本加载顺序。
 - 完整 React SPA 重建后已删除 `src/products/index.mjs`，商品管理入口由 `src/react/features/products/ProductsPage.tsx` 接管。
 - `index.html` 已移除旧 `js/products/index.js` 的页面加载，商品管理不再通过旧 hash DOM 入口启动。
@@ -677,7 +677,7 @@ npm run release:check
 - `tests/orders-form-utils-module.test.js` 已新增动态 `import()` 断言，确认订单表单纯函数 ESM 输出和旧 `OrderTrackerFormUtils` 一致。
 - 新增 `src/firestore-connection.mjs`，提供全局 Firestore 配置解析、本地存储迁移、复制规则、配置变更广播和 React UI 注册 API，并在浏览器里继续挂回 `window.TKFirestoreConnection`；弹窗本体已迁到 `src/react/app/AppRuntime.tsx`。
 - `tests/firestore-connection-module.test.js` 已改为动态 `import()` 断言，确认 Firestore 连接 ESM 模块可直接导入、可解析 `firebaseConfig`，并保留旧全局 API。
-- `src/orders/provider-firestore.mjs` 已直接注册 `TKDataSourceRegistry.registerProvider('orders', ...)`，旧 `js/orders/provider-firestore.js` 不再负责页面运行链路。
+- `src/orders/provider-firestore.mjs` 已收敛为纯 ESM provider，不再注册 `TKDataSourceRegistry`；React 订单页直接 import 使用。
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载；React SPA 阶段也已移除 `<script type="module" src="/src/orders/index.mjs"></script>`，订单运行入口改为 `src/react/features/orders/OrdersPage.tsx`。
 - `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js`、`js/orders/table.js` 页面加载；旧文件暂时保留为历史参考和回退。
 - `index.html` 已移除旧 `js/orders/sync.js` 的页面加载，订单入口直接 import `src/orders/sync.mjs`。
@@ -726,10 +726,9 @@ npm run release:check
 - `index.html` 已移除旧 `js/app-config.js` 和 `js/app.js` 页面加载，改为 `/src/main.mjs`。
 - 旧 `js/app-config.js` 和 `js/app.js` 源文件已随旧目录统一清理，不再维护双入口。
 - `tests/app-config.test.js`、`tests/main-build-contract.test.js`、`scripts/preview-smoke.mjs` 已更新为覆盖 ESM 主入口和 Vite build 产物。
-- 新增 `src/table-controls.mjs`，提供表格分页、搜索工具栏 HTML 和事件绑定的 ESM 导出，并由 `src/main.mjs` 挂回 `window.TKTableControls`。
-- 新增 `src/data-sources/registry.mjs`，提供数据源注册表 ESM 导出，并由 `src/main.mjs` 挂回 `window.TKDataSourceRegistry`，保证旧 Firestore provider 注册顺序不变。
+- 完整 React SPA 重建后已删除 `src/table-controls.mjs` 和 `src/data-sources/registry.mjs`；表格控制带由 React 页面和 primitives 直接渲染，Firestore provider 由页面直接 import。
 - `index.html` 已移除旧 `js/table-controls.js` 和 `js/data-sources/registry.js` 页面加载；旧文件已随旧目录统一清理。
-- `tests/shared-utils.test.js`、`tests/data-source-registry.test.js`、`tests/orders-table-view.test.js`、`tests/products-view-ui.test.js` 已覆盖这两个基础模块的 ESM 导出、入口挂载和旧页面加载移除。
+- `tests/shared-utils.test.js`、`tests/data-source-registry.test.js`、`tests/orders-table-view.test.js`、`tests/products-view-ui.test.js` 已更新为保护旧 DOM 表格控件/数据源注册表不存在，以及 React 页面直接接管对应职责。
 - 订单商品/SKU 可搜索下拉已进入 `src/react/components/ui/searchable-select.tsx`，旧 DOM 版 `src/searchable-select.mjs` 已清理。
 - `index.html` 已移除旧 `js/searchable-select.js` 页面加载；旧文件已随旧目录统一清理。
 - `tests/shared-utils.test.js` 和 `tests/orders-crud-module.test.js` 已覆盖可搜索下拉框 ESM 导出、入口挂载和旧页面加载移除。

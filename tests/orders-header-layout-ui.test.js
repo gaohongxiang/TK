@@ -12,7 +12,6 @@ const reactTabsSource = fs.readFileSync(path.join(root, 'src', 'react', 'compone
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const tableSource = fs.readFileSync(path.join(root, 'src', 'orders', 'table.mjs'), 'utf8');
-const tableControlsSource = fs.readFileSync(path.join(root, 'src', 'table-controls.mjs'), 'utf8');
 const cssSource = readReactStyleSource(root);
 
 assert.match(
@@ -124,10 +123,9 @@ assert.match(
   'React 订单页需要直接输出订单吸顶控制带和底部分页'
 );
 
-assert.match(
-  tableControlsSource,
-  /ot-table-toolbar-left/,
-  '共用表格控件需要把搜索区放到控制带左侧'
+assert.ok(
+  !fs.existsSync(path.join(root, 'src', 'table-controls.mjs')),
+  '完整 React SPA 重建后旧 DOM 表格控件 runtime 应删除'
 );
 
 assert.match(

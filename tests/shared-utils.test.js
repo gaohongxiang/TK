@@ -5,7 +5,6 @@ const assert = require('assert');
 const root = path.join(__dirname, '..');
 const srcHtmlSource = fs.readFileSync(path.join(root, 'src', 'shared', 'html.mjs'), 'utf8');
 const srcFormatSource = fs.readFileSync(path.join(root, 'src', 'shared', 'format.mjs'), 'utf8');
-const srcTableControlsSource = fs.readFileSync(path.join(root, 'src', 'table-controls.mjs'), 'utf8');
 const reactOrdersSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const reactSearchableSelectSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'searchable-select.tsx'), 'utf8');
 const srcProductsTableSource = fs.readFileSync(path.join(root, 'src', 'products', 'table.mjs'), 'utf8');
@@ -21,7 +20,7 @@ assert.match(srcFormatSource, /function yen\(value\)/, '共享格式化工具需
 assert.match(srcFormatSource, /function percent\(value,\s*digits = 2\)/, '共享格式化工具需要 percent');
 assert.match(srcHtmlSource, /window\.TKHtml = TKHtml/, '共享 HTML ESM 模块需要在浏览器里挂回旧全局命名空间');
 assert.match(srcFormatSource, /window\.TKFormat = TKFormat/, '共享格式化 ESM 模块需要在浏览器里挂回旧全局命名空间');
-assert.match(srcTableControlsSource, /export\s+\{[\s\S]*TKTableControls[\s\S]*buildTableToolbarMarkup[\s\S]*clampPage[\s\S]*\}/, '路线二需要提供表格控件 ESM 导出');
+assert.ok(!fs.existsSync(path.join(root, 'src', 'table-controls.mjs')), '完整 React SPA 重建后旧 DOM 表格控件 ESM 应清理');
 assert.doesNotMatch(srcProductsTableSource, /TKTableControls/, '商品 React 表格迁移后商品表格 helper 不应继续依赖 DOM 表格控件');
 assert.match(reactOrdersSource, /from '@\/components\/ui\/searchable-select'[\s\S]*<SearchableSelect/, 'React 订单页需要使用共享可搜索下拉框');
 assert.match(reactSearchableSelectSource, /function SearchableSelect\([\s\S]*data-role="trigger"[\s\S]*data-option-value/, '可搜索下拉框需要提供 React primitive 实现');
@@ -59,13 +58,6 @@ assert.match(
   assert.strictEqual(formatModule.TKFormat.integer(12345.6), '12,346', 'integer 需要四舍五入并格式化千分位');
   assert.strictEqual(formatModule.TKFormat.yen(1200), '1,200 円', '共享格式化 ESM 模块需要可被直接 import');
   assert.strictEqual(formatModule.percent(0.456, 1), '45.6%', '共享格式化 ESM 模块需要导出 percent');
-  const tableControlsModule = await import(`file://${path.join(root, 'src', 'table-controls.mjs')}`);
-  assert.deepStrictEqual(tableControlsModule.clampPage(12, 20, 45), { currentPage: 3, totalPages: 3, pageSize: 20 }, '表格控件 ESM 模块需要可被直接 import');
-  assert.match(
-    tableControlsModule.buildTableToolbarMarkup({ prefix: 'x', pageSize: 20, currentPage: 1, totalPages: 2, pageSizeOptions: [20], includeSearch: true, searchQuery: '<a>' }),
-    /id="x-table-search-input"[\s\S]*&lt;a&gt;[\s\S]*id="x-page-next"/,
-    '表格控件 ESM 模块需要生成搜索和分页 HTML，并转义搜索值'
-  );
   console.log('shared utils contract ok');
 })().catch(error => {
   console.error(error);

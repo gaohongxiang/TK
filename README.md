@@ -79,22 +79,21 @@
 - 将利润计算、商品、订单、数据分析拆成独立模块目录。已基本完成。
 - 商品管理已迁到 React 页面，继续复用 `accounts`、`export`、`table`、`form-utils` 和 Firestore provider 纯逻辑。已完成。
 - 数据分析已迁到 React + ECharts，继续复用 `parser`、`analyzer` 纯逻辑，Excel 解析和汇总诊断不依赖 DOM。已完成。
-- 已新增共享 HTML、格式化、表格控件、可搜索下拉框等 ESM 工具模块，服务数据分析、商品和订单渲染层。已完成。
+- 已新增共享 HTML、格式化、可搜索下拉框等 ESM/React 工具模块，服务数据分析、商品和订单渲染层。已完成。
 - 引入类型定义，约束订单、商品、SKU、分析行数据结构。
 - 将通用表格、弹窗、Toast、连接状态抽成共享组件。
 - 保留 Cloudflare 部署，构建产物仍然是静态文件。
 
 ### 第三阶段：用户自有数据源抽象
 
-当前正式数据源策略是 Firebase-only。注册表只用于明确当前数据边界和后续扩展位置，不把 Supabase 作为正式功能暴露给用户。
+当前正式数据源策略是 Firebase-only。完整 React SPA 分支不再保留旧数据源注册表，商品和订单页面直接 import 对应 Firestore provider。
 
-- `src/data-sources/registry.mjs`：全局数据源注册表。已完成。
-- `FirebaseProvider`：当前商品和订单默认实现。已注册。
-- `BrowserExcelProvider`：数据分析 Excel 只在浏览器内存解析。已注册。
+- `FirebaseProvider`：当前商品和订单默认实现，由 React 页面直接使用。已完成。
+- `BrowserExcelProvider`：数据分析 Excel 只在浏览器内存解析。已完成。
 - `src/app-config.mjs`：项目级配置，明确正式数据源为 Firestore、本站不保存用户业务数据。已完成。
 - `LocalFileProvider`：未来可选，适合只用本地导入/导出的轻量用户。暂不实现。
 
-当前注册表只描述和发现数据源，不改变现有 Firebase 离线缓存流程，也不保存用户数据。
+当前架构不改变现有 Firebase 离线缓存流程，也不保存用户数据。
 
 ## 主站本地开发
 

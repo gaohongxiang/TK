@@ -1,5 +1,3 @@
-import { TKDataSourceRegistry } from '../data-sources/registry.mjs';
-
 function toPlainObject(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   return value;
@@ -311,20 +309,6 @@ const ProductLibraryProviderFirestoreUtils = {
   toNullableInteger,
   toNullableText
 };
-
-if (typeof window !== 'undefined') {
-  window.ProductLibraryProviderFirestore = ProductLibraryProviderFirestore;
-}
-
-TKDataSourceRegistry.registerProvider('products', {
-  key: 'firestore',
-  label: 'Firebase Firestore',
-  module: ProductLibraryProviderFirestore,
-  ownership: 'user-owned',
-  storesUserData: false,
-  localFirst: true,
-  offline: 'firestore-persistence'
-});
 
 export {
   ProductLibraryProviderFirestore,

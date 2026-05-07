@@ -319,6 +319,7 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
+  background: var(--funnel-color);
 }
 
 .analytics-react-funnel-step div {
@@ -394,6 +395,7 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
+  background: var(--legend-color);
 }
 
 .analytics-react-readable-summary {
@@ -458,6 +460,7 @@
 .analytics-rank-track span {
   display: block;
   height: 100%;
+  width: var(--rank-width);
   border-radius: inherit;
   background: linear-gradient(90deg, #13c2a3, #ffd166);
 }

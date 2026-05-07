@@ -4,7 +4,7 @@ import { FunnelChart, PieChart, ScatterChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TitleComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { Upload } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -19,6 +19,8 @@ echarts.use([CanvasRenderer, FunnelChart, GridComponent, LegendComponent, PieCha
 function ReactECharts(props: { className?: string; option: any }) {
   return <ReactEChartsCore echarts={echarts} {...props} />;
 }
+
+type AnalyticsCssVars = CSSProperties & Record<`--${string}`, string | number>;
 
 type AnalyticsAppProps = {
   parser: AnalyticsParser;
@@ -68,7 +70,12 @@ function TopProducts({ records }: { records: AnalyticsRecord[] }) {
           <div className="analytics-rank-index">{index + 1}</div>
           <div className="analytics-rank-main">
             <div className="analytics-rank-name" title={record.name}>{shortenText(record.name, 54)}</div>
-            <div className="analytics-rank-track"><span style={{ width: `${Math.max(2, record.gmv / max * 100).toFixed(2)}%` }} /></div>
+            <div
+              className="analytics-rank-track"
+              style={{ '--rank-width': `${Math.max(2, record.gmv / max * 100).toFixed(2)}%` } as AnalyticsCssVars}
+            >
+              <span />
+            </div>
           </div>
           <div className="analytics-rank-value">
             <strong>{formatYen(record.gmv)}</strong>
@@ -156,7 +163,7 @@ function ScatterLegend() {
     <div className="analytics-react-legend">
       {items.map(([key, label]) => (
         <span key={key}>
-          <i style={{ background: DIAGNOSIS_COLORS[key] }} />
+          <i style={{ '--legend-color': DIAGNOSIS_COLORS[key] } as AnalyticsCssVars} />
           {label}
         </span>
       ))}
@@ -180,7 +187,7 @@ function FunnelSummary({ stages }: { stages: AnalyticsFunnelStage[] }) {
     <div id="analytics-funnel" className="analytics-react-funnel-summary">
       {stages.map(stage => (
         <div className="analytics-react-funnel-step" key={stage.key}>
-          <span className="analytics-react-funnel-dot" style={{ background: stage.color }} />
+          <span className="analytics-react-funnel-dot" style={{ '--funnel-color': stage.color } as AnalyticsCssVars} />
           <div>
             <strong>{stage.label}</strong>
             <span>{formatInteger(stage.value)}</span>

@@ -179,6 +179,8 @@ function Field({
   onChange,
   hint,
   className = '',
+  labelClassName,
+  inputClassName,
   readOnly = false
 }: {
   id: string;
@@ -187,15 +189,18 @@ function Field({
   onChange?: (value: string) => void;
   hint?: string;
   className?: string;
+  labelClassName?: string;
+  inputClassName?: string;
   readOnly?: boolean;
 }) {
   return (
-    <FormField htmlFor={id} label={label} hint={hint} className={className}>
+    <FormField htmlFor={id} label={label} hint={hint} className={className} labelClassName={labelClassName}>
       <Input
         id={id}
         inputMode="decimal"
         autoComplete="off"
         tone={inputToneForField(className, readOnly)}
+        className={inputClassName}
         value={value}
         readOnly={readOnly}
         onChange={event => onChange?.(event.target.value)}
@@ -216,6 +221,10 @@ const knownSaleItemClass = 'known-sale-item flex flex-col justify-center gap-2 r
 const knownSaleLabelClass = 'label text-[11px] uppercase tracking-[1px] text-[var(--muted)]';
 const knownSaleValueClass = 'value mono text-xl font-bold leading-[1.2] text-[var(--text)] max-[768px]:text-lg';
 const reviewFormulaClass = 'review-formula mono mt-3.5 grid gap-[3px] border-t border-dashed border-[var(--border)] pt-3 text-[11.5px] leading-[1.35] text-[var(--muted)]';
+const shippingFieldLabelClass = 'min-h-0 text-xs';
+const shippingControlClass = 'rounded-[9px] px-2.5 py-2 text-[13.5px]';
+const shippingSummaryFieldLabelClass = 'text-[11px]';
+const shippingSummaryInputClass = 'px-2.5 py-[7px] text-[13px]';
 
 function ShippingInline({
   state,
@@ -248,16 +257,16 @@ function ShippingInline({
         <div className="pricing-ship-inline-alert mono" id={`shipChargeReason${suffix}`}>{quote.alerts[0]?.text || ''}</div>
       </div>
       <div className="pricing-ship-inline-inputs">
-        <FormField htmlFor={cargoId} label="货物类型">
-          <Select id={cargoId} value={state.shipCargoTypeNew} onChange={event => onCargo(event.target.value as CargoType)}>
+        <FormField htmlFor={cargoId} label="货物类型" className="gap-1.5" labelClassName={shippingFieldLabelClass}>
+          <Select className={shippingControlClass} id={cargoId} value={state.shipCargoTypeNew} onChange={event => onCargo(event.target.value as CargoType)}>
             <option value="general">普货</option>
             <option value="special">特货</option>
           </Select>
         </FormField>
-        <Field id={weightId} label="实重（g）" value={state.shipActualWeightNew} onChange={value => onNumber('shipActualWeightNew', value)} />
-        <Field id={lengthId} label="长（cm）" value={state.shipLengthNew} onChange={value => onNumber('shipLengthNew', value)} />
-        <Field id={widthId} label="宽（cm）" value={state.shipWidthNew} onChange={value => onNumber('shipWidthNew', value)} />
-        <Field id={heightId} label="高（cm）" value={state.shipHeightNew} onChange={value => onNumber('shipHeightNew', value)} />
+        <Field id={weightId} label="实重（g）" className="gap-1.5" labelClassName={shippingFieldLabelClass} inputClassName={shippingControlClass} value={state.shipActualWeightNew} onChange={value => onNumber('shipActualWeightNew', value)} />
+        <Field id={lengthId} label="长（cm）" className="gap-1.5" labelClassName={shippingFieldLabelClass} inputClassName={shippingControlClass} value={state.shipLengthNew} onChange={value => onNumber('shipLengthNew', value)} />
+        <Field id={widthId} label="宽（cm）" className="gap-1.5" labelClassName={shippingFieldLabelClass} inputClassName={shippingControlClass} value={state.shipWidthNew} onChange={value => onNumber('shipWidthNew', value)} />
+        <Field id={heightId} label="高（cm）" className="gap-1.5" labelClassName={shippingFieldLabelClass} inputClassName={shippingControlClass} value={state.shipHeightNew} onChange={value => onNumber('shipHeightNew', value)} />
       </div>
       <div className="pricing-ship-inline-metrics">
         <div className="pricing-ship-inline-item">
@@ -284,11 +293,11 @@ function ShippingInline({
       </div>
       <div className="pricing-ship-inline-summary">
         <div className="pricing-ship-inline-summary-fields">
-          <FormField htmlFor={`shipBand${suffix}`} label="命中价卡区间">
-            <Input id={`shipBand${suffix}`} value={quote.band?.range || '-'} readOnly />
+          <FormField htmlFor={`shipBand${suffix}`} label="命中价卡区间" labelClassName={shippingSummaryFieldLabelClass}>
+            <Input className={shippingSummaryInputClass} id={`shipBand${suffix}`} value={quote.band?.range || '-'} readOnly />
           </FormField>
-          <Field id={`shippingMultiplier${suffix}`} label="运费倍率" value={state.shippingMultiplierNew} onChange={value => onNumber('shippingMultiplierNew', value)} />
-          <Field id={`labelFee${suffix}`} label="贴单费 ¥" value={state.labelFeeNew} onChange={value => onNumber('labelFeeNew', value)} />
+          <Field id={`shippingMultiplier${suffix}`} label="运费倍率" labelClassName={shippingSummaryFieldLabelClass} inputClassName={shippingSummaryInputClass} value={state.shippingMultiplierNew} onChange={value => onNumber('shippingMultiplierNew', value)} />
+          <Field id={`labelFee${suffix}`} label="贴单费 ¥" labelClassName={shippingSummaryFieldLabelClass} inputClassName={shippingSummaryInputClass} value={state.labelFeeNew} onChange={value => onNumber('labelFeeNew', value)} />
         </div>
         <button
           id={importId}

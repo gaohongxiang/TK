@@ -1,43 +1,5 @@
-.pricing-ship-inline-inputs>*,
-.pricing-ship-inline-metrics>*,
-.pricing-ship-inline-summary>*,
-.pricing-ship-inline-summary-fields>*,
-.known-sale-grid>* {
-  min-width: 0
-}
-
 .calc-details {
   margin-top: 16px
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0
-}
-
-.field label {
-  font-size: 12.5px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  line-height: 1.3;
-  min-height: 18px
-}
-
-.field .hint {
-  font-size: 11.5px;
-  color: var(--muted);
-  opacity: .85;
-  line-height: 1.4
-}
-
-.field input[type=number],
-.field input[inputmode=decimal] {
-  font-variant-numeric: tabular-nums
 }
 
 .pricing-ship-inline {
@@ -85,22 +47,6 @@
   grid-template-columns: 1.05fr .95fr .8fr .8fr .8fr;
   gap: 10px;
   align-items: end
-}
-
-.pricing-ship-inline .field {
-  gap: 6px
-}
-
-.pricing-ship-inline .field label {
-  min-height: auto;
-  font-size: 12px
-}
-
-.pricing-ship-inline .field input,
-.pricing-ship-inline .field select {
-  padding: 8px 10px;
-  font-size: 13.5px;
-  border-radius: 9px
 }
 
 .pricing-ship-inline-metrics {
@@ -213,15 +159,6 @@
   color: var(--muted);
   overflow-wrap: anywhere;
   white-space: normal
-}
-
-.pricing-ship-inline-summary .field label {
-  font-size: 11px
-}
-
-.pricing-ship-inline-summary .field input {
-  padding: 7px 10px;
-  font-size: 13px
 }
 
 .calc-formula-block {

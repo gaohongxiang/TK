@@ -185,21 +185,6 @@
   color: var(--text);
 }
 
-.pl-estimate-strip {
-  margin-top: 16px;
-  padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--border) 86%, white);
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(110, 168, 255, .06), rgba(138, 255, 207, .035));
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.pl-sku-defaults .pl-estimate-strip {
-  margin-top: 0;
-}
-
 .pl-sku-actions {
   margin-top: 12px;
   display: flex;
@@ -243,10 +228,6 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
   display: flex;
   flex-direction: column;
-}
-
-.pl-sku-defaults {
-  margin-top: 0;
 }
 
 .pl-sku-setup-block .pl-sku-batch-title {
@@ -305,26 +286,6 @@
   margin-top: 10px;
   display: flex;
   justify-content: flex-end;
-}
-
-.pl-estimate-item {
-  min-width: 0;
-}
-
-.pl-estimate-item .k {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-
-.pl-estimate-item .v {
-  display: block;
-  margin-top: 6px;
-  color: var(--text);
-  font-size: 18px;
-  line-height: 1.2;
 }
 
 .pl-sku-panel {

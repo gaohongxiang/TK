@@ -116,16 +116,8 @@
   min-width: 0;
 }
 
-.ot-item-span-2 {
-  grid-column: span 2;
-}
-
 .ot-item-span-3 {
   grid-column: span 3;
-}
-
-.ot-item-span-4 {
-  grid-column: span 4;
 }
 
 .ot-item-edit-row .field label {

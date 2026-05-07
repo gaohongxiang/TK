@@ -38,14 +38,13 @@ import {
 } from '../../../orders/export.mjs';
 import {
   buildOrderCourierSummary,
-  buildOrderNoCellMarkup,
-  buildSaleCellMarkup,
   deriveDisplayedOrders,
   derivePurchaseSummary,
   formatSummaryMetric,
   formatTableCellValue,
   formatTableMoneyValue,
-  getProfitCellToneClass
+  getProfitCellToneClass,
+  isCreatorOrder
 } from '../../../orders/table.mjs';
 import { ensureGlobalSettingsStore } from '../../../global-settings.mjs';
 import { TKShippingCore } from '../../../shipping-core.mjs';
@@ -528,12 +527,46 @@ const orderSaleInputWrapClass = 'ot-sale-input-wrap relative';
 const orderSaleInputRefundClass = 'ot-sale-input-refund pointer-events-none absolute inset-0 hidden items-center justify-between gap-2.5 rounded-xl bg-[color-mix(in_srgb,#fff5f5_78%,var(--panel2)_22%)] px-3 shadow-[inset_0_0_0_1px_rgba(196,78,78,.16)]';
 const orderSaleInputOriginalClass = 'ot-sale-input-original tabular-nums text-[var(--muted)] line-through decoration-[1.2px]';
 const orderSaleInputZeroClass = 'ot-sale-input-zero tabular-nums font-bold text-[#c44e4e]';
+const orderSaleCellClass = 'ot-sale-cell inline-flex w-full flex-col items-center gap-0.5 text-center';
+const orderSaleCurrentClass = 'ot-sale-current font-semibold text-[#c44e4e]';
+const orderOrderNoCellClass = 'ot-order-no-cell inline-flex min-w-0 flex-nowrap items-center gap-1.5';
+const orderOrderNoTextClass = 'ot-order-no-text min-w-0';
+const orderTagClass = 'ot-order-tag ot-order-tag-creator inline-flex h-[18px] items-center justify-center whitespace-nowrap rounded-full border border-[rgba(196,78,78,.22)] bg-[rgba(196,78,78,.12)] px-[7px] text-[10.5px] font-bold leading-none tracking-[.04em] text-[#b5525e] opacity-[.98]';
 
 function getProfitValueClass(tone: string) {
   return cn(
     `ot-profit-value is-${tone}`,
     tone === 'profit-positive' ? 'font-bold text-[var(--ok)]' : '',
     tone === 'profit-negative' ? 'font-bold text-[var(--expense)]' : ''
+  );
+}
+
+function OrderNoCell({ order }: { order: OrderRecord }) {
+  const orderNo = formatTableCellValue(order['订单号']);
+  const tags = [
+    isCreatorOrder(order) ? { key: 'creator', label: '达人', title: '达人带货订单' } : null,
+    isOrderRefunded(order) ? { key: 'refund', label: '退款', title: '退款订单' } : null
+  ].filter(Boolean) as { key: string; label: string; title: string }[];
+  if (!tags.length) return <>{orderNo}</>;
+  return (
+    <span className={orderOrderNoCellClass}>
+      <span className={orderOrderNoTextClass}>{orderNo}</span>
+      {tags.map(tag => (
+        <span className={orderTagClass} title={tag.title} aria-label={tag.title} key={tag.key}>{tag.label}</span>
+      ))}
+    </span>
+  );
+}
+
+function SaleCell({ order }: { order: OrderRecord }) {
+  const saleText = String(order['售价'] ?? '').trim();
+  if (!saleText) return <>-</>;
+  if (!isOrderRefunded(order)) return <>{formatTableCellValue(saleText)}</>;
+  return (
+    <span className={orderSaleCellClass}>
+      <span className={orderSaleCurrentClass}>0</span>
+      <span className={orderSaleInputOriginalClass}>{saleText}</span>
+    </span>
   );
 }
 
@@ -889,10 +922,10 @@ function OrdersTable({
                         <TableCell>{formatTableCellValue(order['采购日期'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['最晚到仓时间'])}</TableCell>
                         <TableCell><Badge variant={warningTone}>{warn.text || '-'}</Badge></TableCell>
-                        <TableCell dangerouslySetInnerHTML={{ __html: buildOrderNoCellMarkup(order) }} />
+                        <TableCell><OrderNoCell order={order} /></TableCell>
                         <TableCell className="orders-react-product-cell" title={String(order['产品名称'] || '')}>{formatTableCellValue(order['产品名称'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['数量'])}</TableCell>
-                        <TableCell dangerouslySetInnerHTML={{ __html: buildSaleCellMarkup(order) }} />
+                        <TableCell><SaleCell order={order} /></TableCell>
                         <TableCell>{formatTableCellValue(order['采购价格'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['预估运费'])}</TableCell>
                         <TableCell><span className={getProfitValueClass(getProfitCellToneClass(profit))}>{formatTableMoneyValue(profit) || '-'}</span></TableCell>

@@ -281,3 +281,46 @@
 .ot-summary-ledger-item.is-expense .ot-summary-ledger-value {
   color: var(--expense);
 }
+
+@media (max-width: 768px) {
+  .ot-bar .right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .ot-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .ot-summary-grid::after {
+    display: none;
+  }
+
+  .ot-summary-head {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ot-summary-surface {
+    padding: 16px;
+  }
+
+  .ot-summary-section {
+    padding: 0;
+  }
+
+  .ot-summary-section+.ot-summary-section {
+    border-left: 0;
+    border-top: 1px solid color-mix(in srgb, var(--border) 86%, white);
+    padding-top: 16px;
+  }
+
+  .ot-summary-meta-inline {
+    text-align: left;
+  }
+
+  .ot-summary-ledger-note {
+    white-space: normal;
+  }
+}

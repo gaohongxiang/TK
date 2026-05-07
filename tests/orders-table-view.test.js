@@ -77,8 +77,8 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /dangerouslySetInnerHTML=\{\{ __html: buildOrderNoCellMarkup\(order\) \}\}/,
-  'React 订单号列需要复用订单号纯函数渲染达人和退款标记'
+  /const orderTagClass = 'ot-order-tag[\s\S]*function OrderNoCell[\s\S]*isCreatorOrder\(order\)[\s\S]*isOrderRefunded\(order\)[\s\S]*orderTagClass/,
+  'React 订单号列需要用 React 渲染达人和退款标记'
 );
 
 assert.match(

@@ -103,7 +103,7 @@ const productExpandCaretClass = 'pl-expand-caret text-xs leading-none text-[var(
 const productImageCellClass = 'pl-image-cell w-[74px]';
 const productImageClass = 'pl-image products-react-image h-12 w-12 rounded-[10px] border border-[var(--border)] bg-[var(--panel2)] object-cover';
 const productImagePlaceholderClass = 'pl-image-placeholder products-react-image-placeholder inline-flex h-12 w-12 items-center justify-center rounded-[10px] border border-dashed border-[var(--border)] text-[var(--muted)]';
-const productIdCellClass = 'mono products-react-id min-w-[140px]';
+const productIdCellClass = 'products-react-id min-w-[140px] tabular-nums';
 const productNameCellClass = 'products-react-name-cell min-w-[220px] max-w-[360px]';
 const productNameTextClass = 'truncate';
 const productLinkActionsClass = 'pl-link-actions products-react-link-actions flex flex-wrap items-center justify-center gap-1.5';
@@ -319,7 +319,7 @@ function ProductsTableView({
                         onToggleExpand(tkId);
                       }}
                     >
-                      <TableCell className="mono">
+                      <TableCell className="tabular-nums">
                         <div className={productSeqClass}>
                           <span>{seqNum}</span>
                           {isExpandable ? <span className={productExpandCaretClass} aria-hidden="true">{isExpanded ? '▾' : '▸'}</span> : null}

@@ -36,7 +36,7 @@ assert.match(
 
 assert.match(
   reactCalculatorSource,
-  /from '@\/components\/ui\/table'[\s\S]*<Table className="mono calc-result-table"[\s\S]*<TableBody id="tbodyNew"[\s\S]*<TableBody id="tbody"/,
+  /from '@\/components\/ui\/table'[\s\S]*calcResultTableClass = 'calc-result-table[\s\S]*tabular-nums[\s\S]*<Table className=\{calcResultTableClass\}[\s\S]*<TableBody id="tbodyNew"[\s\S]*<TableBody id="tbody"/,
   'React 利润计算器结果表需要使用共享 Table primitive'
 );
 

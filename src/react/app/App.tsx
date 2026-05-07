@@ -49,6 +49,10 @@ function viewClass(active: string, key: string) {
   return active === key ? 'relative z-0 block' : 'relative z-0 hidden';
 }
 
+const appFooterClass = 'relative z-[2] mt-[30px] flex flex-wrap justify-center gap-x-3 gap-y-2 text-center text-xs text-[var(--muted)]';
+const appFooterLinksClass = 'inline-flex flex-wrap justify-center gap-2.5';
+const appFooterLinkClass = 'relative z-[3] inline-flex min-h-7 items-center font-bold text-[var(--accent)] hover:underline';
+
 function AnalyticsStatus({
   state,
   onRetry
@@ -145,12 +149,12 @@ function App({
             <AnalyticsPane active={active === 'analytics'} />
           </div>
         </main>
-        <footer>
+        <footer className={appFooterClass}>
           <span>本地参数保存在浏览器（localStorage），订单与商品资料同步到你自己的 Firebase Firestore，并使用 Firestore 自带的离线缓存</span>
-          <span className="footer-links">
-            <a href="/privacy.html">隐私与数据边界</a>
-            <a href="/terms.html">使用条款</a>
-            <a href="https://tk-evu-docs.pages.dev/guide/database" target="_blank" rel="noopener">数据库说明</a>
+          <span className={appFooterLinksClass}>
+            <a className={appFooterLinkClass} href="/privacy.html">隐私与数据边界</a>
+            <a className={appFooterLinkClass} href="/terms.html">使用条款</a>
+            <a className={appFooterLinkClass} href="https://tk-evu-docs.pages.dev/guide/database" target="_blank" rel="noopener">数据库说明</a>
           </span>
           <span>TK 电商工具箱 © <span id="yr">{year}</span></span>
         </footer>

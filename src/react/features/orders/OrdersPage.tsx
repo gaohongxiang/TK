@@ -7,6 +7,7 @@ import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/
 import { ExportOptions } from '@/components/ui/export-options';
 import { FormField, FormRow } from '@/components/ui/form';
 import { HelpItem, HelpStack } from '@/components/ui/help-stack';
+import { InlineToken } from '@/components/ui/inline-token';
 import { Input } from '@/components/ui/input';
 import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
@@ -1015,7 +1016,7 @@ function OrderModal({
             <FormField label="采购日期">
               <Input type="date" name="采购日期" value={draft.purchaseDate} onChange={event => updateDraft({ purchaseDate: event.target.value }, false)} />
             </FormField>
-            <FormField label={<>最晚到仓时间 <span className="kbd">自动</span></>}>
+            <FormField label={<>最晚到仓时间 <InlineToken>自动</InlineToken></>}>
               <Input type="date" name="最晚到仓时间" readOnly value={draft.latestWarehouseAt} />
             </FormField>
           </FormRow>
@@ -1067,7 +1068,7 @@ function OrderModal({
             <FormField label="预估总海外运费（元）">
               <Input type="number" name="预估运费" min="0" step="0.01" value={draft.estimatedShippingFee} onChange={event => updateDraft({ estimatedShippingFee: event.target.value })} />
             </FormField>
-            <FormField label={<>预估利润（人民币） <span className="kbd">自动</span></>}>
+            <FormField label={<>预估利润（人民币） <InlineToken>自动</InlineToken></>}>
               <Input type="number" name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
             </FormField>
           </FormRow>
@@ -1075,7 +1076,7 @@ function OrderModal({
             <FormField label="达人佣金率（%）">
               <Input type="number" name="达人佣金率" min="0" step="0.01" value={draft.creatorCommissionRate} onChange={event => updateDraft({ creatorCommissionRate: event.target.value })} />
             </FormField>
-            <FormField label={<>达人佣金（元） <span className="kbd">自动</span></>}>
+            <FormField label={<>达人佣金（元） <InlineToken>自动</InlineToken></>}>
               <Input type="number" name="达人佣金" step="0.01" readOnly value={draft.creatorCommission} />
             </FormField>
             <FormField label="订单状态">
@@ -1084,7 +1085,7 @@ function OrderModal({
                 {ORDER_STATUS_OPTIONS.map(status => <option value={status} key={status}>{status}</option>)}
               </Select>
             </FormField>
-            <FormField label={<>订单预警 <span className="kbd">自动</span></>}>
+            <FormField label={<>订单预警 <InlineToken>自动</InlineToken></>}>
               <Input name="订单预警" readOnly value={draft.warningText} />
             </FormField>
           </FormRow>

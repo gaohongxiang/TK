@@ -3,8 +3,7 @@ const path = require('path');
 const assert = require('assert');
 
 const formulasSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'formulas.mjs'), 'utf8');
-const srcLegacySource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'legacy.mjs'), 'utf8');
-const srcPricingSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'pricing.mjs'), 'utf8');
+const reactCalculatorSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'calculator', 'CalculatorApp.tsx'), 'utf8');
 
 assert.match(formulasSource, /export\s+\{/, '路线二 M3 需要提供 calc 纯公式 ESM 导出');
 assert.match(formulasSource, /\bcalcLegacyRow\b/, 'calc 纯公式 ESM 模块需要导出 calcLegacyRow');
@@ -13,17 +12,23 @@ assert.match(formulasSource, /\bcalcPricingRow\b/, 'calc 纯公式 ESM 模块需
 assert.match(formulasSource, /\bderivePricingOrigPrice\b/, 'calc 纯公式 ESM 模块需要导出 derivePricingOrigPrice');
 assert.match(formulasSource, /\bcalcSalePrice\b/, 'calc 纯公式 ESM 模块需要导出 calcSalePrice');
 assert.match(
-  srcLegacySource,
-  /import\s+\{[\s\S]*calcLegacyRow as calcLegacyRowFormula[\s\S]*deriveLegacyOrigPrice as deriveLegacyOrigPriceFormula[\s\S]*\}\s+from\s+'\.\/formulas\.mjs'/,
-  '路线二 M3 legacy ESM 壳层需要复用公式模块'
+  reactCalculatorSource,
+  /deriveLegacyOrigPrice\(\{ \.\.\.state, anchor \}\)[\s\S]*calcLegacyRow\(state, origPrice, discount\)/,
+  'React 旧定价面板需要直接复用纯公式模块'
 );
-assert.match(srcLegacySource, /export\s+\{[\s\S]*CalcLegacyPricing[\s\S]*create[\s\S]*\}/, '路线二 M3 需要提供 legacy ESM 壳层导出');
 assert.match(
-  srcPricingSource,
-  /import\s+\{[\s\S]*calcPricingRow[\s\S]*calcSalePrice as calcSalePriceFormula[\s\S]*derivePricingOrigPrice[\s\S]*\}\s+from\s+'\.\/formulas\.mjs'/,
-  '路线二 M3 pricing ESM 壳层需要复用公式模块'
+  reactCalculatorSource,
+  /derivePricingOrigPrice\(\{ state: \{ \.\.\.state, anchorNew: anchor \}, totalCost \}\)[\s\S]*calcPricingRow\(\{/,
+  'React 定价新面板需要直接复用纯公式模块'
 );
-assert.match(srcPricingSource, /export\s+\{[\s\S]*CalcPricing[\s\S]*create[\s\S]*\}/, '路线二 M3 需要提供 pricing ESM 壳层导出');
+assert.match(
+  reactCalculatorSource,
+  /const result = calcSalePrice\(\{ state, totalCost \}\)/,
+  'React 利润复盘面板需要直接复用纯公式模块'
+);
+['legacy.mjs', 'pricing.mjs'].forEach(file => {
+  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'calc', file)), `完整 React SPA 后不应保留 calc ${file} DOM 壳层`);
+});
 
 function approxEqual(actual, expected, message) {
   assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: expected ${expected}, got ${actual}`);
@@ -57,12 +62,7 @@ const pricingState = {
 };
 
 (async () => {
-  const sharedModule = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'shared.mjs')}`);
   const formulas = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'formulas.mjs')}`);
-  const legacyModule = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'legacy.mjs')}`);
-  const pricingModule = await import(`file://${path.join(__dirname, '..', 'src', 'calc', 'pricing.mjs')}`);
-
-  const helpers = sharedModule.CalcShared.create({ storageKey: 'tk.profit.v1', defaults: {} });
   const legacyExpected = {
     discount: 0.5,
     jpyPrice: 450,
@@ -93,22 +93,6 @@ const pricingState = {
   );
   approxEqual(formulas.deriveLegacyOrigPrice(legacyState), 1234.567901234568, 'calc 公式 ESM 模块旧定价原价反推不正确');
 
-  const legacyEsm = legacyModule.CalcLegacyPricing.create({
-    state: { ...legacyState },
-    els: {},
-    helpers,
-    save: () => {}
-  });
-  assert.equal(typeof legacyEsm.calcLegacyRow, 'function', 'legacy ESM 壳层需要暴露 calcLegacyRow');
-  assert.equal(typeof legacyEsm.deriveLegacyOrigPrice, 'function', 'legacy ESM 壳层需要暴露 deriveLegacyOrigPrice');
-  approxRow(
-    legacyEsm.calcLegacyRow(1000, 0.5),
-    legacyExpected,
-    ['discount', 'jpyPrice', 'cnyNet', 'creatorCommission', 'margin'],
-    'legacy ESM 壳层旧定价行公式不正确'
-  );
-  approxEqual(legacyEsm.deriveLegacyOrigPrice(), 1234.567901234568, 'legacy ESM 壳层旧定价原价反推不正确');
-
   approxRow(
     formulas.calcPricingRow({
       state: pricingState,
@@ -136,38 +120,6 @@ const pricingState = {
     saleExpected,
     ['cnyNet', 'creatorCommission', 'profit', 'margin'],
     'calc 公式 ESM 模块利润复盘公式不正确'
-  );
-
-  const pricingEsm = pricingModule.CalcPricing.create({
-    state: { ...pricingState },
-    els: { calcTabs: [], calcPanels: {} },
-    helpers,
-    shipping: {
-      getShippingMultiplierNew: () => 1,
-      applyCalculatedShippingCostNew: () => null,
-      computeTotalCostNew: () => pricingState.costNew + pricingState.overseasShippingNew,
-      computePricingNewShipping: () => ({}),
-      renderPricingNewShipping: () => {},
-      renderShippingCalc: () => {}
-    },
-    save: () => {},
-    document: { getElementById: () => null, activeElement: null }
-  });
-  assert.equal(typeof pricingEsm.calcRow, 'function', 'pricing ESM 壳层需要暴露 calcRow');
-  assert.equal(typeof pricingEsm.deriveOrigPrice, 'function', 'pricing ESM 壳层需要暴露 deriveOrigPrice');
-  assert.equal(typeof pricingEsm.calcSalePrice, 'function', 'pricing ESM 壳层需要暴露 calcSalePrice');
-  approxRow(
-    pricingEsm.calcRow('pricingNew', 800, 0.5),
-    pricingExpected,
-    ['discount', 'jpyPrice', 'cnyNet', 'creatorCommission', 'profit', 'margin'],
-    'pricing ESM 壳层定价新行公式不正确'
-  );
-  approxEqual(pricingEsm.deriveOrigPrice('pricingNew'), 888.8888888888889, 'pricing ESM 壳层定价新原价反推不正确');
-  approxRow(
-    pricingEsm.calcSalePrice(),
-    saleExpected,
-    ['cnyNet', 'creatorCommission', 'profit', 'margin'],
-    'pricing ESM 壳层利润复盘公式不正确'
   );
 
   console.log('calc formulas ok');

@@ -525,7 +525,7 @@ npm run release:check
 
 #### M3：迁移利润计算器
 
-当前状态：已完成利润计算器 ESM 入口切换。`index.html` 现在通过 `/src/calc/index.mjs` 加载利润计算器；旧 `js/calc/*.js` 文件暂时保留为历史参考和回退，不再进入主页面加载链。
+当前状态：完整 React SPA 已接管利润计算器。`index.html` 只加载 `/src/react/main.tsx`；旧 `src/calc/index.mjs` 和旧 calc DOM 壳层已删除，React 页面直接复用纯公式和共享运费核心。
 
 利润计算器数据依赖较少，适合第二批。
 
@@ -537,22 +537,13 @@ npm run release:check
 
 已完成：
 
-- 新增 `src/calc/shared.mjs`，提供 `CalcShared` 和 `create` 的 ESM 导出。
-- `src/calc/shared.mjs` 保持旧 `js/calc/shared.js` 的存储迁移、折扣解析、金额/重量格式化、小数符号归一化和输入行为 helper。
-- `tests/calc-module-split.test.js` 已新增动态 `import()` 断言，确认 calc shared ESM 模块可被 Node 直接导入。
 - 新增 `src/shipping-core.mjs`，提供 `TKShippingCore`、`SHIPPING_RULES`、`DEFAULT_CONSTANTS`、`getShippingBand`、`computeShippingQuote` 和 `computeCalculatedShippingCost` 的 ESM 导出。
 - `tests/shipping-core-module.test.js` 已新增动态 `import()` 断言，确认共享运费核心 ESM 模块和旧全局模块输出一致。
-- 新增 `src/calc/shipping.mjs`，通过 `import { TKShippingCore } from '../shipping-core.mjs'` 复用共享运费核心，并保留旧 `CalcShipping.create` 的返回接口。
-- `tests/calc-shipping-quote.test.js` 已新增动态 `import()` 断言，确认 calc shipping ESM 模块能计算 quote、最终人民币运费、回填计算运费和安全处理缺失 DOM 容器。
 - 新增 `src/calc/formulas.mjs`，提供旧定价、定价新和利润复盘的纯公式导出：`calcLegacyRow`、`deriveLegacyOrigPrice`、`calcPricingRow`、`derivePricingOrigPrice`、`calcSalePrice`。
-- `tests/calc-formulas.test.js` 已新增动态 `import()` 断言，用旧 `CalcLegacyPricing` / `CalcPricing` 的结果对照 ESM 公式输出。
-- 新增 `src/calc/legacy.mjs`，提供 `CalcLegacyPricing` 和 `create` 的 ESM 导出，并通过 `src/calc/formulas.mjs` 复用旧定价行计算和原价反推公式。
-- `tests/calc-formulas.test.js` 已覆盖 legacy ESM 壳层和旧 `CalcLegacyPricing` 的计算结果一致。
-- 新增 `src/calc/pricing.mjs`，提供 `CalcPricing` 和 `create` 的 ESM 导出，并通过 `src/calc/formulas.mjs` 复用定价新和利润复盘公式。
-- `tests/calc-formulas.test.js` 已覆盖 pricing ESM 壳层和旧 `CalcPricing` 的公式输出一致；`tests/calc-pricing-sync.test.js` 已覆盖 pricing ESM 壳层的定价新/利润复盘采购价双向同步。
+- React 利润计算器已直接导入 `src/calc/formulas.mjs` 和 `src/shipping-core.mjs`；`src/calc/shared.mjs`、`src/calc/shipping.mjs`、`src/calc/legacy.mjs`、`src/calc/pricing.mjs` 这些旧 DOM 壳层已删除。
+- `tests/calc-formulas.test.js` 已改为断言纯公式输出和 React 页面直连公式；`tests/calc-shipping-quote.test.js` 已改为断言 React 页面直连共享运费核心；`tests/calc-react-state-sync.test.js` 保护定价新/利润复盘共用同一份 React 状态。
 - 新增 `src/global-settings.mjs`，提供全局设置的 ESM 导出，并保持从旧利润计算器存储迁移汇率。
-- 新增 `src/calc/index.mjs`，通过 `import` 串起 `TKGlobalSettings`、`CalcShared`、`CalcShipping`、`CalcLegacyPricing` 和 `CalcPricing`。
-- `index.html` 已移除旧 `js/calc/shared.js`、`js/calc/shipping.js`、`js/calc/legacy.js`、`js/calc/pricing.js`、`js/calc/index.js` 的页面加载，改为 `<script type="module" src="/src/calc/index.mjs"></script>`。
+- 旧 `src/calc/index.mjs` 已删除；`index.html` 已移除旧 `js/calc/shared.js`、`js/calc/shipping.js`、`js/calc/legacy.js`、`js/calc/pricing.js`、`js/calc/index.js` 以及 `/src/calc/index.mjs` 的页面加载。
 - `src/global-settings.mjs` 已收敛为 ESM helper，并只初始化浏览器共享设置 store `window.__tkGlobalSettingsStore`，不再挂旧 `window.TKGlobalSettings` API。
 - `src/shipping-core.mjs` 已收敛为纯 ESM helper，不再挂旧 `window.TKShippingCore`。
 - `src/shared/html.mjs` 和 `src/shared/format.mjs` 已收敛为纯 ESM helper，不再挂旧 `window.TKHtml`、`window.TKFormat`。
@@ -565,7 +556,7 @@ npm run release:check
 node tests/global-settings-module.test.js
 node tests/calc-module-split.test.js
 node tests/calc-formulas.test.js
-node tests/calc-pricing-sync.test.js
+node tests/calc-react-state-sync.test.js
 node tests/calc-shipping-quote.test.js
 node tests/shipping-core-module.test.js
 npm run release:check

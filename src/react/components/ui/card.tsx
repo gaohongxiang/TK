@@ -19,7 +19,7 @@ function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
 }
 
 function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cn('m-0 text-[14px] font-semibold text-[var(--muted)]', className)} {...props} />;
+  return <h2 className={cn('mb-4 mt-0 flex items-center gap-2 text-[14px] font-semibold uppercase tracking-[.3px] text-[var(--muted)] max-[768px]:mb-3.5 max-[768px]:text-[13px]', className)} {...props} />;
 }
 
 function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {

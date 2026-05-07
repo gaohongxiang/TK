@@ -4,7 +4,7 @@ import { ensureGlobalSettingsStore } from '../../../global-settings.mjs';
 import { DEFAULT_CONSTANTS, SHIPPING_RULES, computeCalculatedShippingCost, computeShippingQuote } from '../../../shipping-core.mjs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -332,7 +332,7 @@ function PricingNewPanel({
     <div className={calcPanelClass} id="calc-panel-pricing-new">
       <div className={calcLayoutClass}>
         <Card>
-          <h2>定价输入</h2>
+          <CardTitle>定价输入</CardTitle>
           <FormRow columns={3} className="triple">
             <Field id="costNew" label="采购价 ¥" className="expense-field" value={state.costNew} onChange={value => updateNumber('costNew', value)} />
             <Field id="overseasShippingNew" label="海外运费 ¥" className="expense-field" value={state.overseasShippingNew} onChange={value => updateNumber('overseasShippingNew', value)} />
@@ -368,7 +368,7 @@ function PricingNewPanel({
           </div>
         </Card>
         <Card>
-          <h2>各折扣档位定价 / 利润一览</h2>
+          <CardTitle>各折扣档位定价 / 利润一览</CardTitle>
           <Table className="mono calc-result-table">
             <TableHeader>
               <TableRow>
@@ -430,7 +430,7 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
     <div className={calcPanelClass} id="calc-panel-pricing">
       <div className={calcLayoutClass}>
         <Card>
-          <h2>核心输入</h2>
+          <CardTitle>核心输入</CardTitle>
           <FormRow>
             <Field id="cost" label="采购价（人民币 ¥）" className="primary" value={state.cost} onChange={value => updateNumber('cost', value)} />
             <Field id="targetMargin" label="目标利润率（倍）" value={state.targetMargin} hint="人民币到手价 ÷ 采购价，例如 1.4 表示到手价 = 1.4 × 采购价" onChange={value => updateNumber('targetMargin', value)} />
@@ -454,7 +454,7 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
           </details>
         </Card>
         <Card>
-          <h2>各折扣档位定价 / 利润一览</h2>
+          <CardTitle>各折扣档位定价 / 利润一览</CardTitle>
           <Table className="mono calc-result-table">
             <TableHeader>
               <TableRow>
@@ -495,7 +495,7 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
     <div className={calcPanelClass} id="calc-panel-review">
       <div className={calcLayoutClass}>
         <Card>
-          <h2>成交输入</h2>
+          <CardTitle>成交输入</CardTitle>
           <FormRow>
             <Field id="salePrice" label="实际售价（円）" className="success" value={state.salePrice || ''} onChange={value => updateNumber('salePrice', value)} />
             <FormField htmlFor="totalCostReview" label={<>总费用 ¥<span className="var">采购价+海外运费</span></>} className="expense-field">
@@ -519,7 +519,7 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
           </div>
         </Card>
         <Card>
-          <h2>利润复盘</h2>
+          <CardTitle>利润复盘</CardTitle>
           <div className="known-sale-grid review-metrics grid grid-cols-3 items-stretch gap-3 [&>*]:min-w-0 max-[860px]:grid-cols-2 max-[768px]:grid-cols-1">
             <div className="known-sale-item">
               <div className="label">人民币到手</div>
@@ -553,7 +553,7 @@ function ReferenceCards() {
   return (
     <>
       <Card className="ship-calc">
-        <h2>新版海外运费参考表</h2>
+        <CardTitle>新版海外运费参考表</CardTitle>
         <div className="ship-meta">
           <span><b>使用新规</b> 2026/04/24 00:00（GMT+8）起生效</span>
           <span className="sep">·</span>
@@ -588,7 +588,7 @@ function ReferenceCards() {
         </div>
       </Card>
       <Card className="commission-ref">
-        <h2>TK 佣金费率参考表</h2>
+        <CardTitle>TK 佣金费率参考表</CardTitle>
         <div className="ship-meta">
           <span><b>类目佣金率参考</b> 用于达人佣金率和类目判断</span>
           <span className="sep">·</span>

@@ -7,7 +7,7 @@ import { Upload } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
+import { Card, CardTitle } from '@/components/ui/card';
 import { PageHero } from '@/components/ui/page-hero';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, TableViewport } from '@/components/ui/table-tools';
@@ -208,7 +208,7 @@ function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
       <div className="analytics-insight-layout analytics-react-insight-layout">
         <Card className="analytics-chart-card analytics-overview-card">
           <div className="analytics-section-head">
-            <h2>运营总览</h2>
+            <CardTitle className="mb-0">运营总览</CardTitle>
             <Badge className="analytics-chip muted">渠道 GMV / 流量漏斗</Badge>
           </div>
           <div id="analytics-channel-share" className="analytics-react-overview-chart">
@@ -219,7 +219,7 @@ function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
         </Card>
         <Card className="analytics-chart-card analytics-bubble-card">
           <div className="analytics-section-head">
-            <h2>商品机会散点图</h2>
+            <CardTitle className="mb-0">商品机会散点图</CardTitle>
             <Badge className="analytics-chip muted">曝光 × 转化 × GMV</Badge>
           </div>
           <div id="analytics-bubble-chart" className="analytics-react-scatter-wrap">
@@ -231,14 +231,14 @@ function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
       <div className="analytics-layout">
         <Card className="analytics-chart-card">
           <div className="analytics-section-head">
-            <h2>Top 商品 GMV</h2>
+            <CardTitle className="mb-0">Top 商品 GMV</CardTitle>
             <Badge className="analytics-chip muted">前 10</Badge>
           </div>
           <TopProducts records={analysis.records} />
         </Card>
         <Card className="analytics-chart-card">
           <div className="analytics-section-head">
-            <h2>商品诊断</h2>
+            <CardTitle className="mb-0">商品诊断</CardTitle>
             <Badge className="analytics-chip muted">运营动作</Badge>
           </div>
           <DiagnosisCards records={analysis.records} />
@@ -246,7 +246,7 @@ function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
       </div>
       <Card className="analytics-table-card">
         <div className="analytics-section-head">
-          <h2>商品明细</h2>
+          <CardTitle className="mb-0">商品明细</CardTitle>
           <Badge className="analytics-chip muted">{analysis.records.length} 个商品 · 仅展示前 50</Badge>
         </div>
         <TableViewport className="analytics-table-wrap">
@@ -294,7 +294,7 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
       <Card className="analytics-upload-card analytics-react-upload-card">
         <div className="analytics-upload-grid">
           <div className="analytics-upload-copy">
-            <h2>导入商品流量表</h2>
+            <CardTitle>导入商品流量表</CardTitle>
             <p>支持 TikTok Shop 导出的商品流量详情 Excel。React 看板只在当前浏览器内解析，不上传、不保存到本站数据库。</p>
             <Alert variant="info" className="analytics-privacy-strip">
               <AlertDescription className="contents">

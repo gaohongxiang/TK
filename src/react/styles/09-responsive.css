@@ -90,11 +90,6 @@
     justify-content: flex-start;
   }
 
-  .card h2 {
-    font-size: 13px;
-    margin-bottom: 14px
-  }
-
   .calc-toolbar {
     align-items: stretch
   }

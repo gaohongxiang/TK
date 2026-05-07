@@ -5,6 +5,9 @@ import { GridComponent, LegendComponent, TitleComponent, TooltipComponent } from
 import { CanvasRenderer } from 'echarts/renderers';
 import { Upload } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsRecord } from './types';
 import { buildFunnelStages, buildOpportunityScatterOption, buildOverviewOption, DIAGNOSIS_COLORS } from './chartOptions';
 import { formatInteger, formatPercent, formatYen, shortenText } from './format';
@@ -132,7 +135,7 @@ function DetailTable({ records }: { records: AnalyticsRecord[] }) {
             <td>{formatInteger(record.exposureTotal)}</td>
             <td>{formatInteger(record.pageViewsTotal)}</td>
             <td>{formatPercent(record.overallCtr)}</td>
-            <td><span className={`analytics-tag is-${record.diagnosis.tone}`}>{record.diagnosis.label}</span></td>
+            <td><Badge className={`analytics-tag is-${record.diagnosis.tone}`}>{record.diagnosis.label}</Badge></td>
           </tr>
         ))}
       </tbody>
@@ -193,53 +196,53 @@ function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
     <section className="analytics-main analytics-react-main" data-react-analytics-ready="true">
       <KpiGrid analysis={analysis} />
       <div className="analytics-insight-layout analytics-react-insight-layout">
-        <section className="card analytics-chart-card analytics-overview-card">
+        <Card className="analytics-chart-card analytics-overview-card">
           <div className="analytics-section-head">
             <h2>运营总览</h2>
-            <span className="analytics-chip muted">渠道 GMV / 流量漏斗</span>
+            <Badge className="analytics-chip muted">渠道 GMV / 流量漏斗</Badge>
           </div>
           <div id="analytics-channel-share" className="analytics-react-overview-chart">
             <ChannelSummary analysis={analysis} />
             <ReactECharts className="analytics-react-chart analytics-react-overview" option={buildOverviewOption(analysis)} />
           </div>
           <FunnelSummary stages={funnelStages} />
-        </section>
-        <section className="card analytics-chart-card analytics-bubble-card">
+        </Card>
+        <Card className="analytics-chart-card analytics-bubble-card">
           <div className="analytics-section-head">
             <h2>商品机会散点图</h2>
-            <span className="analytics-chip muted">曝光 × 转化 × GMV</span>
+            <Badge className="analytics-chip muted">曝光 × 转化 × GMV</Badge>
           </div>
           <div id="analytics-bubble-chart" className="analytics-react-scatter-wrap">
             <ReactECharts className="analytics-react-chart analytics-react-scatter" option={buildOpportunityScatterOption(analysis)} />
           </div>
           <ScatterLegend />
-        </section>
+        </Card>
       </div>
       <div className="analytics-layout">
-        <section className="card analytics-chart-card">
+        <Card className="analytics-chart-card">
           <div className="analytics-section-head">
             <h2>Top 商品 GMV</h2>
-            <span className="analytics-chip muted">前 10</span>
+            <Badge className="analytics-chip muted">前 10</Badge>
           </div>
           <TopProducts records={analysis.records} />
-        </section>
-        <section className="card analytics-chart-card">
+        </Card>
+        <Card className="analytics-chart-card">
           <div className="analytics-section-head">
             <h2>商品诊断</h2>
-            <span className="analytics-chip muted">运营动作</span>
+            <Badge className="analytics-chip muted">运营动作</Badge>
           </div>
           <DiagnosisCards records={analysis.records} />
-        </section>
+        </Card>
       </div>
-      <section className="card analytics-table-card">
+      <Card className="analytics-table-card">
         <div className="analytics-section-head">
           <h2>商品明细</h2>
-          <span className="analytics-chip muted">{analysis.records.length} 个商品 · 仅展示前 50</span>
+          <Badge className="analytics-chip muted">{analysis.records.length} 个商品 · 仅展示前 50</Badge>
         </div>
         <div className="ot-table-wrap analytics-table-wrap">
           <DetailTable records={analysis.records} />
         </div>
-      </section>
+      </Card>
     </section>
   );
 }
@@ -281,16 +284,18 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
           <p>本地解析 TikTok Shop 商品流量导出表，生成渠道表现、商品排行和运营诊断；数据不上传到本站服务器。</p>
         </div>
       </div>
-      <section className="card analytics-upload-card analytics-react-upload-card">
+      <Card className="analytics-upload-card analytics-react-upload-card">
         <div className="analytics-upload-grid">
           <div className="analytics-upload-copy">
             <h2>导入商品流量表</h2>
             <p>支持 TikTok Shop 导出的商品流量详情 Excel。React 看板只在当前浏览器内解析，不上传、不保存到本站数据库。</p>
-            <div className="analytics-privacy-strip">
-              <span>本地解析</span>
-              <span>ECharts 图表</span>
-              <span>不保存用户数据</span>
-            </div>
+            <Alert variant="info" className="analytics-privacy-strip">
+              <AlertDescription className="contents">
+                <span>本地解析</span>
+                <span>ECharts 图表</span>
+                <span>不保存用户数据</span>
+              </AlertDescription>
+            </Alert>
           </div>
           <div className="analytics-upload-action">
             <label className="analytics-file-picker" htmlFor="analytics-file-input">
@@ -301,14 +306,14 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
             <div id="analytics-file-meta" className="analytics-file-meta">{meta}</div>
           </div>
         </div>
-      </section>
+      </Card>
       {!analysis ? (
-        <section id="analytics-empty" className="card analytics-empty analytics-react-empty">
+        <Card id="analytics-empty" className="analytics-empty analytics-react-empty">
           <div className="ot-empty">
             <div style={{ fontSize: 15, marginBottom: 6 }}>等待导入商品流量 Excel</div>
             <div style={{ fontSize: 12.5 }}>导入后会自动生成 ECharts 渠道图、商品机会散点图、Top 商品和诊断标签。</div>
           </div>
-        </section>
+        </Card>
       ) : <AnalyticsDashboard analysis={analysis} />}
     </div>
   );

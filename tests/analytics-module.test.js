@@ -218,6 +218,18 @@ assert.match(
 );
 
 assert.match(
+  reactAnalyticsSource,
+  /from '@\/components\/ui\/alert'[\s\S]*from '@\/components\/ui\/badge'[\s\S]*from '@\/components\/ui\/card'|from '@\/components\/ui\/card'[\s\S]*from '@\/components\/ui\/badge'[\s\S]*from '@\/components\/ui\/alert'/,
+  '数据分析页面容器、状态标签和本地解析提示需要使用共享 Alert/Badge/Card primitives'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /<Card className="analytics-chart-card analytics-overview-card"[\s\S]*<Badge className="analytics-chip muted"[\s\S]*<Alert variant="info" className="analytics-privacy-strip"[\s\S]*<Card id="analytics-empty"/,
+  '数据分析页面应在保留现有 class 的前提下，把卡片、标签和提示容器收敛到 primitives'
+);
+
+assert.match(
   reactChartOptionsSource,
   /function buildOverviewOption\([\s\S]*type:\s*'pie'[\s\S]*type:\s*'funnel'[\s\S]*type:\s*'scatter'/,
   'React 数据分析需要用少量 ECharts 图表覆盖渠道、漏斗和商品机会'

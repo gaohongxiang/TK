@@ -13,8 +13,8 @@ function FormField({ className, label, htmlFor, hint, full = false, children, st
   return (
     <div
       data-slot="form-field"
-      className={cn('field flex min-w-0 flex-col gap-2', full && 'full', className)}
-      style={{ ...(full ? { gridColumn: '1/-1' } : null), ...style }}
+      className={cn('field flex min-w-0 flex-col gap-2', full && 'full col-span-full', className)}
+      style={style}
       {...props}
     >
       {label ? (

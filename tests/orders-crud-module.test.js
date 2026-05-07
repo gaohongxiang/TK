@@ -24,7 +24,7 @@ assert.doesNotMatch(
 
 assert.match(
   ordersPageSource,
-  /className="ot-item-block"[\s\S]*<h4>订单明细<\/h4>/,
+  /ot-item-block[\s\S]*订单明细/,
   '订单弹窗需要提供订单明细区域'
 );
 

@@ -7,9 +7,10 @@ type FormFieldProps = HTMLAttributes<HTMLDivElement> & {
   htmlFor?: string;
   hint?: ReactNode;
   full?: boolean;
+  labelClassName?: string;
 };
 
-function FormField({ className, label, htmlFor, hint, full = false, children, style, ...props }: FormFieldProps) {
+function FormField({ className, label, labelClassName, htmlFor, hint, full = false, children, style, ...props }: FormFieldProps) {
   return (
     <div
       data-slot="form-field"
@@ -18,7 +19,7 @@ function FormField({ className, label, htmlFor, hint, full = false, children, st
       {...props}
     >
       {label ? (
-        <Label htmlFor={htmlFor} className="mb-0 flex min-h-[18px] flex-wrap items-center gap-1.5 leading-[1.3] text-[12.5px] font-normal text-[var(--muted)]">
+        <Label htmlFor={htmlFor} className={cn('mb-0 flex min-h-[18px] flex-wrap items-center gap-1.5 leading-[1.3] text-[12.5px] font-normal text-[var(--muted)]', labelClassName)}>
           {label}
         </Label>
       ) : null}

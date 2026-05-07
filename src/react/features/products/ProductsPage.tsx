@@ -1292,12 +1292,12 @@ function ProductsPage() {
       </Card>
 
       <div id="pl-main" style={{ display: connected ? undefined : 'none' }}>
-        <div className="ot-header-status-row">
-          <div className="muted" id="pl-user">
+        <div className="ot-header-status-row flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="muted min-w-0 flex-1 truncate max-[640px]:basis-full max-[640px]:whitespace-normal" id="pl-user">
             {projectId ? `已连接 · ${projectId} · Firestore` : '已连接 · Firebase Firestore'}
           </div>
-          <div className="ot-header-actions">
-            <span id="pl-sync" className={`sync ${syncClass}`}>{syncText}</span>
+          <div className="ot-header-actions flex flex-wrap items-center justify-end gap-2 max-[640px]:w-full max-[640px]:justify-start">
+            <span id="pl-sync" className={`sync ${syncClass} inline-flex min-h-[30px] items-center whitespace-nowrap`}>{syncText}</span>
             <Button
               id="pl-refresh"
               size="sm"
@@ -1318,9 +1318,9 @@ function ProductsPage() {
           </div>
         </div>
 
-        <div className="ot-account-tabs-row pl-account-tabs-row">
-          <div className="ot-acc-tabs" id="pl-acc-tabs">
-            <div id="pl-acc-tabs-all">
+        <div className="ot-account-tabs-row pl-account-tabs-row flex items-center justify-between gap-3 border-b border-[var(--border)] pb-3 mb-3 max-[768px]:flex-col max-[768px]:items-stretch">
+          <div className="ot-acc-tabs flex min-w-0 flex-1 items-center gap-2 border-0 p-0" id="pl-acc-tabs">
+            <div id="pl-acc-tabs-all" className="shrink-0">
               <button
                 type="button"
                 className={cn('tab', activeAccount === '__all__' ? 'active' : '')}
@@ -1330,7 +1330,7 @@ function ProductsPage() {
                 全部<span className="tab-count">({products.length})</span>
               </button>
             </div>
-            <div id="pl-acc-tabs-scroll" className="ot-acc-tabs-scroll">
+            <div id="pl-acc-tabs-scroll" className="ot-acc-tabs-scroll min-w-0 flex-1">
               <AccountTabs
                 activeAccount={activeAccount}
                 accounts={allAccounts}
@@ -1339,7 +1339,7 @@ function ProductsPage() {
               />
             </div>
           </div>
-          <div className="ot-acc-actions" id="pl-acc-actions">
+          <div className="ot-acc-actions flex shrink-0 items-center justify-end gap-2 ml-0 max-[768px]:w-full" id="pl-acc-actions">
             <Button id="pl-add" variant="primary" onClick={() => openProductModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增商品</Button>
           </div>
         </div>

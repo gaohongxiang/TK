@@ -103,6 +103,12 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
+  /ot-header-status-row flex flex-wrap items-center justify-between[\s\S]*ot-header-actions flex flex-wrap items-center justify-end[\s\S]*pl-account-tabs-row flex items-center justify-between[\s\S]*ot-acc-tabs flex min-w-0 flex-1[\s\S]*ot-acc-actions flex shrink-0/,
+  'React 商品管理顶部状态、操作按钮、账号标签和新增商品按钮需要有稳定 flex 布局，避免文字和按钮挤在一起'
+);
+
+assert.match(
+  reactProductsPageSource,
   /id="pl-sku-list"/,
   'React 商品库弹窗需要提供 SKU 列表容器'
 );

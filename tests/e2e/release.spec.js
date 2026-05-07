@@ -300,6 +300,22 @@ async function activateFooterRoute(page, href, heading) {
   await expect(page.locator('h1')).toHaveText(heading);
 }
 
+async function expectNoOverlap(page, firstSelector, secondSelector, label) {
+  const [firstBox, secondBox] = await Promise.all([
+    page.locator(firstSelector).boundingBox(),
+    page.locator(secondSelector).boundingBox()
+  ]);
+  expect(firstBox, `${label}: first element should be visible`).not.toBeNull();
+  expect(secondBox, `${label}: second element should be visible`).not.toBeNull();
+  const overlaps = !(
+    firstBox.x + firstBox.width <= secondBox.x
+    || secondBox.x + secondBox.width <= firstBox.x
+    || firstBox.y + firstBox.height <= secondBox.y
+    || secondBox.y + secondBox.height <= firstBox.y
+  );
+  expect(overlaps, label).toBe(false);
+}
+
 test.describe('release browser smoke', () => {
   test.beforeEach(async ({ page }) => {
     const runtimeIssues = installRuntimeGuards(page);
@@ -333,6 +349,9 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('nav.modules a[data-view="products"]')).toHaveAttribute('aria-current', 'page');
     await expect(page.locator('nav.modules a[data-view="calc"]')).not.toHaveAttribute('aria-current', 'page');
     await expect(page.locator('#pl-sync')).toContainText('已同步');
+    await expectNoOverlap(page, '#pl-user', '#pl-export', 'product header status and export button should not overlap');
+    await expectNoOverlap(page, '#pl-sync', '#pl-refresh', 'product sync text and refresh button should not overlap');
+    await expectNoOverlap(page, '#pl-acc-tabs', '#pl-add', 'product account tabs and add button should not overlap');
     await page.locator('#pl-add').click();
     await expect(page.locator('#pl-modal')).toHaveClass(/show/);
     await page.locator('#pl-account-select').selectOption('Test-Account');

@@ -466,8 +466,14 @@ assert.match(
 
 assert.match(
   reactTableSource,
-  /function Table[\s\S]*cn\('ot text-\[13px\]', className\)[\s\S]*bg-transparent font-semibold[\s\S]*font-normal/,
-  '本地 Table primitive 需要用 Tailwind class 表达基础样式，同时保留现有 ot 表格 class'
+  /function Table[\s\S]*cn\('w-full border-collapse text-\[13px\]', className\)[\s\S]*border-b border-dashed border-\[var\(--border\)\][\s\S]*font-normal/,
+  '本地 Table primitive 需要用 Tailwind class 表达基础表格样式'
+);
+
+assert.doesNotMatch(
+  reactTableSource,
+  /cn\('ot text-\[13px\]'/,
+  '通用 Table primitive 不应默认夹带订单 ot 旧类'
 );
 
 assert.match(
@@ -480,6 +486,18 @@ assert.doesNotMatch(
   styleSource,
   /\.ot-table-toolbar|\.ot-table-search|\.ot-table-wrap|\.ot-table-pagination/,
   '表格工具栏、搜索、分页和滚动外壳不应继续依赖旧 ot-* 全局 CSS'
+);
+
+assert.doesNotMatch(
+  styleSource,
+  /table\.ot/,
+  '订单表样式应迁到 orders-react-table，不应继续依赖 table.ot 旧选择器'
+);
+
+assert.match(
+  reactProductsPageSource,
+  /<Table className="pl-sku-edit-table">[\s\S]*<TableHeader>[\s\S]*<TableBody>/,
+  '商品 SKU 编辑表需要迁到共享 Table primitive'
 );
 
 assert.match(

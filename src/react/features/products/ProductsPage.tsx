@@ -584,18 +584,18 @@ function SkuEditorList({
   return (
     <div className="pl-sku-list" id="pl-sku-list">
       <div className="pl-sku-table-wrap">
-        <table className="pl-sku-edit-table">
-          <thead>
-            <tr>
-              <th>SKU 名称</th>
-              <th>SKU ID</th>
-              <th>重量(g)</th>
-              <th>尺寸(cm)</th>
-              <th>预估海外运费</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table className="pl-sku-edit-table">
+          <TableHeader>
+            <TableRow>
+              <TableHead>SKU 名称</TableHead>
+              <TableHead>SKU ID</TableHead>
+              <TableHead>重量(g)</TableHead>
+              <TableHead>尺寸(cm)</TableHead>
+              <TableHead>预估海外运费</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {draft.skus.map((sku, index) => {
               const useDefaults = skuUsesProductDefaults(sku);
               const weightG = useDefaults ? String(defaultSnapshot.weightG || '') : String(sku.weightG || '');
@@ -612,8 +612,8 @@ function SkuEditorList({
                 }
               });
               return (
-                <tr className={cn('pl-sku-edit-row', useDefaults ? 'is-inheriting' : '')} data-sku-index={index} data-sku-use-defaults={useDefaults ? '1' : '0'} key={String(sku.skuId || index)}>
-                  <td>
+                <TableRow className={cn('pl-sku-edit-row', useDefaults ? 'is-inheriting' : '')} data-sku-index={index} data-sku-use-defaults={useDefaults ? '1' : '0'} key={String(sku.skuId || index)}>
+                  <TableCell>
                     <Input
                       className={cn('pl-sku-inline-input', invalid.has(`sku.${index}.skuName`) ? 'is-invalid' : '')}
                       data-sku-field="skuName"
@@ -621,16 +621,16 @@ function SkuEditorList({
                       value={String(sku.skuName || '')}
                       onChange={event => onSkuChange(index, { skuName: event.target.value })}
                     />
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <Input
                       className={cn('pl-sku-inline-input', invalid.has(`sku.${index}.skuId`) ? 'is-invalid' : '')}
                       data-sku-field="skuId"
                       value={String(sku.skuId || '')}
                       onChange={event => onSkuChange(index, { skuId: event.target.value })}
                     />
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <Input
                       type="number"
                       min="0"
@@ -640,8 +640,8 @@ function SkuEditorList({
                       value={weightG}
                       onChange={event => onSkuChange(index, { weightG: event.target.value, useProductDefaults: false })}
                     />
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <Input
                       className={cn('pl-sku-inline-input', invalid.has(`sku.${index}.sizeText`) ? 'is-invalid' : '')}
                       data-sku-field="sizeText"
@@ -649,8 +649,8 @@ function SkuEditorList({
                       value={sizeText}
                       onChange={event => onSkuChange(index, { sizeText: event.target.value, useProductDefaults: false })}
                     />
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <div className="pl-sku-fee-stack">
                       <span className="pl-sku-fee-value" data-sku-estimated-fee>{snapshot.estimatedShippingFee ? `¥ ${snapshot.estimatedShippingFee}` : '-'}</span>
                       <span className="pl-sku-fee-sub" data-sku-charge-weight>{snapshot.chargeWeightKg ? `计费重 ${snapshot.chargeWeightKg} kg` : ''}</span>
@@ -658,15 +658,15 @@ function SkuEditorList({
                         {!useDefaults && sizeText.trim() && !dimensions.isComplete ? '尺寸请按 长×宽×高 填写' : snapshot.shippingNote}
                       </span>
                     </div>
-                  </td>
-                  <td className="pl-sku-cell-actions">
+                  </TableCell>
+                  <TableCell className="pl-sku-cell-actions">
                     <Button size="sm" variant="danger" data-sku-remove={index} onClick={() => onRemoveSku(index)}>删除</Button>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

@@ -327,7 +327,7 @@
   }
 
   .calc-result-table,
-  table.ot,
+  .orders-react-table,
   table.ship,
   .analytics-detail-table {
     font-size: 13px
@@ -339,8 +339,8 @@
 
   .calc-result-table th,
   .calc-result-table td,
-  table.ot th,
-  table.ot td,
+  .orders-react-table th,
+  .orders-react-table td,
   table.ship th,
   table.ship td,
   .analytics-detail-table th,
@@ -354,7 +354,7 @@
   }
 
   .calc-result-table th,
-  table.ot th,
+  .orders-react-table th,
   table.ship th,
   .analytics-detail-table th {
     font-size: 10.5px

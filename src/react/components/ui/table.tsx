@@ -2,7 +2,7 @@ import type { HTMLAttributes, TableHTMLAttributes, TdHTMLAttributes, ThHTMLAttri
 import { cn } from '@/lib/utils';
 
 function Table({ className, ...props }: TableHTMLAttributes<HTMLTableElement>) {
-  return <table data-slot="table" className={cn('ot text-[13px]', className)} {...props} />;
+  return <table data-slot="table" className={cn('w-full border-collapse text-[13px]', className)} {...props} />;
 }
 
 function TableHeader({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
@@ -18,11 +18,11 @@ function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) 
 }
 
 function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) {
-  return <th data-slot="table-head" className={cn('bg-transparent font-semibold text-[var(--text)]', className)} {...props} />;
+  return <th data-slot="table-head" className={cn('border-b border-dashed border-[var(--border)] bg-transparent px-2 py-2.5 text-center align-middle text-[11.5px] font-semibold uppercase tracking-[.3px] text-[var(--muted)]', className)} {...props} />;
 }
 
 function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td data-slot="table-cell" className={cn('font-normal', className)} {...props} />;
+  return <td data-slot="table-cell" className={cn('border-b border-dashed border-[var(--border)] px-2 py-2.5 text-center align-middle font-normal', className)} {...props} />;
 }
 
 export {

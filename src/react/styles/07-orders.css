@@ -126,7 +126,7 @@
   white-space: normal;
 }
 
-table.ot {
+.orders-react-table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 6px;
@@ -134,8 +134,8 @@ table.ot {
   font-size: 13px
 }
 
-table.ot th,
-table.ot td {
+.orders-react-table th,
+.orders-react-table td {
   text-align: center;
   padding: 10px 8px;
   border-bottom: 1px dashed var(--border);
@@ -143,7 +143,7 @@ table.ot td {
   vertical-align: middle
 }
 
-table.ot th {
+.orders-react-table th {
   color: var(--muted);
   font-weight: 600;
   font-size: 11.5px;
@@ -151,19 +151,19 @@ table.ot th {
   text-transform: uppercase
 }
 
-table.ot td.actions {
+.orders-react-table td.actions {
   white-space: nowrap
 }
 
-table.ot tbody tr:hover {
+.orders-react-table tbody tr:hover {
   background: rgba(110, 168, 255, .05)
 }
 
-table.ot tbody tr.is-refunded {
+.orders-react-table tbody tr.is-refunded {
   background: rgba(196, 78, 78, .055);
 }
 
-table.ot tbody tr.is-refunded:hover {
+.orders-react-table tbody tr.is-refunded:hover {
   background: rgba(196, 78, 78, .09);
 }
 

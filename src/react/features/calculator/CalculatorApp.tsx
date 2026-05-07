@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -630,15 +631,12 @@ function CalculatorApp() {
 
   return (
     <div className="calculator-react-shell" data-react-calculator-ready="true">
-      <div className="module-hero page-hero page-hero-calc">
-        <div className="module-hero-copy">
-          <div className="module-hero-title-row">
-            <h2>利润计算器</h2>
-            <div className="module-kicker">定价 / 汇率 / 海外运费</div>
-          </div>
-          <p>根据各项参数统一测算售价、利润，以及确定售价复盘实际利润</p>
-        </div>
-      </div>
+      <PageHero
+        variant="calc"
+        title="利润计算器"
+        kicker="定价 / 汇率 / 海外运费"
+        description="根据各项参数统一测算售价、利润，以及确定售价复盘实际利润"
+      />
       <div className="calc-toolbar">
         <div className="calc-subnav">
           <div className="calc-tabbar">

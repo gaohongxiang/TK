@@ -14,6 +14,7 @@ const connectionSource = fs.readFileSync(path.join(root, 'src', 'firestore-conne
 const appRuntimeSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'AppRuntime.tsx'), 'utf8');
 const cssSource = readReactStyleSource(root);
 const formPrimitiveSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'form.tsx'), 'utf8');
+const pageHeroSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'page-hero.tsx'), 'utf8');
 
 assert.doesNotMatch(
   indexSource,
@@ -101,19 +102,19 @@ assert.match(
 
 assert.match(
   calculatorSource,
-  /className="module-hero page-hero page-hero-calc"/,
+  /<PageHero[\s\S]*variant="calc"[\s\S]*title="利润计算器"/,
   'React 利润计算器需要使用更明确的页头容器来承接标题层级'
 );
 
 assert.match(
-  calculatorSource,
-  /className="module-hero-title-row"[\s\S]*<h2>利润计算器<\/h2>[\s\S]*className="module-kicker"/,
-  'React 页面标题和小字说明需要放进同一行的标题区'
+  pageHeroSource,
+  /className=\{cn\([\s\S]*module-hero[\s\S]*page-hero[\s\S]*module-hero-title-row[\s\S]*module-kicker/s,
+  'React 页面标题和小字说明需要由 PageHero primitive 放进同一行标题区'
 );
 
 assert.match(
   calculatorSource,
-  /className="module-hero page-hero page-hero-calc"[\s\S]*根据各项参数统一测算售价、利润，以及确定售价复盘实际利润/,
+  /<PageHero[\s\S]*description="根据各项参数统一测算售价、利润，以及确定售价复盘实际利润"/,
   'React 利润计算器说明需要保留在标题区域'
 );
 
@@ -172,15 +173,15 @@ assert.match(
 );
 
 assert.match(
-  cssSource,
-  /\.module-hero\s*\{[\s\S]*justify-content:\s*center[\s\S]*text-align:\s*center/s,
-  '页面标题区域需要整体居中'
+  pageHeroSource,
+  /justify-center[\s\S]*text-center/,
+  '页面标题区域需要由 PageHero primitive 整体居中'
 );
 
 assert.match(
-  cssSource,
-  /\.module-hero\s*\{[\s\S]*margin-bottom:\s*32px/s,
-  '页面标题区域和正文区域之间需要留出更明显的间距'
+  pageHeroSource,
+  /mb-\[15px\][\s\S]*max-\[768px\]:mb/,
+  '页面标题区域和正文区域之间需要在 PageHero primitive 保持明确间距'
 );
 
 assert.match(

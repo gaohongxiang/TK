@@ -92,38 +92,6 @@
     padding: 6px 11px
   }
 
-  .module-hero {
-    margin-bottom: 22px;
-  }
-
-  .page-hero-calc {
-    margin-bottom: 24px;
-  }
-
-  .page-hero-orders,
-  .page-hero-products,
-  .page-hero-analytics {
-    margin-bottom: 22px;
-  }
-
-  .module-hero-title-row {
-    gap: 6px;
-  }
-
-  .module-kicker {
-    font-size: 10px;
-    letter-spacing: .12em;
-  }
-
-  .module-hero-copy h2 {
-    font-size: 20px;
-  }
-
-  .module-hero-copy p {
-    font-size: 13px;
-    line-height: 1.72;
-  }
-
   .calc-subnav {
     min-width: 0;
     width: 100%;

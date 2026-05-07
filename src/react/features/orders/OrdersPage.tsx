@@ -7,6 +7,7 @@ import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/
 import { ExportOptions } from '@/components/ui/export-options';
 import { FormField } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { EmptyState, TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
@@ -1438,15 +1439,13 @@ function OrdersPage() {
 
   return (
     <>
-      <div className="module-hero page-hero page-hero-orders" data-react-orders-page-ready="true">
-        <div className="module-hero-copy">
-          <div className="module-hero-title-row">
-            <h2>订单管理</h2>
-            <div className="module-kicker">采购 / 物流 / 入仓进度</div>
-          </div>
-          <p>集中管理采购、物流和入仓进度，并汇总销售额、支出与预估利润。</p>
-        </div>
-      </div>
+      <PageHero
+        variant="orders"
+        title="订单管理"
+        kicker="采购 / 物流 / 入仓进度"
+        description="集中管理采购、物流和入仓进度，并汇总销售额、支出与预估利润。"
+        data-react-orders-page-ready="true"
+      />
 
       {!connected ? (
         <Card className="ot-setup" id="ot-setup">

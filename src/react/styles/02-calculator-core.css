@@ -53,6 +53,16 @@
   display: block
 }
 
+.calc-layout-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr)
+}
+
+.calc-layout-grid>* {
+  min-width: 0
+}
+
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -112,6 +122,18 @@
 
 .row+.row {
   margin-top: 18px
+}
+
+.calc-form-section {
+  margin-top: 18px
+}
+
+.calc-details {
+  margin-top: 16px
+}
+
+.calc-details-grid {
+  margin-top: 10px
 }
 
 .field {
@@ -362,21 +384,21 @@
   color: var(--text)
 }
 
-table {
+.calc-result-table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 6px;
   font-size: 14px
 }
 
-th,
-td {
+.calc-result-table th,
+.calc-result-table td {
   padding: 11px 10px;
   text-align: center;
   border-bottom: 1px dashed var(--border)
 }
 
-th {
+.calc-result-table th {
   color: var(--muted);
   font-weight: 600;
   font-size: 11.5px;
@@ -384,28 +406,28 @@ th {
   text-transform: uppercase
 }
 
-tr.anchor td {
+.calc-result-table tr.anchor td {
   background: linear-gradient(90deg, rgba(110, 168, 255, .14), transparent);
   font-weight: 600
 }
 
-td.profit-pos {
+.calc-result-table td.profit-pos {
   color: var(--ok);
   font-weight: 600
 }
 
-td.profit-neg {
+.calc-result-table td.profit-neg {
   color: var(--danger);
   font-weight: 600
 }
 
-.orig-row td {
+.calc-result-table .orig-row td {
   background: linear-gradient(180deg, rgba(138, 255, 207, .16), rgba(138, 255, 207, .08));
   font-weight: 600
 }
 
-.orig-row td:first-child,
-.orig-row td.orig-price-cell {
+.calc-result-table .orig-row td:first-child,
+.calc-result-table .orig-row td.orig-price-cell {
   color: var(--accent2);
   font-weight: 700
 }

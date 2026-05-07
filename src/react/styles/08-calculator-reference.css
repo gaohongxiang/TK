@@ -289,6 +289,8 @@ table.ship-rate th {
 
 table.ship {
   width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
   font-size: 13.5px
 }
 
@@ -296,6 +298,7 @@ table.ship th,
 table.ship td {
   text-align: center;
   padding: 11px 8px;
+  border-bottom: 1px dashed var(--border);
   white-space: nowrap
 }
 

@@ -116,7 +116,7 @@ function AppRuntime() {
             <code>orders</code>、<code>order_accounts</code>、<code>sync_state</code> 和 <code>products</code> 一并放行。
             </AlertDescription>
           </Alert>
-          <div className="row" style={{ marginTop: 14 }}>
+          <div className="row mt-[14px]">
             <FormField htmlFor="app-firestore-config" label="Firebase config" full>
               <Textarea
                 id="app-firestore-config"
@@ -133,7 +133,7 @@ function AppRuntime() {
               />
             </FormField>
           </div>
-          <div className="ot-setup-guide-actions" style={{ marginTop: 10 }}>
+          <div className="ot-setup-guide-actions mt-[10px]">
             <Button id="app-open-firebase-console" size="sm" onClick={() => TKFirestoreConnection.openConsole()}>打开 Firebase Console</Button>
             <Button id="app-copy-firestore-rules" size="sm" data-rules-url="docs/firebase/order-tracker-firestore.rules" disabled={copyingRules} onClick={() => void copyRules()}>
               {copyingRules ? '复制中…' : '复制 Firestore 规则'}
@@ -153,7 +153,7 @@ function AppRuntime() {
           <Alert variant="warning" className={modalCopyClass} id="app-firestore-rules-copy">
             <AlertDescription>{rulesMessage}</AlertDescription>
           </Alert>
-          <div className="ot-setup-guide-actions" style={{ marginTop: 10 }}>
+          <div className="ot-setup-guide-actions mt-[10px]">
             <Button id="app-rules-open-firebase-console" size="sm" onClick={() => TKFirestoreConnection.openConsole()}>打开 Firebase Console</Button>
             <Button id="app-rules-copy-firestore-rules" size="sm" disabled={copyingRules} onClick={() => void copyRules()}>{copyingRules ? '复制中…' : '复制 Firestore 规则'}</Button>
           </div>

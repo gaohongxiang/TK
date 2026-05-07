@@ -1,6 +1,6 @@
 /* —— 响应式：平板 —— */
 @media (max-width:860px) {
-  .grid {
+  .calc-layout-grid {
     grid-template-columns: 1fr
   }
 
@@ -326,7 +326,10 @@
     margin-top: 12px
   }
 
-  table {
+  .calc-result-table,
+  table.ot,
+  table.ship,
+  .analytics-detail-table {
     font-size: 13px
   }
 
@@ -334,8 +337,14 @@
     font-size: 12px
   }
 
-  th,
-  td {
+  .calc-result-table th,
+  .calc-result-table td,
+  table.ot th,
+  table.ot td,
+  table.ship th,
+  table.ship td,
+  .analytics-detail-table th,
+  .analytics-detail-table td {
     padding: 9px 6px
   }
 
@@ -344,7 +353,10 @@
     padding-inline: 4px
   }
 
-  th {
+  .calc-result-table th,
+  table.ot th,
+  table.ship th,
+  .analytics-detail-table th {
     font-size: 10.5px
   }
 

@@ -29,21 +29,6 @@
     grid-template-columns: repeat(3, minmax(0, 1fr))
   }
 
-  .ship-inputs {
-    grid-template-columns: repeat(3, minmax(0, 1fr))
-  }
-
-  .ship-kpis {
-    grid-template-columns: 1fr 1fr
-  }
-
-  .ship-kpi .value,
-  .ship-result .line,
-  .ship-result .line #shipFeeJpy,
-  .ship-result .line #shipFeeCny {
-    font-size: 18px
-  }
-
   .analytics-upload-grid,
   .analytics-insight-layout,
   .analytics-layout {
@@ -198,10 +183,6 @@
     grid-template-columns: 1fr
   }
 
-  .ship-inputs {
-    grid-template-columns: 1fr 1fr
-  }
-
   .calc-shared-grid,
   .known-sale-grid {
     grid-template-columns: 1fr
@@ -209,10 +190,6 @@
 
   .known-sale-item .value {
     font-size: 18px
-  }
-
-  .ship-result {
-    grid-template-columns: 1fr
   }
 
   .analytics-kpi-grid {
@@ -289,11 +266,6 @@
   .analytics-detail-table td:first-child,
   .analytics-detail-table th:first-child {
     min-width: 220px;
-  }
-
-  .ship-kpi,
-  .ship-result-card {
-    gap: 12px
   }
 
   .ot-summary-grid {

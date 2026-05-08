@@ -3,4 +3,4 @@
 
 @source "./**/*.{ts,tsx}";
 
-@import "./styles/01-base.css";
+@import "./styles/base.css";

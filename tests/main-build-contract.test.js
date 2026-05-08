@@ -193,7 +193,7 @@ assert.ok(
 
 assert.match(
   fs.readFileSync(path.join(root, 'src', 'react', 'styles.css'), 'utf8'),
-  /tailwindcss\/utilities[\s\S]*@import "\.\/styles\/01-base\.css"/,
+  /tailwindcss\/utilities[\s\S]*@import "\.\/styles\/base\.css"/,
   'React 样式入口需要只保留 Tailwind utilities 和基础 token 样式'
 );
 

@@ -115,7 +115,7 @@ modern-react-spa
 - 商品主表已使用本地 shadcn 风格 `Table` / `Button` primitives；商品导出弹层由 React 控制，CSV 行构建和文件名继续复用 `src/products/export.mjs`。
 - 订单摘要已保留收入、支出、利润、退款和达人佣金口径；退款订单行和订单号达人/退款标签仍由纯函数口径驱动。
 - 视觉系统收敛二期已完成到当前目标：商品、订单和数据分析的表格搜索、分页、吸顶控制带、横向滚动外壳和空状态已收敛到 `src/react/components/ui/table-tools.tsx`；商品/订单导出账号选择已收敛到 `ExportOptions`；商品/订单账号标签栏已收敛到 `AccountTabsBar`；表格状态标签、连接状态和同步状态已收敛到 `Badge`；App Shell、导航、skip link、帮助图标、计算器、数据分析和订单摘要样式已迁入 React/Tailwind 常量。
-- 旧 React CSS 分模块样式已清理完成：`src/react/styles.css` 只导入 Tailwind utilities 和 `src/react/styles/01-base.css`；`src/react/styles/01-base.css` 仅保留 token、明暗主题、body/a 基础规则，React 专用 CSS 总量约 56 行。
+- 旧 React CSS 分模块样式已清理完成：`src/react/styles.css` 只导入 Tailwind utilities 和 `src/react/styles/base.css`；`src/react/styles/base.css` 仅保留 token、明暗主题、body/a 基础规则，React 专用 CSS 总量约 56 行。
 - 当前不再依赖旧 `ot-table-*`、`.btn`、旧 modal/action、`.ot-export-*`、`.ot-acc-*`、`.ot-empty`、`.chip`、`.workspace-chip`、`.calc-tab`、旧 App Shell/nav/skip-link 全局视觉样式。
 - `scripts/preview-smoke.mjs` 已适配完整 React SPA：首页 HTTP smoke 检查单根 React 入口、SEO meta、Firebase/SheetJS 脚本、构建产物和静态页面；运行后交互由 Playwright 覆盖。
 - 构建产物不再发布旧 `dist/js/`。

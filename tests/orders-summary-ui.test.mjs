@@ -81,7 +81,7 @@ const orders = [
 
 assert.match(
   ordersPageSource,
-  /filteredCreatorCommissionTotal[\s\S]*allCreatorCommissionTotal[\s\S]*采购 · 运费 · 达人/,
+  /filteredCreatorCommissionTotal[\s\S]*allCreatorCommissionTotal[\s\S]*buildExpenseNote[\s\S]*采购 \$\{formatSummaryMetric\(purchaseMetric\)\} · 运费 \$\{formatSummaryMetric\(shippingMetric\)\} · 达人 \$\{formatSummaryMetric\(creatorCommissionMetric\)\}/,
   '统计卡片需要按收入和支出组织汇总信息，并把达人佣金计入支出'
 );
 
@@ -93,8 +93,14 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /含 \$\{refundMetric\.count\} 条退款/,
+  /buildSummaryMeta[\s\S]*含 \$\{refundMetric\.count\} 条退款/,
   '统计说明需要补充退款订单条数'
+);
+
+assert.match(
+  ordersPageSource,
+  /ot-summary-ledger[\s\S]*gap-x-12[\s\S]*ot-summary-ledger-note[\s\S]*text-\[10\.5px\]/,
+  '统计卡片收入和支出明细需要拉开间距并完整显示金额，不能再用省略号截断'
 );
 
 assert.match(

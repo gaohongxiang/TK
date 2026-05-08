@@ -427,6 +427,9 @@ test.describe('release browser smoke', () => {
     await page.locator('#ot-form button[type="submit"]').click();
     await expect(page.locator('#ot-table-container')).toContainText('ORDER-E2E-001');
     await expect(page.locator('#ot-table-container')).toContainText('顺丰快递');
+    await expect(page.locator('#ot-summary-container .ot-summary-ledger-note').first()).toContainText(/销售 ¥/);
+    await expect(page.locator('#ot-summary-container .ot-summary-ledger-note').nth(1)).toContainText(/采购 ¥.*运费 ¥.*达人/);
+    await expect(page.locator('#ot-summary-container .ot-summary-ledger-note').first()).not.toHaveCSS('text-overflow', 'ellipsis');
 
     await page.locator('#ot-table-container button[data-edit]').first().click();
     await expect(page.locator('#ot-modal-title')).toHaveText('编辑订单');

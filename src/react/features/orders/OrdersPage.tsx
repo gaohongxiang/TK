@@ -547,7 +547,7 @@ const orderSummaryMetaClass = 'ot-summary-meta-inline text-right text-xs leading
 const orderSummaryHeroClass = 'ot-summary-hero mt-[18px] flex items-baseline justify-between gap-4 border-l-[3px] border-[color-mix(in_srgb,var(--accent)_50%,var(--border))] pl-4';
 const orderSummaryHeroLabelClass = 'ot-summary-hero-label block flex-1 text-[13px] leading-normal text-[color-mix(in_srgb,var(--muted)_86%,var(--text))]';
 const orderSummaryHeroValueClass = 'ot-summary-hero-value block flex-none text-right text-3xl font-extrabold leading-[1.05] tracking-normal text-[var(--text)] max-[640px]:text-[22px]';
-const orderSummaryLedgerClass = 'ot-summary-ledger mt-[18px] grid grid-cols-[minmax(0,.84fr)_minmax(0,1.16fr)] gap-3 border-t border-[color-mix(in_srgb,var(--border)_82%,white)] pt-3.5 max-[640px]:grid-cols-1';
+const orderSummaryLedgerClass = 'ot-summary-ledger mt-[18px] grid grid-cols-[minmax(150px,.82fr)_minmax(230px,1.18fr)] gap-x-12 gap-y-3 border-t border-[color-mix(in_srgb,var(--border)_82%,white)] pt-3.5 max-[900px]:grid-cols-[minmax(140px,.9fr)_minmax(210px,1.1fr)] max-[900px]:gap-x-7 max-[640px]:grid-cols-1';
 const orderSummaryLedgerItemClass = 'ot-summary-ledger-item min-w-0';
 const orderSummaryLedgerIncomeClass = cn(orderSummaryLedgerItemClass, 'is-income');
 const orderSummaryLedgerExpenseClass = cn(orderSummaryLedgerItemClass, 'is-expense');
@@ -555,7 +555,7 @@ const orderSummaryLedgerLabelClass = 'ot-summary-ledger-label block text-[10.5px
 const orderSummaryLedgerValueClass = 'ot-summary-ledger-value mt-[7px] block text-lg font-bold leading-[1.15] text-[var(--text)]';
 const orderSummaryLedgerIncomeValueClass = cn(orderSummaryLedgerValueClass, 'text-[var(--ok)]');
 const orderSummaryLedgerExpenseValueClass = cn(orderSummaryLedgerValueClass, 'text-[var(--expense)]');
-const orderSummaryLedgerNoteClass = 'ot-summary-ledger-note mt-[7px] block overflow-hidden text-ellipsis whitespace-nowrap text-[10.5px] leading-[1.35] tracking-normal text-[var(--muted)] max-[768px]:whitespace-normal max-[640px]:whitespace-normal';
+const orderSummaryLedgerNoteClass = 'ot-summary-ledger-note mt-[7px] block text-[10.5px] leading-[1.35] tracking-normal text-[var(--muted)]';
 
 function orderSummaryHeroClassForMetric(metric: any) {
   if (metric?.total > 0) return cn(orderSummaryHeroClass, 'is-profit-positive border-[color-mix(in_srgb,var(--ok)_82%,var(--border))]');
@@ -787,8 +787,16 @@ function OrdersSummary({
   const allExpenseValue = (summary.allTotal || 0) + (summary.allShippingTotal || 0) + (summary.allCreatorCommissionTotal || 0);
 
   function buildIncomeNote(grossMetric: any, refundMetric: any) {
-    if (!refundMetric?.count) return '销售';
-    return `销售 ${formatSummaryMetric(grossMetric)} - 退款 ${formatSummaryMetric(refundMetric)} · 含 ${refundMetric.count} 条退款`;
+    if (!refundMetric?.count) return `销售 ${formatSummaryMetric(grossMetric)}`;
+    return `销售 ${formatSummaryMetric(grossMetric)} - 退款 ${formatSummaryMetric(refundMetric)}`;
+  }
+
+  function buildExpenseNote(purchaseMetric: any, shippingMetric: any, creatorCommissionMetric: any) {
+    return `采购 ${formatSummaryMetric(purchaseMetric)} · 运费 ${formatSummaryMetric(shippingMetric)} · 达人 ${formatSummaryMetric(creatorCommissionMetric)}`;
+  }
+
+  function buildSummaryMeta(prefix: string, count: number, refundMetric: any) {
+    return `${prefix} · 共 ${count} 条${refundMetric?.count ? ` · 含 ${refundMetric.count} 条退款` : ''}`;
   }
 
   function card(
@@ -797,6 +805,9 @@ function OrdersSummary({
     saleMetric: any,
     grossMetric: any,
     refundMetric: any,
+    purchaseMetric: any,
+    shippingMetric: any,
+    creatorCommissionMetric: any,
     expenseTotal: number,
     count: number,
     meta: string
@@ -820,7 +831,7 @@ function OrdersSummary({
           <div className={orderSummaryLedgerExpenseClass}>
             <span className={orderSummaryLedgerLabelClass}>支出</span>
             <strong className={orderSummaryLedgerExpenseValueClass}>{count ? `¥ ${expenseTotal.toFixed(2)}` : '-'}</strong>
-            <span className={orderSummaryLedgerNoteClass}>采购 · 运费 · 达人</span>
+            <span className={orderSummaryLedgerNoteClass}>{buildExpenseNote(purchaseMetric, shippingMetric, creatorCommissionMetric)}</span>
           </div>
         </div>
       </section>
@@ -836,9 +847,12 @@ function OrdersSummary({
           summary.filteredSaleMetric,
           summary.filteredGrossSaleMetric,
           summary.filteredRefundMetric,
+          summary.filteredPurchaseMetric,
+          summary.filteredShippingMetric,
+          summary.filteredCreatorCommissionMetric,
           expenseValue,
           summary.filteredCount,
-          `受账号标签和搜索影响 · 共 ${summary.filteredCount} 条`
+          buildSummaryMeta('受账号标签和搜索影响', summary.filteredCount, summary.filteredRefundMetric)
         )}
         {card(
           '全部订单',
@@ -846,9 +860,12 @@ function OrdersSummary({
           summary.allSaleMetric,
           summary.allGrossSaleMetric,
           summary.allRefundMetric,
+          summary.allPurchaseMetric,
+          summary.allShippingMetric,
+          summary.allCreatorCommissionMetric,
           allExpenseValue,
           summary.allCount,
-          `不受账号、搜索、分页影响 · 共 ${summary.allCount} 条`
+          buildSummaryMeta('不受账号、搜索、分页影响', summary.allCount, summary.allRefundMetric)
         )}
       </div>
     </div>

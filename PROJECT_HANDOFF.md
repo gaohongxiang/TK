@@ -305,7 +305,7 @@ Build output directory: .vitepress/dist
 
 ```text
 js/app-config.js
-tests/app-config.test.cjs
+tests/app-config.test.mjs
 ```
 
 沉淀：
@@ -475,14 +475,14 @@ src/
 
 - 新增 `src/analytics/parser.ts`，提供 `TKAnalyticsParser` 和解析纯函数 ESM 导出。
 - 新增 `src/analytics/analyzer.ts`，通过 `import { CHANNELS } from './parser.ts'` 读取 parser 元信息，并提供 `TKAnalyticsAnalyzer` 和分析纯函数 ESM 导出。
-- `tests/shared-utils.test.cjs` 现在保护未使用的旧 shared 迁移壳层不再回归，并确认 React analytics 使用本地格式化 helper；`tests/analytics-module.test.cjs` 继续确认 analytics parser/analyzer 可被 Node 直接作为 ESM 导入。
+- `tests/shared-utils.test.mjs` 现在保护未使用的旧 shared 迁移壳层不再回归，并确认 React analytics 使用本地格式化 helper；`tests/analytics-module.test.mjs` 继续确认 analytics parser/analyzer 可被 Node 直接作为 ESM 导入。
 - 旧 `js/` 浏览器脚本链已替换，页面不再走 `<script defer>` 本地业务脚本或 `window.Xxx` 全局兼容入口。
 
 当前已验证通过：
 
 ```bash
-node tests/shared-utils.test.cjs
-node tests/analytics-module.test.cjs
+node tests/shared-utils.test.mjs
+node tests/analytics-module.test.mjs
 npm run release:check
 ```
 
@@ -503,13 +503,13 @@ npm run release:check
 - 数据分析页已由 React 入口直接接入 `src/analytics/parser.ts` 和 `src/analytics/analyzer.ts`，不再通过旧 `TKDataSourceRegistry` 注册方式。
 - 旧 `src/analytics/index.mjs`、`src/analytics/charts.mjs` 和旧 `js/analytics/*.js` 已删除。
 - Vite 构建只打包 React 数据分析路由和 parser/analyzer 纯函数；构建产物不包含旧 `js/analytics/*`。
-- `tests/analytics-module.test.cjs` 和 `tests/main-build-contract.test.cjs` 已覆盖 React 数据分析入口和“不上传/不持久化 Excel”的边界。
+- `tests/analytics-module.test.mjs` 和 `tests/main-build-contract.test.mjs` 已覆盖 React 数据分析入口和“不上传/不持久化 Excel”的边界。
 
 当前已验证通过：
 
 ```bash
-node tests/analytics-module.test.cjs
-node tests/main-build-contract.test.cjs
+node tests/analytics-module.test.mjs
+node tests/main-build-contract.test.mjs
 npm run e2e
 npm run release:check
 ```
@@ -529,10 +529,10 @@ npm run release:check
 已完成：
 
 - 新增 `src/shipping-core.ts`，提供 `TKShippingCore`、`SHIPPING_RULES`、`DEFAULT_CONSTANTS`、`getShippingBand`、`computeShippingQuote` 和 `computeCalculatedShippingCost` 的 ESM 导出。
-- `tests/shipping-core-module.test.cjs` 已新增动态 `import()` 断言，确认共享运费核心 ESM 模块和旧全局模块输出一致。
+- `tests/shipping-core-module.test.mjs` 已新增动态 `import()` 断言，确认共享运费核心 ESM 模块和旧全局模块输出一致。
 - 新增 `src/calc/formulas.ts`，提供旧定价、定价新和利润复盘的纯公式导出：`calcLegacyRow`、`deriveLegacyOrigPrice`、`calcPricingRow`、`derivePricingOrigPrice`、`calcSalePrice`。
 - React 利润计算器已直接导入 `src/calc/formulas.ts` 和 `src/shipping-core.ts`；`src/calc/shared.ts`、`src/calc/shipping.mjs`、`src/calc/legacy.mjs`、`src/calc/pricing.mjs` 这些旧 DOM 壳层已删除。
-- `tests/calc-formulas.test.cjs` 已改为断言纯公式输出和 React 页面直连公式；`tests/calc-shipping-quote.test.cjs` 已改为断言 React 页面直连共享运费核心；`tests/calc-react-state-sync.test.cjs` 保护定价新/利润复盘共用同一份 React 状态。
+- `tests/calc-formulas.test.mjs` 已改为断言纯公式输出和 React 页面直连公式；`tests/calc-shipping-quote.test.mjs` 已改为断言 React 页面直连共享运费核心；`tests/calc-react-state-sync.test.mjs` 保护定价新/利润复盘共用同一份 React 状态。
 - 新增 `src/global-settings.ts`，提供全局设置的 ESM 导出；当前完整 React SPA 只使用 `tk.global-settings.v1` 保存汇率、运费倍率和贴单费，不再保留旧利润计算器存储迁移。
 - 旧 `src/calc/index.mjs` 已删除；`index.html` 已移除旧 `js/calc/shared.js`、`js/calc/shipping.js`、`js/calc/legacy.js`、`js/calc/pricing.js`、`js/calc/index.js` 以及 `/src/calc/index.mjs` 的页面加载。
 - `src/global-settings.ts` 已收敛为 ESM helper，并使用模块内共享 store；不再挂旧 `window.TKGlobalSettings` API，也不再通过 `window.__tkGlobalSettingsStore` 共享状态。
@@ -543,12 +543,12 @@ npm run release:check
 当前已验证通过：
 
 ```bash
-node tests/global-settings-module.test.cjs
-node tests/calc-module-split.test.cjs
-node tests/calc-formulas.test.cjs
-node tests/calc-react-state-sync.test.cjs
-node tests/calc-shipping-quote.test.cjs
-node tests/shipping-core-module.test.cjs
+node tests/global-settings-module.test.mjs
+node tests/calc-module-split.test.mjs
+node tests/calc-formulas.test.mjs
+node tests/calc-react-state-sync.test.mjs
+node tests/calc-shipping-quote.test.mjs
+node tests/shipping-core-module.test.mjs
 npm run release:check
 ```
 
@@ -571,32 +571,32 @@ npm run release:check
 
 - 新增 `src/products/table.ts`，提供商品表格筛选、排序、SKU 默认值合并、SKU 标签/尺寸/运费格式化等纯函数 ESM 导出。
 - `src/products/table.ts` 已收敛为纯 ESM helper，不再挂旧 `window.ProductLibraryTableView` 或 DOM render。
-- `tests/products-view-ui.test.cjs` 已新增动态 `import()` 断言，确认商品表格 ESM 纯函数排序、筛选和 React 渲染壳存在。
+- `tests/products-view-ui.test.mjs` 已新增动态 `import()` 断言，确认商品表格 ESM 纯函数排序、筛选和 React 渲染壳存在。
 - 新增 `src/products/accounts.ts`，提供商品账号归并、账号槽和账号列表等纯函数 ESM 导出；账号下拉和账号标签由 React 商品页直接渲染，不再挂旧 `window.ProductLibraryAccounts`。
 - 新增 `src/products/form-utils.ts`，提供商品 CRUD/SKU 弹窗的尺寸解析、批量 SKU 草稿、SKU 名称匹配、运费快照、SKU 默认值判断等纯函数 ESM 导出。
-- `tests/products-form-utils-module.test.cjs` 已新增动态 `import()` 断言，确认商品表单纯函数 ESM 输出稳定。
+- `tests/products-form-utils-module.test.mjs` 已新增动态 `import()` 断言，确认商品表单纯函数 ESM 输出稳定。
 - `src/products/form-utils.ts` 已收敛为纯 ESM helper，不再挂旧 `window.ProductLibraryFormUtils`。
 - `index.html` 已移除旧 `js/products/form-utils.js` 页面加载；旧 `js/` 源目录已统一清理。
 - 新增 `src/products/provider-firestore.ts`，提供商品 Firestore provider 的配置解析、展示名、商品/SKU 归一化、Firestore 写入 doc 构造、`create/init/pullProducts/upsertProduct/deleteProduct` 的 ESM 导出。
-- `tests/products-provider-firestore-module.test.cjs` 已新增动态 `import()` 断言，确认 provider 纯函数 ESM 的配置解析和商品/SKU 文档映射保持旧行为。
+- `tests/products-provider-firestore-module.test.mjs` 已新增动态 `import()` 断言，确认 provider 纯函数 ESM 的配置解析和商品/SKU 文档映射保持旧行为。
 - `src/products/provider-firestore.ts` 已收敛为纯 ESM provider，不再挂旧 `window.ProductLibraryProviderFirestore` 或注册 `TKDataSourceRegistry`；商品页和订单页直接 import 使用。
 - 订单商品资料读取已由 React 订单页直接导入商品 provider ESM，不再依赖旧普通脚本加载顺序。
 - 完整 React SPA 重建后已删除 `src/products/index.mjs`，商品管理入口由 `src/react/features/products/ProductsPage.tsx` 接管。
 - `index.html` 已移除旧 `js/products/index.js` 的页面加载，商品管理不再通过旧 hash DOM 入口启动。
 - `index.html` 已移除旧 `js/products/provider-firestore.js`、`js/products/table.js`、`js/products/accounts.js` 页面加载；旧 `js/` 源目录已统一清理。
 - 新增 `src/products/export.ts`，提供商品导出账号选项、CSV 行构建、文件名和 CSV 转义等纯函数 ESM 导出；账号选择弹层和 CSV 下载由 React 商品页直接处理，不再挂旧 `window.ProductLibraryExport`。
-- `tests/products-export-module.test.cjs` 已新增动态 `import()` 断言，确认商品导出 ESM 账号选项、CSV 行构建行为稳定，并阻止 DOM 弹层/下载逻辑回流到 helper。
+- `tests/products-export-module.test.mjs` 已新增动态 `import()` 断言，确认商品导出 ESM 账号选项、CSV 行构建行为稳定，并阻止 DOM 弹层/下载逻辑回流到 helper。
 - `index.html` 已移除旧 `js/products/export.js` 页面加载；旧 `js/` 源目录已统一清理。
 - 完整 React SPA 重建后已删除 `src/products/crud.mjs`，商品弹窗、SKU 编辑、保存/删除事件绑定由 React 商品页接管。
-- `tests/products-crud-module.test.cjs` 已改为断言旧商品 CRUD DOM runtime 不存在，并确认尺寸解析、批量 SKU、名称匹配和运费快照等纯函数行为稳定。
+- `tests/products-crud-module.test.mjs` 已改为断言旧商品 CRUD DOM runtime 不存在，并确认尺寸解析、批量 SKU、名称匹配和运费快照等纯函数行为稳定。
 - `index.html` 已移除旧 `js/products/crud.js` 页面加载；旧商品 CRUD runtime 已删除。
 
 当前已验证通过：
 
 ```bash
-node tests/products-view-ui.test.cjs
-node tests/products-form-utils-module.test.cjs
-node tests/products-provider-firestore-module.test.cjs
+node tests/products-view-ui.test.mjs
+node tests/products-form-utils-module.test.mjs
+node tests/products-provider-firestore-module.test.mjs
 npm test
 npm run build
 npm run e2e
@@ -627,54 +627,54 @@ npm run release:check
 
 - 新增 `src/orders/shared.ts`，提供 `OrderTrackerShared`、`create` 以及订单归一化、旧结构迁移/清洗、快递识别、金额/佣金/利润计算等关键纯函数 ESM 导出。
 - `src/orders/shared.ts` 保留旧 `OrderTrackerShared.create()` 返回接口，并让原来依赖 `window` / `document` 的读取点可注入，方便 Node 测试和后续入口迁移。
-- `tests/orders-shared-module.test.cjs` 已新增动态 `import()` 断言，对照旧 `js/orders/shared.js` 验证账号去重、汇率读取、利润计算、快递识别、多明细订单归一化和旧订单结构清洗输出一致。
+- `tests/orders-shared-module.test.mjs` 已新增动态 `import()` 断言，对照旧 `js/orders/shared.js` 验证账号去重、汇率读取、利润计算、快递识别、多明细订单归一化和旧订单结构清洗输出一致。
 - 新增 `src/orders/table.ts`，提供订单表格筛选排序、日期型搜索判断、退款/达人识别、快递汇总、金额格式化、利润颜色、采购/销售/运费/达人佣金/利润摘要统计和表格渲染壳等 ESM 导出。
-- `tests/orders-table-view.test.cjs` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证搜索筛选、达人搜索、稳定排序、利润颜色和多明细快递紧凑展示口径一致。
-- `tests/orders-summary-ui.test.cjs` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证摘要统计、摘要金额格式化和当前筛选标题一致。
+- `tests/orders-table-view.test.mjs` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证搜索筛选、达人搜索、稳定排序、利润颜色和多明细快递紧凑展示口径一致。
+- `tests/orders-summary-ui.test.mjs` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证摘要统计、摘要金额格式化和当前筛选标题一致。
 - 新增 `src/orders/export.ts`，提供导出账号选项、导出文件名、CSV 转义、CSV 行构造、订单筛选和 CSV 字符串生成等纯函数 ESM 导出；导出弹层和 CSV 下载由 React 订单页直接处理，不再保留旧 DOM 兼容壳。
-- `tests/orders-export-module.test.cjs` 已新增动态 `import()` 断言，验证 ESM 导出模块的账号选项、文件名、CSV 表头、CSV 双引号转义、未关联账号筛选，以及达人佣金/预估利润按当前汇率计算。
+- `tests/orders-export-module.test.mjs` 已新增动态 `import()` 断言，验证 ESM 导出模块的账号选项、文件名、CSV 表头、CSV 双引号转义、未关联账号筛选，以及达人佣金/预估利润按当前汇率计算。
 - 完整 React SPA 重建后已删除 `src/orders/tabs.mjs`，订单账号标签栏、账号计数和新增订单入口由 React 订单页直接渲染。
-- `tests/orders-tabs-module.test.cjs` 已改为断言旧订单账号标签 DOM runtime 不存在，并保护 React 订单页直接接管账号标签栏。
+- `tests/orders-tabs-module.test.mjs` 已改为断言旧订单账号标签 DOM runtime 不存在，并保护 React 订单页直接接管账号标签栏。
 - 完整 React SPA 重建后已删除 `src/orders/crud.mjs` 过渡模块；订单弹窗交互由 React 订单页直接实现，复用 `src/orders/shared.ts` 和 `src/orders/form-utils.ts` 的真实纯函数入口。
-- `tests/orders-crud-module.test.cjs` 已改为断言旧 CRUD 过渡模块不存在，并保护 React 订单页的明细区、商品/SKU 搜索下拉、重量汇总和快递自动识别；`tests/orders-react-form-behavior.test.cjs` 覆盖订单表单关键纯函数和 React 页面直连逻辑。
+- `tests/orders-crud-module.test.mjs` 已改为断言旧 CRUD 过渡模块不存在，并保护 React 订单页的明细区、商品/SKU 搜索下拉、重量汇总和快递自动识别；`tests/orders-react-form-behavior.test.mjs` 覆盖订单表单关键纯函数和 React 页面直连逻辑。
 - 完整 React SPA 重建后已删除 `src/orders/session.mjs`，Firestore 配置变化、连接按钮、刷新按钮 loading 和连接状态由 React 订单页直接接管。
-- `tests/orders-session-module.test.cjs` 已改为断言旧订单会话 DOM runtime 不存在，并保护 React 订单页直接接管配置变化、连接和刷新状态。
+- `tests/orders-session-module.test.mjs` 已改为断言旧订单会话 DOM runtime 不存在，并保护 React 订单页直接接管配置变化、连接和刷新状态。
 - 新增 `src/orders/provider-firestore.ts`，提供 Firestore 配置解析/序列化、显示名、items 归一化、旧结构清洗识别、订单拉取映射、订单写入 doc 构造等 ESM 纯函数，并保留 `OrderTrackerProviderFirestore.create()` 兼容壳。
-- `tests/orders-provider-firestore-module.test.cjs` 已新增动态 `import()` 断言，验证 ESM provider 的配置解析、显示名、items 清洗、拉取订单字段映射、写入 doc 汇总和空字段处理。
+- `tests/orders-provider-firestore-module.test.mjs` 已新增动态 `import()` 断言，验证 ESM provider 的配置解析、显示名、items 清洗、拉取订单字段映射、写入 doc 汇总和空字段处理。
 - 完整 React SPA 重建后已删除 `src/orders/sync.mjs` 旧同步运行壳层；React 订单页直接使用 Firestore provider 拉远端快照、计算 upsert/delete/account 变更，并用 `waitForCommit: false` 投递 SDK 本地写入队列。
-- `tests/orders-react-sync-contract.test.cjs` 已新增断言，保护订单页直连 `pullSnapshot()` / `pushChanges()`、后台 `commitPromise` 和 provider 的 cursor/seq 能力；`tests/orders-sync-provider-contract.test.cjs` 已改为保护 provider 同步接口而不是旧 sync 壳层。
+- `tests/orders-react-sync-contract.test.mjs` 已新增断言，保护订单页直连 `pullSnapshot()` / `pushChanges()`、后台 `commitPromise` 和 provider 的 cursor/seq 能力；`tests/orders-sync-provider-contract.test.mjs` 已改为保护 provider 同步接口而不是旧 sync 壳层。
 - 完整 React SPA 重建后已删除 `src/orders/index.mjs`，订单运行入口由 `src/react/features/orders/OrdersPage.tsx` 接管，不再挂旧 `window.OrderTracker`。
 - 完整 React SPA 重建后已删除 `src/orders/products.mjs`，订单页直接通过 `ProductLibraryProviderFirestore` 拉取商品资料，监听 `tk-products-changed` 并在页面内完成商品关联。
-- `tests/orders-products-module.test.cjs` 已改为断言旧订单商品桥接 runtime 不存在，并保护 React 订单页直接读取商品资料、监听商品变更和按账号/TK ID 关联商品。
+- `tests/orders-products-module.test.mjs` 已改为断言旧订单商品桥接 runtime 不存在，并保护 React 订单页直接读取商品资料、监听商品变更和按账号/TK ID 关联商品。
 - 新增 `src/orders/firestore-rules.ts`，提供页面内置 Firestore 规则文本的 ESM 导出；Firestore 连接模块直接 import 规则文本，不再挂旧 `window.ORDER_TRACKER_FIRESTORE_RULES`。
-- `tests/orders-firestore-rules.test.cjs` 已新增动态 `import()` 断言，确认 ESM 内置规则和文档规则保持一致。
+- `tests/orders-firestore-rules.test.mjs` 已新增动态 `import()` 断言，确认 ESM 内置规则和文档规则保持一致。
 - 新增 `src/orders/form-utils.ts`，提供订单弹窗商品/SKU 标签、商品默认参数合并、订单明细草稿归一化、旧版订单明细恢复、金额/尺寸解析等纯函数 ESM 导出；不再挂旧 `window.OrderTrackerFormUtils`。
-- `tests/orders-form-utils-module.test.cjs` 已新增动态 `import()` 断言，确认订单表单纯函数 ESM 输出稳定。
+- `tests/orders-form-utils-module.test.mjs` 已新增动态 `import()` 断言，确认订单表单纯函数 ESM 输出稳定。
 - 新增 `src/firestore-connection.ts`，提供 Firestore 配置解析、复制规则、配置变更广播和 React UI 注册 API；订单、商品、同步和 Toast 入口已改为 ESM import，不再挂旧 `window.TKFirestoreConnection`，也不再保留旧本地存储迁移兼容层。
-- `tests/firestore-connection-module.test.cjs` 已改为动态 `import()` 断言，确认 Firestore 连接 ESM 模块可直接导入、可解析 `firebaseConfig`，并保护不要回退到旧全局 API。
+- `tests/firestore-connection-module.test.mjs` 已改为动态 `import()` 断言，确认 Firestore 连接 ESM 模块可直接导入、可解析 `firebaseConfig`，并保护不要回退到旧全局 API。
 - `src/orders/provider-firestore.ts` 已收敛为纯 ESM provider，不再注册 `TKDataSourceRegistry`；React 订单页直接 import 使用。
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载；React SPA 阶段也已移除 `<script type="module" src="/src/orders/index.mjs"></script>`，订单运行入口改为 `src/react/features/orders/OrdersPage.tsx`。
 - `index.html` 已移除旧 `js/orders/shared.js`、`js/orders/provider-firestore.js`、`js/orders/export.js`、`js/orders/tabs.js`、`js/orders/session.js`、`js/orders/products.js`、`js/orders/firestore-rules.js`、`js/orders/form-utils.js`、`js/orders/table.js` 页面加载；旧 `js/` 源目录已统一清理。
 - `index.html` 已移除旧 `js/orders/sync.js` 的页面加载；订单同步运行入口改为 `src/react/features/orders/OrdersPage.tsx`，不再保留 `src/orders/sync.mjs` 过渡层。
 - `index.html` 已移除旧 `js/orders/crud.js` 的页面加载；订单弹窗运行入口改为 `src/react/features/orders/OrdersPage.tsx`，不再保留 `src/orders/crud.mjs` 过渡层。
 - `index.html` 已移除旧 `js/firestore-connection.js`、`/src/firestore-connection.ts` 和 `/src/orders/firestore-rules.ts` 的页面加载；连接模块和规则文本现在由 React 入口依赖图加载。
-- 新增 `tests/orders-index-module.test.cjs`，验证订单 ESM 入口可直接 import、懒初始化、挂回全局，以及旧订单 index 普通脚本不再由主页面加载。
+- 新增 `tests/orders-index-module.test.mjs`，验证订单 ESM 入口可直接 import、懒初始化、挂回全局，以及旧订单 index 普通脚本不再由主页面加载。
 
 当前已验证通过：
 
 ```bash
-node tests/orders-shared-module.test.cjs
-node tests/orders-table-view.test.cjs
-node tests/orders-summary-ui.test.cjs
-node tests/orders-export-module.test.cjs
-node tests/orders-tabs-module.test.cjs
-node tests/orders-crud-module.test.cjs
-node tests/orders-react-form-behavior.test.cjs
-node tests/orders-session-module.test.cjs
-node tests/orders-provider-firestore-module.test.cjs
-node tests/orders-react-sync-contract.test.cjs
-node tests/orders-index-module.test.cjs
-node tests/firestore-connection-module.test.cjs
+node tests/orders-shared-module.test.mjs
+node tests/orders-table-view.test.mjs
+node tests/orders-summary-ui.test.mjs
+node tests/orders-export-module.test.mjs
+node tests/orders-tabs-module.test.mjs
+node tests/orders-crud-module.test.mjs
+node tests/orders-react-form-behavior.test.mjs
+node tests/orders-session-module.test.mjs
+node tests/orders-provider-firestore-module.test.mjs
+node tests/orders-react-sync-contract.test.mjs
+node tests/orders-index-module.test.mjs
+node tests/firestore-connection-module.test.mjs
 npm test
 npm run build
 git diff --check
@@ -700,13 +700,13 @@ npm run release:check
 - 完整 React SPA 重建后已删除 `src/main.mjs`，主站入口改为 `/src/react/main.tsx`。
 - `index.html` 已移除旧 `js/app-config.js` 和 `js/app.js` 页面加载，改为 `/src/react/main.tsx`。
 - 旧 `js/app-config.js` 和 `js/app.js` 源文件已随旧目录统一清理，不再维护双入口。
-- `tests/app-config.test.cjs`、`tests/main-build-contract.test.cjs`、`scripts/preview-smoke.mjs` 已更新为覆盖 ESM 主入口和 Vite build 产物。
+- `tests/app-config.test.mjs`、`tests/main-build-contract.test.mjs`、`scripts/preview-smoke.mjs` 已更新为覆盖 ESM 主入口和 Vite build 产物。
 - 完整 React SPA 重建后已删除 `src/table-controls.mjs` 和 `src/data-sources/registry.mjs`；表格控制带由 React 页面和 primitives 直接渲染，Firestore provider 由页面直接 import。
 - `index.html` 已移除旧 `js/table-controls.js` 和 `js/data-sources/registry.js` 页面加载；旧文件已随旧目录统一清理。
-- `tests/shared-utils.test.cjs`、`tests/data-source-registry.test.cjs`、`tests/orders-table-view.test.cjs`、`tests/products-view-ui.test.cjs` 已更新为保护旧 DOM 表格控件/数据源注册表不存在，以及 React 页面直接接管对应职责。
+- `tests/shared-utils.test.mjs`、`tests/data-source-registry.test.mjs`、`tests/orders-table-view.test.mjs`、`tests/products-view-ui.test.mjs` 已更新为保护旧 DOM 表格控件/数据源注册表不存在，以及 React 页面直接接管对应职责。
 - 订单商品/SKU 可搜索下拉已进入 `src/react/components/ui/searchable-select.tsx`，旧 DOM 版 `src/searchable-select.mjs` 已清理。
 - `index.html` 已移除旧 `js/searchable-select.js` 页面加载；旧文件已随旧目录统一清理。
-- `tests/shared-utils.test.cjs` 和 `tests/orders-crud-module.test.cjs` 已覆盖可搜索下拉框 ESM 导出、入口挂载和旧页面加载移除。
+- `tests/shared-utils.test.mjs` 和 `tests/orders-crud-module.test.mjs` 已覆盖可搜索下拉框 ESM 导出、入口挂载和旧页面加载移除。
 
 - 利润计算器、商品管理、订单管理、数据分析、Firestore 连接和基础共享工具都已由 React 入口依赖图加载。
 - `index.html` 已不再列本地 `js/*.js` 普通脚本。
@@ -1032,7 +1032,7 @@ git diff --check
 - 旧 `js/orders/index.js`
 - 旧 `js/orders/provider-supabase.js`
 - 旧 `js/data-sources/registry.js`
-- `tests/data-source-registry.test.cjs`
+- `tests/data-source-registry.test.mjs`
 - `README.md`
 - `PROJECT_HANDOFF.md`
 
@@ -1067,7 +1067,7 @@ return null;
 - 如果文件保留，不影响运行。
 - 不让测试要求它注册。
 
-5. 更新 `tests/data-source-registry.test.cjs`：
+5. 更新 `tests/data-source-registry.test.mjs`：
 
 - 删除 Supabase 加载断言。
 - 删除 Supabase 注册断言。
@@ -1112,7 +1112,7 @@ git diff --check
 
 ```text
 js/app-config.js
-tests/app-config.test.cjs
+tests/app-config.test.mjs
 ```
 
 建议内容：
@@ -1149,7 +1149,7 @@ const TKAppConfig = {
 验收：
 
 ```bash
-node tests/app-config.test.cjs
+node tests/app-config.test.mjs
 npm test
 npm run build
 ```
@@ -1199,7 +1199,7 @@ products/supabase
 验收：
 
 ```bash
-node tests/data-source-registry.test.cjs
+node tests/data-source-registry.test.mjs
 npm test
 ```
 
@@ -1252,7 +1252,7 @@ const TKAnalytics = ...
 
 测试调整：
 
-- `tests/analytics-module.test.cjs` 改成分别读取三个文件。
+- `tests/analytics-module.test.mjs` 改成分别读取三个文件。
 - 继续验证：
   - Excel 行解析。
   - 日元/百分比清洗。
@@ -1263,7 +1263,7 @@ const TKAnalytics = ...
 验收：
 
 ```bash
-node tests/analytics-module.test.cjs
+node tests/analytics-module.test.mjs
 npm test
 npm run build
 ```
@@ -1326,13 +1326,13 @@ npm run build
 - 新增 `js/products/accounts.js`，负责商品账号汇总、账号 Tabs、弹窗账号下拉。
 - 新增 `js/products/export.js`，负责商品 CSV 账号选择弹层、导出行生成、CSV 下载。
 - 新增 `js/products/form-utils.js`，负责商品弹窗尺寸解析、批量 SKU 草稿生成、SKU 名称匹配、商品/SKU 物流参数判断和预估运费快照等纯函数。
-- 新增 `tests/products-form-utils-module.test.cjs`，覆盖商品 SKU 表单纯函数模块、CRUD 接入和 `index.html` 加载顺序。
+- 新增 `tests/products-form-utils-module.test.mjs`，覆盖商品 SKU 表单纯函数模块、CRUD 接入和 `index.html` 加载顺序。
 - `js/products/index.js` 从约 650 行降到约 350 行，目前只保留连接、加载、主渲染、事件编排。
 - `js/products/crud.js` 曾移除 SKU 表单纯函数内联实现，改为通过 `ProductLibraryFormUtils` 调用；在 modern React SPA 分支里，旧商品 CRUD runtime 已被删除，React 商品页直接 import `src/products/form-utils.ts`。
 - 新增 `js/orders/products.js`，负责订单弹窗读取商品资料、按账号筛商品、按 TK ID 查商品、Firestore 配置变化时清理商品缓存。
 - `js/orders/index.js` 从约 570 行降到约 515 行，产品桥接逻辑不再内联在入口文件。
 - 新增 `js/orders/form-utils.js`，负责订单弹窗商品/SKU 标签、商品默认参数合并、订单明细草稿归一化、旧版订单明细恢复、金额/尺寸解析等纯函数。
-- 新增 `tests/orders-form-utils-module.test.cjs`，覆盖订单表单纯函数模块、CRUD 接入和 `index.html` 加载顺序。
+- 新增 `tests/orders-form-utils-module.test.mjs`，覆盖订单表单纯函数模块、CRUD 接入和 `index.html` 加载顺序。
 - `js/orders/crud.js` 已移除上述纯函数内联实现，改为通过 `OrderTrackerFormUtils` 调用。
 - `index.html` 已调整加载顺序：先加载 `js/products/provider-firestore.js`，在 `js/products/crud.js` 前加载 `js/products/form-utils.js`，并在 `js/orders/crud.js` 前加载 `js/orders/form-utils.js`，再加载 `js/orders/products.js` 和 `js/orders/index.js`，保证商品/订单页面刷新时表单工具和商品桥接可用。
 - 未改 `js/products/provider-firestore.js` 数据结构。
@@ -1356,7 +1356,7 @@ npm run build
 验收：
 
 ```bash
-for f in tests/orders-*.test.cjs; do node "$f" || exit 1; done
+for f in tests/orders-*.test.mjs; do node "$f" || exit 1; done
 npm test
 npm run build
 git diff --check
@@ -1365,7 +1365,7 @@ git diff --check
 当前已验证通过：
 
 ```bash
-for f in tests/orders-*.test.cjs; do node "$f" || exit 1; done
+for f in tests/orders-*.test.mjs; do node "$f" || exit 1; done
 npm test
 npm run build
 git diff --check
@@ -1422,8 +1422,8 @@ git diff --check
 - 404 页面新增 description、noindex、`theme-color`、manifest 和公共静态页样式；`sitemap.xml` 已包含首页、隐私页、使用条款页和 `lastmod`。
 - 主站页脚新增 `隐私与数据边界`、`使用条款` 和 `数据库说明` 入口。
 - 主站新增跳转主内容链接、`main` landmark 和导航 `aria-current` 同步，保证 hash 路由下键盘导航和当前模块语义不回退。
-- `tests/main-build-contract.test.cjs` 已覆盖隐私页、使用条款页、404、robots、sitemap、manifest、SEO meta、Cloudflare headers、页脚入口、主内容 landmark、跳转主内容链接和导航当前项语义。
-- 新增 `tests/site-release-contract.test.cjs`，防止 Phase 7 文档、数据边界说明和正规网站基础项回退。
+- `tests/main-build-contract.test.mjs` 已覆盖隐私页、使用条款页、404、robots、sitemap、manifest、SEO meta、Cloudflare headers、页脚入口、主内容 landmark、跳转主内容链接和导航当前项语义。
+- 新增 `tests/site-release-contract.test.mjs`，防止 Phase 7 文档、数据边界说明和正规网站基础项回退。
 - 新增 `scripts/preview-smoke.mjs` 和 `npm run smoke`，构建后实际启动 Vite preview 检查核心静态路径和构建产物。
 - 新增 `playwright.config.mjs`、`tests/e2e/release.spec.ts` 和 `npm run e2e`，基于 production preview 用离线 Firebase / Excel fixtures 在桌面和移动 Chromium 上覆盖浏览器级主流程。
 - 新增 `scripts/release-check.sh` 和 `npm run release:check`，把单测、TypeScript 类型检查、文档构建、主站构建、HTTP smoke、浏览器 e2e 和 diff 检查串成发布门禁。
@@ -1548,7 +1548,7 @@ public/_headers
 ### 测试
 
 ```text
-tests/*.test.cjs
+tests/*.test.mjs
 ```
 
 ### 文档
@@ -1573,11 +1573,11 @@ npm test
 单测举例：
 
 ```bash
-node tests/analytics-module.test.cjs
-node tests/data-source-registry.test.cjs
-node tests/main-build-contract.test.cjs
-node tests/products-view-ui.test.cjs
-node tests/orders-session-module.test.cjs
+node tests/analytics-module.test.mjs
+node tests/data-source-registry.test.mjs
+node tests/main-build-contract.test.mjs
+node tests/products-view-ui.test.mjs
+node tests/orders-session-module.test.mjs
 ```
 
 构建验证：
@@ -1749,7 +1749,7 @@ release: prepare tk toolbox static site
 local/release-prep-static-site
 ```
 
-之所以没有继续拆成多个提交：当前 `README.md`、`index.html`、`tests/main-build-contract.test.cjs` 等文件同时承载构建、数据边界、数据分析、正规站点基础和发布门禁契约。按文件强拆会产生中间不可测试的提交，不适合现在这个已验证的发布准备状态。
+之所以没有继续拆成多个提交：当前 `README.md`、`index.html`、`tests/main-build-contract.test.mjs` 等文件同时承载构建、数据边界、数据分析、正规站点基础和发布门禁契约。按文件强拆会产生中间不可测试的提交，不适合现在这个已验证的发布准备状态。
 
 如果以后确实需要拆提交，建议先新建临时分支，用 `git reset --soft cb54688` 后重新分组，并且每组都跑相关测试；不要在当前线上保护分支上直接试拆。
 

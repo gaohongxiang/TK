@@ -11,7 +11,7 @@
     "e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "release:check": "sh scripts/release-check.sh",
-    "test": "sh -c 'for f in tests/*.test.cjs; do node \"$f\" || exit 1; done'"
+    "test": "sh -c 'for f in tests/*.test.mjs; do node \"$f\" || exit 1; done'"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",

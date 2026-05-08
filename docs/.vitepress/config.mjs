@@ -2,12 +2,10 @@ export default {
   lang: 'zh-CN',
   base: '/',
   srcExclude: [
-    'public/**/*.md',
-    'superpowers/**'
+    'public/**/*.md'
   ],
   ignoreDeadLinks: [
-    /\/firebase\/order-tracker-firestore\.rules$/,
-    /\/supabase\/order-tracker-schema\.sql$/
+    /\/firebase\/order-tracker-firestore\.rules$/
   ],
   title: 'TK 电商工具箱文档',
   description: 'TikTok Shop 日本跨境店工具箱文档：利润计算、Firebase 商品订单管理、本地 Excel 数据分析和 TK 运营资料。',

@@ -98,18 +98,18 @@ const productSkuFeeValueClass = 'pl-sku-fee-value text-[13px] font-bold text-[va
 const productSkuFeeSubClass = 'pl-sku-fee-sub text-[11px] leading-[1.35] text-[var(--muted)] empty:hidden';
 const productSkuFeeNoteClass = 'pl-sku-fee-note text-[11px] leading-[1.35] text-[var(--expense)] empty:hidden';
 const productSkuActionsCellClass = 'pl-sku-cell-actions w-[72px] text-right';
-const productTableClass = 'pl-table products-react-table table-auto [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_td]:text-center [&_td]:align-middle [&_th]:text-center [&_th]:align-middle';
-const productSeqClass = 'pl-row-seq inline-flex items-center gap-2';
+const productTableClass = 'pl-table products-react-table mt-1.5 min-w-[980px] text-[13px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_tbody_tr:hover]:bg-[rgba(110,168,255,.05)] max-[768px]:text-[13px] max-[768px]:[&_td]:px-1.5 max-[768px]:[&_td]:py-[9px] max-[768px]:[&_th]:px-1.5 max-[768px]:[&_th]:py-[9px] max-[768px]:[&_th]:text-[10.5px]';
+const productSeqClass = 'pl-row-seq inline-flex items-center justify-center gap-2';
 const productExpandCaretClass = 'pl-expand-caret text-xs leading-none text-[var(--muted)]';
 const productImageCellClass = 'pl-image-cell w-[74px]';
 const productImageClass = 'pl-image products-react-image h-12 w-12 rounded-[10px] border border-[var(--border)] bg-[var(--panel2)] object-cover';
 const productImagePlaceholderClass = 'pl-image-placeholder products-react-image-placeholder inline-flex h-12 w-12 items-center justify-center rounded-[10px] border border-dashed border-[var(--border)] text-[var(--muted)]';
-const productIdCellClass = 'products-react-id min-w-[140px] tabular-nums';
-const productNameCellClass = 'products-react-name-cell min-w-[220px] max-w-[360px]';
+const productIdCellClass = 'products-react-id min-w-[150px] tabular-nums';
+const productNameCellClass = 'products-react-name-cell min-w-[260px] max-w-[420px]';
 const productNameTextClass = 'truncate';
 const productLinkActionsClass = 'pl-link-actions products-react-link-actions flex flex-wrap items-center justify-center gap-1.5';
 const productActionsClass = 'products-react-actions inline-flex items-center justify-center gap-1.5';
-const productRowClass = 'pl-product-row products-react-row [&.is-expandable]:cursor-pointer [&.is-expandable_td]:transition-[background-color] [&.is-expandable_td]:duration-150 hover:[&.is-expandable_td]:bg-[color-mix(in_srgb,var(--accent)_4%,white)] [&.is-expanded_td]:bg-[color-mix(in_srgb,var(--accent)_5%,var(--panel))]';
+const productRowClass = 'pl-product-row products-react-row [&.is-expandable]:cursor-pointer [&.is-expandable_td]:transition-[background-color] [&.is-expandable_td]:duration-150 [&.is-expanded_td]:bg-[rgba(110,168,255,.045)]';
 const productSkuListClass = 'pl-sku-list mt-3.5';
 const productSkuEditWrapClass = 'pl-sku-table-wrap overflow-x-auto border-t border-[color-mix(in_srgb,var(--border)_88%,white)]';
 const productSkuEditTableClass = 'pl-sku-edit-table min-w-[820px] table-fixed overflow-hidden rounded-xl border-collapse';
@@ -272,7 +272,7 @@ function ProductsTableView({
         <div id="pl-table-container" data-react-products-table-ready="true">
           {!displayed.length ? (
             <EmptyState
-              className="products-react-empty min-h-[180px]"
+              className="products-react-empty"
               title={searchQuery.trim()
                 ? '没有匹配的商品'
                 : activeAccount !== '__all__'
@@ -281,7 +281,7 @@ function ProductsTableView({
               description={searchQuery.trim() ? '试试更换关键词' : '点击右上角「+ 新增商品」开始记录'}
             />
           ) : (
-            <TableFrame className="products-react-table-inner min-w-[920px] rounded-none border-0 bg-transparent">
+            <TableFrame className="products-react-table-inner">
               <Table className={cn(productTableClass, showAccount ? 'is-all-accounts' : 'is-account-scoped')}>
               <TableHeader>
                 <TableRow>

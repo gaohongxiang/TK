@@ -444,7 +444,8 @@ assert.match(
 );
 
 [
-  /table-auto/,
+  /mt-1\.5 min-w-\[980px\]/,
+  /\[\&_td\]:whitespace-nowrap[\s\S]*\[\&_th\]:whitespace-nowrap/,
   /from '@\/components\/ui\/table-tools'/,
   /<TableSearch[\s\S]*products-react-search w-full max-w-\[520px\]/,
   /inline-flex/,
@@ -521,6 +522,24 @@ assert.match(
   reactProductsPageSource,
   /<TableSearch[\s\S]*onChange=\{onSearchChange\}/,
   'React 商品搜索需要通过共享 TableSearch 复用中文输入法 composition 保护'
+);
+
+assert.match(
+  reactProductsPageSource,
+  /productTableClass = 'pl-table products-react-table mt-1\.5 min-w-\[980px\][\s\S]*\[\&_td\]:whitespace-nowrap/,
+  '商品主表需要对齐订单管理表格的间距、横向宽度和单元格不换行样式'
+);
+
+assert.match(
+  reactProductsPageSource,
+  /<TableFrame className="products-react-table-inner">[\s\S]*<Table className=\{cn\(productTableClass/,
+  '商品主表需要使用和订单管理一致的 TableFrame 外壳，不再额外覆盖边框和背景'
+);
+
+assert.match(
+  reactProductsPageSource,
+  /productTableClass[\s\S]*max-\[768px\]:\[\&_td\]:px-1\.5[\s\S]*max-\[768px\]:\[\&_th\]:text-\[10\.5px\]/,
+  '商品主表移动端 padding 和表头字号需要和订单管理一致'
 );
 
 assert.doesNotMatch(

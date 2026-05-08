@@ -98,7 +98,7 @@ const productSkuFeeValueClass = 'pl-sku-fee-value text-[13px] font-bold text-[va
 const productSkuFeeSubClass = 'pl-sku-fee-sub text-[11px] leading-[1.35] text-[var(--muted)] empty:hidden';
 const productSkuFeeNoteClass = 'pl-sku-fee-note text-[11px] leading-[1.35] text-[var(--expense)] empty:hidden';
 const productSkuActionsCellClass = 'pl-sku-cell-actions w-[72px] text-right';
-const productTableClass = 'pl-table products-react-table mt-1.5 min-w-[980px] text-[13px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_tbody_tr:hover]:bg-[rgba(110,168,255,.05)] max-[768px]:text-[13px] max-[768px]:[&_td]:px-1.5 max-[768px]:[&_td]:py-[9px] max-[768px]:[&_th]:px-1.5 max-[768px]:[&_th]:py-[9px] max-[768px]:[&_th]:text-[10.5px]';
+const productTableClass = 'pl-table products-react-table mt-1.5 min-w-[1100px] text-[13px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_tbody_tr:hover]:bg-[rgba(110,168,255,.05)] max-[768px]:text-[13px] max-[768px]:[&_td]:px-1.5 max-[768px]:[&_td]:py-[9px] max-[768px]:[&_th]:px-1.5 max-[768px]:[&_th]:py-[9px] max-[768px]:[&_th]:text-[10.5px]';
 const productSeqClass = 'pl-row-seq inline-flex items-center justify-center gap-2';
 const productExpandCaretClass = 'pl-expand-caret text-xs leading-none text-[var(--muted)]';
 const productImageCellClass = 'pl-image-cell w-[74px]';
@@ -281,7 +281,7 @@ function ProductsTableView({
               description={searchQuery.trim() ? '试试更换关键词' : '点击右上角「+ 新增商品」开始记录'}
             />
           ) : (
-            <TableFrame className="products-react-table-inner">
+            <TableFrame className="products-react-table-inner min-w-full">
               <Table className={cn(productTableClass, showAccount ? 'is-all-accounts' : 'is-account-scoped')}>
               <TableHeader>
                 <TableRow>
@@ -1249,7 +1249,7 @@ function ProductsPage() {
         </Card>
       ) : null}
 
-      {connected ? <div id="pl-main">
+      {connected ? <Card id="pl-main">
         <div className={cn('ot-header-status-row mb-3', statusStripClass)}>
           <div className={cn(statusStripLeftClass, 'min-w-0 flex-wrap')}>
             <Badge className="min-h-[30px] min-w-0 max-w-full truncate text-[var(--text)] font-semibold" id="pl-user">
@@ -1311,7 +1311,7 @@ function ProductsPage() {
           onEdit={openProductModal}
           onDelete={deleteProduct}
         />
-      </div> : null}
+      </Card> : null}
 
       <ProductModal
         open={modalOpen}

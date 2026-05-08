@@ -444,7 +444,7 @@ assert.match(
 );
 
 [
-  /mt-1\.5 min-w-\[980px\]/,
+  /mt-1\.5 min-w-\[1100px\]/,
   /\[\&_td\]:whitespace-nowrap[\s\S]*\[\&_th\]:whitespace-nowrap/,
   /from '@\/components\/ui\/table-tools'/,
   /<TableSearch[\s\S]*products-react-search w-full max-w-\[520px\]/,
@@ -526,14 +526,20 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /productTableClass = 'pl-table products-react-table mt-1\.5 min-w-\[980px\][\s\S]*\[\&_td\]:whitespace-nowrap/,
+  /\{connected \? <Card id="pl-main">[\s\S]*<AccountTabsBar[\s\S]*<ProductsTableView[\s\S]*<\/Card> : null\}/,
+  '商品管理连接后的主区域需要和订单管理一样使用 Card 白底容器，避免表格露出页面灰蓝底色'
+);
+
+assert.match(
+  reactProductsPageSource,
+  /productTableClass = 'pl-table products-react-table mt-1\.5 min-w-\[1100px\][\s\S]*\[\&_td\]:whitespace-nowrap/,
   '商品主表需要对齐订单管理表格的间距、横向宽度和单元格不换行样式'
 );
 
 assert.match(
   reactProductsPageSource,
-  /<TableFrame className="products-react-table-inner">[\s\S]*<Table className=\{cn\(productTableClass/,
-  '商品主表需要使用和订单管理一致的 TableFrame 外壳，不再额外覆盖边框和背景'
+  /<TableFrame className="products-react-table-inner min-w-full">[\s\S]*<Table className=\{cn\(productTableClass/,
+  '商品主表外壳需要铺满 Card 内容区，避免列少时表格收缩成孤立块'
 );
 
 assert.match(

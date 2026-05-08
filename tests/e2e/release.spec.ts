@@ -371,6 +371,7 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#pl-main .ot-header-status-row .left #pl-sync')).toBeVisible();
     await expect(page.locator('#pl-main .ot-header-status-row .left #pl-refresh')).toBeVisible();
     await expect(page.locator('#pl-main .ot-header-status-row .right #pl-export')).toBeVisible();
+    const productMainBackground = await page.locator('#pl-main').evaluate(element => getComputedStyle(element).backgroundColor);
     await expect(page.locator('#pl-refresh')).toHaveAttribute('aria-label', '刷新商品数据');
     await expect(page.locator('#pl-refresh')).toHaveText('');
     await expect(page.locator('#pl-export')).toContainText('导出 CSV');
@@ -388,6 +389,15 @@ test.describe('release browser smoke', () => {
     await page.locator('#pl-form button[type="submit"]').click();
     await expect(page.locator('#pl-modal')).not.toBeVisible();
     await expect(page.locator('#pl-table-container')).toContainText('TK-E2E-001');
+    const productTableMetrics = await page.locator('.products-react-table').evaluate(element => {
+      const table = element.getBoundingClientRect();
+      const container = document.querySelector('#pl-table-container')?.getBoundingClientRect();
+      return {
+        containerWidth: container?.width || 0,
+        tableWidth: table.width
+      };
+    });
+    expect(productTableMetrics.tableWidth).toBeGreaterThanOrEqual(Math.min(1100, productTableMetrics.containerWidth - 4));
 
     await page.locator('#pl-table-container button[data-edit="TK-E2E-001"]').click();
     await expect(page.locator('#pl-modal-title')).toHaveText('编辑商品');
@@ -397,6 +407,7 @@ test.describe('release browser smoke', () => {
 
     await page.locator('nav.modules a[data-view="orders"]').click();
     await expect(page.locator('#ot-main')).toBeVisible();
+    await expect(page.locator('#ot-main')).toHaveCSS('background-color', productMainBackground);
     await expect(page.locator('#ot-sync')).toContainText('已同步');
     await page.locator('#ot-add').click();
     await expect(page.locator('#ot-modal')).toBeVisible();

@@ -1,6 +1,6 @@
 # TK 项目交接与优化规划
 
-这个文件是当前项目的“接手说明 + 后续规划”。如果更换对话、换 API base_url、换账号、上下文丢失，新的对话先读这个文件，再看 `README.md`、`git status --short`、相关测试文件，就可以继续工作。
+这个文件是当前项目的“接手说明 + 历史规划记录”。如果更换对话、换 API base_url、换账号、上下文丢失，新的对话先读这个文件，再看 `README.md`、`git status --short`、相关测试文件，就可以继续工作。
 
 当前项目路径：
 
@@ -27,7 +27,7 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - 用户业务数据只进入用户自己的 Firebase Firestore。
 - 本站、Cloudflare Pages、未来可能的 Workers 都不保存用户业务数据。
 - 原生 JS + Vite ESM 路线已作为历史基线完成。
-- 当前 `modern-react-spa` 分支已完成完整 React SPA 重建，正在做视觉系统和旧 CSS 依赖收敛；这是独立现代化分支，不动 `main`，完成验收后再合并。
+- 当前 `modern-react-spa` 分支已完成完整 React SPA 重建、视觉系统收敛、TypeScript 迁移和测试 ESM 化；这是独立现代化分支，不动 `main`，最终验收后再合并。
 
 ## 2. 当前硬性决策
 
@@ -51,7 +51,7 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 
 ### 2.2 完整 React SPA 重建
 
-用户已确认不要继续局部微调旧页面，项目在 `modern-react-spa` 分支进入完整 React SPA 重建路线。
+用户已确认不要继续局部微调旧页面，项目在 `modern-react-spa` 分支执行完整 React SPA 重建路线；当前重构主线已完成。
 
 技术选择：
 
@@ -78,7 +78,7 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - 先搭 React SPA App Shell 和设计系统，再按利润计算器、数据分析、商品管理、订单管理顺序重建页面。
 - 不改变 Firebase 数据结构。
 - 商品/订单重建时复用现有 Firestore provider 和纯函数，先保证数据兼容，再替换 UI。
-- 每完成一个阶段都跑 `npm test`、`npm run build`、`git diff --check`；大阶段跑 `npm run release:check` 和 Playwright。
+- 每次修改后至少跑相关测试；准备交付或合并前跑 `npm run release:check`。
 
 ### 2.3 不保存用户数据
 
@@ -103,7 +103,7 @@ modern-react-spa
 
 - 路线一轻模块化已完成。
 - 路线二标准 ESM 模块化主体已完成。
-- 完整 Vite React SPA 第一轮重建已完成，主站改为单根 `#root` 渲染。
+- 完整 Vite React SPA 重建主线已完成，主站改为单根 `#root` 渲染。
 - `src/react/app/App.tsx` 已接管主导航、hash 路由、年份、文档链接、页脚和四个主视图。
 - 利润计算器已迁到 `src/react/features/calculator/CalculatorApp.tsx`，复用现有公式和运费核心。
 - 数据分析页已迁到 React + ECharts，并由 `src/react/features/analytics/AnalyticsRoute.tsx` 按需懒加载；`src/analytics/parser.ts` 和 `src/analytics/analyzer.ts` 仍作为纯函数来源复用。
@@ -120,6 +120,8 @@ modern-react-spa
 - `scripts/preview-smoke.mjs` 已适配完整 React SPA：首页 HTTP smoke 检查单根 React 入口、SEO meta、Firebase/SheetJS 脚本、构建产物和静态页面；运行后交互由 Playwright 覆盖。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前主站业务源码在 `src/` 下以 TypeScript/TSX 维护。
+- Node 契约测试已统一为 ESM `.mjs`，不再保留 CommonJS `.cjs` 测试文件。
+- `npm run release:check` 已串联 `npm test`、`npm run typecheck`、文档构建、主站构建、HTTP smoke、Playwright e2e 和 `git diff --check`。
 - 真实 Firebase 数据手动验收已完成，未发现大问题。
 - `route-2-esm-m1` 是稳定基线分支；`modern-react-spa` 是完整 React SPA 重建分支。
 
@@ -953,7 +955,7 @@ ECharts 图表：
 - Order / OrderItem
 - FirebaseConfig
 
-### 9.9 测试要求
+### 9.10 测试要求
 
 每一步至少跑：
 
@@ -974,6 +976,79 @@ npx playwright test tests/e2e/release.spec.ts -g "covers calculator" --project=d
 ```bash
 npm run release:check
 ```
+
+## 10. 下一阶段长任务：TypeScript 领域类型加固
+
+现代化重构主线已完成，下一阶段建议做“类型加固”，不是继续大换架构。
+
+目标：
+
+- 建立核心领域类型，让商品、SKU、订单、订单明细、分析记录和 Firestore 配置有稳定类型入口。
+- 收紧业务 helper/provider 的输入输出，减少核心业务里的 `any` 和宽类型。
+- 先保持 `strict: false`，不要一口气打开全局 `strict: true`。
+- 不改变 Firestore 数据结构，不改变字段名，不做数据迁移。
+- 不改计算口径，不改订单利润、退款、达人佣金、商品关联、SKU 匹配和数据分析解析逻辑。
+- 不引入新状态管理库，不引入 TanStack Table，不大改 UI。
+
+建议新建或整理的类型文件：
+
+```text
+src/products/types.ts
+src/orders/types.ts
+src/analytics/types.ts 或复用 src/react/features/analytics/types.ts
+src/types/firestore.ts
+```
+
+建议阶段：
+
+1. Phase T1：商品类型
+   - 定义 `Product`、`ProductSku`、`ProductAccount`、商品导出行等类型。
+   - 收紧 `src/products/table.ts`、`src/products/form-utils.ts`、`src/products/export.ts`。
+   - provider 先只收紧公开 helper 的输入输出，Firestore 原始 doc 仍可用 `unknown`/宽类型在边界内清洗。
+
+2. Phase T2：订单类型
+   - 定义 `Order`、`OrderItem`、`OrderAccount`、`OrderStatus`、订单摘要类型。
+   - 收紧 `src/orders/shared.ts`、`src/orders/table.ts`、`src/orders/form-utils.ts`、`src/orders/export.ts`。
+   - 订单历史结构清洗函数要继续兼容旧数据，不要为了类型删除兼容逻辑。
+
+3. Phase T3：Firestore provider 边界
+   - 定义 Firestore 配置、pull snapshot、push changes、cursor/seq、doc 映射相关类型。
+   - 收紧 `src/products/provider-firestore.ts` 和 `src/orders/provider-firestore.ts`。
+   - 所有 Firestore doc 进入应用前仍经过归一化/清洗函数。
+
+4. Phase T4：数据分析类型
+   - 统一 parser/analyzer 和 React analytics 的 `AnalyticsRecord`、`AnalyticsChannel`、`AnalyticsAnalysis` 类型。
+   - 收紧 `src/analytics/parser.ts`、`src/analytics/analyzer.ts`、`src/react/features/analytics/chartOptions.ts`。
+   - 保持 Excel 只在浏览器本地解析，不写入 Firestore、localStorage 或远端。
+
+5. Phase T5：UI 页面接线类型
+   - 让 `ProductsPage.tsx`、`OrdersPage.tsx`、`CalculatorApp.tsx` 使用领域类型。
+   - 保留局部 UI 草稿类型，不要为了类型抽象过度复杂化页面状态。
+
+6. Phase T6：逐步收紧 tsconfig
+   - 先尝试打开局部低风险选项，例如 `noImplicitReturns`、`noFallthroughCasesInSwitch`。
+   - 最后再评估 `strict: true`；只有当 `npm run typecheck` 错误量可控时才开启。
+
+每个阶段完成后至少运行：
+
+```bash
+npm test
+npm run typecheck
+npm run build
+git diff --check
+```
+
+大阶段完成后运行：
+
+```bash
+npm run release:check
+```
+
+提交要求：
+
+- 每个 Phase 测试通过后本地提交。
+- 不推 GitHub，除非用户明确确认。
+- 如果类型收紧导致需要改运行逻辑，先停下来确认原因；不要为了让类型通过改变真实业务行为。
 
 ### 9.10 完成标准
 
@@ -1631,7 +1706,7 @@ npm run release:check
 - 数据分析：导入一份 TikTok Shop 商品流量 Excel，确认渠道表现、Top 商品、漏斗和诊断标签能正常生成。
 - 静态页：打开 `/privacy.html`、`/terms.html`、`/404.html`，确认样式和链接正常。
 
-当前已进入 React 渐进迁移期。React 基础设施和数据分析页首轮迁移已完成；下一步如继续开发，应优先做商品管理 React 化，订单管理仍最后迁移。不要一次性重写全站。
+当前完整 React SPA 重构主线已完成。后续开发不再恢复旧 DOM/全局脚本双入口，优先做真实数据验收、类型收紧、UI 细节和功能体验优化。
 
 ## 14. 风险清单
 
@@ -1690,7 +1765,7 @@ Excel 必须本地解析。
 
 - 测试继续禁止 `fetch`、`XMLHttpRequest`、`sendBeacon`、`firebase`、`Firestore`、`localStorage.setItem` 出现在 analytics 模块。
 
-### 14.5 React SPA 收敛
+### 14.5 React SPA 后续收敛
 
 风险：
 
@@ -1702,11 +1777,11 @@ Excel 必须本地解析。
 处理：
 
 - 当前全站入口已是 React SPA，不恢复旧 DOM/全局脚本双入口。
-- Tailwind 样式、primitives 和 `src/react/styles/` 分模块样式要重点检查。
-- 视觉系统收敛优先抽共享 primitives，再删除旧 CSS；每一步跑 `npm test`、`npm run build`、`git diff --check` 和大阶段 `npm run release:check`。
+- Tailwind 样式、primitives 和 `src/react/styles/` 基础样式要重点检查。
+- 视觉系统后续优化优先复用现有 primitives；每一步跑相关测试，大阶段跑 `npm run release:check`。
 - ECharts 只在数据分析页使用。
-- 商品/订单保持现有 ESM 运行链路，等数据分析稳定后再迁。
-- 每一步跑 `npm test`、`npm run build`、相关 e2e。
+- 商品/订单保持现有 React + TypeScript 运行链路。
+- 每一步跑 `npm test`、`npm run typecheck`、`npm run build` 和相关 e2e。
 
 ## 15. 中断恢复流程
 
@@ -1733,34 +1808,29 @@ git diff --stat
 ```
 
 6. 不要回滚用户改动。
-7. 优先完成当前 Phase，不要跳到大重构。
+7. 优先修复当前问题或做小步优化，不再启动无目标的大重构。
 
 ## 16. 本地提交状态
 
-当前改动已经整理成一个本地提交：
+当前 `modern-react-spa` 分支已有本地提交记录；不要直接推 GitHub，除非用户明确确认上线或合并。
+
+最近关键本地提交包括：
 
 ```text
-release: prepare tk toolbox static site
+e16f39e test: migrate contract tests to esm
+6715c70 refactor: migrate app modules to typescript
 ```
 
-同一提交也有一个本地保护分支：
-
-```text
-local/release-prep-static-site
-```
-
-之所以没有继续拆成多个提交：当前 `README.md`、`index.html`、`tests/main-build-contract.test.mjs` 等文件同时承载构建、数据边界、数据分析、正规站点基础和发布门禁契约。按文件强拆会产生中间不可测试的提交，不适合现在这个已验证的发布准备状态。
-
-如果以后确实需要拆提交，建议先新建临时分支，用 `git reset --soft cb54688` 后重新分组，并且每组都跑相关测试；不要在当前线上保护分支上直接试拆。
+继续修改时保持小步提交，每次提交前至少跑相关测试；准备合并或上线前跑完整 `npm run release:check`。
 
 ## 17. 推荐下一步
 
-当前第一轮轻模块化、Phase 7 文档补齐、正规网站基础项、可访问性基础语义、部署发布指南、浏览器级 Playwright smoke、路线二标准 ESM 模块化主体、React 基础设施、React 数据分析页首轮迁移和 ECharts 懒加载优化都已完成并通过验证。
+当前现代化重构主线已完成：完整 Vite React SPA、TypeScript/TSX 业务源码、ESM 测试、Tailwind/shadcn 风格 primitives、ECharts 数据分析、旧 `js/`/`css/style.css` 清理、发布检查和 Playwright smoke 都已通过验证。
 
 建议下一步：
 
-1. 准备上线或推送前重新跑 `npm run release:check`，确认文档、构建、smoke 和 e2e 仍全部通过。
-2. 用真实 TikTok Shop 商品流量 Excel 手动验收 React 数据分析页，重点看 ECharts tooltip、移动端布局和商品明细表。
-3. 如果真实 Excel 验收没问题，再启动商品管理 React 化；商品管理先迁 UI/表格，不改 Firestore 数据结构。
-4. 订单管理最后迁移，迁移前不要重写订单同步核心。
+1. 准备上线、合并或推送前重新跑 `npm run release:check`，确认文档、构建、smoke 和 e2e 仍全部通过。
+2. 用真实商品、订单和 TikTok Shop 商品流量 Excel 再做一轮手动验收，重点看 Firestore 读写、订单商品关联、ECharts tooltip、移动端布局和商品明细表。
+3. 如果要开长任务，优先执行第 10 节“TypeScript 领域类型加固”，按 T1-T6 分阶段做；不要为了形式继续大拆架构。
+4. 不改变 Firestore 数据结构，不上传或保存 Excel，不引入平台方数据库。
 5. GitHub 推送仍受当前网络影响；如需推送，换网络/VPN 后执行 `TK_ALLOW_PUSH=1 git -c http.version=HTTP/1.1 push origin HEAD:main`。

@@ -1,6 +1,6 @@
 # TK 电商工具箱
 
-给 TikTok Shop 日本跨境店使用的运营工具站。项目定位是“工具网站 + 用户自有数据源”：本站提供页面和计算/分析能力，不托管用户的商品、订单、Excel 流量文件等业务数据。
+给 TikTok Shop 日本跨境店使用的静态工具站。项目定位是“工具网站 + 用户自有数据源”：本站提供页面、计算、管理和分析能力，不托管用户的商品、订单、Excel 流量文件等业务数据。
 
 ## 功能模块
 
@@ -8,7 +8,22 @@
 - 商品管理：连接用户自己的 Firebase Firestore，管理商品和 SKU。
 - 订单管理：连接用户自己的 Firebase Firestore，管理订单、利润、物流单号和同步状态。
 - 数据分析：本地导入 TikTok Shop 商品流量 Excel，生成渠道表现、Top 商品排行、流量漏斗和商品诊断。
-- 使用文档 / TK 运营文档：使用 VitePress 单独维护。
+- 文档站：使用 VitePress 单独维护使用说明和运营文档。
+
+## 当前架构
+
+主站是完整 Vite React SPA：
+
+- `index.html` 只保留单根 `#root`、`/src/react/main.tsx`、Firebase compat SDK 和 SheetJS。
+- `src/react/app/App.tsx` 接管 App Shell、hash 路由、页脚和四个主视图。
+- `src/react/features/` 放四大业务页面：`calculator`、`products`、`orders`、`analytics`。
+- `src/react/components/ui/` 放本地 shadcn 风格 primitives 和共享 UI 控件。
+- `src/react/styles.css` 是样式入口，导入 Tailwind utilities 和 `src/react/styles/base.css`。
+- `src/` 下业务纯函数、Firestore provider、解析器和导出逻辑使用 TypeScript 维护。
+- `package.json` 使用 `"type": "module"`，Node 测试也统一为 ESM `.mjs`。
+- 数据分析图表使用 ECharts，Excel 只在浏览器本地解析。
+
+旧 `js/` 源目录、旧 `css/style.css`、旧 DOM runtime、旧 React island 二次挂载入口已经清理；构建产物不发布旧 `dist/js/`。
 
 ## 数据边界
 
@@ -16,88 +31,53 @@
 
 - 本站不保存用户业务数据。
 - 用户的商品和订单数据写入用户自己配置的 Firebase Firestore。
-- 商品管理、订单管理使用 Firestore 的离线缓存能力，先保证本地交互速度，再由 Firebase SDK 同步到云端。
-- 数据分析模块只在浏览器内读取 Excel 文件，解析结果只存在当前页面内存里，不上传到 Cloudflare，也不会写入本站数据库。
+- 商品管理、订单管理使用 Firestore SDK 的离线缓存能力，先保证本地交互速度，再由 Firebase SDK 同步到云端。
+- 数据分析模块只在浏览器内读取 Excel 文件，解析结果只存在当前页面内存里，不上传到 Cloudflare，也不会写入本站数据库或 Firestore。
 - 本地参数只保存在用户浏览器 `localStorage`，例如汇率、运费、默认配置等工具参数。
 
-因此，Cloudflare 只负责托管静态网站和文档站，不持有用户的商品、订单、流量文件。
+Cloudflare 只负责托管静态网站和文档站，不持有用户的商品、订单、流量文件。
 
-## 当前技术结构
+## 目录结构
 
-仓库现在分成两部分。
+```text
+.
+├── index.html
+├── src/
+│   ├── analytics/
+│   ├── calc/
+│   ├── orders/
+│   ├── products/
+│   ├── react/
+│   ├── app-config.ts
+│   ├── firestore-connection.ts
+│   ├── global-settings.ts
+│   └── shipping-core.ts
+├── public/
+├── docs/
+├── scripts/
+├── tests/
+├── vite.config.mjs
+├── playwright.config.mjs
+├── wrangler.toml
+└── package.json
+```
 
-### 1. 工具主站
+正式站点基础文件在 `public/`：
 
-主站源码在仓库根目录：
+- `public/privacy.html`
+- `public/terms.html`
+- `public/404.html`
+- `public/robots.txt`
+- `public/sitemap.xml`
+- `public/manifest.webmanifest`
+- `public/site-page.css`
+- `public/_headers`
 
-- `index.html`
-- `src/`
-- `public/`
-- `logo.png`
-- `package.json`
-- `vite.config.mjs`
-- `wrangler.toml`
+首页、隐私页和使用条款页包含 canonical、Open Graph、Twitter Card 和 `theme-color`；404 页面为 `noindex`；`sitemap.xml` 包含首页、隐私页、使用条款页和 `lastmod`；`_headers` 配置基础安全头、缓存和内容类型。
 
-当前主站使用 Vite 构建。旧 `js/` 源目录和旧 `css/style.css` 全局入口已清理，构建产物也不发布 `dist/js/`。
+## 本地使用
 
-`modern-react-spa` 分支上，主站已重建为完整 Vite React SPA：
-
-- `index.html` 只保留单根 `#root`、`/src/react/main.tsx`、Firebase compat SDK 和 SheetJS。
-- `src/react/app/App.tsx` 接管 App Shell、hash 路由、页脚和四个主视图。
-- `src/react/styles.css` 接管主站样式入口；React 页面样式主要在组件 Tailwind/shadcn 风格 primitives 中，`src/react/styles/base.css` 只保留 token 和基础全局规则。
-- 利润计算器、商品管理、订单管理、数据分析都由 React 页面渲染。
-- `src/` 下业务纯函数、Firestore provider、解析器和导出逻辑已迁为 TypeScript，React 页面直接 import 使用。
-- 已删除旧 DOM 入口和旧 React 二次挂载入口，构建产物不发布旧 `dist/js/`。
-
-### 2. 文档站
-
-文档源码在：
-
-- `docs/`
-
-文档使用 VitePress，建议作为独立 Cloudflare Pages 项目部署。部署配置、发布前检查和部署后验收集中记录在 `docs/guide/deploy.md`。
-
-## 项目规划
-
-### 第一阶段：稳定当前静态站
-
-目标是先把核心业务闭环做完整，并保持部署简单。
-
-- 保留现有 `index.html + css + js` 静态结构。
-- 继续使用用户自己的 Firebase Firestore 作为商品/订单数据源。
-- 新增数据分析模块，用浏览器本地解析 Excel，不上传用户文件。
-- 用测试约束关键模块入口、脚本加载顺序、数据解析逻辑和隐私边界。
-
-### 第二阶段：工程化改造
-
-当前已完成主站构建入口，并在 `modern-react-spa` 分支完成完整 React SPA 第一轮重建。
-
-- 使用 Vite 统一构建工具主站。已完成。
-- Cloudflare Pages 主站构建输出改为 `dist/`。已完成。
-- 主站入口切到 `/src/react/main.tsx` 单根 React SPA，构建产物不再发布旧 `dist/js/`。已完成。
-- 构建后补充稳定 `/logo.png`，用于 Open Graph、Twitter Card、manifest 和独立静态页。已完成。
-- 将利润计算、商品、订单、数据分析拆成独立模块目录。已基本完成。
-- 商品管理已迁到 React 页面，继续复用 `accounts`、`export`、`table`、`form-utils` 和 Firestore provider 纯逻辑。已完成。
-- 数据分析已迁到 React + ECharts，继续复用 `parser`、`analyzer` 纯逻辑，Excel 解析和汇总诊断不依赖 DOM。已完成。
-- 已新增共享 HTML、格式化、可搜索下拉框等 ESM/React 工具模块，服务数据分析、商品和订单渲染层。已完成。
-- 引入类型定义，约束订单、商品、SKU、分析行数据结构。
-- 将通用表格、弹窗、Toast、连接状态抽成共享组件。
-- 保留 Cloudflare 部署，构建产物仍然是静态文件。
-
-### 第三阶段：用户自有数据源抽象
-
-当前正式数据源策略是 Firebase-only。完整 React SPA 分支不再保留旧数据源注册表，商品和订单页面直接 import 对应 Firestore provider。
-
-- `FirebaseProvider`：当前商品和订单默认实现，由 React 页面直接使用。已完成。
-- `BrowserExcelProvider`：数据分析 Excel 只在浏览器内存解析。已完成。
-- `src/app-config.ts`：项目级配置，明确正式数据源为 Firestore、本站不保存用户业务数据。已完成。
-- `LocalFileProvider`：未来可选，适合只用本地导入/导出的轻量用户。暂不实现。
-
-当前架构不改变现有 Firebase 离线缓存流程，也不保存用户数据。
-
-## 主站本地开发
-
-第一次使用，先安装主站依赖：
+安装依赖：
 
 ```bash
 npm install
@@ -115,9 +95,9 @@ npm run dev
 npm run build
 ```
 
-构建产物会生成在：
+构建产物生成在：
 
-```bash
+```text
 dist/
 ```
 
@@ -127,20 +107,26 @@ dist/
 npm run preview
 ```
 
-运行测试：
+## 检查命令
+
+单元/契约测试：
 
 ```bash
 npm test
 ```
 
-构建后跑发布 smoke：
+TypeScript 类型检查：
+
+```bash
+npm run typecheck
+```
+
+构建后 HTTP smoke：
 
 ```bash
 npm run build
 npm run smoke
 ```
-
-`npm run smoke` 会启动本地 `vite preview`，实际请求首页、隐私页、使用条款页、404、robots、sitemap、manifest、Cloudflare headers 文件、主站脚本，并确认未启用的 Supabase provider 没进入构建产物。
 
 浏览器级发布 smoke：
 
@@ -148,143 +134,65 @@ npm run smoke
 npm run e2e
 ```
 
-`npm run e2e` 会基于构建产物启动 production preview，用离线 Firebase / Excel fixtures 在桌面和移动 Chromium 上覆盖利润计算器、商品新增/编辑、订单新增/编辑、数据分析导入、隐私页、使用条款页和 404。
-
 完整发布检查：
 
 ```bash
 npm run release:check
 ```
 
-这个命令会依次运行单元/契约测试、TypeScript 类型检查、文档构建、主站构建、HTTP smoke、浏览器级 e2e 和 `git diff --check`。
-同一套检查也配置在 `.github/workflows/release-check.yml`，push 到 `main` 或提交 PR 时会自动运行。
+`release:check` 会依次运行单元/契约测试、TypeScript 类型检查、文档构建、主站构建、HTTP smoke、Playwright e2e 和 `git diff --check`。
 
-### 第四阶段：Cloudflare 增强
+## 文档站
 
-只有在确实需要服务端能力时再增加 Cloudflare Workers。
+文档源码在 `docs/`，使用 VitePress。
 
-- 用户自有数据库连接配置仍保存在用户浏览器，或由用户自己的后端管理。
-- Workers 只适合做公共配置、静态接口、代理公开资源、版本检查等非用户业务数据能力。
-- 不把订单、商品、Excel 原始数据写入平台方数据库。
-
-## 平时怎么改文档
-
-第一次使用，先装文档依赖：
-
-```bash
-cd docs
-npm install
-```
-
-之后在仓库根目录直接跑：
+启动文档开发预览：
 
 ```bash
 ./scripts/docs-dev.sh
 ```
 
-这会启动文档的热更新预览。你改完文档，页面会自动刷新。
-
-如果你想先确认文档能不能正常构建，可以跑：
+构建文档站：
 
 ```bash
 ./scripts/docs-build.sh
 ```
 
-这会在 `docs/.vitepress/dist/` 里生成文档站静态文件。
+文档构建产物生成在：
 
-## 怎么部署
+```text
+docs/.vitepress/dist/
+```
 
-现在推荐把主站和文档站拆成两个 Cloudflare Pages 项目，都导入同一个 GitHub 仓库。
+## 部署
 
-### Pages 项目 1：工具主站
+主站建议使用 Cloudflare Pages：
 
-当前主站域名：
-
-- `https://tk-evu.pages.dev/`
-
-如果这个项目已经在线并且能正常访问，继续用现在的配置即可。
-
-如果以后要重新创建主站项目，可以按下面配置：
-
-- 项目类型：`导入现有 Git 存储库`
 - Framework preset：`Vite`
 - Root directory：留空
 - Build command：`npm run build`
 - Build output directory：`dist`
 
-仓库里已经有 `wrangler.toml`，其中 `pages_build_output_dir = "./dist"`，用于明确 Cloudflare Pages 的发布目录。
+文档站建议作为单独 Cloudflare Pages 项目：
 
-### Pages 项目 2：文档站
-
-文档建议单独建一个 Pages 项目，比如：
-
-- `https://tk-evu-docs.pages.dev/`
-
-这个项目还是导入同一个 GitHub 仓库，但只构建 `docs/`。
-
-创建文档站时，Cloudflare Pages 建议这样填：
-
-- 项目类型：`导入现有 Git 存储库`
 - Framework preset：`None`
 - Root directory：`docs`
 - Build command：`npm run build`
 - Build output directory：`.vitepress/dist`
 
-文档站源码本身就在 `docs/` 里，Cloudflare 进入这个目录后会：
-
-1. 自动安装 `docs/package.json` 里的依赖
-2. 执行 `npm run build`
-3. 发布 `.vitepress/dist`
-
-## 同一个仓库接两个 Pages 项目，要注意什么
-
-这是正常用法，不冲突。
-
-只是要注意：
-
-- 主站项目和文档项目都会监听同一个 GitHub 仓库。
-- 每次 push 后，两个项目都有可能一起触发构建。
-- 如果后面想再精细一点，可以去 Cloudflare Pages 里给两个项目分别设置 `Build watch paths`，减少不必要的重复构建。
+仓库里已有 `wrangler.toml`，其中 `pages_build_output_dir = "./dist"`，用于明确主站发布目录。
 
 ## Git 注意事项
 
-只需要推源码：
-
-- 主站源码：根目录的 `index.html`、`css/`、`src/`
-- 主站静态发布文件：`public/`
-- 主站公开图片：`logo.png`
-- 主站构建配置：`package.json`、`package-lock.json`、`vite.config.mjs`、`wrangler.toml`
-- 构建辅助脚本：`scripts/`
-- 文档源码：`docs/`
-- 测试文件：`tests/`
-- 项目说明：`README.md`
-
-不需要推这些：
+只提交源码、配置、测试和文档。不要提交：
 
 - `dist/`
-- `docs/.vitepress/dist/`
-- `docs/.vitepress/cache/`
 - `node_modules/`
+- `docs/.vitepress/cache/`
+- `docs/.vitepress/dist/`
 - `docs/node_modules/`
-- 用户导出的 Excel / CSV 数据文件，例如 `商品流量详情4.27-5.3.xlsx`
+- `*.xlsx`
+- `*.xls`
+- `*.csv`
 
-主站顶部的 `文档` 链接现在默认写的是：
-
-- `https://tk-evu-docs.pages.dev/`
-
-如果最后创建文档站时用的不是这个地址，需要同步修改主站里的文档链接。
-
-## 正式站点基础文件
-
-主站已经补了基础发布文件：
-
-- `public/privacy.html`：隐私与数据边界说明。
-- `public/terms.html`：使用条款与免责声明。
-- `public/404.html`：Cloudflare Pages 404 页面。
-- `public/robots.txt`：搜索引擎抓取配置。
-- `public/sitemap.xml`：主站 sitemap。
-- `public/manifest.webmanifest`：基础 Web App manifest。
-- `public/site-page.css`：隐私页、使用条款页和 404 共用样式。
-- `public/_headers`：Cloudflare Pages 安全响应头和缓存策略。
-
-这些文件会由 Vite 自动复制到 `dist/`。首页、隐私页和使用条款页都声明了 canonical、Open Graph、Twitter Card 和 `theme-color`；404 页面声明 noindex、description、manifest 和公共样式；`robots.txt` 指向主站 sitemap；`sitemap.xml` 包含首页、隐私页、使用条款页和 `lastmod`；`_headers` 里配置了基础安全头、静态资源缓存、搜索引擎文件类型、公共页面样式类型和 manifest 类型。主站页脚也提供了 `隐私与数据边界`、`使用条款` 和 `数据库说明` 入口。
+项目里如出现 TikTok Shop 商品流量 Excel，只能用于本地测试分析，不能提交。

@@ -59,7 +59,6 @@ function AppRuntime() {
   function saveConnection() {
     try {
       const next = TKFirestoreConnection.saveConfig(configText);
-      TKFirestoreConnection.clearLegacyConfigs();
       TKFirestoreConnection.dispatchConfigChanged({ connected: true, ...next });
       setConnectionOpen(false);
       showToast('已连接 Firebase');

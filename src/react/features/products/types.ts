@@ -10,6 +10,8 @@ type ProductSku = {
   estimatedShippingFee?: string | number;
   chargeWeightKg?: string | number;
   shippingNote?: string;
+  cargoType?: string;
+  [key: string]: unknown;
 };
 
 type ProductRecord = {

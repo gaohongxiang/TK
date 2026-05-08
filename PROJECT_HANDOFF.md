@@ -532,9 +532,9 @@ npm run release:check
 - 新增 `src/calc/formulas.mjs`，提供旧定价、定价新和利润复盘的纯公式导出：`calcLegacyRow`、`deriveLegacyOrigPrice`、`calcPricingRow`、`derivePricingOrigPrice`、`calcSalePrice`。
 - React 利润计算器已直接导入 `src/calc/formulas.mjs` 和 `src/shipping-core.mjs`；`src/calc/shared.mjs`、`src/calc/shipping.mjs`、`src/calc/legacy.mjs`、`src/calc/pricing.mjs` 这些旧 DOM 壳层已删除。
 - `tests/calc-formulas.test.js` 已改为断言纯公式输出和 React 页面直连公式；`tests/calc-shipping-quote.test.js` 已改为断言 React 页面直连共享运费核心；`tests/calc-react-state-sync.test.js` 保护定价新/利润复盘共用同一份 React 状态。
-- 新增 `src/global-settings.mjs`，提供全局设置的 ESM 导出，并保持从旧利润计算器存储迁移汇率。
+- 新增 `src/global-settings.mjs`，提供全局设置的 ESM 导出；当前完整 React SPA 只使用 `tk.global-settings.v1` 保存汇率、运费倍率和贴单费，不再保留旧利润计算器存储迁移。
 - 旧 `src/calc/index.mjs` 已删除；`index.html` 已移除旧 `js/calc/shared.js`、`js/calc/shipping.js`、`js/calc/legacy.js`、`js/calc/pricing.js`、`js/calc/index.js` 以及 `/src/calc/index.mjs` 的页面加载。
-- `src/global-settings.mjs` 已收敛为 ESM helper，并只初始化浏览器共享设置 store `window.__tkGlobalSettingsStore`，不再挂旧 `window.TKGlobalSettings` API。
+- `src/global-settings.mjs` 已收敛为 ESM helper，并使用模块内共享 store；不再挂旧 `window.TKGlobalSettings` API，也不再通过 `window.__tkGlobalSettingsStore` 共享状态。
 - `src/shipping-core.mjs` 已收敛为纯 ESM helper，不再挂旧 `window.TKShippingCore`。
 - 历史阶段中 `src/main.mjs` 曾统一导入 `global-settings`、`shipping-core`、`shared/html`、`shared/format`、`table-controls`、`searchable-select`、`data-sources/registry` 这些基础 ESM；当前完整 React SPA 已删除该入口，并已删除旧 `src/shared/html.mjs`、`src/shared/format.mjs`、`src/table-controls.mjs`、`src/data-sources/registry.mjs`。
 - `index.html` 已移除旧 `js/global-settings.js`、`js/shipping-core.js`、`js/shared/html.js`、`js/shared/format.js` 页面加载；旧 `js/` 源目录已统一清理。
@@ -649,7 +649,7 @@ npm run release:check
 - `tests/orders-firestore-rules.test.js` 已新增动态 `import()` 断言，确认 ESM 内置规则和文档规则保持一致。
 - 新增 `src/orders/form-utils.mjs`，提供订单弹窗商品/SKU 标签、商品默认参数合并、订单明细草稿归一化、旧版订单明细恢复、金额/尺寸解析等纯函数 ESM 导出；不再挂旧 `window.OrderTrackerFormUtils`。
 - `tests/orders-form-utils-module.test.js` 已新增动态 `import()` 断言，确认订单表单纯函数 ESM 输出稳定。
-- 新增 `src/firestore-connection.mjs`，提供 Firestore 配置解析、本地存储迁移、复制规则、配置变更广播和 React UI 注册 API；订单、商品、同步和 Toast 入口已改为 ESM import，不再挂旧 `window.TKFirestoreConnection`。
+- 新增 `src/firestore-connection.mjs`，提供 Firestore 配置解析、复制规则、配置变更广播和 React UI 注册 API；订单、商品、同步和 Toast 入口已改为 ESM import，不再挂旧 `window.TKFirestoreConnection`，也不再保留旧本地存储迁移兼容层。
 - `tests/firestore-connection-module.test.js` 已改为动态 `import()` 断言，确认 Firestore 连接 ESM 模块可直接导入、可解析 `firebaseConfig`，并保护不要回退到旧全局 API。
 - `src/orders/provider-firestore.mjs` 已收敛为纯 ESM provider，不再注册 `TKDataSourceRegistry`；React 订单页直接 import 使用。
 - `index.html` 已移除旧 `js/orders/index.js` 的页面加载；React SPA 阶段也已移除 `<script type="module" src="/src/orders/index.mjs"></script>`，订单运行入口改为 `src/react/features/orders/OrdersPage.tsx`。
@@ -840,7 +840,6 @@ npm install -D typescript @types/react @types/react-dom @vitejs/plugin-react tai
 
 ```text
 tsconfig.json
-tsconfig.node.json
 tailwind.config.ts
 postcss.config.js
 vite.config.mjs

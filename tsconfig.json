@@ -15,12 +15,12 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    "ignoreDeprecations": "6.0",
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/react/*"]
     }
   },
-  "include": ["src", "vite.config.mjs"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "vite.config.mjs"]
 }

@@ -76,18 +76,7 @@ function isOrderRefunded(order) {
   return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'y';
 }
 
-function getWindowGlobalSettingsStore(rootWindow = globalThis.window) {
-  return rootWindow?.__tkGlobalSettingsStore || null;
-}
-
-function getPricingExchangeRate(rootWindow = globalThis.window) {
-  const globalStore = getWindowGlobalSettingsStore(rootWindow);
-  return typeof globalStore?.getExchangeRate === 'function'
-    ? parseExchangeRateValue(globalStore.getExchangeRate())
-    : null;
-}
-
-function computeOrderSaleCny(order, exchangeRate = getPricingExchangeRate()) {
+function computeOrderSaleCny(order, exchangeRate = null) {
   const rate = parseExchangeRateValue(exchangeRate);
   const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
   if (rate === null) return null;
@@ -96,7 +85,7 @@ function computeOrderSaleCny(order, exchangeRate = getPricingExchangeRate()) {
   return roundMoney(saleJpy / rate);
 }
 
-function computeOrderCreatorCommission(order, exchangeRate = getPricingExchangeRate()) {
+function computeOrderCreatorCommission(order, exchangeRate = null) {
   const rate = parseExchangeRateValue(exchangeRate);
   const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
   const commissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率'] ?? order?.creatorCommissionRate);
@@ -506,26 +495,21 @@ function ordersEqual(a, b, options) {
 function create({
   state = {},
   constants = {},
-  window: rootWindow = globalThis.window,
   document: rootDocument = globalThis.document
 } = {}) {
   const safeConstants = { ...DEFAULT_CONSTANTS, ...(constants || {}) };
   const normalizer = createOrderNormalizer({ constants: safeConstants, nextUid: uid });
   const $ = selector => rootDocument?.querySelector?.(selector) || null;
 
-  function getScopedPricingExchangeRate() {
-    return getPricingExchangeRate(rootWindow);
-  }
-
-  function computeScopedOrderSaleCny(order, exchangeRate = getScopedPricingExchangeRate()) {
+  function computeScopedOrderSaleCny(order, exchangeRate = null) {
     return computeOrderSaleCny(order, exchangeRate);
   }
 
-  function computeScopedOrderCreatorCommission(order, exchangeRate = getScopedPricingExchangeRate()) {
+  function computeScopedOrderCreatorCommission(order, exchangeRate = null) {
     return computeOrderCreatorCommission(order, exchangeRate);
   }
 
-  function computeScopedOrderEstimatedProfit(order, exchangeRate = getScopedPricingExchangeRate()) {
+  function computeScopedOrderEstimatedProfit(order, exchangeRate = null) {
     return computeOrderEstimatedProfit(order, exchangeRate);
   }
 
@@ -813,7 +797,6 @@ function create({
     nowIso,
     showDatePicker,
     parseOrderMoneyValue,
-    getPricingExchangeRate: getScopedPricingExchangeRate,
     parseCreatorCommissionRateValue,
     computeOrderSaleCny: computeScopedOrderSaleCny,
     computeOrderCreatorCommission: computeScopedOrderCreatorCommission,

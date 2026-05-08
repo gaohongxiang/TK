@@ -1,7 +1,6 @@
 import { ORDER_TRACKER_FIRESTORE_RULES } from './orders/firestore-rules.mjs';
 
 const LS_KEY = 'tk.firestore.cfg.v1';
-const LEGACY_ORDER_KEY = 'tk.orders.cfg.v1';
 
 function getWindowRef() {
   if (typeof window !== 'undefined') return window;
@@ -96,22 +95,8 @@ function loadRaw(key) {
   }
 }
 
-function migrateLegacyConfig() {
-  const legacy = loadRaw(LEGACY_ORDER_KEY);
-  if (!legacy?.firestoreConfigText) return null;
-  const configText = normalizeConfigText(legacy.firestoreConfigText);
-  if (!configText) return null;
-  const next = {
-    configText,
-    projectId: legacy.firestoreProjectId || parseConfigInput(configText)?.projectId || '',
-    user: legacy.user || ''
-  };
-  getStorageRef()?.setItem?.(LS_KEY, JSON.stringify(next));
-  return next;
-}
-
 function getConfig() {
-  const saved = loadRaw(LS_KEY) || migrateLegacyConfig();
+  const saved = loadRaw(LS_KEY);
   if (!saved?.configText) return null;
   const configText = normalizeConfigText(saved.configText);
   if (!configText) return null;
@@ -135,23 +120,8 @@ function saveConfig(raw) {
   return next;
 }
 
-function clearLegacyConfigs() {
-  try {
-    const legacy = loadRaw(LEGACY_ORDER_KEY);
-    if (!legacy) return;
-    delete legacy.mode;
-    delete legacy.token;
-    delete legacy.gistId;
-    delete legacy.firestoreConfigText;
-    delete legacy.firestoreProjectId;
-    delete legacy.user;
-    getStorageRef()?.setItem?.(LEGACY_ORDER_KEY, JSON.stringify(legacy));
-  } catch (error) {}
-}
-
 function clearConfig() {
   getStorageRef()?.removeItem?.(LS_KEY);
-  clearLegacyConfigs();
   dispatchConfigChanged({ connected: false, configText: '', projectId: '' });
 }
 
@@ -252,7 +222,6 @@ const TKFirestoreConnection = {
   normalizeConfigText,
   getConfig,
   saveConfig,
-  clearLegacyConfigs,
   clearConfig,
   dispatchConfigChanged,
   registerUI,
@@ -274,7 +243,6 @@ export {
   normalizeConfigText,
   getConfig,
   saveConfig,
-  clearLegacyConfigs,
   clearConfig,
   dispatchConfigChanged,
   registerUI,

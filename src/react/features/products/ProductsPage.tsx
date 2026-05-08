@@ -627,7 +627,7 @@ function SkuEditorList({
       ...dimensions
     };
   }, [draft.cargoType, draft.defaultSizeText, draft.defaultWeightG]);
-  const pricingContext = useMemo(() => ensureGlobalSettingsStore(window).getPricingContext(), []);
+  const pricingContext = useMemo(() => ensureGlobalSettingsStore().getPricingContext(), []);
 
   if (!draft.skus.length) {
     return <div className={productSkuListClass} id="pl-sku-list"><div className={productSkuEmptyClass}>请先添加 SKU；每个 SKU 单独维护重量、尺寸和预估运费。</div></div>;
@@ -847,9 +847,6 @@ function ProductsPage() {
       normalizeAccountName,
       toAccountSlot,
       uniqueAccounts
-    },
-    ui: {
-      toast: showToast
     }
   }), [activeAccount, allAccounts, products, searchQuery, sortOrder]);
 
@@ -1047,7 +1044,7 @@ function ProductsPage() {
       ...dimensions,
       ...buildEstimatedShippingSnapshot({
         shippingCore: TKShippingCore,
-        pricingContext: ensureGlobalSettingsStore(window).getPricingContext(),
+        pricingContext: ensureGlobalSettingsStore().getPricingContext(),
         product: {
           cargoType: draft.cargoType,
           weightG: draft.defaultWeightG,
@@ -1097,7 +1094,7 @@ function ProductsPage() {
       const dimensions = resolveProductDimensions({ ...sku, sizeText: useDefaults ? defaultSnapshot.sizeText : sizeText });
       const snapshot = buildEstimatedShippingSnapshot({
         shippingCore: TKShippingCore,
-        pricingContext: ensureGlobalSettingsStore(window).getPricingContext(),
+        pricingContext: ensureGlobalSettingsStore().getPricingContext(),
         product: {
           cargoType: draft.cargoType,
           weightG: useDefaults ? defaultSnapshot.weightG : weightG,
@@ -1191,7 +1188,7 @@ function ProductsPage() {
       const result = await providerRef.current.deleteProduct(tkId, { waitForCommit: false });
       setProducts(previous => previous.filter(item => item.tkId !== tkId));
       notifyProductsChanged({ action: 'delete', tkId });
-      result?.commitPromise?.then(() => {
+      if (typeof result === 'object' && result?.commitPromise) result.commitPromise.then(() => {
         notifyProductsChanged({ action: 'commit', tkId });
       }).catch(() => {});
       showToast('商品已删除');
@@ -1207,7 +1204,7 @@ function ProductsPage() {
     }
     const defaultSelected = activeAccount && activeAccount !== '__all__'
       ? new Set([activeAccount])
-      : new Set(exportOptions.map(option => option.key));
+      : new Set<string>(exportOptions.map(option => String(option.key)));
     setExportSelected(defaultSelected);
     setExportOpen(true);
   }

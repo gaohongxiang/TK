@@ -99,7 +99,7 @@ type OrderDraft = {
   items: OrderItemDraft[];
 };
 
-const LS_KEY = 'tk.orders.cfg.v1';
+const LS_KEY = 'tk.orders.runtime.v1';
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
 const ORDER_STATUS_OPTIONS = ['未采购', '已采购', '在途', '已入仓', '已送达', '已完成', '订单取消'];
@@ -356,7 +356,7 @@ function findProduct(products: ProductRecord[], accountName: string, tkId: strin
 }
 
 function computeEstimatedShipping(draft: OrderDraft, products: ProductRecord[]) {
-  const pricingContext = ensureGlobalSettingsStore(window).getPricingContext();
+  const pricingContext = ensureGlobalSettingsStore().getPricingContext();
   if (!pricingContext?.rate) return '';
   const actualWeight = parseOrderMoneyValue(draft.weightText);
   if (actualWeight === null || actualWeight <= 0) return '';
@@ -382,7 +382,7 @@ function computeEstimatedShipping(draft: OrderDraft, products: ProductRecord[]) 
     quote,
     multiplier: pricingContext.shippingMultiplier,
     labelFee: pricingContext.labelFee
-  });
+  } as Parameters<typeof TKShippingCore.computeCalculatedShippingCost>[0]);
   return finalFee === null ? '' : formatNumericValue(finalFee);
 }
 
@@ -400,18 +400,19 @@ function computeAutoFields(draft: OrderDraft, products: ProductRecord[]) {
     '订单状态': draft.orderStatus
   };
   const warningText = computeWarning(tempOrder).text;
+  const exchangeRate = ensureGlobalSettingsStore().getExchangeRate();
   const commission = computeOrderCreatorCommission({
     '售价': draft.salePrice,
     '达人佣金率': draft.creatorCommissionRate,
     '是否退款': draft.isRefunded ? '1' : ''
-  }, ensureGlobalSettingsStore(window).getExchangeRate());
+  }, exchangeRate);
   const profit = computeOrderEstimatedProfit({
     '售价': draft.salePrice,
     '采购价格': draft.purchasePrice || (totals.purchase ? formatNumericValue(totals.purchase) : ''),
     '预估运费': estimatedShippingFee,
     '达人佣金率': draft.creatorCommissionRate,
     '是否退款': draft.isRefunded ? '1' : ''
-  }, ensureGlobalSettingsStore(window).getExchangeRate());
+  }, exchangeRate);
   return {
     ...draft,
     items,
@@ -781,7 +782,7 @@ function OrdersSummary({
     exchangeRate,
     computeOrderCreatorCommission,
     computeOrderEstimatedProfit
-  });
+  } as Parameters<typeof derivePurchaseSummary>[0]);
   const expenseValue = (summary.filteredTotal || 0) + (summary.filteredShippingTotal || 0) + (summary.filteredCreatorCommissionTotal || 0);
   const allExpenseValue = (summary.allTotal || 0) + (summary.allShippingTotal || 0) + (summary.allCreatorCommissionTotal || 0);
 
@@ -1259,7 +1260,7 @@ function OrdersPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [exportSelected, setExportSelected] = useState<Set<string>>(new Set());
   const [storageHelpOpen, setStorageHelpOpen] = useState(false);
-  const exchangeRate = ensureGlobalSettingsStore(window).getExchangeRate();
+  const exchangeRate = ensureGlobalSettingsStore().getExchangeRate();
 
   const allAccounts = useMemo(() => uniqueAccounts([...accounts, ...orders.map(order => order['账号'])]).sort((left, right) => left.localeCompare(right)), [accounts, orders]);
   const exportOptions = useMemo(() => getExportAccountOptions({ accounts: allAccounts, orders, constants: { UNASSIGNED_ACCOUNT_SLOT } }), [allAccounts, orders]);

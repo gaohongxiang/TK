@@ -136,11 +136,6 @@ function toPlain(value) {
 }
 
 (async () => {
-  const rootWindow = {
-    __tkGlobalSettingsStore: {
-      getExchangeRate: () => 20
-    }
-  };
   const sharedModule = await import(pathToFileURL(esmPath).href);
   const esmTools = sharedModule.OrderTrackerShared.create({
     state: {
@@ -153,20 +148,13 @@ function toPlain(value) {
       COURIER_AUTO_DETECTORS: [
         { name: '顺丰快递', test: value => /^SF/i.test(value) }
       ]
-    },
-    window: rootWindow
+    }
   });
 
   assert.deepEqual(
     esmTools.uniqueAccounts([' A ', '', 'B', 'A']),
     ['A', 'B'],
     'ESM 共享 helper 应能正确去重账号'
-  );
-
-  assert.equal(
-    esmTools.getPricingExchangeRate(),
-    20,
-    'ESM 共享 helper 应优先读取利润计算器的日元汇率'
   );
 
   assert.equal(

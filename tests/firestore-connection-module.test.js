@@ -24,6 +24,12 @@ assert.match(
   '全局 Firestore 连接模块需要使用独立的本地存储键'
 );
 
+assert.doesNotMatch(
+  source,
+  /LEGACY_ORDER_KEY|migrateLegacyConfig|clearLegacyConfigs|gistId|token/,
+  '完整 React SPA 不应再保留旧订单配置迁移或 Gist 配置兼容层'
+);
+
 assert.match(
   source,
   /function open\(/,

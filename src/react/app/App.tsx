@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { AppRuntime } from './AppRuntime';
 import { CalculatorApp } from '../features/calculator/CalculatorApp';
 import { OrdersPage } from '../features/orders/OrdersPage';
@@ -10,7 +10,7 @@ import { Card, CardTitle } from '@/components/ui/card';
 
 type ModuleItem = {
   key: string;
-  label?: string;
+  label: string;
 };
 
 type AnalyticsRouteModule = typeof import('../features/analytics/AnalyticsRoute');
@@ -20,12 +20,18 @@ const fallbackModules = Object.freeze([
   Object.freeze({ key: 'products', label: '商品管理' }),
   Object.freeze({ key: 'orders', label: '订单管理' }),
   Object.freeze({ key: 'analytics', label: '数据分析' })
-]);
+]) as readonly ModuleItem[];
 
 let analyticsRoutePromise: Promise<AnalyticsRouteModule> | null = null;
 
 function getModules(config = TKAppConfig): ModuleItem[] {
-  return ((config && Array.isArray(config.modules)) ? config.modules : fallbackModules) as ModuleItem[];
+  const modules = (config && Array.isArray(config.modules)) ? config.modules : fallbackModules;
+  return modules
+    .map(module => ({
+      key: String(module?.key || '').trim(),
+      label: String(module?.label || '').trim()
+    }))
+    .filter(module => module.key && module.label);
 }
 
 function getModuleMap(config = TKAppConfig) {
@@ -84,7 +90,7 @@ function AnalyticsStatus({
 }
 
 function AnalyticsPane({ active }: { active: boolean }) {
-  const [Route, setRoute] = useState<null | (() => JSX.Element)>(null);
+  const [Route, setRoute] = useState<null | ComponentType>(null);
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [retryKey, setRetryKey] = useState(0);
 

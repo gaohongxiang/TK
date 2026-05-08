@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
-const LS_KEY = 'tk.profit.v1';
+const LS_KEY = 'tk.calculator.v1';
 
 const DEFAULTS = {
   fee: 7,
@@ -156,7 +156,7 @@ function finalShippingCost(state: CalcState, quote = quoteForPricing(state)) {
     quote,
     multiplier: Math.max(1, state.shippingMultiplierNew || 1),
     labelFee: state.labelFeeNew || 0
-  });
+  } as Parameters<typeof computeCalculatedShippingCost>[0]);
 }
 
 function chargeRuleText(quote: ReturnType<typeof computeShippingQuote>) {
@@ -694,16 +694,27 @@ function ReferenceCards() {
 function CalculatorApp() {
   const [state, setState] = useState<CalcState>(() => {
     const next = loadState();
-    const store = typeof window !== 'undefined' ? ensureGlobalSettingsStore(window) : null;
-    const globalRate = store?.getExchangeRate?.();
-    return globalRate ? { ...next, rateNew: globalRate } : next;
+    const store = typeof window !== 'undefined' ? ensureGlobalSettingsStore() : null;
+    const pricingContext = store?.getPricingContext?.();
+    return pricingContext
+      ? {
+          ...next,
+          rateNew: pricingContext.rate || next.rateNew,
+          shippingMultiplierNew: pricingContext.shippingMultiplier,
+          labelFeeNew: pricingContext.labelFee
+        }
+      : next;
   });
   const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     saveState(state);
     if (typeof window !== 'undefined') {
-      ensureGlobalSettingsStore(window).setExchangeRate(state.rateNew || null);
+      ensureGlobalSettingsStore().setPricingContext({
+        exchangeRate: state.rateNew || null,
+        shippingMultiplier: state.shippingMultiplierNew,
+        labelFee: state.labelFeeNew
+      });
     }
   }, [state]);
 

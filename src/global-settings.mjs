@@ -1,5 +1,9 @@
 const DEFAULT_STORAGE_KEY = 'tk.global-settings.v1';
-const LEGACY_PROFIT_STORAGE_KEY = 'tk.profit.v1';
+const DEFAULT_PRICING_CONTEXT = {
+  exchangeRate: null,
+  shippingMultiplier: 1.1,
+  labelFee: 1.2
+};
 
 function parseExchangeRate(value) {
   const raw = String(value ?? '').replace(/,/g, '').trim();
@@ -8,10 +12,20 @@ function parseExchangeRate(value) {
   return Number.isFinite(parsed) && parsed > 0 ? Number(parsed.toFixed(4)) : null;
 }
 
-function create({
-  storageKey = DEFAULT_STORAGE_KEY,
-  legacyProfitStorageKey = LEGACY_PROFIT_STORAGE_KEY
-} = {}) {
+function parsePositiveNumber(value, fallback, minimum = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= minimum ? parsed : fallback;
+}
+
+function normalizeState(raw = {}) {
+  return {
+    exchangeRate: parseExchangeRate(raw.exchangeRate),
+    shippingMultiplier: parsePositiveNumber(raw.shippingMultiplier, DEFAULT_PRICING_CONTEXT.shippingMultiplier, 1),
+    labelFee: parsePositiveNumber(raw.labelFee, DEFAULT_PRICING_CONTEXT.labelFee, 0)
+  };
+}
+
+function create({ storageKey = DEFAULT_STORAGE_KEY } = {}) {
   function readJson(key) {
     try {
       return typeof localStorage !== 'undefined'
@@ -29,36 +43,30 @@ function create({
 
   function loadState() {
     const saved = readJson(storageKey);
-    const savedRate = parseExchangeRate(saved?.exchangeRate);
-    if (savedRate !== null) {
-      return { exchangeRate: savedRate };
-    }
-
-    const legacy = readJson(legacyProfitStorageKey);
-    const legacyRate = parseExchangeRate(legacy?.rateNew);
-    if (legacyRate !== null) {
-      const migrated = { exchangeRate: legacyRate };
-      writeJson(storageKey, migrated);
-      return migrated;
-    }
-
-    return { exchangeRate: null };
+    return normalizeState(saved || DEFAULT_PRICING_CONTEXT);
   }
 
   let state = loadState();
-
-  function readLegacyProfitState() {
-    return readJson(legacyProfitStorageKey) || {};
-  }
 
   function getExchangeRate() {
     return parseExchangeRate(state.exchangeRate);
   }
 
   function setExchangeRate(value) {
-    state = { exchangeRate: parseExchangeRate(value) };
+    state = normalizeState({ ...state, exchangeRate: value });
     writeJson(storageKey, state);
     return state.exchangeRate;
+  }
+
+  function setPricingContext(next = {}) {
+    state = normalizeState({
+      ...state,
+      exchangeRate: next.exchangeRate ?? next.rate ?? state.exchangeRate,
+      shippingMultiplier: next.shippingMultiplier ?? state.shippingMultiplier,
+      labelFee: next.labelFee ?? state.labelFee
+    });
+    writeJson(storageKey, state);
+    return getPricingContext();
   }
 
   function getState() {
@@ -66,20 +74,17 @@ function create({
   }
 
   function getPricingContext() {
-    const legacy = readLegacyProfitState();
-    const rate = getExchangeRate();
-    const shippingMultiplierRaw = Number(legacy?.shippingMultiplierNew || 1.1);
-    const labelFeeRaw = Number(legacy?.labelFeeNew || 1.2);
     return {
-      rate,
-      shippingMultiplier: Number.isFinite(shippingMultiplierRaw) && shippingMultiplierRaw >= 1 ? shippingMultiplierRaw : 1.1,
-      labelFee: Number.isFinite(labelFeeRaw) && labelFeeRaw >= 0 ? labelFeeRaw : 1.2
+      rate: getExchangeRate(),
+      shippingMultiplier: state.shippingMultiplier,
+      labelFee: state.labelFee
     };
   }
 
   return {
     getExchangeRate,
     setExchangeRate,
+    setPricingContext,
     getState,
     getPricingContext
   };
@@ -87,23 +92,18 @@ function create({
 
 const TKGlobalSettings = {
   DEFAULT_STORAGE_KEY,
-  LEGACY_PROFIT_STORAGE_KEY,
   create
 };
 
-function ensureGlobalSettingsStore(targetWindow = globalThis.window) {
-  if (!targetWindow) return create();
-  targetWindow.__tkGlobalSettingsStore = targetWindow.__tkGlobalSettingsStore || create();
-  return targetWindow.__tkGlobalSettingsStore;
-}
+let sharedStore = null;
 
-if (typeof window !== 'undefined') {
-  ensureGlobalSettingsStore(window);
+function ensureGlobalSettingsStore() {
+  sharedStore = sharedStore || create();
+  return sharedStore;
 }
 
 export {
   DEFAULT_STORAGE_KEY,
-  LEGACY_PROFIT_STORAGE_KEY,
   TKGlobalSettings,
   create,
   ensureGlobalSettingsStore,

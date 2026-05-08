@@ -2,6 +2,7 @@
 set -eu
 
 npm test
+npm run typecheck
 ./scripts/docs-build.sh
 npm run build
 npm run smoke

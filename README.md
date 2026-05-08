@@ -46,7 +46,7 @@
 - `src/react/app/App.tsx` 接管 App Shell、hash 路由、页脚和四个主视图。
 - `src/react/styles.css` 接管主站样式入口；React 页面样式主要在组件 Tailwind/shadcn 风格 primitives 中，`src/react/styles/base.css` 只保留 token 和基础全局规则。
 - 利润计算器、商品管理、订单管理、数据分析都由 React 页面渲染。
-- `src/*.mjs` 继续作为业务纯函数、Firestore provider、解析器和导出逻辑来源。
+- `src/` 下业务纯函数、Firestore provider、解析器和导出逻辑已迁为 TypeScript，React 页面直接 import 使用。
 - 已删除旧 DOM 入口和旧 React 二次挂载入口，构建产物不发布旧 `dist/js/`。
 
 ### 2. 文档站
@@ -90,7 +90,7 @@
 
 - `FirebaseProvider`：当前商品和订单默认实现，由 React 页面直接使用。已完成。
 - `BrowserExcelProvider`：数据分析 Excel 只在浏览器内存解析。已完成。
-- `src/app-config.mjs`：项目级配置，明确正式数据源为 Firestore、本站不保存用户业务数据。已完成。
+- `src/app-config.ts`：项目级配置，明确正式数据源为 Firestore、本站不保存用户业务数据。已完成。
 - `LocalFileProvider`：未来可选，适合只用本地导入/导出的轻量用户。暂不实现。
 
 当前架构不改变现有 Firebase 离线缓存流程，也不保存用户数据。
@@ -156,7 +156,7 @@ npm run e2e
 npm run release:check
 ```
 
-这个命令会依次运行单元/契约测试、文档构建、主站构建、HTTP smoke、浏览器级 e2e 和 `git diff --check`。
+这个命令会依次运行单元/契约测试、TypeScript 类型检查、文档构建、主站构建、HTTP smoke、浏览器级 e2e 和 `git diff --check`。
 同一套检查也配置在 `.github/workflows/release-check.yml`，push 到 `main` 或提交 PR 时会自动运行。
 
 ### 第四阶段：Cloudflare 增强

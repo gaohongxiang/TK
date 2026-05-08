@@ -16,9 +16,9 @@ import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStrip
 import { EmptyState, TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { showAppToast } from '@/app/toast';
-import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
-import { OrderTrackerProviderFirestore } from '../../../orders/provider-firestore.mjs';
-import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
+import { TKFirestoreConnection } from '../../../firestore-connection.ts';
+import { OrderTrackerProviderFirestore } from '../../../orders/provider-firestore.ts';
+import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.ts';
 import {
   addDays,
   buildOrderItemsSummary,
@@ -31,13 +31,13 @@ import {
   normalizeOrderRecord,
   parseOrderMoneyValue,
   todayStr
-} from '../../../orders/shared.mjs';
+} from '../../../orders/shared.ts';
 import {
   buildExportFilename,
   buildExportRows,
   buildOrdersCsv,
   getExportAccountOptions
-} from '../../../orders/export.mjs';
+} from '../../../orders/export.ts';
 import {
   buildOrderCourierSummary,
   deriveDisplayedOrders,
@@ -47,9 +47,9 @@ import {
   formatTableMoneyValue,
   getProfitCellToneClass,
   isCreatorOrder
-} from '../../../orders/table.mjs';
-import { ensureGlobalSettingsStore } from '../../../global-settings.mjs';
-import { TKShippingCore } from '../../../shipping-core.mjs';
+} from '../../../orders/table.ts';
+import { ensureGlobalSettingsStore } from '../../../global-settings.ts';
+import { TKShippingCore } from '../../../shipping-core.ts';
 import { cn } from '@/lib/utils';
 import {
   Copy,
@@ -1263,7 +1263,11 @@ function OrdersPage() {
   const exchangeRate = ensureGlobalSettingsStore().getExchangeRate();
 
   const allAccounts = useMemo(() => uniqueAccounts([...accounts, ...orders.map(order => order['账号'])]).sort((left, right) => left.localeCompare(right)), [accounts, orders]);
-  const exportOptions = useMemo(() => getExportAccountOptions({ accounts: allAccounts, orders, constants: { UNASSIGNED_ACCOUNT_SLOT } }), [allAccounts, orders]);
+  const exportOptions = useMemo(() => getExportAccountOptions({ accounts: allAccounts, orders, constants: { UNASSIGNED_ACCOUNT_SLOT } }).map(option => ({
+    key: String(option.key),
+    label: String(option.label),
+    count: option.count
+  })), [allAccounts, orders]);
   const accountTabItems = useMemo(() => allAccounts.map(account => ({
     key: account,
     label: account,
@@ -1505,9 +1509,9 @@ function OrdersPage() {
       showToast('当前没有可导出的订单数据', 'error');
       return;
     }
-    const selected = activeAccount !== '__all__'
+    const selected: Set<string> = activeAccount !== '__all__'
       ? new Set([activeAccount])
-      : new Set(exportOptions.map(option => option.key));
+      : new Set(exportOptions.map(option => String(option.key)));
     setExportSelected(selected);
     setExportOpen(true);
   }
@@ -1517,7 +1521,7 @@ function OrdersPage() {
       showToast('请至少选择一个账号', 'error');
       return;
     }
-    const selectedKeys = [...exportSelected];
+    const selectedKeys = [...exportSelected].map(String);
     const rowsSource = orders.filter(order => selectedKeys.includes(toAccountSlot(order['账号'])));
     if (!rowsSource.length) {
       showToast('当前选择下没有可导出的订单数据', 'error');
@@ -1525,7 +1529,7 @@ function OrdersPage() {
     }
     const rows = buildExportRows({ orders: rowsSource, exchangeRate, computeOrderCreatorCommissionFn: computeOrderCreatorCommission, computeOrderEstimatedProfitFn: computeOrderEstimatedProfit });
     const csv = buildOrdersCsv({ rows, includeBom: true });
-    const selectedOptions = exportOptions.filter(option => exportSelected.has(option.key));
+    const selectedOptions = exportOptions.filter(option => exportSelected.has(String(option.key)));
     const filename = buildExportFilename(selectedOptions);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);

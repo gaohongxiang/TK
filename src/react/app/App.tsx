@@ -4,7 +4,7 @@ import { CalculatorApp } from '../features/calculator/CalculatorApp';
 import { OrdersPage } from '../features/orders/OrdersPage';
 import { ProductsPage } from '../features/products/ProductsPage';
 import { AppShell } from '../layouts/AppShell';
-import { TKAppConfig } from '../../app-config.mjs';
+import { TKAppConfig } from '../../app-config.ts';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 

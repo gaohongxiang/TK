@@ -1,4 +1,4 @@
-import { TKFirestoreConnection } from '../../firestore-connection.mjs';
+import { TKFirestoreConnection } from '../../firestore-connection.ts';
 
 type ToastType = 'ok' | 'error';
 

@@ -1,10 +1,10 @@
-import ReactEChartsCore from 'echarts-for-react/lib/core';
+import ReactEChartsCoreModule from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import { FunnelChart, PieChart, ScatterChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TitleComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import { Upload } from 'lucide-react';
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState, type ComponentType, type CSSProperties } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,12 @@ import { formatInteger, formatPercent, formatYen, shortenText } from './format';
 import { cn } from '@/lib/utils';
 
 echarts.use([CanvasRenderer, FunnelChart, GridComponent, LegendComponent, PieChart, ScatterChart, TitleComponent, TooltipComponent]);
+
+const ReactEChartsCore = ((ReactEChartsCoreModule as any).default ?? ReactEChartsCoreModule) as ComponentType<{
+  echarts: typeof echarts;
+  className?: string;
+  option: any;
+}>;
 
 function ReactECharts(props: { className?: string; option: any }) {
   return <ReactEChartsCore echarts={echarts} {...props} />;

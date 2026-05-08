@@ -1,6 +1,6 @@
-import { TKAnalyticsAnalyzer } from '../../../analytics/analyzer.mjs';
-import { TKAnalyticsParser } from '../../../analytics/parser.mjs';
-import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
+import { TKAnalyticsAnalyzer } from '../../../analytics/analyzer.ts';
+import { TKAnalyticsParser } from '../../../analytics/parser.ts';
+import { TKFirestoreConnection } from '../../../firestore-connection.ts';
 import { AnalyticsApp } from './AnalyticsApp';
 
 declare global {

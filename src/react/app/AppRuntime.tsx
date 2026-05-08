@@ -5,7 +5,7 @@ import { FormField, FormRow } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Toast } from '@/components/ui/toast';
 import { useEffect, useState } from 'react';
-import { TKFirestoreConnection } from '../../firestore-connection.mjs';
+import { TKFirestoreConnection } from '../../firestore-connection.ts';
 
 type ToastType = 'ok' | 'error';
 type ToastState = {

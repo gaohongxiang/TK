@@ -12,14 +12,14 @@ import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStrip
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { showAppToast, type ToastType } from '@/app/toast';
-import { TKFirestoreConnection } from '../../../firestore-connection.mjs';
-import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.mjs';
-import { ProductLibraryExport, csvEscape } from '../../../products/export.mjs';
+import { TKFirestoreConnection } from '../../../firestore-connection.ts';
+import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.ts';
+import { ProductLibraryExport, csvEscape } from '../../../products/export.ts';
 import {
   normalizeAccountName,
   toAccountSlot,
   uniqueAccounts
-} from '../../../products/accounts.mjs';
+} from '../../../products/accounts.ts';
 import {
   buildBatchSkuDrafts,
   buildEstimatedShippingSnapshot,
@@ -27,10 +27,10 @@ import {
   matchesBatchSkuName,
   resolveProductDimensions,
   skuUsesProductDefaults
-} from '../../../products/form-utils.mjs';
-import { ProductLibraryTable } from '../../../products/table.mjs';
-import { ensureGlobalSettingsStore } from '../../../global-settings.mjs';
-import { TKShippingCore } from '../../../shipping-core.mjs';
+} from '../../../products/form-utils.ts';
+import { ProductLibraryTable } from '../../../products/table.ts';
+import { ensureGlobalSettingsStore } from '../../../global-settings.ts';
+import { TKShippingCore } from '../../../shipping-core.ts';
 import {
   Copy,
   ExternalLink,
@@ -1110,7 +1110,7 @@ function ProductsPage() {
         skuId,
         skuName,
         useProductDefaults: useDefaults,
-        weightG: useDefaults ? '' : String(snapshot.weightG || weightG),
+        weightG: useDefaults ? '' : String(weightG),
         sizeText: useDefaults ? '' : String(dimensions.sizeText || sizeText),
         lengthCm: useDefaults ? '' : dimensions.lengthCm,
         widthCm: useDefaults ? '' : dimensions.widthCm,
@@ -1150,7 +1150,7 @@ function ProductsPage() {
     const current = editingTkId ? products.find(item => item.tkId === editingTkId) : null;
     const defaultSnapshot = buildProductDefaultsSnapshot();
     try {
-      const result = await providerRef.current.upsertProduct({
+      const result: any = await providerRef.current.upsertProduct({
         ...current,
         ...payload,
         defaults: {

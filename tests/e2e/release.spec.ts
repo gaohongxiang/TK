@@ -361,6 +361,38 @@ test.describe('release browser smoke', () => {
     await page.locator('#overseasShippingNew').fill('5');
     await expect(page.locator('#totalCostNew')).toHaveValue('25.00');
     await expect(page.locator('#tbodyNew')).toContainText('4折');
+    const calcVisualState = await page.evaluate(() => {
+      const cost = document.querySelector<HTMLInputElement>('#costNew');
+      const total = document.querySelector<HTMLInputElement>('#totalCostNew');
+      const firstTab = document.querySelector<HTMLElement>('[data-calc-tab="pricing"]');
+      const secondTab = document.querySelector<HTMLElement>('[data-calc-tab="pricingNew"]');
+      const tableCell = document.querySelector<HTMLElement>('#tbodyNew td');
+      if (!cost || !total || !firstTab || !secondTab || !tableCell) return null;
+      const costStyle = getComputedStyle(cost);
+      const totalStyle = getComputedStyle(total);
+      const firstTabBox = firstTab.getBoundingClientRect();
+      const secondTabBox = secondTab.getBoundingClientRect();
+      const cellStyle = getComputedStyle(tableCell);
+      return {
+        costBackground: costStyle.backgroundImage || costStyle.backgroundColor,
+        costHeight: cost.getBoundingClientRect().height,
+        totalBackground: totalStyle.backgroundImage || totalStyle.backgroundColor,
+        totalHeight: total.getBoundingClientRect().height,
+        tabWidth: firstTabBox.width,
+        tabGap: Math.round(secondTabBox.left - firstTabBox.right),
+        tableCellBorderLeft: cellStyle.borderLeftWidth,
+        tableCellBorderRight: cellStyle.borderRightWidth
+      };
+    });
+    expect(calcVisualState).not.toBeNull();
+    expect(calcVisualState?.costBackground).toContain('linear-gradient');
+    expect(calcVisualState?.totalBackground).toContain('linear-gradient');
+    expect(calcVisualState?.costHeight).toBeGreaterThanOrEqual(48);
+    expect(calcVisualState?.totalHeight).toBeGreaterThanOrEqual(48);
+    expect(calcVisualState?.tabWidth).toBeLessThan(140);
+    expect(calcVisualState?.tabGap).toBeGreaterThanOrEqual(0);
+    expect(calcVisualState?.tableCellBorderLeft).toBe('0px');
+    expect(calcVisualState?.tableCellBorderRight).toBe('0px');
 
     await page.locator('nav.modules a[data-view="products"]').click();
     await expect(page.locator('#pl-main')).toBeVisible();

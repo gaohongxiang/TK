@@ -45,6 +45,24 @@ assert.match(
   'React 利润计算器结果表需要使用共享 Table primitive'
 );
 
+assert.match(
+  reactCalculatorSource,
+  /calcResultTableClass = 'calc-result-table[\s\S]*border-0[\s\S]*\[\&_td\]:border-x-0[\s\S]*\[\&_th\]:border-x-0/,
+  '利润计算器折扣结果表需要保持旧版只留横线的视觉，不应出现外边框和竖线'
+);
+
+assert.match(
+  reactCalculatorSource,
+  /id="totalCostNew" tone="expense"[\s\S]*id="totalCostReview" tone="expense"/,
+  '定价新和利润复盘总费用字段需要保持费用红色输入框风格'
+);
+
+assert.match(
+  reactCalculatorSource,
+  /calcTabsClass = 'calc-tabs flex w-auto flex-none[\s\S]*className="flex-none border-transparent/,
+  '利润计算器模式按钮需要保持旧版自然宽度按钮组，不应铺满成三等分'
+);
+
 assert.doesNotMatch(
   reactCalculatorSource,
   /<table className="mono calc-result-table"/,

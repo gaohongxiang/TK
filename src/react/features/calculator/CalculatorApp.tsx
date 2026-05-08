@@ -216,10 +216,10 @@ const calcLayoutClass = 'calc-layout-grid grid grid-cols-[minmax(0,1.1fr)_minmax
 const calcFormSectionClass = 'calc-form-section mt-[18px]';
 const calcDetailsClass = 'calc-details group mt-4';
 const calcDetailsGridClass = 'calc-details-grid mt-2.5';
-const calcToolbarClass = 'calc-toolbar mb-2.5 flex flex-wrap items-center justify-center gap-0 max-[768px]:items-stretch';
-const calcSubnavClass = 'calc-subnav flex w-full min-w-0 items-center rounded-2xl border border-[color-mix(in_srgb,var(--border)_78%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_74%,transparent),color-mix(in_srgb,var(--panel)_92%,transparent))] px-2.5 py-1 shadow-[0_8px_20px_rgba(14,20,44,.07)] max-[768px]:px-[11px] max-[768px]:py-2.5';
-const calcTabbarClass = 'calc-tabbar flex w-full items-center justify-start gap-2';
-const calcTabsClass = 'calc-tabs flex w-full flex-wrap gap-2.5 max-[768px]:w-auto max-[768px]:min-w-0 max-[768px]:flex-1';
+const calcToolbarClass = 'calc-toolbar mb-2.5 flex flex-wrap items-center justify-start gap-0 max-[768px]:items-stretch';
+const calcSubnavClass = 'calc-subnav flex w-full min-w-0 items-center justify-start rounded-2xl border border-[color-mix(in_srgb,var(--border)_78%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_74%,transparent),color-mix(in_srgb,var(--panel)_92%,transparent))] px-3 py-1.5 shadow-[0_8px_20px_rgba(14,20,44,.07)] max-[768px]:px-[11px] max-[768px]:py-2.5';
+const calcTabbarClass = 'calc-tabbar flex w-auto min-w-0 items-center justify-start gap-2';
+const calcTabsClass = 'calc-tabs flex w-auto flex-none flex-wrap items-center gap-1.5 max-[768px]:min-w-0';
 const calcHelpButtonClass = 'calc-help-icon h-7 w-7 shrink-0 rounded-full border border-[var(--border)] bg-[var(--panel)] p-0 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)] [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.5] [&_svg]:[stroke-linecap:round] [&_svg]:[stroke-linejoin:round]';
 const knownSaleItemClass = 'known-sale-item flex flex-col justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel2)] px-3.5 py-3';
 const knownSaleLabelClass = 'label text-[11px] uppercase tracking-[1px] text-[var(--muted)]';
@@ -249,7 +249,7 @@ const shippingFormulaClass = 'pricing-ship-inline-formula mt-2.5 whitespace-norm
 const calcFormulaBlockClass = 'calc-formula-block mt-2.5 border-t border-dashed border-[var(--border)] pt-2 text-[var(--muted)]';
 const calcFormulaTitleClass = 'calc-formula-title mb-1 text-[9.5px] uppercase tracking-[.6px] opacity-70';
 const calcFormulaListClass = 'calc-formula-list flex flex-col gap-[3px] font-mono text-[10.5px] leading-[1.28]';
-const calcResultTableClass = 'calc-result-table mt-1.5 w-full border-collapse text-sm tabular-nums max-[640px]:text-xs';
+const calcResultTableClass = 'calc-result-table mt-1.5 w-full border-collapse border-0 text-sm tabular-nums [&_td]:border-x-0 [&_td]:border-t-0 [&_th]:border-x-0 [&_th]:border-t-0 [&_tbody_tr:last-child_td]:border-b-0 max-[640px]:text-xs';
 const calcResultHeadClass = 'px-2.5 py-[11px] text-[11.5px] max-[640px]:px-1 max-[640px]:py-[9px] max-[640px]:text-[10.5px]';
 const calcResultCellClass = 'px-2.5 py-[11px] max-[640px]:px-1 max-[640px]:py-[9px]';
 const calcResultAnchorCellClass = 'bg-[linear-gradient(90deg,rgba(110,168,255,.14),transparent)] font-semibold';
@@ -414,7 +414,7 @@ function PricingNewPanel({
             <Field id="costNew" label="采购价 ¥" className="expense-field" value={state.costNew} onChange={value => updateNumber('costNew', value)} />
             <Field id="overseasShippingNew" label="海外运费 ¥" className="expense-field" value={state.overseasShippingNew} onChange={value => updateNumber('overseasShippingNew', value)} />
             <FormField htmlFor="totalCostNew" label={<>总费用 ¥<InlineToken variant="var">采购价+海外运费</InlineToken></>} className="expense-field">
-              <Input id="totalCostNew" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
+              <Input id="totalCostNew" tone="expense" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
             </FormField>
           </FormRow>
           <ShippingInline state={state} onNumber={updateNumber} onCargo={updateCargo} onImport={importShipping} />
@@ -578,7 +578,7 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
           <FormRow>
             <Field id="salePrice" label="实际售价（円）" className="success" value={state.salePrice || ''} onChange={value => updateNumber('salePrice', value)} />
             <FormField htmlFor="totalCostReview" label={<>总费用 ¥<InlineToken variant="var">采购价+海外运费</InlineToken></>} className="expense-field">
-              <Input id="totalCostReview" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
+              <Input id="totalCostReview" tone="expense" type="number" step="0.01" min="0" value={totalCost.toFixed(2)} readOnly />
             </FormField>
           </FormRow>
           <div className={calcFormSectionClass}>
@@ -743,7 +743,7 @@ function CalculatorApp() {
               ].map(([key, label]) => (
                 <TabsTrigger
                   active={state.calcTab === key}
-                  className="flex-1 border-transparent bg-transparent px-3 py-1 text-[12.5px] font-semibold leading-[1.2] text-[var(--muted)] hover:border-[color-mix(in_srgb,var(--border)_86%,transparent)] hover:bg-[color-mix(in_srgb,var(--panel2)_50%,transparent)] hover:text-[var(--text)] data-[state=active]:border-[color-mix(in_srgb,var(--border)_84%,transparent)] data-[state=active]:bg-[color-mix(in_srgb,var(--panel2)_72%,transparent)] data-[state=active]:text-[var(--text)]"
+                  className="flex-none border-transparent bg-transparent px-3.5 py-1.5 text-[12.5px] font-semibold leading-[1.2] text-[var(--muted)] hover:border-[color-mix(in_srgb,var(--border)_86%,transparent)] hover:bg-[color-mix(in_srgb,var(--panel2)_50%,transparent)] hover:text-[var(--text)] data-[state=active]:border-[color-mix(in_srgb,var(--border)_84%,transparent)] data-[state=active]:bg-[color-mix(in_srgb,var(--panel2)_72%,transparent)] data-[state=active]:text-[var(--text)]"
                   data-calc-tab={key}
                   key={key}
                   onClick={() => setState(prev => ({ ...prev, calcTab: key }))}

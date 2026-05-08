@@ -182,6 +182,12 @@ assert.match(
 );
 
 assert.match(
+  fs.readFileSync(path.join(uiRoot, 'input.tsx'), 'utf8'),
+  /min-h-11[\s\S]*expense:[\s\S]*min-h-\[52px\][\s\S]*color-mix\(in_srgb,var\(--expense\)_13%,white\)[\s\S]*success:[\s\S]*min-h-\[52px\][\s\S]*color-mix\(in_srgb,var\(--ok\)_13%,white\)/s,
+  'Input primitive 的计算器语义输入框需要恢复更高、更柔和的红色/绿色底色'
+);
+
+assert.match(
   toastBus,
   /import \{ TKFirestoreConnection \} from '..\/..\/firestore-connection\.ts'[\s\S]*TKFirestoreConnection\.showToast\(message, type\)/,
   '商品、订单等 React 页面 Toast 需要通过 ESM Firestore 连接模块进入 AppRuntime showToast'

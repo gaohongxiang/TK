@@ -153,8 +153,8 @@ assert.doesNotMatch(
 
 assert.match(
   calculatorSource,
-  /<TabsList className=\{calcTabsClass\}[\s\S]*<TabsTrigger[\s\S]*className="flex-1[\s\S]*data-calc-tab=\{key\}[\s\S]*<Button[\s\S]*id="calc-help-btn"[\s\S]*<Button id="calc-help-close"/,
-  '利润计算器页内标签、帮助图标和帮助弹窗确认按钮需要收敛到共享 primitives'
+  /<TabsList className=\{calcTabsClass\}[\s\S]*<TabsTrigger[\s\S]*className="flex-none[\s\S]*data-calc-tab=\{key\}[\s\S]*<Button[\s\S]*id="calc-help-btn"[\s\S]*<Button id="calc-help-close"/,
+  '利润计算器页内标签、帮助图标和帮助弹窗确认按钮需要收敛到共享 primitives，并保持旧版自然宽度标签'
 );
 
 assert.match(

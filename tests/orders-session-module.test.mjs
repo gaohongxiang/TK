@@ -48,7 +48,7 @@ assert.match(
 
 assert.match(
   firestoreConnectionSource,
-  /tk-firestore-config-changed[\s\S]*function dispatchConfigChanged\(detail\)[\s\S]*dispatchEvent/,
+  /tk-firestore-config-changed[\s\S]*function dispatchConfigChanged\(detail(?:[\s\S]*?)?\)[\s\S]*dispatchEvent/,
   'Firestore 连接模块需要继续广播配置变化给 React 订单页'
 );
 

@@ -1,7 +1,28 @@
 import { ORDER_TRACKER_FIRESTORE_RULES } from './orders/firestore-rules.ts';
+import type { FirebaseConfig } from './types/firestore.ts';
 
 const LS_KEY = 'tk.firestore.cfg.v1';
-type AnyRecord = Record<string, any>;
+type LooseRecord = Record<string, unknown>;
+type StoredFirestoreConfig = {
+  configText: string;
+  projectId: string;
+  user: string;
+};
+type FirestoreConfigChangedDetail = Partial<StoredFirestoreConfig> & {
+  connected?: boolean;
+};
+type FirestoreUiController = {
+  showToast?: (message: string, type?: string) => void;
+  open?: () => void;
+  close?: () => void;
+  closeRulesNotice?: () => void;
+  notifyRulesUpdateNeeded?: (message?: string) => void;
+  closeDisconnectConfirm?: () => void;
+  requestDisconnect?: (options?: DisconnectOptions) => boolean;
+};
+type DisconnectOptions = {
+  closeModal?: boolean;
+};
 
 function getWindowRef() {
   if (typeof window !== 'undefined') return window;
@@ -22,7 +43,7 @@ function getStorageRef() {
   return globalThis.localStorage || null;
 }
 
-function createConfigChangedEvent(detail): Event {
+function createConfigChangedEvent(detail: FirestoreConfigChangedDetail): Event {
   const windowRef = getWindowRef();
   const EventCtor = windowRef?.CustomEvent || globalThis.CustomEvent;
   if (typeof EventCtor === 'function') {
@@ -31,23 +52,23 @@ function createConfigChangedEvent(detail): Event {
   return new Event('tk-firestore-config-changed');
 }
 
-function dispatchConfigChanged(detail) {
+function dispatchConfigChanged(detail: FirestoreConfigChangedDetail) {
   getWindowRef()?.dispatchEvent?.(createConfigChangedEvent(detail));
 }
 
-let uiController = null;
+let uiController: FirestoreUiController | null = null;
 
-function registerUI(controller) {
+function registerUI(controller: FirestoreUiController | null) {
   uiController = controller && typeof controller === 'object' ? controller : null;
   return uiController;
 }
 
-function toPlainObject(value) {
+function toPlainObject(value: unknown): LooseRecord | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as AnyRecord;
+  return value as LooseRecord;
 }
 
-function runLooseObjectParser(text) {
+function runLooseObjectParser(text: string): unknown {
   try {
     return Function(`"use strict"; return (${text});`)();
   } catch (error) {
@@ -55,20 +76,20 @@ function runLooseObjectParser(text) {
   }
 }
 
-function sanitizeConfig(raw) {
+function sanitizeConfig(raw: unknown): FirebaseConfig | null {
   const cfg = toPlainObject(raw);
   if (!cfg) return null;
-  const next: AnyRecord = {};
+  const next: Partial<FirebaseConfig> = {};
   ['apiKey', 'authDomain', 'projectId', 'appId', 'storageBucket', 'messagingSenderId', 'measurementId'].forEach(key => {
     const value = String(cfg[key] || '').trim();
-    if (value) next[key] = value;
+    if (value) next[key as keyof FirebaseConfig] = value;
   });
   if (!next.apiKey || !next.projectId || !next.appId) return null;
   if (!next.authDomain) next.authDomain = `${next.projectId}.firebaseapp.com`;
-  return next;
+  return next as FirebaseConfig;
 }
 
-function parseConfigInput(raw) {
+function parseConfigInput(raw: unknown): FirebaseConfig | null {
   if (!raw) return null;
   if (typeof raw === 'object') return sanitizeConfig(raw);
   const text = String(raw || '').trim();
@@ -83,20 +104,20 @@ function parseConfigInput(raw) {
   return sanitizeConfig(runLooseObjectParser(body));
 }
 
-function normalizeConfigText(raw) {
+function normalizeConfigText(raw: unknown): string {
   const parsed = parseConfigInput(raw);
   return parsed ? JSON.stringify(parsed, null, 2) : '';
 }
 
-function loadRaw(key) {
+function loadRaw(key: string): LooseRecord | null {
   try {
-    return JSON.parse(getStorageRef()?.getItem?.(key) || 'null');
+    return toPlainObject(JSON.parse(getStorageRef()?.getItem?.(key) || 'null'));
   } catch (error) {
     return null;
   }
 }
 
-function getConfig() {
+function getConfig(): StoredFirestoreConfig | null {
   const saved = loadRaw(LS_KEY);
   if (!saved?.configText) return null;
   const configText = normalizeConfigText(saved.configText);
@@ -104,12 +125,12 @@ function getConfig() {
   const parsed = parseConfigInput(configText);
   return {
     configText,
-    projectId: saved.projectId || parsed?.projectId || '',
-    user: saved.user || ''
+    projectId: String(saved.projectId || parsed?.projectId || ''),
+    user: String(saved.user || '')
   };
 }
 
-function saveConfig(raw) {
+function saveConfig(raw: unknown): StoredFirestoreConfig {
   const parsed = parseConfigInput(raw);
   if (!parsed?.projectId) throw new Error('请粘贴完整的 firebaseConfig');
   const next = {
@@ -135,7 +156,7 @@ function getRulesSource() {
     : '页面内置 Firestore 规则未加载，请刷新页面后重试');
 }
 
-function copyText(text) {
+function copyText(text: string): Promise<unknown> {
   if (!text) return Promise.reject(new Error('没有可复制的内容'));
 
   function legacyCopy() {
@@ -172,7 +193,7 @@ function copyText(text) {
   return legacyCopy();
 }
 
-function showToast(message, type = 'ok') {
+function showToast(message: string, type = 'ok') {
   uiController?.showToast?.(message, type);
 }
 
@@ -204,7 +225,7 @@ function closeDisconnectConfirm() {
   uiController?.closeDisconnectConfirm?.();
 }
 
-function requestDisconnect(options: AnyRecord = {}) {
+function requestDisconnect(options: DisconnectOptions = {}) {
   const cfg = getConfig();
   if (!cfg?.projectId) return false;
   const handled = uiController?.requestDisconnect?.(options);

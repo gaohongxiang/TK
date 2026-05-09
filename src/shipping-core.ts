@@ -34,27 +34,79 @@ const DEFAULT_CONSTANTS = {
   CUSTOMER_SHIPPING_JPY: 350
 };
 
-function toNumber(value) {
+type ShippingRuleBand = {
+  max: number;
+  range: string;
+  parcel: number;
+  perKg: number;
+};
+
+type ShippingRule = {
+  label: string;
+  bands: ShippingRuleBand[];
+};
+
+type ShippingRules = Record<string, ShippingRule>;
+
+type ShippingConstants = typeof DEFAULT_CONSTANTS;
+
+type ShippingAlert = {
+  type: 'error' | 'warn';
+  text: string;
+};
+
+type ShippingQuote = {
+  type: string;
+  actualWeightKg: number;
+  volumeWeightKg: number | null;
+  chargeWeightKg: number | null;
+  grossJpyFee: number | null;
+  chargeReason: string;
+  band: ShippingRuleBand | null;
+  jpyFee: number | null;
+  cnyFee: number | null;
+  alerts: ShippingAlert[];
+  hasError: boolean;
+};
+
+type ComputeShippingQuoteOptions = {
+  cargoType?: unknown;
+  actualWeight?: unknown;
+  length?: unknown;
+  width?: unknown;
+  height?: unknown;
+  rate?: unknown;
+  rules?: ShippingRules;
+  constants?: ShippingConstants;
+};
+
+type ComputeCalculatedShippingCostOptions = {
+  quote?: Pick<ShippingQuote, 'cnyFee'> | null;
+  multiplier?: unknown;
+  labelFee?: unknown;
+};
+
+function toNumber(value: unknown): number {
   const normalized = String(value ?? '').trim();
   if (!normalized) return 0;
   const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function roundMoney(value) {
+function roundMoney(value: number): number | null {
   return Number.isFinite(value) ? Number(value.toFixed(2)) : null;
 }
 
-function formatWeightValue(value) {
+function formatWeightValue(value: number | null): string {
   return Number.isFinite(value) ? Number(value.toFixed(3)).toString().replace(/\.?0+$/, '') : '-';
 }
 
-function getShippingBand(type, weightKg, rules = SHIPPING_RULES) {
+function getShippingBand(type: string, weightKg: number, rules: ShippingRules = SHIPPING_RULES): ShippingRuleBand | null {
   const rule = rules[type] || rules.general;
   return rule?.bands?.find(band => weightKg <= band.max) || null;
 }
 
-function buildReason(lines) {
+function buildReason(lines: string[]): string {
   return lines.map(line => `<span class="ship-reason-line">${line}</span>`).join('');
 }
 
@@ -67,8 +119,10 @@ function computeShippingQuote({
   rate,
   rules = SHIPPING_RULES,
   constants = DEFAULT_CONSTANTS
-}) {
-  const type = rules[cargoType] ? cargoType : 'general';
+}: ComputeShippingQuoteOptions): ShippingQuote {
+  const requestedType = String(cargoType || '').trim();
+  const type = rules[requestedType] ? requestedType : 'general';
+  const exchangeRate = toNumber(rate);
   const actualWeightG = Math.max(0, toNumber(actualWeight));
   const dims = [
     Math.max(0, toNumber(length)),
@@ -98,9 +152,9 @@ function computeShippingQuote({
   const band = chargeWeightKg !== null && !chargeWeightExceeded ? getShippingBand(type, chargeWeightKg, rules) : null;
   const grossJpyFee = !hasError && band ? band.parcel + band.perKg * chargeWeightKg : null;
   const jpyFee = grossJpyFee !== null ? grossJpyFee - constants.CUSTOMER_SHIPPING_JPY : null;
-  const cnyFee = jpyFee !== null && rate > 0 ? jpyFee / rate : null;
+  const cnyFee = jpyFee !== null && exchangeRate > 0 ? jpyFee / exchangeRate : null;
 
-  const alerts = [];
+  const alerts: ShippingAlert[] = [];
   if (actualWeightKg <= 0) alerts.push({ type: 'error', text: '请输入实重后再计算运费。' });
   if (actualWeightKg > 0 && actualWeightKg < constants.MIN_BILLABLE_WEIGHT_KG) {
     alerts.push({ type: 'warn', text: '实重低于 50g，系统已按 50g 起计。' });
@@ -152,7 +206,7 @@ function computeShippingQuote({
   };
 }
 
-function computeCalculatedShippingCost({ quote, multiplier = 1, labelFee = 0 }: Record<string, any> = {}) {
+function computeCalculatedShippingCost({ quote, multiplier = 1, labelFee = 0 }: ComputeCalculatedShippingCostOptions = {}) {
   if (!quote || quote.cnyFee === null) return null;
   const safeMultiplier = Math.max(1, toNumber(multiplier) || 1);
   const safeLabelFee = toNumber(labelFee) || 0;

@@ -60,22 +60,10 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ProductLogisticsDefaults, ProductRecord, ProductSku } from '../../../products/types.ts';
-import type { OrderRecord, OrderSummaryMetric } from '../../../orders/types.ts';
+import type { OrderFormDraftItem, OrderRecord, OrderSummaryMetric } from '../../../orders/types.ts';
 
-type OrderItemDraft = {
-  lineId: string;
-  productTkId: string;
-  productSkuId: string;
-  productSkuName: string;
-  productName: string;
-  quantity: string;
-  unitSalePrice: string;
-  unitPurchasePrice: string;
-  unitWeightG: string;
-  unitSizeText: string;
+type OrderItemDraft = OrderFormDraftItem & {
   useOrderCourier: null;
-  courierCompany: string;
-  trackingNo: string;
 };
 
 type OrderDraft = {

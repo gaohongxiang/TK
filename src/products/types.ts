@@ -1,4 +1,5 @@
 import type { FirebaseConfig, FirebaseWindow, HydratedFirebaseConfig } from '../types/firestore.ts';
+import type { TKShippingCore } from '../shipping-core.ts';
 
 type ProductCargoType = 'general' | 'special' | string;
 
@@ -155,27 +156,7 @@ type ProductSizeParseResult = {
   isComplete: boolean;
 };
 
-type ProductShippingCore = {
-  computeShippingQuote?: (options: {
-    cargoType: unknown;
-    actualWeight: unknown;
-    length: unknown;
-    width: unknown;
-    height: unknown;
-    rate: unknown;
-    [key: string]: unknown;
-  }) => {
-    chargeWeightKg?: number | string | null;
-    alerts?: Array<{ text?: string }>;
-    [key: string]: unknown;
-  };
-  computeCalculatedShippingCost?: (options: {
-    quote?: unknown;
-    multiplier?: unknown;
-    labelFee?: unknown;
-    [key: string]: unknown;
-  }) => number | string | null;
-};
+type ProductShippingCore = Pick<typeof TKShippingCore, 'computeShippingQuote' | 'computeCalculatedShippingCost'>;
 
 type ProductPricingContext = {
   rate?: number | string;

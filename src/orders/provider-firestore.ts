@@ -561,7 +561,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
         try {
           db.settings({ ignoreUndefinedProperties: true });
         } catch (error) {
-          const message = String(error?.message || '');
+          const message = error instanceof Error ? error.message : String(error || '');
           if (!/settings can no longer be changed|already been started/i.test(message)) throw error;
         }
       }

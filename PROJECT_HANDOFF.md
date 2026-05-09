@@ -27,7 +27,7 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - 用户业务数据只进入用户自己的 Firebase Firestore。
 - 本站、Cloudflare Pages、未来可能的 Workers 都不保存用户业务数据。
 - 原生 JS + Vite ESM 路线已作为历史基线完成。
-- 当前 `modern-react-spa` 分支已完成完整 React SPA 重建、视觉系统收敛、TypeScript 迁移和测试 ESM 化；这是独立现代化分支，不动 `main`，最终验收后再合并。
+- 当前 `modern-react-spa` 分支已完成完整 React SPA 重建、视觉系统收敛、TypeScript 迁移、领域类型加固和测试 ESM 化；这是独立现代化分支，不动 `main`，最终验收后再合并。
 
 ## 2. 当前硬性决策
 
@@ -120,6 +120,7 @@ modern-react-spa
 - `scripts/preview-smoke.mjs` 已适配完整 React SPA：首页 HTTP smoke 检查单根 React 入口、SEO meta、Firebase/SheetJS 脚本、构建产物和静态页面；运行后交互由 Playwright 覆盖。
 - 构建产物不再发布旧 `dist/js/`。
 - 旧 `js/` 源目录已清理；当前主站业务源码在 `src/` 下以 TypeScript/TSX 维护。
+- TypeScript 领域类型加固已完成：商品、订单、数据分析、Firestore 配置、全局设置和运费核心都有稳定类型入口；当前 `src/` 已无显式 `any`。
 - Node 契约测试已统一为 ESM `.mjs`，不再保留 CommonJS `.cjs` 测试文件。
 - `npm run release:check` 已串联 `npm test`、`npm run typecheck`、文档构建、主站构建、HTTP smoke、Playwright e2e 和 `git diff --check`。
 - 真实 Firebase 数据手动验收已完成，未发现大问题。
@@ -934,26 +935,31 @@ ECharts 图表：
 
 ### 9.9 TypeScript 策略
 
-当前主站应用源码和业务 helper/provider 已迁到 TypeScript，测试发布门禁已加入 `npm run typecheck`。TypeScript 暂不追求一步 strict。
+当前主站应用源码和业务 helper/provider 已迁到 TypeScript，测试发布门禁已加入 `npm run typecheck`。领域类型加固已完成，当前 `src/` 已无显式 `any`；TypeScript 仍暂不追求一步 `strict: true`。
 
-初始配置：
+当前配置重点：
 
 ```json
 {
   "compilerOptions": {
     "strict": false,
-    "checkJs": false
+    "checkJs": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "useUnknownInCatchVariables": true
   }
 }
 ```
 
-先给 React 新代码上类型，再逐步把数据模型迁出：
+已建立并使用的核心类型入口：
 
-- AnalyticsRecord
-- AnalyticsChannel
-- Product / ProductSku
-- Order / OrderItem
-- FirebaseConfig
+- `src/products/types.ts`：商品、SKU、商品 provider、导出和运费快照类型。
+- `src/orders/types.ts`：订单、订单明细、订单 provider、摘要和导出类型。
+- `src/analytics/types.ts`：分析记录、渠道、诊断、SheetJS 浏览器接口和 ECharts 页面输入类型。
+- `src/types/firestore.ts`：Firebase compat 配置、App、Firestore、Collection、Doc 和 Batch 边界类型。
+- `src/shipping-core.ts`、`src/global-settings.ts`：运费计算与全局定价设置类型。
+
+`strict: true` 已试跑评估，当前仍会暴露较多深层空值/隐式参数问题，暂不建议一次打开。后续如果继续做，应按模块逐步消化，而不是为了 strict 大范围改业务逻辑。
 
 ### 9.10 测试要求
 
@@ -977,29 +983,29 @@ npx playwright test tests/e2e/release.spec.ts -g "covers calculator" --project=d
 npm run release:check
 ```
 
-## 10. 下一阶段长任务：TypeScript 领域类型加固
+## 10. TypeScript 领域类型加固记录
 
-现代化重构主线已完成，下一阶段建议做“类型加固”，不是继续大换架构。
+现代化重构主线已完成，类型加固长任务也已完成到当前目标；这部分是完成记录，不再是下一步待办。
 
 目标：
 
-- 建立核心领域类型，让商品、SKU、订单、订单明细、分析记录和 Firestore 配置有稳定类型入口。
-- 收紧业务 helper/provider 的输入输出，减少核心业务里的 `any` 和宽类型。
-- 先保持 `strict: false`，不要一口气打开全局 `strict: true`。
+- 已建立核心领域类型，让商品、SKU、订单、订单明细、分析记录和 Firestore 配置有稳定类型入口。
+- 已收紧业务 helper/provider 的输入输出，核心 `src/` 代码没有显式 `any`。
+- 保持 `strict: false`，没有一口气打开全局 `strict: true`。
 - 不改变 Firestore 数据结构，不改变字段名，不做数据迁移。
 - 不改计算口径，不改订单利润、退款、达人佣金、商品关联、SKU 匹配和数据分析解析逻辑。
 - 不引入新状态管理库，不引入 TanStack Table，不大改 UI。
 
-建议新建或整理的类型文件：
+已新建或整理的类型文件：
 
 ```text
 src/products/types.ts
 src/orders/types.ts
-src/analytics/types.ts 或复用 src/react/features/analytics/types.ts
+src/analytics/types.ts
 src/types/firestore.ts
 ```
 
-建议阶段：
+完成阶段：
 
 1. Phase T1：商品类型
    - 定义 `Product`、`ProductSku`、`ProductAccount`、商品导出行等类型。
@@ -1026,8 +1032,8 @@ src/types/firestore.ts
    - 保留局部 UI 草稿类型，不要为了类型抽象过度复杂化页面状态。
 
 6. Phase T6：逐步收紧 tsconfig
-   - 先尝试打开局部低风险选项，例如 `noImplicitReturns`、`noFallthroughCasesInSwitch`。
-   - 最后再评估 `strict: true`；只有当 `npm run typecheck` 错误量可控时才开启。
+   - 已打开 `noImplicitReturns`、`noFallthroughCasesInSwitch`、`useUnknownInCatchVariables`。
+   - 已评估 `strict: true`，当前错误量仍不适合一次开启。
 
 每个阶段完成后至少运行：
 
@@ -1044,11 +1050,11 @@ git diff --check
 npm run release:check
 ```
 
-提交要求：
+执行结果：
 
-- 每个 Phase 测试通过后本地提交。
-- 不推 GitHub，除非用户明确确认。
-- 如果类型收紧导致需要改运行逻辑，先停下来确认原因；不要为了让类型通过改变真实业务行为。
+- T1-T5 已分别完成本地提交；T6 收尾提交完成后仍不推 GitHub。
+- 每阶段均已跑 `npm test`、`npm run typecheck`、`npm run build`、`git diff --check`。
+- 最终大阶段需要重新跑 `npm run release:check` 作为当前交付门禁。
 
 ### 9.10 完成标准
 
@@ -1831,6 +1837,6 @@ e16f39e test: migrate contract tests to esm
 
 1. 准备上线、合并或推送前重新跑 `npm run release:check`，确认文档、构建、smoke 和 e2e 仍全部通过。
 2. 用真实商品、订单和 TikTok Shop 商品流量 Excel 再做一轮手动验收，重点看 Firestore 读写、订单商品关联、ECharts tooltip、移动端布局和商品明细表。
-3. 如果要开长任务，优先执行第 10 节“TypeScript 领域类型加固”，按 T1-T6 分阶段做；不要为了形式继续大拆架构。
+3. 如果要继续开长任务，优先做真实业务验收反馈、可访问性/移动端细节或局部 strict 类型消化；不要为了形式继续大拆架构。
 4. 不改变 Firestore 数据结构，不上传或保存 Excel，不引入平台方数据库。
 5. GitHub 推送仍受当前网络影响；如需推送，换网络/VPN 后执行 `TK_ALLOW_PUSH=1 git -c http.version=HTTP/1.1 push origin HEAD:main`。

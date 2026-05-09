@@ -20,6 +20,8 @@
 - `src/react/components/ui/` 放本地 shadcn 风格 primitives 和共享 UI 控件。
 - `src/react/styles.css` 是样式入口，导入 Tailwind utilities 和 `src/react/styles/base.css`。
 - `src/` 下业务纯函数、Firestore provider、解析器和导出逻辑使用 TypeScript 维护。
+- 领域类型入口集中在 `src/products/types.ts`、`src/orders/types.ts`、`src/analytics/types.ts` 和 `src/types/firestore.ts`；当前 `src/` 没有显式 `any`。
+- `tsconfig.json` 暂保留 `strict: false`，并开启 `noImplicitReturns`、`noFallthroughCasesInSwitch`、`useUnknownInCatchVariables` 等低风险检查。
 - `package.json` 使用 `"type": "module"`，Node 测试也统一为 ESM `.mjs`。
 - 数据分析图表使用 ECharts，Excel 只在浏览器本地解析。
 

@@ -183,8 +183,8 @@ assert.match(
 
 assert.match(
   fs.readFileSync(path.join(uiRoot, 'input.tsx'), 'utf8'),
-  /min-h-11[\s\S]*expense:[\s\S]*min-h-\[52px\][\s\S]*color-mix\(in_srgb,var\(--expense\)_13%,white\)[\s\S]*success:[\s\S]*min-h-\[52px\][\s\S]*color-mix\(in_srgb,var\(--ok\)_13%,white\)/s,
-  'Input primitive 的计算器语义输入框需要恢复更高、更柔和的红色/绿色底色'
+  /min-h-10[\s\S]*expense:[\s\S]*min-h-\[48px\][\s\S]*color-mix\(in_srgb,var\(--expense\)_13%,white\)[\s\S]*success:[\s\S]*min-h-\[48px\][\s\S]*color-mix\(in_srgb,var\(--ok\)_13%,white\)/s,
+  'Input primitive 的计算器语义输入框需要保持适中高度和柔和红色/绿色底色'
 );
 
 assert.match(

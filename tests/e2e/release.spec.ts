@@ -364,10 +364,12 @@ test.describe('release browser smoke', () => {
     const calcVisualState = await page.evaluate(() => {
       const cost = document.querySelector<HTMLInputElement>('#costNew');
       const total = document.querySelector<HTMLInputElement>('#totalCostNew');
+      const cargo = document.querySelector<HTMLSelectElement>('#shipCargoTypeNew');
+      const weight = document.querySelector<HTMLInputElement>('#shipActualWeightNew');
       const firstTab = document.querySelector<HTMLElement>('[data-calc-tab="pricing"]');
       const secondTab = document.querySelector<HTMLElement>('[data-calc-tab="pricingNew"]');
       const tableCell = document.querySelector<HTMLElement>('#tbodyNew td');
-      if (!cost || !total || !firstTab || !secondTab || !tableCell) return null;
+      if (!cost || !total || !cargo || !weight || !firstTab || !secondTab || !tableCell) return null;
       const costStyle = getComputedStyle(cost);
       const totalStyle = getComputedStyle(total);
       const firstTabBox = firstTab.getBoundingClientRect();
@@ -378,6 +380,8 @@ test.describe('release browser smoke', () => {
         costHeight: cost.getBoundingClientRect().height,
         totalBackground: totalStyle.backgroundImage || totalStyle.backgroundColor,
         totalHeight: total.getBoundingClientRect().height,
+        cargoHeight: cargo.getBoundingClientRect().height,
+        weightHeight: weight.getBoundingClientRect().height,
         tabWidth: firstTabBox.width,
         tabGap: Math.round(secondTabBox.left - firstTabBox.right),
         tableCellBorderLeft: cellStyle.borderLeftWidth,
@@ -387,8 +391,11 @@ test.describe('release browser smoke', () => {
     expect(calcVisualState).not.toBeNull();
     expect(calcVisualState?.costBackground).toContain('linear-gradient');
     expect(calcVisualState?.totalBackground).toContain('linear-gradient');
-    expect(calcVisualState?.costHeight).toBeGreaterThanOrEqual(48);
-    expect(calcVisualState?.totalHeight).toBeGreaterThanOrEqual(48);
+    expect(calcVisualState?.costHeight).toBeGreaterThanOrEqual(46);
+    expect(calcVisualState?.costHeight).toBeLessThanOrEqual(50);
+    expect(calcVisualState?.totalHeight).toBeGreaterThanOrEqual(46);
+    expect(calcVisualState?.totalHeight).toBeLessThanOrEqual(50);
+    expect(Math.abs((calcVisualState?.cargoHeight || 0) - (calcVisualState?.weightHeight || 0))).toBeLessThanOrEqual(1);
     expect(calcVisualState?.tabWidth).toBeLessThan(140);
     expect(calcVisualState?.tabGap).toBeGreaterThanOrEqual(0);
     expect(calcVisualState?.tableCellBorderLeft).toBe('0px');

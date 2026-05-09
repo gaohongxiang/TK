@@ -4,8 +4,17 @@ import {
   computeWarning,
   todayStr
 } from './shared.ts';
-
-type AnyRecord = Record<string, any>;
+import type {
+  BuildExportFilenameOptions,
+  BuildOrderExportRowsOptions,
+  BuildOrdersCsvOptions,
+  GetExportAccountOptionsInput,
+  OrderExportAccountOption,
+  OrderExportConstants,
+  OrderExportRow,
+  OrderRecord,
+  SelectOrdersForExportOptions
+} from './types.ts';
 
 const DEFAULT_CONSTANTS = {
   UNASSIGNED_ACCOUNT_SLOT: '__unassigned__'
@@ -33,20 +42,20 @@ const CSV_HEADERS = [
   '快递单号'
 ];
 
-function normalizeAccountName(account) {
+function normalizeAccountName(account: unknown): string {
   return String(account || '').trim();
 }
 
-function uniqueAccounts(accounts) {
+function uniqueAccounts(accounts: unknown[] = []): string[] {
   return [...new Set((accounts || []).map(normalizeAccountName).filter(Boolean))];
 }
 
-function toAccountSlot(account, constants = DEFAULT_CONSTANTS) {
+function toAccountSlot(account: unknown, constants: OrderExportConstants = DEFAULT_CONSTANTS): string {
   const normalized = normalizeAccountName(account);
   return normalized || constants.UNASSIGNED_ACCOUNT_SLOT;
 }
 
-function csvEscape(value) {
+function csvEscape(value: unknown): string {
   const text = String(value ?? '');
   return `"${text.replace(/"/g, '""')}"`;
 }
@@ -55,7 +64,7 @@ function getExportAccountOptions({
   accounts = [],
   orders = [],
   constants = DEFAULT_CONSTANTS
-}: AnyRecord = {}) {
+}: GetExportAccountOptionsInput = {}): OrderExportAccountOption[] {
   const safeConstants = { ...DEFAULT_CONSTANTS, ...(constants || {}) };
   const safeOrders = Array.isArray(orders) ? orders : [];
   const accountOptions = uniqueAccounts([
@@ -77,7 +86,7 @@ function getExportAccountOptions({
   return accountOptions;
 }
 
-function buildExportFilename(selectedOptions, { today = todayStr } = {}) {
+function buildExportFilename(selectedOptions: OrderExportAccountOption[] = [], { today = todayStr }: BuildExportFilenameOptions = {}): string {
   const names = (selectedOptions || []).map(option => option.label).filter(Boolean);
   const suffix = names.length === 1
     ? names[0]
@@ -91,7 +100,7 @@ function selectOrdersForExport({
   orders = [],
   selectedKeys = [],
   constants = DEFAULT_CONSTANTS
-} = {}) {
+}: SelectOrdersForExportOptions = {}): OrderRecord[] {
   const safeConstants = { ...DEFAULT_CONSTANTS, ...(constants || {}) };
   const selectedSet = new Set(selectedKeys || []);
   return (Array.isArray(orders) ? orders : []).filter(order => {
@@ -106,7 +115,7 @@ function buildExportRows({
   computeWarningFn = computeWarning,
   computeOrderCreatorCommissionFn = computeOrderCreatorCommission,
   computeOrderEstimatedProfitFn = computeOrderEstimatedProfit
-} = {}) {
+}: BuildOrderExportRowsOptions = {}): OrderExportRow[] {
   return (Array.isArray(orders) ? orders : []).map(order => {
     const warning = computeWarningFn(order).text;
     const creatorCommission = typeof computeOrderCreatorCommissionFn === 'function'
@@ -143,7 +152,7 @@ function buildOrdersCsv({
   rows = [],
   headers = CSV_HEADERS,
   includeBom = false
-} = {}) {
+}: BuildOrdersCsvOptions = {}): string {
   const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
   return includeBom ? `\uFEFF${csv}` : csv;
 }

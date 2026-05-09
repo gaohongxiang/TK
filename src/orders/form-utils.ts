@@ -1,36 +1,37 @@
 /* ============================================================
  * 订单跟踪器：弹窗纯函数
  * ============================================================ */
-type AnyRecord = Record<string, any>;
+import type { ProductLogisticsDefaults, ProductRecord, ProductSku } from '../products/types.ts';
+import type { NormalizedOrderItem, OrderItem, OrderItemNormalizerOptions, OrderRecord, OrderSizeParseResult } from './types.ts';
 
-function formatProductSize(product: AnyRecord = {}) {
+function formatProductSize(product: ProductLogisticsDefaults = {}): string {
   const values = [product?.lengthCm, product?.widthCm, product?.heightCm]
     .map(value => String(value ?? '').trim())
     .filter(Boolean);
   return values.length === 3 ? values.join('×') : '';
 }
 
-function buildProductLabel(product: AnyRecord = {}) {
+function buildProductLabel(product: ProductRecord = {}): string {
   const tkId = String(product?.tkId || '').trim();
   const name = String(product?.name || '').trim();
   if (tkId && name) return `${tkId} - ${name}`;
   return tkId || name || '';
 }
 
-function getProductSkus(product: AnyRecord = {}) {
+function getProductSkus(product: ProductRecord = {}): ProductSku[] {
   return Array.isArray(product?.skus)
     ? product.skus.filter(sku => String(sku?.skuId || '').trim())
     : [];
 }
 
-function buildSkuLabel(sku: AnyRecord = {}) {
+function buildSkuLabel(sku: ProductSku = {}): string {
   const skuId = String(sku?.skuId || '').trim();
   const skuName = String(sku?.skuName || '').trim();
   if (skuId && skuName) return `${skuName} - ${skuId}`;
   return skuName || skuId || '未命名SKU';
 }
 
-function skuUsesProductDefaults(sku: AnyRecord = {}) {
+function skuUsesProductDefaults(sku: ProductSku = {}): boolean {
   if (sku?.useProductDefaults === true) return true;
   if (sku?.useProductDefaults === false) return false;
   const hasOwnSpec = !!String(sku?.weightG || '').trim()
@@ -44,13 +45,13 @@ function skuUsesProductDefaults(sku: AnyRecord = {}) {
   return !hasOwnSpec;
 }
 
-function getProductDefaults(product: AnyRecord = {}) {
+function getProductDefaults(product: ProductRecord = {}): ProductLogisticsDefaults {
   return product?.defaults && typeof product.defaults === 'object'
     ? product.defaults
     : product;
 }
 
-function resolveProductSnapshotSource(product: AnyRecord | null = null, sku: AnyRecord | null = null) {
+function resolveProductSnapshotSource(product: ProductRecord | null = null, sku: ProductSku | null = null): ProductLogisticsDefaults | null {
   const defaults = getProductDefaults(product || {});
   if (!sku) return defaults || null;
   if (!skuUsesProductDefaults(sku)) return sku;
@@ -69,7 +70,7 @@ function resolveProductSnapshotSource(product: AnyRecord | null = null, sku: Any
   };
 }
 
-function createOrderItemDraft(seed: AnyRecord = {}, { uid = null }: AnyRecord = {}) {
+function createOrderItemDraft(seed: OrderItem | OrderRecord = {}, { uid = null }: OrderItemNormalizerOptions & { uid?: (() => string) | null } = {}): NormalizedOrderItem {
   const nextUid = typeof uid === 'function'
     ? uid
     : () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
@@ -97,7 +98,7 @@ function createOrderItemDraft(seed: AnyRecord = {}, { uid = null }: AnyRecord = 
   };
 }
 
-function buildLegacyOrderItems(order: AnyRecord = {}, options: AnyRecord = {}) {
+function buildLegacyOrderItems(order: OrderRecord = {}, options: OrderItemNormalizerOptions & { uid?: (() => string) | null } = {}): NormalizedOrderItem[] {
   const hasLegacyValues = [
     order?.['商品TK ID'],
     order?.['商品SKU ID'],
@@ -112,7 +113,7 @@ function buildLegacyOrderItems(order: AnyRecord = {}, options: AnyRecord = {}) {
   return [createOrderItemDraft(order, options)];
 }
 
-function getOrderItemsFromOrder(order: AnyRecord = {}, options: AnyRecord = {}) {
+function getOrderItemsFromOrder(order: OrderRecord = {}, options: OrderItemNormalizerOptions & { uid?: (() => string) | null } = {}): NormalizedOrderItem[] {
   if (Array.isArray(order?.items) && order.items.length) {
     return order.items.map(item => {
       const draft = createOrderItemDraft(item, options);
@@ -127,36 +128,36 @@ function getOrderItemsFromOrder(order: AnyRecord = {}, options: AnyRecord = {}) 
   return buildLegacyOrderItems(order, options);
 }
 
-function buildOrderItemLabel(item: AnyRecord = {}) {
+function buildOrderItemLabel(item: OrderItem = {}): string {
   const productName = String(item?.productName || '').trim();
   const skuName = String(item?.productSkuName || '').trim();
   if (productName && skuName) return `${productName} - ${skuName}`;
   return productName || skuName || '';
 }
 
-function buildOrderItemsSummary(items = []) {
+function buildOrderItemsSummary(items: OrderItem[] = []): string {
   const lines = (Array.isArray(items) ? items : []).filter(item => buildOrderItemLabel(item));
   return lines.map(buildOrderItemLabel).join(' / ');
 }
 
-function formatMoneyValue(value) {
+function formatMoneyValue(value: number): string {
   if (!Number.isFinite(value)) return '';
   return value.toFixed(2).replace(/\.?0+$/, '');
 }
 
-function parseMoneyValue(value) {
+function parseMoneyValue(value: unknown): number | null {
   const raw = String(value ?? '').replace(/,/g, '').trim();
   if (!raw) return null;
   const parsed = Number.parseFloat(raw);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatNumericValue(value) {
+function formatNumericValue(value: number): string {
   if (!Number.isFinite(value)) return '';
   return value.toFixed(2).replace(/\.?0+$/, '');
 }
 
-function parseSizeText(value) {
+function parseSizeText(value: unknown): OrderSizeParseResult {
   const matched = String(value || '')
     .trim()
     .replace(/[Xx＊*]/g, '×')

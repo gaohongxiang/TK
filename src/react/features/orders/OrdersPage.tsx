@@ -59,9 +59,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ProductRecord, ProductSku } from '../../../products/types.ts';
-
-type OrderRecord = Record<string, any>;
+import type { ProductLogisticsDefaults, ProductRecord, ProductSku } from '../../../products/types.ts';
+import type { OrderRecord, OrderSummaryMetric } from '../../../orders/types.ts';
 
 type OrderItemDraft = {
   lineId: string;
@@ -226,7 +225,7 @@ function resolveProductSnapshotSource(product: ProductRecord | null, sku: Produc
   };
 }
 
-function formatProductSize(source: Record<string, any> | null) {
+function formatProductSize(source: ProductLogisticsDefaults | null) {
   if (!source) return '';
   const direct = String(source.sizeText || '').trim();
   if (direct) return direct.replace(/\*/g, '×');
@@ -296,10 +295,10 @@ function getOrderItemsFromOrder(order: OrderRecord | null): OrderItemDraft[] {
     productSkuId: order['商品SKU ID'],
     productSkuName: order['商品SKU名称'],
     productName: order['产品名称'],
-    quantity: order['数量'],
-    unitSalePrice: order['售价'],
-    unitPurchasePrice: order['采购价格'],
-    unitWeightG: order['重量'],
+    quantity: String(order['数量'] || ''),
+    unitSalePrice: String(order['售价'] || ''),
+    unitPurchasePrice: String(order['采购价格'] || ''),
+    unitWeightG: String(order['重量'] || ''),
     unitSizeText: order['尺寸'],
     courierCompany: order['快递公司'],
     trackingNo: order['快递单号']
@@ -557,13 +556,13 @@ const orderSummaryLedgerIncomeValueClass = cn(orderSummaryLedgerValueClass, 'tex
 const orderSummaryLedgerExpenseValueClass = cn(orderSummaryLedgerValueClass, 'text-[var(--expense)]');
 const orderSummaryLedgerNoteClass = 'ot-summary-ledger-note mt-[7px] block text-[10.5px] leading-[1.35] tracking-normal text-[var(--muted)]';
 
-function orderSummaryHeroClassForMetric(metric: any) {
+function orderSummaryHeroClassForMetric(metric: OrderSummaryMetric) {
   if (metric?.total > 0) return cn(orderSummaryHeroClass, 'is-profit-positive border-[color-mix(in_srgb,var(--ok)_82%,var(--border))]');
   if (metric?.total < 0) return cn(orderSummaryHeroClass, 'is-profit-negative border-[color-mix(in_srgb,var(--expense)_84%,var(--border))]');
   return cn(orderSummaryHeroClass, 'is-neutral');
 }
 
-function orderSummaryHeroValueClassForMetric(metric: any) {
+function orderSummaryHeroValueClassForMetric(metric: OrderSummaryMetric) {
   if (metric?.total > 0) return cn(orderSummaryHeroValueClass, 'text-[var(--ok)]');
   if (metric?.total < 0) return cn(orderSummaryHeroValueClass, 'text-[var(--expense)]');
   return orderSummaryHeroValueClass;
@@ -782,32 +781,32 @@ function OrdersSummary({
     exchangeRate,
     computeOrderCreatorCommission,
     computeOrderEstimatedProfit
-  } as Parameters<typeof derivePurchaseSummary>[0]);
+  });
   const expenseValue = (summary.filteredTotal || 0) + (summary.filteredShippingTotal || 0) + (summary.filteredCreatorCommissionTotal || 0);
   const allExpenseValue = (summary.allTotal || 0) + (summary.allShippingTotal || 0) + (summary.allCreatorCommissionTotal || 0);
 
-  function buildIncomeNote(grossMetric: any, refundMetric: any) {
+  function buildIncomeNote(grossMetric: OrderSummaryMetric, refundMetric: OrderSummaryMetric) {
     if (!refundMetric?.count) return `销售 ${formatSummaryMetric(grossMetric)}`;
     return `销售 ${formatSummaryMetric(grossMetric)} - 退款 ${formatSummaryMetric(refundMetric)}`;
   }
 
-  function buildExpenseNote(purchaseMetric: any, shippingMetric: any, creatorCommissionMetric: any) {
+  function buildExpenseNote(purchaseMetric: OrderSummaryMetric, shippingMetric: OrderSummaryMetric, creatorCommissionMetric: OrderSummaryMetric) {
     return `采购 ${formatSummaryMetric(purchaseMetric)} · 运费 ${formatSummaryMetric(shippingMetric)} · 达人 ${formatSummaryMetric(creatorCommissionMetric)}`;
   }
 
-  function buildSummaryMeta(prefix: string, count: number, refundMetric: any) {
+  function buildSummaryMeta(prefix: string, count: number, refundMetric: OrderSummaryMetric) {
     return `${prefix} · 共 ${count} 条${refundMetric?.count ? ` · 含 ${refundMetric.count} 条退款` : ''}`;
   }
 
   function card(
     title: string,
-    profitMetric: any,
-    saleMetric: any,
-    grossMetric: any,
-    refundMetric: any,
-    purchaseMetric: any,
-    shippingMetric: any,
-    creatorCommissionMetric: any,
+    profitMetric: OrderSummaryMetric,
+    saleMetric: OrderSummaryMetric,
+    grossMetric: OrderSummaryMetric,
+    refundMetric: OrderSummaryMetric,
+    purchaseMetric: OrderSummaryMetric,
+    shippingMetric: OrderSummaryMetric,
+    creatorCommissionMetric: OrderSummaryMetric,
     expenseTotal: number,
     count: number,
     meta: string

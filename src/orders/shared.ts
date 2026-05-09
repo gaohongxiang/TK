@@ -4,17 +4,30 @@ const DEFAULT_CONSTANTS = {
   ACCOUNT_FILE_SUFFIX: '.json',
   COURIER_AUTO_DETECTORS: []
 };
-type AnyRecord = Record<string, any>;
+import type {
+  CourierDetector,
+  NormalizedOrderItem,
+  OrderConstants,
+  OrderItem,
+  OrderItemNormalizerOptions,
+  OrderItemSummaryParts,
+  OrderItemTotals,
+  OrderNormalizerOptions,
+  OrderRecord,
+  OrderWarning
+} from './types.ts';
 
-function uid() {
+type LooseRecord = Record<string, unknown>;
+
+function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-function nowIso() {
+function nowIso(): string {
   return new Date().toISOString();
 }
 
-function parseLegacyUidTimestamp(id) {
+function parseLegacyUidTimestamp(id: unknown): string {
   const raw = String(id || '').trim().toLowerCase();
   if (!/^[0-9a-z]{7,}$/.test(raw)) return '';
   const prefix = raw.slice(0, -6);
@@ -26,7 +39,7 @@ function parseLegacyUidTimestamp(id) {
   return new Date(parsed).toISOString();
 }
 
-function getOrderCreatedAt(order: AnyRecord) {
+function getOrderCreatedAt(order: OrderRecord): string {
   const direct = String(order?.createdAt || order?.created_at || '').trim();
   if (direct) return direct;
   const fromId = parseLegacyUidTimestamp(order?.id);
@@ -34,40 +47,40 @@ function getOrderCreatedAt(order: AnyRecord) {
   return String(order?.updatedAt || order?.updated_at || '').trim();
 }
 
-function showDatePicker(input) {
+function showDatePicker(input: HTMLInputElement | null | undefined): void {
   if (!input || input.readOnly || input.disabled || typeof input.showPicker !== 'function') return;
   try {
     input.showPicker();
   } catch (error) {}
 }
 
-function roundMoney(value) {
+function roundMoney(value: number): number | null {
   return Number.isFinite(value) ? Number(value.toFixed(2)) : null;
 }
 
-function parseOrderMoneyValue(value) {
+function parseOrderMoneyValue(value: unknown): number | null {
   const raw = String(value ?? '').replace(/,/g, '').trim();
   if (!raw) return null;
   const parsed = Number.parseFloat(raw);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatOrderSummaryNumber(value) {
+function formatOrderSummaryNumber(value: number): string {
   if (!Number.isFinite(value)) return '';
   return Number(value.toFixed(2)).toString();
 }
 
-function parseExchangeRateValue(value) {
+function parseExchangeRateValue(value: unknown): number | null {
   const parsed = parseOrderMoneyValue(value);
   return parsed && parsed > 0 ? parsed : null;
 }
 
-function parseCreatorCommissionRateValue(value) {
+function parseCreatorCommissionRateValue(value: unknown): number | null {
   const parsed = parseOrderMoneyValue(value);
   return parsed && parsed > 0 ? parsed : null;
 }
 
-function isOrderRefunded(order: AnyRecord) {
+function isOrderRefunded(order: OrderRecord): boolean {
   const raw = String(
     order?.['是否退款']
     ?? order?.isRefunded
@@ -77,7 +90,7 @@ function isOrderRefunded(order: AnyRecord) {
   return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'y';
 }
 
-function computeOrderSaleCny(order: AnyRecord, exchangeRate = null) {
+function computeOrderSaleCny(order: OrderRecord, exchangeRate: unknown = null): number | null {
   const rate = parseExchangeRateValue(exchangeRate);
   const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
   if (rate === null) return null;
@@ -86,7 +99,7 @@ function computeOrderSaleCny(order: AnyRecord, exchangeRate = null) {
   return roundMoney(saleJpy / rate);
 }
 
-function computeOrderCreatorCommission(order: AnyRecord, exchangeRate = null) {
+function computeOrderCreatorCommission(order: OrderRecord, exchangeRate: unknown = null): number | null {
   const rate = parseExchangeRateValue(exchangeRate);
   const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
   const commissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率'] ?? order?.creatorCommissionRate);
@@ -97,7 +110,7 @@ function computeOrderCreatorCommission(order: AnyRecord, exchangeRate = null) {
   return roundMoney((saleJpy / rate) * (commissionRate / 100));
 }
 
-function computeOrderEstimatedProfit(order: AnyRecord, exchangeRate) {
+function computeOrderEstimatedProfit(order: OrderRecord, exchangeRate: unknown): number | null {
   const saleCny = computeOrderSaleCny(order, exchangeRate);
   const purchase = parseOrderMoneyValue(order?.['采购价格'] ?? order?.purchasePrice);
   const shipping = parseOrderMoneyValue(order?.['预估运费'] ?? order?.estimatedShippingFee);
@@ -106,22 +119,22 @@ function computeOrderEstimatedProfit(order: AnyRecord, exchangeRate) {
   return roundMoney(saleCny - purchase - shipping - commission);
 }
 
-function escapeHtml(value) {
+function escapeHtml(value: unknown): string {
   return String(value ?? '').replace(/[&<>"']/g, char => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]
   ));
 }
 
-function normalizeStatusValue(value) {
+function normalizeStatusValue(value: unknown): string {
   return String(value || '').trim();
 }
 
-function normalizeOrderSeq(value) {
+function normalizeOrderSeq(value: unknown): number | null {
   const parsed = Number.parseInt(String(value ?? '').trim(), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function stripDuplicatedSkuSuffix(productName, skuName) {
+function stripDuplicatedSkuSuffix(productName: unknown, skuName: unknown): string {
   const rawProductName = String(productName || '').trim();
   const rawSkuName = String(skuName || '').trim();
   if (!rawProductName || !rawSkuName) return rawProductName;
@@ -132,7 +145,7 @@ function stripDuplicatedSkuSuffix(productName, skuName) {
   return next;
 }
 
-function normalizeOrderItem(item: AnyRecord = {}, { nextUid = uid }: AnyRecord = {}) {
+function normalizeOrderItem(item: OrderItem | OrderRecord = {}, { nextUid = uid }: OrderItemNormalizerOptions = {}): NormalizedOrderItem {
   const quantity = Number.parseInt(String(item?.quantity ?? item?.['数量'] ?? '').trim(), 10);
   const rawUseOrderCourier = item?.useOrderCourier ?? item?.['跟随订单默认快递'];
   const hasUseOrderCourier = rawUseOrderCourier !== undefined
@@ -161,7 +174,7 @@ function normalizeOrderItem(item: AnyRecord = {}, { nextUid = uid }: AnyRecord =
   };
 }
 
-function normalizeOrderItems(items: AnyRecord[] = [], options?) {
+function normalizeOrderItems(items: Array<OrderItem | OrderRecord> = [], options?: OrderItemNormalizerOptions): NormalizedOrderItem[] {
   return Array.isArray(items)
     ? items.map(item => normalizeOrderItem(item, options)).filter(item => (
       item.productTkId
@@ -177,7 +190,7 @@ function normalizeOrderItems(items: AnyRecord[] = [], options?) {
     : [];
 }
 
-function getOrderItemSummaryParts(item: AnyRecord = {}) {
+function getOrderItemSummaryParts(item: OrderItem = {}): OrderItemSummaryParts {
   const rawProductName = String(item?.productName || '').trim();
   const skuName = String(item?.productSkuName || '').trim();
   const quantity = Number.parseInt(String(item?.quantity || '').trim(), 10);
@@ -196,8 +209,12 @@ function getOrderItemSummaryParts(item: AnyRecord = {}) {
   };
 }
 
-function buildOrderItemsSummary(items: AnyRecord[] = [], options?) {
-  const groups: AnyRecord[] = [];
+function buildOrderItemsSummary(items: Array<OrderItem | OrderRecord> = [], options?: OrderItemNormalizerOptions): string {
+  const groups: Array<{
+    key: string;
+    productName: string;
+    entries: Array<{ skuName: string; quantity: number }>;
+  }> = [];
   normalizeOrderItems(items, options).forEach(item => {
     const meta = getOrderItemSummaryParts(item);
     const key = meta.productName || meta.skuName;
@@ -229,8 +246,8 @@ function buildOrderItemsSummary(items: AnyRecord[] = [], options?) {
   }).join(' / ');
 }
 
-function deriveOrderItemTotals(items = [], options) {
-  return normalizeOrderItems(items, options).reduce((acc, item) => {
+function deriveOrderItemTotals(items: Array<OrderItem | OrderRecord> = [], options?: OrderItemNormalizerOptions): OrderItemTotals {
+  return normalizeOrderItems(items, options).reduce<OrderItemTotals>((acc, item) => {
     const quantity = Number.parseInt(String(item.quantity || '').trim(), 10) || 0;
     const unitPurchasePrice = parseOrderMoneyValue(item.unitPurchasePrice) || 0;
     const unitSalePrice = parseOrderMoneyValue(item.unitSalePrice) || 0;
@@ -249,7 +266,7 @@ function deriveOrderItemTotals(items = [], options) {
   });
 }
 
-function buildOrderCourierSummary(items = [], field = 'company', options) {
+function buildOrderCourierSummary(items: Array<OrderItem | OrderRecord> = [], field: 'company' | 'tracking' = 'company', options?: OrderItemNormalizerOptions): string {
   const values = normalizeOrderItems(items, options)
     .map(item => (
       field === 'company'
@@ -260,11 +277,11 @@ function buildOrderCourierSummary(items = [], field = 'company', options) {
   return Array.from(new Set(values)).join(' / ');
 }
 
-function normalizeTrackingNumber(value) {
+function normalizeTrackingNumber(value: unknown): string {
   return String(value || '').replace(/[\s-]+/g, '').toUpperCase();
 }
 
-function detectCourierCompany(trackingNumber, detectors = DEFAULT_CONSTANTS.COURIER_AUTO_DETECTORS) {
+function detectCourierCompany(trackingNumber: unknown, detectors: CourierDetector[] = DEFAULT_CONSTANTS.COURIER_AUTO_DETECTORS): string {
   const normalized = normalizeTrackingNumber(trackingNumber);
   if (!normalized) return '';
   const matched = detectors.find(rule => (
@@ -273,14 +290,14 @@ function detectCourierCompany(trackingNumber, detectors = DEFAULT_CONSTANTS.COUR
   return matched ? matched.name : '';
 }
 
-function todayStr() {
+function todayStr(): string {
   const date = new Date();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-function addDays(ymd, days) {
+function addDays(ymd: string, days: number): string {
   if (!ymd) return '';
   const [year, month, day] = ymd.split('-').map(Number);
   const date = new Date(year, month - 1, day);
@@ -290,14 +307,14 @@ function addDays(ymd, days) {
   return `${date.getFullYear()}-${nextMonth}-${nextDay}`;
 }
 
-function diffDays(a, b) {
+function diffDays(a: string, b: string): number {
   if (!a || !b) return NaN;
   const [ya, ma, da] = a.split('-').map(Number);
   const [yb, mb, db] = b.split('-').map(Number);
   return Math.round((Date.UTC(ya, ma - 1, da) - Date.UTC(yb, mb - 1, db)) / 86400000);
 }
 
-function computeWarning(order) {
+function computeWarning(order: OrderRecord): OrderWarning {
   const status = normalizeStatusValue(order['订单状态']) || normalizeStatusValue(order['入仓状态']);
   const latestWarehouseDate = order['最晚到仓时间'] || '';
   if (status === '订单取消') return { text: '取消订单', cls: 'muted' };
@@ -314,15 +331,15 @@ function computeWarning(order) {
   return { text: '已超期', cls: 'danger' };
 }
 
-function normalizeAccountName(account) {
+function normalizeAccountName(account: unknown): string {
   return String(account || '').trim();
 }
 
-function createOrderNormalizer({ constants = {}, nextUid = uid } = {}) {
-  const safeConstants = { ...DEFAULT_CONSTANTS, ...(constants || {}) };
+function createOrderNormalizer({ constants = {}, nextUid = uid }: OrderNormalizerOptions = {}) {
+  const safeConstants: OrderConstants = { ...DEFAULT_CONSTANTS, ...(constants || {}) };
   const itemOptions = { nextUid };
 
-  function normalizeOrderRecord(order) {
+  function normalizeOrderRecord(order: OrderRecord): OrderRecord {
     const next = { ...order };
     const mergedStatus = normalizeStatusValue(next['入仓状态']) || normalizeStatusValue(next['订单状态']);
     next['订单状态'] = mergedStatus;
@@ -363,7 +380,7 @@ function createOrderNormalizer({ constants = {}, nextUid = uid } = {}) {
     return next;
   }
 
-  function hasLegacyOrderStructure(order) {
+  function hasLegacyOrderStructure(order: OrderRecord): boolean {
     if (order?.__needsOrderCleanup === true) return true;
     const items = Array.isArray(order?.items) ? order.items : [];
     if (!items.length) {
@@ -389,12 +406,12 @@ function createOrderNormalizer({ constants = {}, nextUid = uid } = {}) {
     return hasTopLevelCourier && !hasItemCourier;
   }
 
-  function cleanOrderToCurrentShape(order) {
+  function cleanOrderToCurrentShape(order: OrderRecord): OrderRecord {
     const next = { ...order };
     const currentItems = normalizeOrderItems(next.items, itemOptions);
     const topLevelCourierCompany = String(next?.['快递公司'] || '').trim();
     const topLevelTrackingNo = String(next?.['快递单号'] || '').trim();
-    const buildCleanItem = item => {
+    const buildCleanItem = (item: OrderItem | OrderRecord) => {
       const cleaned = normalizeOrderItem(item, itemOptions);
       if (!cleaned.courierCompany && cleaned.trackingNo) {
         cleaned.courierCompany = detectCourierCompany(cleaned.trackingNo, safeConstants.COURIER_AUTO_DETECTORS);
@@ -432,7 +449,7 @@ function createOrderNormalizer({ constants = {}, nextUid = uid } = {}) {
     return normalized;
   }
 
-  function migrateOrderToCurrentShape(order) {
+  function migrateOrderToCurrentShape(order: OrderRecord): OrderRecord {
     return cleanOrderToCurrentShape(order);
   }
 
@@ -446,38 +463,38 @@ function createOrderNormalizer({ constants = {}, nextUid = uid } = {}) {
   };
 }
 
-function normalizeOrderRecord(order: AnyRecord, options: AnyRecord = {}) {
+function normalizeOrderRecord(order: OrderRecord, options: OrderNormalizerOptions = {}): OrderRecord {
   return createOrderNormalizer(options).normalizeOrderRecord(order);
 }
 
-function hasLegacyOrderStructure(order: AnyRecord, options: AnyRecord = {}) {
+function hasLegacyOrderStructure(order: OrderRecord, options: OrderNormalizerOptions = {}): boolean {
   return createOrderNormalizer(options).hasLegacyOrderStructure(order);
 }
 
-function cleanOrderToCurrentShape(order: AnyRecord, options: AnyRecord = {}) {
+function cleanOrderToCurrentShape(order: OrderRecord, options: OrderNormalizerOptions = {}): OrderRecord {
   return createOrderNormalizer(options).cleanOrderToCurrentShape(order);
 }
 
-function migrateOrderToCurrentShape(order: AnyRecord, options: AnyRecord = {}) {
+function migrateOrderToCurrentShape(order: OrderRecord, options: OrderNormalizerOptions = {}): OrderRecord {
   return createOrderNormalizer(options).migrateOrderToCurrentShape(order);
 }
 
-function normalizeOrderList(list: AnyRecord[], options: AnyRecord = {}) {
+function normalizeOrderList(list: OrderRecord[], options: OrderNormalizerOptions = {}): OrderRecord[] {
   return Array.isArray(list) ? list.map(order => normalizeOrderRecord(order, options)) : [];
 }
 
-function cloneOrder(order, options) {
+function cloneOrder(order: OrderRecord | null | undefined, options?: OrderNormalizerOptions): OrderRecord | null {
   return order ? normalizeOrderRecord({ ...order }, options) : null;
 }
 
-function getOrderUpdatedAt(order) {
+function getOrderUpdatedAt(order: OrderRecord): string {
   return String(order?.updatedAt || order?.updated_at || '').trim();
 }
 
-function serializeOrder(order, options) {
+function serializeOrder(order: OrderRecord | null | undefined, options?: OrderNormalizerOptions): string {
   if (!order) return '';
   const normalized = normalizeOrderRecord({ ...order }, options);
-  const sorted = {};
+  const sorted: LooseRecord = {};
   Object.keys(normalized).sort().forEach(key => {
     const value = normalized[key];
     if (typeof value === 'undefined') return;
@@ -487,7 +504,7 @@ function serializeOrder(order, options) {
   return JSON.stringify(sorted);
 }
 
-function ordersEqual(a, b, options) {
+function ordersEqual(a: OrderRecord | null | undefined, b: OrderRecord | null | undefined, options?: OrderNormalizerOptions): boolean {
   if (!a && !b) return true;
   if (!a || !b) return false;
   return serializeOrder(a, options) === serializeOrder(b, options);
@@ -498,7 +515,12 @@ function create({
   constants = {},
   window: rootWindow = globalThis.window,
   document: rootDocument = globalThis.document
-}: AnyRecord = {}) {
+}: {
+  state?: { orders?: OrderRecord[] };
+  constants?: Partial<OrderConstants>;
+  window?: Window;
+  document?: Document;
+} = {}) {
   const safeConstants = { ...DEFAULT_CONSTANTS, ...(constants || {}) };
   const normalizer = createOrderNormalizer({ constants: safeConstants, nextUid: uid });
   const $ = selector => rootDocument?.querySelector?.(selector) || null;
@@ -741,7 +763,7 @@ function create({
   }
 
   function groupOrdersByAccountSlot(orders = state.orders) {
-    const grouped: AnyRecord = {};
+    const grouped: Record<string, OrderRecord[]> = {};
     normalizeOrderList(orders).forEach(order => {
       const slot = toAccountSlot(order['账号']);
       if (!grouped[slot]) grouped[slot] = [];

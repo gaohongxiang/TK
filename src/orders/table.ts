@@ -4,14 +4,27 @@ import {
   parseCreatorCommissionRateValue,
   parseOrderMoneyValue
 } from './shared.ts';
+import type {
+  DeriveDisplayedOrdersOptions,
+  DeriveDisplayedOrdersResult,
+  DerivePurchaseSummaryOptions,
+  OrderItem,
+  OrderRecord,
+  OrderSortOrder,
+  OrderSummaryMetric,
+  PurchaseSummary
+} from './types.ts';
 
-type AnyRecord = Record<string, any>;
+type ParsedMoneyAmount = {
+  amount: number;
+  hasValue: boolean;
+};
 
-function normalizeSearchValue(value) {
+function normalizeSearchValue(value: unknown): string {
   return String(value || '').trim().toLowerCase();
 }
 
-function isDateSearchQuery(value) {
+function isDateSearchQuery(value: unknown): boolean {
   const normalized = normalizeSearchValue(value);
   if (!normalized) return false;
   if (!/^[\d\s./-]+$/.test(normalized)) return false;
@@ -20,18 +33,18 @@ function isDateSearchQuery(value) {
     || /^\d{1,2}[-/.]\d{1,2}$/.test(compact);
 }
 
-function parseOrderSortTime(order: AnyRecord) {
+function parseOrderSortTime(order: OrderRecord): number {
   const createdAt = String(order?.createdAt || order?.created_at || order?.updatedAt || order?.updated_at || '').trim();
   const timestamp = Date.parse(createdAt || '');
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
-function parseOrderSeq(order: AnyRecord) {
+function parseOrderSeq(order: OrderRecord): number | null {
   const parsed = Number.parseInt(String(order?.seq ?? '').trim(), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function parseMoneyAmount(value) {
+function parseMoneyAmount(value: unknown): ParsedMoneyAmount {
   const amount = parseOrderMoneyValue(value);
   return {
     amount: amount ?? 0,
@@ -39,24 +52,24 @@ function parseMoneyAmount(value) {
   };
 }
 
-function parseExchangeRateValue(value) {
+function parseExchangeRateValue(value: unknown): number | null {
   const parsed = parseMoneyAmount(value);
   return parsed.hasValue && parsed.amount > 0 ? parsed.amount : null;
 }
 
-function isCreatorOrder(order) {
+function isCreatorOrder(order: OrderRecord): boolean {
   const creatorCommissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率']);
   if (creatorCommissionRate !== null && creatorCommissionRate > 0) return true;
   const creatorCommission = parseMoneyAmount(order?.['达人佣金']);
   return creatorCommission.hasValue && creatorCommission.amount > 0;
 }
 
-function roundMoney(value) {
+function roundMoney(value: number): number | null {
   return Number.isFinite(value) ? Number(value.toFixed(2)) : null;
 }
 
-function sumMoneyAmount(orders: AnyRecord[] = [], fieldName = '') {
-  return (Array.isArray(orders) ? orders : []).reduce((acc, order) => {
+function sumMoneyAmount(orders: OrderRecord[] = [], fieldName = ''): OrderSummaryMetric {
+  return (Array.isArray(orders) ? orders : []).reduce<OrderSummaryMetric>((acc, order) => {
     const parsed = parseMoneyAmount(order?.[fieldName]);
     return {
       total: acc.total + parsed.amount,
@@ -65,15 +78,15 @@ function sumMoneyAmount(orders: AnyRecord[] = [], fieldName = '') {
   }, { total: 0, count: 0 });
 }
 
-function normalizeResolvedAmount(value) {
+function normalizeResolvedAmount(value: unknown): number | null {
   if (value === null || typeof value === 'undefined') return null;
   if (typeof value === 'string' && !value.trim()) return null;
   const amount = Number(value);
   return Number.isFinite(amount) ? roundMoney(amount) : null;
 }
 
-function sumResolvedMoneyAmount(orders: AnyRecord[] = [], resolver: (order: AnyRecord) => any = () => null) {
-  return (Array.isArray(orders) ? orders : []).reduce((acc, order) => {
+function sumResolvedMoneyAmount(orders: OrderRecord[] = [], resolver: (order: OrderRecord) => unknown = () => null): OrderSummaryMetric {
+  return (Array.isArray(orders) ? orders : []).reduce<OrderSummaryMetric>((acc, order) => {
     const resolved = resolver(order);
     const amount = normalizeResolvedAmount(resolved);
     return {
@@ -83,9 +96,9 @@ function sumResolvedMoneyAmount(orders: AnyRecord[] = [], resolver: (order: AnyR
   }, { total: 0, count: 0 });
 }
 
-function sumRefundSaleAmount(orders: AnyRecord[] = [], exchangeRate = null) {
+function sumRefundSaleAmount(orders: OrderRecord[] = [], exchangeRate: unknown = null): OrderSummaryMetric {
   const rate = parseExchangeRateValue(exchangeRate);
-  return (Array.isArray(orders) ? orders : []).reduce((acc, order) => {
+  return (Array.isArray(orders) ? orders : []).reduce<OrderSummaryMetric>((acc, order) => {
     if (rate === null || !isOrderRefunded(order)) return acc;
     const sale = parseMoneyAmount(order?.['售价']);
     if (!sale.hasValue || sale.amount <= 0) return acc;
@@ -96,9 +109,9 @@ function sumRefundSaleAmount(orders: AnyRecord[] = [], exchangeRate = null) {
   }, { total: 0, count: 0 });
 }
 
-function sumGrossSaleAmount(orders: AnyRecord[] = [], exchangeRate = null) {
+function sumGrossSaleAmount(orders: OrderRecord[] = [], exchangeRate: unknown = null): OrderSummaryMetric {
   const rate = parseExchangeRateValue(exchangeRate);
-  return (Array.isArray(orders) ? orders : []).reduce((acc, order) => {
+  return (Array.isArray(orders) ? orders : []).reduce<OrderSummaryMetric>((acc, order) => {
     if (rate === null) return acc;
     const sale = parseMoneyAmount(order?.['售价']);
     if (!sale.hasValue || sale.amount <= 0) return acc;
@@ -109,7 +122,7 @@ function sumGrossSaleAmount(orders: AnyRecord[] = [], exchangeRate = null) {
   }, { total: 0, count: 0 });
 }
 
-function computeOrderSaleCnyAmount(order: AnyRecord, exchangeRate = null) {
+function computeOrderSaleCnyAmount(order: OrderRecord, exchangeRate: unknown = null): number | null {
   const sale = parseMoneyAmount(order?.['售价']);
   const rate = parseExchangeRateValue(exchangeRate);
   if (rate === null) return null;
@@ -118,7 +131,7 @@ function computeOrderSaleCnyAmount(order: AnyRecord, exchangeRate = null) {
   return roundMoney(sale.amount / rate);
 }
 
-function computeOrderCreatorCommissionAmount(order: AnyRecord, exchangeRate = null) {
+function computeOrderCreatorCommissionAmount(order: OrderRecord, exchangeRate: unknown = null): number | null {
   const sale = parseMoneyAmount(order?.['售价']);
   const rate = parseExchangeRateValue(exchangeRate);
   const creatorCommissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率']);
@@ -129,7 +142,7 @@ function computeOrderCreatorCommissionAmount(order: AnyRecord, exchangeRate = nu
   return roundMoney((sale.amount / rate) * (creatorCommissionRate / 100));
 }
 
-function computeOrderProfitAmount(order: AnyRecord, exchangeRate = null) {
+function computeOrderProfitAmount(order: OrderRecord, exchangeRate: unknown = null): number | null {
   const saleCny = computeOrderSaleCnyAmount(order, exchangeRate);
   const purchase = parseMoneyAmount(order?.['采购价格']);
   const shipping = parseMoneyAmount(order?.['预估运费']);
@@ -138,17 +151,17 @@ function computeOrderProfitAmount(order: AnyRecord, exchangeRate = null) {
   return roundMoney(saleCny - purchase.amount - shipping.amount - creatorCommission);
 }
 
-function formatTableMoneyValue(value) {
+function formatTableMoneyValue(value: number): string {
   if (!Number.isFinite(value)) return '';
   return value.toFixed(2).replace(/\.?0+$/, '');
 }
 
-function formatTableCellValue(value) {
+function formatTableCellValue(value: unknown): string {
   const text = String(value ?? '').trim();
   return text || '-';
 }
 
-function buildSaleCellMarkup(order: AnyRecord) {
+function buildSaleCellMarkup(order: OrderRecord): string {
   const saleText = String(order?.['售价'] ?? '').trim();
   if (!saleText) return '-';
   if (!isOrderRefunded(order)) return escapeHtml(formatTableCellValue(saleText));
@@ -159,7 +172,7 @@ function buildSaleCellMarkup(order: AnyRecord) {
       </span>`;
 }
 
-function buildOrderNoCellMarkup(order: AnyRecord) {
+function buildOrderNoCellMarkup(order: OrderRecord): string {
   const orderNo = escapeHtml(formatTableCellValue(order?.['订单号']));
   const tags = [];
   if (isCreatorOrder(order)) {
@@ -176,11 +189,11 @@ function buildOrderNoCellMarkup(order: AnyRecord) {
       </span>`;
 }
 
-function normalizeOrderItems(order: AnyRecord) {
+function normalizeOrderItems(order: OrderRecord): OrderItem[] {
   return Array.isArray(order?.items) ? order.items : [];
 }
 
-function resolveItemCourier(item: AnyRecord = {}, order: AnyRecord = {}) {
+function resolveItemCourier(item: OrderItem = {}, order: OrderRecord = {}): { company: string; tracking: string } {
   const orderCompany = String(order?.['快递公司'] || '').trim();
   const orderTracking = String(order?.['快递单号'] || '').trim();
   return {
@@ -189,7 +202,7 @@ function resolveItemCourier(item: AnyRecord = {}, order: AnyRecord = {}) {
   };
 }
 
-function getOrderCourierValues(order: AnyRecord, field = 'company') {
+function getOrderCourierValues(order: OrderRecord, field: 'company' | 'tracking' = 'company'): string[] {
   const items = normalizeOrderItems(order);
   if (!items.length) {
     const fallback = String(field === 'company' ? order?.['快递公司'] : order?.['快递单号'] || '').trim();
@@ -204,7 +217,7 @@ function getOrderCourierValues(order: AnyRecord, field = 'company') {
   return fallback ? [fallback] : [];
 }
 
-function buildOrderCourierSummary(order: AnyRecord, field = 'company', mode = 'full') {
+function buildOrderCourierSummary(order: OrderRecord, field: 'company' | 'tracking' = 'company', mode: 'compact' | 'full' = 'full'): string {
   const values = getOrderCourierValues(order, field);
   if (!values.length) return '';
   if (mode === 'compact') {
@@ -214,7 +227,7 @@ function buildOrderCourierSummary(order: AnyRecord, field = 'company', mode = 'f
   return values.join(' / ');
 }
 
-function formatCurrencyAmount(value) {
+function formatCurrencyAmount(value: unknown): string {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return '-';
   return `¥ ${amount.toLocaleString('en-US', {
@@ -223,7 +236,7 @@ function formatCurrencyAmount(value) {
   })}`;
 }
 
-function formatCompactCurrencyAmount(value) {
+function formatCompactCurrencyAmount(value: unknown): string {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return '-';
   return `¥${amount.toLocaleString('en-US', {
@@ -232,12 +245,12 @@ function formatCompactCurrencyAmount(value) {
   })}`;
 }
 
-function formatSummaryMetric(metric) {
+function formatSummaryMetric(metric?: OrderSummaryMetric | null): string {
   if (!metric || !metric.count) return '-';
   return formatCurrencyAmount(metric.total);
 }
 
-function getSummaryTone(metric, kind = 'neutral') {
+function getSummaryTone(metric?: OrderSummaryMetric | null, kind = 'neutral'): string {
   if (kind === 'income') return 'income';
   if (kind === 'expense') return 'expense';
   if (!metric || !metric.count) return 'neutral';
@@ -246,14 +259,14 @@ function getSummaryTone(metric, kind = 'neutral') {
   return 'neutral';
 }
 
-function getProfitCellToneClass(value) {
+function getProfitCellToneClass(value: unknown): string {
   if (!Number.isFinite(Number(value))) return 'neutral';
   if (Number(value) > 0) return 'profit-positive';
   if (Number(value) < 0) return 'profit-negative';
   return 'neutral';
 }
 
-function deriveDisplayedOrders({ orders = [], activeAccount = '__all__', searchQuery = '', sortOrder = 'asc' }: AnyRecord = {}) {
+function deriveDisplayedOrders({ orders = [], activeAccount = '__all__', searchQuery = '', sortOrder = 'asc' }: DeriveDisplayedOrdersOptions = {}): DeriveDisplayedOrdersResult {
   const list = Array.isArray(orders) ? orders : [];
   const isAll = activeAccount === '__all__';
   const accountFiltered = isAll
@@ -323,12 +336,12 @@ function derivePurchaseSummary({
   exchangeRate = null,
   computeOrderSaleCny,
   computeOrderCreatorCommission
-}: AnyRecord = {}) {
+}: DerivePurchaseSummaryOptions = {}): PurchaseSummary {
   const list = Array.isArray(orders) ? orders : [];
   const { sorted } = deriveDisplayedOrders({ orders: list, activeAccount, searchQuery, sortOrder });
   const filteredPurchase = sumMoneyAmount(sorted, '采购价格');
   const allPurchase = sumMoneyAmount(list, '采购价格');
-  const resolveSale = order => {
+  const resolveSale = (order: OrderRecord) => {
     if (typeof computeOrderSaleCny === 'function') return computeOrderSaleCny(order, exchangeRate);
     return computeOrderSaleCnyAmount(order, exchangeRate);
   };
@@ -336,7 +349,7 @@ function derivePurchaseSummary({
   const allSale = sumResolvedMoneyAmount(list, resolveSale);
   const filteredShipping = sumMoneyAmount(sorted, '预估运费');
   const allShipping = sumMoneyAmount(list, '预估运费');
-  const resolveCreatorCommission = order => {
+  const resolveCreatorCommission = (order: OrderRecord) => {
     const creatorCommissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率']);
     if (creatorCommissionRate === null) return null;
     if (typeof computeOrderCreatorCommission === 'function') return computeOrderCreatorCommission(order, exchangeRate);
@@ -388,7 +401,7 @@ function derivePurchaseSummary({
   };
 }
 
-function buildCurrentFilterTitle(activeAccount = '__all__', searchQuery = '') {
+function buildCurrentFilterTitle(activeAccount = '__all__', searchQuery = ''): string {
   const conditions = [];
   const account = String(activeAccount || '').trim();
   const query = String(searchQuery || '').trim();

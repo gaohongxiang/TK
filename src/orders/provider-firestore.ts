@@ -1,19 +1,43 @@
 import {
   normalizeOrderItems as normalizeSharedOrderItems
 } from './shared.ts';
+import type {
+  OrderFirestoreConfig,
+  OrderFirestoreDoc,
+  OrderHydratedFirestoreConfig,
+  OrderItemDoc,
+  OrderItemSummaryParts,
+  OrderItemTotals,
+  OrderProviderApi,
+  OrderProviderCreateOptions,
+  OrderProviderPushChangesOptions,
+  OrderProviderPushResult,
+  OrderProviderSnapshot,
+  OrderRecord,
+  SerializedOrderProviderConfig
+} from './types.ts';
+import type {
+  FirebaseCompatApp,
+  FirebaseCompatCollectionRef,
+  FirebaseCompatDocRef,
+  FirebaseCompatDocSnapshot,
+  FirebaseCompatFirestore,
+  FirebaseCompatQuerySnapshot,
+  FirebaseCompatWriteBatch
+} from '../types/firestore.ts';
 
-type AnyRecord = Record<string, any>;
+type LooseRecord = Record<string, unknown>;
 
-function latestIso(values: any[] = []) {
-  return (values || []).filter(Boolean).sort().slice(-1)[0] || '';
+function latestIso(values: unknown[] = []): string {
+  return (values || []).map(value => String(value || '')).filter(Boolean).sort().slice(-1)[0] || '';
 }
 
-function toPlainObject(value) {
+function toPlainObject(value: unknown): LooseRecord | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as AnyRecord;
+  return value as LooseRecord;
 }
 
-function runLooseObjectParser(text) {
+function runLooseObjectParser(text: string): unknown {
   try {
     return Function(`"use strict"; return (${text});`)();
   } catch (error) {
@@ -21,20 +45,20 @@ function runLooseObjectParser(text) {
   }
 }
 
-function sanitizeConfig(raw) {
+function sanitizeConfig(raw: unknown): OrderFirestoreConfig | null {
   const cfg = toPlainObject(raw);
   if (!cfg) return null;
-  const next: AnyRecord = {};
+  const next: Partial<OrderFirestoreConfig> = {};
   ['apiKey', 'authDomain', 'projectId', 'appId', 'storageBucket', 'messagingSenderId', 'measurementId'].forEach(key => {
     const value = String(cfg[key] || '').trim();
-    if (value) next[key] = value;
+    if (value) next[key as keyof OrderFirestoreConfig] = value;
   });
   if (!next.apiKey || !next.projectId || !next.appId) return null;
   if (!next.authDomain) next.authDomain = `${next.projectId}.firebaseapp.com`;
-  return next;
+  return next as OrderFirestoreConfig;
 }
 
-function parseConfigInput(raw) {
+function parseConfigInput(raw: unknown): OrderFirestoreConfig | null {
   if (!raw) return null;
   if (typeof raw === 'object') {
     const cfg = toPlainObject(raw);
@@ -60,22 +84,23 @@ function parseConfigInput(raw) {
   return sanitizeConfig(runLooseObjectParser(body));
 }
 
-function normalizeConfigText(raw) {
+function normalizeConfigText(raw: unknown): string {
   const parsed = parseConfigInput(raw);
   return parsed ? JSON.stringify(parsed, null, 2) : '';
 }
 
-function hydrateConfig(raw: AnyRecord = {}) {
-  const parsed = parseConfigInput(raw?.configText || raw?.firestoreConfigText || raw?.firebaseConfig || raw?.config || raw);
+function hydrateConfig(raw: unknown = {}): OrderHydratedFirestoreConfig {
+  const source = toPlainObject(raw) || {};
+  const parsed = parseConfigInput(source?.configText || source?.firestoreConfigText || source?.firebaseConfig || source?.config || raw);
   return {
     config: parsed,
     configText: parsed ? JSON.stringify(parsed, null, 2) : '',
-    projectId: parsed?.projectId || String(raw?.projectId || raw?.firestoreProjectId || '').trim(),
-    user: String(raw?.user || '').trim()
+    projectId: parsed?.projectId || String(source?.projectId || source?.firestoreProjectId || '').trim(),
+    user: String(source?.user || '').trim()
   };
 }
 
-function serializeConfig(config: AnyRecord) {
+function serializeConfig(config: unknown): SerializedOrderProviderConfig {
   const next = hydrateConfig(config || {});
   return {
     firestoreConfigText: next.configText,
@@ -84,63 +109,65 @@ function serializeConfig(config: AnyRecord) {
   };
 }
 
-function getDisplayName(config: AnyRecord = {}) {
+function getDisplayName(config: unknown = {}): string {
   const next = hydrateConfig(config);
   if (next.user) return `${next.user} · Firestore`;
   if (next.projectId) return `${next.projectId} · Firestore`;
   return 'Firebase Firestore';
 }
 
-function getCacheKey() {
+function getCacheKey(): null {
   return null;
 }
 
-function usesBuiltInLocalCache() {
+function usesBuiltInLocalCache(): boolean {
   return true;
 }
 
-function toNullableText(value) {
+function toNullableText(value: unknown): string | null {
   const text = String(value ?? '').trim();
   return text ? text : null;
 }
 
-function toNullableInteger(value) {
+function toNullableInteger(value: unknown): number | null {
   const text = String(value ?? '').trim();
   if (!text) return null;
   const parsed = Number.parseInt(text, 10);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function toNullableDecimal(value) {
+function toNullableDecimal(value: unknown): number | null {
   const text = String(value ?? '').replace(/,/g, '').trim();
   if (!text) return null;
   const parsed = Number.parseFloat(text);
   return Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : null;
 }
 
-function toBoolean(value) {
+function toBoolean(value: unknown): boolean {
   const raw = String(value ?? '').trim().toLowerCase();
   return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'y';
 }
 
-function toIsoString(value, fallback = '') {
+function toIsoString(value: unknown, fallback = ''): string {
   if (!value && fallback) return fallback;
   if (!value) return '';
   if (typeof value === 'string') {
     const parsed = Date.parse(value);
     return Number.isFinite(parsed) ? new Date(parsed).toISOString() : value;
   }
-  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
+  if (value && typeof value === 'object' && typeof (value as { toDate?: unknown }).toDate === 'function') {
+    return ((value as { toDate: () => Date }).toDate()).toISOString();
+  }
   if (value instanceof Date) return value.toISOString();
   return fallback || '';
 }
 
-function parseSeq(value) {
+function parseSeq(value: unknown): number | null {
   const parsed = Number.parseInt(String(value ?? '').trim(), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-function stripDuplicatedSkuSuffix(productName, skuName) {
+function stripDuplicatedSkuSuffix(productName: unknown, skuName: unknown): string {
   const rawProductName = String(productName || '').trim();
   const rawSkuName = String(skuName || '').trim();
   if (!rawProductName || !rawSkuName) return rawProductName;
@@ -151,7 +178,11 @@ function stripDuplicatedSkuSuffix(productName, skuName) {
   return next;
 }
 
-function normalizeOrderItems(items: AnyRecord[] = [], { nowIso = () => new Date().toISOString() }: AnyRecord = {}) {
+type ProviderOrderItem = OrderItemDoc & {
+  useOrderCourier?: boolean | null;
+};
+
+function normalizeOrderItems(items: ProviderOrderItem[] = [], { nowIso = () => new Date().toISOString() }: { nowIso?: () => string } = {}): ProviderOrderItem[] {
   if (!Array.isArray(items)) return [];
   return items.map(item => ({
     lineId: String(item?.lineId || '').trim() || nowIso(),
@@ -174,7 +205,7 @@ function normalizeOrderItems(items: AnyRecord[] = [], { nowIso = () => new Date(
   }));
 }
 
-function buildCourierSummary(items: AnyRecord[] = [], field = 'company', options?) {
+function buildCourierSummary(items: ProviderOrderItem[] = [], field: 'company' | 'tracking' = 'company', options?: { nowIso?: () => string }): string {
   const values = normalizeOrderItems(items, options)
     .map(item => (
       field === 'company'
@@ -185,7 +216,7 @@ function buildCourierSummary(items: AnyRecord[] = [], field = 'company', options
   return Array.from(new Set(values)).join(' / ');
 }
 
-function rawOrderNeedsCanonicalCleanup(data: AnyRecord = {}, options?) {
+function rawOrderNeedsCanonicalCleanup(data: LooseRecord = {}, options?: { nowIso?: () => string }): boolean {
   const rawItems = Array.isArray(data?.items) ? data.items : [];
   const hasLegacyTopLevelItemFields = [
     data?.productTkId,
@@ -213,7 +244,7 @@ function rawOrderNeedsCanonicalCleanup(data: AnyRecord = {}, options?) {
     });
 }
 
-function getOrderItemSummaryParts(item: AnyRecord = {}) {
+function getOrderItemSummaryParts(item: ProviderOrderItem = { lineId: '', quantity: null }): OrderItemSummaryParts {
   const rawProductName = String(item?.productName || '').trim();
   const skuName = String(item?.productSkuName || '').trim();
   const quantity = toNullableInteger(item?.quantity) || 1;
@@ -232,8 +263,8 @@ function getOrderItemSummaryParts(item: AnyRecord = {}) {
   };
 }
 
-function deriveOrderItemTotals(items: AnyRecord[] = [], options?) {
-  return normalizeOrderItems(items, options).reduce((acc, item) => ({
+function deriveOrderItemTotals(items: ProviderOrderItem[] = [], options?: { nowIso?: () => string }): OrderItemTotals {
+  return normalizeOrderItems(items, options).reduce<OrderItemTotals>((acc, item) => ({
     quantity: acc.quantity + (item.quantity || 0),
     purchase: acc.purchase + ((item.unitPurchasePrice || 0) * (item.quantity || 0)),
     sale: acc.sale + ((item.unitSalePrice || 0) * (item.quantity || 0)),
@@ -246,8 +277,12 @@ function deriveOrderItemTotals(items: AnyRecord[] = [], options?) {
   });
 }
 
-function buildOrderItemsSummary(items: AnyRecord[] = [], options?) {
-  const groups: AnyRecord[] = [];
+function buildOrderItemsSummary(items: ProviderOrderItem[] = [], options?: { nowIso?: () => string }): string {
+  const groups: Array<{
+    key: string;
+    productName: string;
+    entries: Array<{ skuName: string; quantity: number }>;
+  }> = [];
   normalizeOrderItems(items, options).forEach(item => {
     const meta = getOrderItemSummaryParts(item);
     const key = meta.productName || meta.skuName;
@@ -279,7 +314,7 @@ function buildOrderItemsSummary(items: AnyRecord[] = [], options?) {
   }).join(' / ');
 }
 
-function getOrderCreatedAt(order: AnyRecord, { nowIso = () => new Date().toISOString() }: AnyRecord = {}) {
+function getOrderCreatedAt(order: OrderRecord, { nowIso = () => new Date().toISOString() }: { nowIso?: () => string } = {}): string {
   const direct = String(order?.createdAt || order?.created_at || '').trim();
   if (direct) return toIsoString(direct, nowIso());
   const updated = String(order?.updatedAt || order?.updated_at || '').trim();
@@ -287,9 +322,10 @@ function getOrderCreatedAt(order: AnyRecord, { nowIso = () => new Date().toISOSt
   return nowIso();
 }
 
-function normalizePulledOrder(data: AnyRecord, options: AnyRecord = {}) {
+function normalizePulledOrder(raw: unknown, options: { nowIso?: () => string } = {}): OrderRecord {
+  const data = toPlainObject(raw) || {};
   const seq = parseSeq(data?.seq);
-  const items = normalizeOrderItems(data?.items, options);
+  const items = normalizeOrderItems(Array.isArray(data?.items) ? data.items as ProviderOrderItem[] : [], options);
   const totals = deriveOrderItemTotals(items, options);
   const totalQuantity = items.length ? totals.quantity : (data?.quantity ?? '');
   const totalPurchase = (data?.purchasePrice ?? '') !== '' && data?.purchasePrice != null
@@ -309,16 +345,16 @@ function normalizePulledOrder(data: AnyRecord, options: AnyRecord = {}) {
     createdAt: toIsoString(data?.createdAt || data?.created_at || ''),
     updatedAt: toIsoString(data?.updatedAt || data?.updated_at || ''),
     deletedAt: toIsoString(data?.deletedAt || data?.deleted_at || ''),
-    '账号': data?.accountName || '',
-    '下单时间': data?.orderedAt || '',
-    '采购日期': data?.purchaseDate || '',
-    '最晚到仓时间': data?.latestWarehouseAt || '',
-    '订单预警': data?.warningText || '',
-    '订单号': data?.orderNo || '',
-    '商品TK ID': items.length === 1 ? (items[0]?.productTkId || '') : (data?.productTkId || ''),
-    '商品SKU ID': items.length === 1 ? (items[0]?.productSkuId || '') : (data?.productSkuId || ''),
-    '商品SKU名称': items.length === 1 ? (items[0]?.productSkuName || '') : (data?.productSkuName || ''),
-    '产品名称': productSummary,
+    '账号': String(data?.accountName || ''),
+    '下单时间': String(data?.orderedAt || ''),
+    '采购日期': String(data?.purchaseDate || ''),
+    '最晚到仓时间': String(data?.latestWarehouseAt || ''),
+    '订单预警': String(data?.warningText || ''),
+    '订单号': String(data?.orderNo || ''),
+    '商品TK ID': items.length === 1 ? String(items[0]?.productTkId || '') : String(data?.productTkId || ''),
+    '商品SKU ID': items.length === 1 ? String(items[0]?.productSkuId || '') : String(data?.productSkuId || ''),
+    '商品SKU名称': items.length === 1 ? String(items[0]?.productSkuName || '') : String(data?.productSkuName || ''),
+    '产品名称': String(productSummary || ''),
     '数量': totalQuantity == null || totalQuantity === '' ? '' : String(totalQuantity),
     '是否退款': data?.isRefunded ? '1' : '',
     '达人佣金率': data?.creatorCommissionRate == null ? '' : String(data.creatorCommissionRate),
@@ -327,20 +363,20 @@ function normalizePulledOrder(data: AnyRecord, options: AnyRecord = {}) {
     '售价': totalSale == null || totalSale === '' ? '' : String(totalSale),
     '预估运费': data?.estimatedShippingFee == null ? '' : String(data.estimatedShippingFee),
     '预估利润': data?.estimatedProfit == null ? '' : String(data.estimatedProfit),
-    '重量': data?.weightText || '',
-    '尺寸': data?.sizeText || '',
-    '订单状态': data?.orderStatus || '',
-    '快递公司': courierSummary,
-    '快递单号': trackingSummary
+    '重量': String(data?.weightText || ''),
+    '尺寸': String(data?.sizeText || ''),
+    '订单状态': String(data?.orderStatus || ''),
+    '快递公司': String(courierSummary || ''),
+    '快递单号': String(trackingSummary || '')
   };
 }
 
-function buildOrderDoc(order: AnyRecord, options: AnyRecord = {}) {
+function buildOrderDoc(order: OrderRecord, options: { nowIso?: () => string } = {}): OrderFirestoreDoc {
   const nowIso = options.nowIso || (() => new Date().toISOString());
   const seq = parseSeq(order?.seq);
   const createdAt = getOrderCreatedAt(order, { nowIso });
   const updatedAt = toIsoString(order?.updatedAt || order?.updated_at, createdAt || nowIso()) || nowIso();
-  const items = normalizeOrderItems(order?.items, { nowIso });
+  const items = normalizeOrderItems(Array.isArray(order?.items) ? order.items as ProviderOrderItem[] : [], { nowIso });
   const totals = deriveOrderItemTotals(items, { nowIso });
   const productSummary = items.length ? buildOrderItemsSummary(items, { nowIso }) : toNullableText(order?.['产品名称']);
   const topLevelWeight = toNullableText(order?.['重量']);
@@ -372,7 +408,7 @@ function buildOrderDoc(order: AnyRecord, options: AnyRecord = {}) {
     sizeText: topLevelSize || (items.length === 1 ? toNullableText(items[0]?.unitSizeText || '') : null),
     orderStatus: toNullableText(order?.['订单状态']),
     items: items.length ? items.map(item => {
-      const row: AnyRecord = {
+      const row: OrderItemDoc = {
         lineId: item.lineId,
         quantity: toNullableInteger(item.quantity)
       };
@@ -401,7 +437,7 @@ function buildOrderDoc(order: AnyRecord, options: AnyRecord = {}) {
   };
 }
 
-function sortOrdersForSeqAssignment(left: AnyRecord, right: AnyRecord, options) {
+function sortOrdersForSeqAssignment(left: OrderRecord, right: OrderRecord, options?: { nowIso?: () => string }): number {
   const leftCreatedAt = Date.parse(getOrderCreatedAt(left, options) || '');
   const rightCreatedAt = Date.parse(getOrderCreatedAt(right, options) || '');
   if (leftCreatedAt !== rightCreatedAt) return leftCreatedAt - rightCreatedAt;
@@ -413,36 +449,38 @@ function sortOrdersForSeqAssignment(left: AnyRecord, right: AnyRecord, options) 
   return String(left?.id || '').localeCompare(String(right?.id || ''));
 }
 
-function create({ state = {}, helpers = {}, window: rootWindow = globalThis.window }: AnyRecord = {}) {
+function create({ state = {}, helpers = {}, window: rootWindow = globalThis.window }: OrderProviderCreateOptions = {}): OrderProviderApi {
   const nowIso = helpers.nowIso || (() => new Date().toISOString());
   const normalizeOrderList = helpers.normalizeOrderList || (list => (Array.isArray(list) ? list : []));
-  const uniqueAccounts = helpers.uniqueAccounts || (list => Array.isArray(list) ? [...new Set(list.filter(Boolean))] : []);
-  let app = null;
-  let db = null;
+  const uniqueAccounts = helpers.uniqueAccounts || (list => (
+    Array.isArray(list) ? [...new Set(list.map(item => String(item || '').trim()).filter(Boolean))] : []
+  ));
+  let app: FirebaseCompatApp | null = null;
+  let db: FirebaseCompatFirestore | null = null;
 
-  function orderRef(currentDb, id) {
+  function orderRef(currentDb: FirebaseCompatFirestore, id: unknown): FirebaseCompatDocRef {
     return currentDb.collection('orders').doc(String(id || '').trim());
   }
 
-  function accountDocId(name = '') {
+  function accountDocId(name: unknown = ''): string {
     const raw = String(name || '').trim();
     return raw ? encodeURIComponent(raw) : '__unassigned__';
   }
 
-  function accountRef(currentDb, name) {
+  function accountRef(currentDb: FirebaseCompatFirestore, name: unknown): FirebaseCompatDocRef {
     return currentDb.collection('order_accounts').doc(accountDocId(name));
   }
 
-  function syncStateRef(currentDb) {
+  function syncStateRef(currentDb: FirebaseCompatFirestore): FirebaseCompatDocRef {
     return currentDb.collection('sync_state').doc('app');
   }
 
-  async function requireDb() {
+  async function requireDb(): Promise<FirebaseCompatFirestore> {
     if (!db) throw new Error('Firestore 尚未初始化');
     return db;
   }
 
-  async function getQuerySnapshot(query) {
+  async function getQuerySnapshot(query: FirebaseCompatCollectionRef): Promise<FirebaseCompatQuerySnapshot> {
     if (!query || typeof query.get !== 'function') throw new Error('Firestore 查询不可用');
     try {
       return await query.get({ source: 'server' });
@@ -451,7 +489,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     }
   }
 
-  async function getDocSnapshot(docRef) {
+  async function getDocSnapshot(docRef: FirebaseCompatDocRef): Promise<FirebaseCompatDocSnapshot> {
     if (!docRef || typeof docRef.get !== 'function') throw new Error('Firestore 文档不可用');
     try {
       return await docRef.get({ source: 'server' });
@@ -460,17 +498,17 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     }
   }
 
-  async function fetchOrderDocs(currentDb) {
+  async function fetchOrderDocs(currentDb: FirebaseCompatFirestore): Promise<OrderRecord[]> {
     const snapshot = await getQuerySnapshot(currentDb.collection('orders'));
     return snapshot.docs.map(doc => normalizePulledOrder(doc.data() || {}, { nowIso }));
   }
 
-  async function fetchMaxSeq(currentDb) {
+  async function fetchMaxSeq(currentDb: FirebaseCompatFirestore): Promise<number> {
     const orders = await fetchOrderDocs(currentDb);
     return orders.reduce((max, order) => Math.max(max, parseSeq(order?.seq) || 0), 0);
   }
 
-  async function assignOrderSeqs(currentDb, orders = []) {
+  async function assignOrderSeqs(currentDb: FirebaseCompatFirestore, orders: OrderRecord[] = []): Promise<OrderRecord[]> {
     const normalized = normalizeOrderList(orders).map(order => ({ ...order }));
     if (!normalized.length) return normalized;
 
@@ -491,10 +529,14 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return normalized;
   }
 
-  function commitMutations(currentDb, mutations, { waitForCommit = true } = {}) {
-    if (!mutations.length) return Promise.resolve();
+  function commitMutations(
+    currentDb: FirebaseCompatFirestore,
+    mutations: Array<(batch: FirebaseCompatWriteBatch) => void>,
+    { waitForCommit = true }: { waitForCommit?: boolean } = {}
+  ): Promise<unknown[]> {
+    if (!mutations.length) return Promise.resolve([]);
     const chunkSize = 400;
-    const commits = [];
+    const commits: Promise<unknown>[] = [];
     for (let index = 0; index < mutations.length; index += chunkSize) {
       const batch = currentDb.batch();
       mutations.slice(index, index + chunkSize).forEach(apply => apply(batch));
@@ -506,7 +548,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return allCommits;
   }
 
-  async function init(config) {
+  async function init(config: unknown): Promise<SerializedOrderProviderConfig> {
     const next = hydrateConfig(config);
     if (!next.config || !next.projectId) throw new Error('请粘贴完整的 firebaseConfig');
     if (!rootWindow?.firebase?.initializeApp) throw new Error('Firebase 浏览器客户端未加载');
@@ -539,17 +581,17 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return serializeConfig(state);
   }
 
-  function isReady() {
+  function isReady(): boolean {
     return !!db;
   }
 
-  function isConnected() {
+  function isConnected(): boolean {
     return !!db;
   }
 
-  async function signOut() {}
+  async function signOut(): Promise<void> {}
 
-  async function pullSnapshot({ cursor = '' } = {}) {
+  async function pullSnapshot({ cursor = '' }: { cursor?: string } = {}): Promise<OrderProviderSnapshot> {
     const currentDb = await requireDb();
     const [ordersSnap, accountsSnap, syncStateSnap] = await Promise.all([
       getQuerySnapshot(currentDb.collection('orders')),
@@ -612,11 +654,11 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     clientId = '',
     assignSeq = true,
     waitForCommit = true
-  } = {}) {
+  }: OrderProviderPushChangesOptions = {}): Promise<OrderProviderPushResult> {
     const currentDb = await requireDb();
     const updatedAt = nowIso();
     const assignedOrders = assignSeq ? await assignOrderSeqs(currentDb, upserts) : normalizeOrderList(upserts);
-    const mutations = [];
+    const mutations: Array<(batch: FirebaseCompatWriteBatch) => void> = [];
 
     assignedOrders.forEach(order => {
       const row = buildOrderDoc({

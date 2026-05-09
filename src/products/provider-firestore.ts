@@ -1,6 +1,4 @@
 import type {
-  FirebaseCompatApp,
-  FirebaseCompatFirestore,
   ProductDefaultsDoc,
   ProductFirestoreConfig,
   ProductFirestoreDoc,
@@ -13,6 +11,7 @@ import type {
   ProductSku,
   ProductSkuDoc
 } from './types.ts';
+import type { FirebaseCompatApp, FirebaseCompatFirestore } from '../types/firestore.ts';
 
 type LooseRecord = Record<string, unknown>;
 

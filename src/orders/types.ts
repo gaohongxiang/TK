@@ -1,3 +1,5 @@
+import type { FirebaseConfig, FirebaseWindow, HydratedFirebaseConfig } from '../types/firestore.ts';
+
 type OrderSortOrder = 'asc' | 'desc' | string;
 
 type OrderStatus = '未采购' | '已采购' | '在途' | '已入仓' | '已送达' | '已完成' | '订单取消' | string;
@@ -225,6 +227,108 @@ type OrderSizeParseResult = {
   heightCm: number | '';
 };
 
+type OrderProviderCreateOptions = {
+  state?: Record<string, unknown>;
+  helpers?: {
+    nowIso?: () => string;
+    normalizeOrderList?: (list: OrderRecord[]) => OrderRecord[];
+    uniqueAccounts?: (list: unknown[]) => string[];
+  };
+  window?: FirebaseWindow;
+};
+
+type SerializedOrderProviderConfig = {
+  firestoreConfigText: string;
+  firestoreProjectId: string;
+  user: string;
+};
+
+type OrderProviderSnapshot = {
+  orders: OrderRecord[];
+  accounts: string[];
+  changedOrders: OrderRecord[];
+  changedAccounts: Array<{ name: string; updatedAt: string; deletedAt: string }>;
+  updatedAt: string;
+  accountsUpdatedAt: string;
+  remoteCursor: string;
+};
+
+type OrderProviderPushChangesOptions = {
+  upserts?: OrderRecord[];
+  deletions?: Array<{ id?: string; accountName?: string; deletedAt?: string }>;
+  accountUpserts?: string[];
+  accountDeletions?: string[];
+  clientId?: string;
+  assignSeq?: boolean;
+  waitForCommit?: boolean;
+};
+
+type OrderProviderPushResult = {
+  updatedAt: string;
+  remoteCursor: string;
+  assignedOrders: OrderRecord[];
+  commitPromise: Promise<unknown>;
+};
+
+type OrderProviderApi = {
+  key: 'firestore';
+  label: string;
+  parseConfigInput: (raw: unknown) => FirebaseConfig | null;
+  normalizeConfigText: (raw: unknown) => string;
+  serializeConfig: (config: unknown) => SerializedOrderProviderConfig;
+  getCacheKey: () => null;
+  getDisplayName: (config?: unknown) => string;
+  usesBuiltInLocalCache: () => boolean;
+  init: (config: unknown) => Promise<SerializedOrderProviderConfig>;
+  isReady: () => boolean;
+  isConnected: () => boolean;
+  signOut: () => Promise<void>;
+  pullSnapshot: (options?: { cursor?: string }) => Promise<OrderProviderSnapshot>;
+  pushChanges: (options?: OrderProviderPushChangesOptions) => Promise<OrderProviderPushResult>;
+};
+
+type OrderItemDoc = {
+  lineId: string;
+  quantity: number | null;
+  productTkId?: string;
+  productSkuId?: string;
+  productSkuName?: string;
+  productName?: string;
+  unitPurchasePrice?: number;
+  unitSalePrice?: number;
+  unitWeightG?: number;
+  unitSizeText?: string;
+  courierCompany?: string;
+  trackingNo?: string;
+};
+
+type OrderFirestoreDoc = {
+  id: string;
+  seq?: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  accountName: string | null;
+  orderedAt: string | null;
+  purchaseDate: string | null;
+  latestWarehouseAt: string | null;
+  warningText: string | null;
+  orderNo: string | null;
+  productName: string | null;
+  quantity: number | null;
+  isRefunded: boolean;
+  creatorCommissionRate: number | null;
+  creatorCommission: number | null;
+  purchasePrice: number | null;
+  salePrice: number | null;
+  estimatedShippingFee: number | null;
+  estimatedProfit: number | null;
+  weightText: string | null;
+  sizeText: string | null;
+  orderStatus: string | null;
+  items: OrderItemDoc[] | null;
+};
+
 export type {
   BuildExportFilenameOptions,
   BuildOrderExportRowsOptions,
@@ -241,11 +345,18 @@ export type {
   OrderExportConstants,
   OrderExportRow,
   OrderFormDraftItem,
+  OrderFirestoreDoc,
   OrderItem,
+  OrderItemDoc,
   OrderItemNormalizerOptions,
   OrderItemSummaryParts,
   OrderItemTotals,
   OrderNormalizerOptions,
+  OrderProviderApi,
+  OrderProviderCreateOptions,
+  OrderProviderPushChangesOptions,
+  OrderProviderPushResult,
+  OrderProviderSnapshot,
   OrderRecord,
   OrderSizeParseResult,
   OrderSortOrder,
@@ -253,5 +364,8 @@ export type {
   OrderSummaryMetric,
   OrderWarning,
   PurchaseSummary,
+  SerializedOrderProviderConfig,
+  FirebaseConfig as OrderFirestoreConfig,
+  HydratedFirebaseConfig as OrderHydratedFirestoreConfig,
   SelectOrdersForExportOptions
 };

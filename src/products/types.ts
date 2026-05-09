@@ -1,3 +1,5 @@
+import type { FirebaseConfig, FirebaseWindow, HydratedFirebaseConfig } from '../types/firestore.ts';
+
 type ProductCargoType = 'general' | 'special' | string;
 
 type ProductLogisticsDefaults = {
@@ -86,10 +88,10 @@ type ProductProviderDeferredWrite<T> = {
 
 type ProductProviderApi = {
   key: 'firestore';
-  parseConfigInput: (raw: unknown) => ProductFirestoreConfig | null;
-  hydrateConfig: (raw?: unknown) => ProductHydratedFirestoreConfig;
+  parseConfigInput: (raw: unknown) => FirebaseConfig | null;
+  hydrateConfig: (raw?: unknown) => HydratedFirebaseConfig;
   getDisplayName: (config?: unknown) => string;
-  init: (rawConfig?: unknown) => Promise<ProductHydratedFirestoreConfig>;
+  init: (rawConfig?: unknown) => Promise<HydratedFirebaseConfig>;
   pullProducts: () => Promise<ProductProviderPullResult>;
   upsertProduct: (
     product: ProductRecord,
@@ -101,68 +103,12 @@ type ProductProviderApi = {
   ) => Promise<boolean | ProductProviderDeferredWrite<never>>;
 };
 
-type ProductFirestoreConfig = {
-  apiKey: string;
-  authDomain: string;
-  projectId: string;
-  appId: string;
-  storageBucket?: string;
-  messagingSenderId?: string;
-  measurementId?: string;
-  [key: string]: string | undefined;
-};
-
-type ProductHydratedFirestoreConfig = {
-  config: ProductFirestoreConfig | null;
-  configText: string;
-  projectId: string;
-  user: string;
-};
-
 type ProductProviderCreateOptions = {
   state?: Record<string, unknown>;
   helpers?: {
     nowIso?: () => string;
   };
-  window?: Partial<Window> & {
-    firebase?: FirebaseCompatNamespace;
-  };
-};
-
-type FirebaseCompatDocSnapshot = {
-  data: () => Record<string, unknown>;
-};
-
-type FirebaseCompatQuerySnapshot = {
-  docs: FirebaseCompatDocSnapshot[];
-};
-
-type FirebaseCompatDocRef = {
-  set: (data: unknown, options?: unknown) => Promise<unknown>;
-  delete: () => Promise<unknown>;
-};
-
-type FirebaseCompatCollectionRef = {
-  orderBy: (field: string, direction?: string) => FirebaseCompatCollectionRef;
-  get: () => Promise<FirebaseCompatQuerySnapshot>;
-  doc: (id: string) => FirebaseCompatDocRef;
-};
-
-type FirebaseCompatFirestore = {
-  settings?: (options: unknown) => void;
-  enablePersistence?: (options?: unknown) => Promise<unknown>;
-  collection: (name: string) => FirebaseCompatCollectionRef;
-};
-
-type FirebaseCompatApp = {
-  name: string;
-  firestore: () => FirebaseCompatFirestore;
-  __tkProductsFirestoreConfigured?: boolean;
-};
-
-type FirebaseCompatNamespace = {
-  apps?: FirebaseCompatApp[];
-  initializeApp: (config: ProductFirestoreConfig, name?: string) => FirebaseCompatApp;
+  window?: FirebaseWindow;
 };
 
 type ProductSkuDoc = {
@@ -259,16 +205,9 @@ export type {
   ProductExportHelpers,
   ProductExportRow,
   ProductExportState,
-  FirebaseCompatApp,
-  FirebaseCompatCollectionRef,
-  FirebaseCompatDocRef,
-  FirebaseCompatDocSnapshot,
-  FirebaseCompatFirestore,
-  FirebaseCompatNamespace,
-  FirebaseCompatQuerySnapshot,
-  ProductFirestoreConfig,
+  FirebaseConfig as ProductFirestoreConfig,
   ProductFirestoreDoc,
-  ProductHydratedFirestoreConfig,
+  HydratedFirebaseConfig as ProductHydratedFirestoreConfig,
   ProductLogisticsDefaults,
   ProductPricingContext,
   ProductProviderApi,

@@ -1,37 +1,37 @@
-type AnyRecord = Record<string, any>;
+import type { DeriveDisplayedProductsOptions, ProductLogisticsDefaults, ProductRecord, ProductSku, ProductSortOrder } from './types.ts';
 
-function normalizeSearchValue(value) {
+function normalizeSearchValue(value: unknown): string {
   return String(value || '').trim().toLowerCase();
 }
 
-function toNumber(value) {
+function toNumber(value: unknown): number | null {
   const text = String(value ?? '').trim();
   if (!text) return null;
   const parsed = Number.parseFloat(text);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatText(value) {
+function formatText(value: unknown): string {
   const text = String(value ?? '').trim();
   return text || '-';
 }
 
-function formatMoney(value) {
+function formatMoney(value: unknown): string {
   const amount = toNumber(value);
   return amount === null ? '-' : `¥ ${amount.toFixed(2)}`;
 }
 
-function getProductSkus(product: AnyRecord = {}) {
+function getProductSkus(product: ProductRecord = {}): ProductSku[] {
   return Array.isArray(product?.skus) ? product.skus.filter(sku => String(sku?.skuId || '').trim()) : [];
 }
 
-function getProductDefaults(product: AnyRecord = {}) {
+function getProductDefaults(product: ProductRecord = {}): ProductLogisticsDefaults {
   return product?.defaults && typeof product.defaults === 'object'
     ? product.defaults
     : product;
 }
 
-function skuUsesProductDefaults(sku: AnyRecord = {}) {
+function skuUsesProductDefaults(sku: ProductSku = {}): boolean {
   if (sku?.useProductDefaults === true) return true;
   if (sku?.useProductDefaults === false) return false;
   const hasOwnSpec = !!String(sku?.weightG || '').trim()
@@ -45,9 +45,9 @@ function skuUsesProductDefaults(sku: AnyRecord = {}) {
   return !hasOwnSpec;
 }
 
-function mergeProductSku(product: AnyRecord = {}, sku: AnyRecord = {}) {
+function mergeProductSku(product: ProductRecord = {}, sku: ProductSku = {}): ProductRecord & ProductSku {
   const defaults = getProductDefaults(product);
-  if (!skuUsesProductDefaults(sku)) return sku;
+  if (!skuUsesProductDefaults(sku)) return { ...product, ...sku };
   return {
     ...product,
     ...defaults,
@@ -63,7 +63,7 @@ function mergeProductSku(product: AnyRecord = {}, sku: AnyRecord = {}) {
   };
 }
 
-function formatSize(product: AnyRecord) {
+function formatSize(product: ProductLogisticsDefaults): string {
   const direct = String(product?.sizeText || '').trim();
   if (direct) return direct.replace(/\*/g, '×');
   const values = [product?.lengthCm, product?.widthCm, product?.heightCm]
@@ -72,38 +72,38 @@ function formatSize(product: AnyRecord) {
   return values.length === 3 ? values.join(' * ') : '-';
 }
 
-function formatWeight(value) {
+function formatWeight(value: unknown): string {
   const amount = toNumber(value);
   return amount === null ? '-' : String(amount);
 }
 
-function formatSkuCount(product: AnyRecord) {
+function formatSkuCount(product: ProductRecord): string {
   const count = getProductSkus(product).length;
   return count > 0 ? `${count} 个` : '-';
 }
 
-function formatSkuLabel(sku: AnyRecord = {}) {
+function formatSkuLabel(sku: ProductSku = {}): string {
   const name = formatText(sku?.skuName);
   const skuId = String(sku?.skuId || '').trim();
   return skuId && skuId !== '-' ? `${name} · ${skuId}` : name;
 }
 
-function formatSkuShippingFee(product: AnyRecord, sku: AnyRecord) {
+function formatSkuShippingFee(product: ProductRecord, sku: ProductSku): string {
   const record = mergeProductSku(product, sku);
   return formatMoney(record?.estimatedShippingFee);
 }
 
-function getCargoTypeLabel(value) {
+function getCargoTypeLabel(value: unknown): string {
   return value === 'special' ? '特货' : '普货';
 }
 
-function parseProductSortTime(product: AnyRecord) {
+function parseProductSortTime(product: ProductRecord): number {
   const value = String(product?.createdAt || product?.updatedAt || '').trim();
   const timestamp = Date.parse(value || '');
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
-function compareProducts(a: AnyRecord, b: AnyRecord, sortOrder = 'asc') {
+function compareProducts(a: ProductRecord, b: ProductRecord, sortOrder: ProductSortOrder = 'asc'): number {
   const leftTime = parseProductSortTime(a);
   const rightTime = parseProductSortTime(b);
   if (leftTime !== rightTime) return sortOrder === 'asc' ? leftTime - rightTime : rightTime - leftTime;
@@ -114,12 +114,12 @@ function compareProducts(a: AnyRecord, b: AnyRecord, sortOrder = 'asc') {
   return sortOrder === 'asc' ? byTkId : -byTkId;
 }
 
-function deriveDisplayedProducts({ products = [], activeAccount = '__all__', searchQuery = '', sortOrder = 'asc' }: AnyRecord = {}) {
+function deriveDisplayedProducts({ products = [], activeAccount = '__all__', searchQuery = '', sortOrder = 'asc' }: DeriveDisplayedProductsOptions = {}): ProductRecord[] {
   const list = Array.isArray(products) ? products : [];
   const accountFiltered = activeAccount && activeAccount !== '__all__'
     ? list.filter(product => String(product?.accountName || '').trim() === activeAccount)
     : list;
-  const sortProducts = (items: AnyRecord[]) => [...items].sort((a, b) => compareProducts(a, b, sortOrder));
+  const sortProducts = (items: ProductRecord[]) => [...items].sort((a, b) => compareProducts(a, b, sortOrder));
   const query = normalizeSearchValue(searchQuery);
   if (!query) {
     return sortProducts(accountFiltered);

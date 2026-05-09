@@ -1,32 +1,4 @@
-type ProductSku = {
-  skuId?: string;
-  skuName?: string;
-  useProductDefaults?: boolean;
-  weightG?: string | number;
-  sizeText?: string;
-  lengthCm?: string | number;
-  widthCm?: string | number;
-  heightCm?: string | number;
-  estimatedShippingFee?: string | number;
-  chargeWeightKg?: string | number;
-  shippingNote?: string;
-  cargoType?: string;
-  [key: string]: unknown;
-};
-
-type ProductRecord = {
-  tkId?: string;
-  name?: string;
-  accountName?: string;
-  imageUrl?: string;
-  link1688?: string;
-  cargoType?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  defaults?: Record<string, unknown>;
-  skus?: ProductSku[];
-  [key: string]: unknown;
-};
+import type { ProductLogisticsDefaults, ProductRecord, ProductSku } from '../../../products/types.ts';
 
 type ProductsTableHelpers = {
   clampPage: (currentPage: number, pageSize: number, totalItems: number) => { currentPage: number; totalPages: number; pageSize: number };
@@ -39,7 +11,7 @@ type ProductsTableHelpers = {
   formatSkuCount: (product: ProductRecord) => string;
   formatText: (value: unknown) => string;
   getCargoTypeLabel: (value: unknown) => string;
-  getProductDefaults: (product: ProductRecord) => Record<string, unknown>;
+  getProductDefaults: (product: ProductRecord) => ProductLogisticsDefaults;
   getProductSkus: (product: ProductRecord) => ProductSku[];
   mergeProductSku: (product: ProductRecord, sku: ProductSku) => ProductRecord & ProductSku;
   formatSize: (product: ProductRecord | ProductSku) => string;

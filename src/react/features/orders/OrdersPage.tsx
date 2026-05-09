@@ -59,7 +59,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ProductRecord, ProductSku } from '../products/types';
+import type { ProductRecord, ProductSku } from '../../../products/types.ts';
 
 type OrderRecord = Record<string, any>;
 

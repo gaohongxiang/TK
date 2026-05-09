@@ -1,15 +1,17 @@
-function normalizeAccountName(value) {
+import type { ProductRecord } from './types.ts';
+
+function normalizeAccountName(value: unknown): string {
   return String(value || '').trim();
 }
 
-function toAccountSlot(value, unassignedSlot = '__unassigned__') {
+function toAccountSlot(value: unknown, unassignedSlot = '__unassigned__'): string {
   const normalized = normalizeAccountName(value);
   return normalized || unassignedSlot;
 }
 
-function uniqueAccounts(values = []) {
-  const seen = new Set();
-  const result = [];
+function uniqueAccounts(values: unknown[] = []): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
   values.forEach(value => {
     const normalized = normalizeAccountName(value);
     if (!normalized || seen.has(normalized)) return;
@@ -19,7 +21,10 @@ function uniqueAccounts(values = []) {
   return result;
 }
 
-function getAllProductAccounts({ accounts = [], products = [] } = {}) {
+function getAllProductAccounts({ accounts = [], products = [] }: {
+  accounts?: unknown[];
+  products?: ProductRecord[];
+} = {}): string[] {
   return uniqueAccounts([
     ...accounts,
     ...products.map(product => product?.accountName)

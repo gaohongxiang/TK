@@ -1,11 +1,27 @@
-type AnyRecord = Record<string, any>;
+import type {
+  FirebaseCompatApp,
+  FirebaseCompatFirestore,
+  ProductDefaultsDoc,
+  ProductFirestoreConfig,
+  ProductFirestoreDoc,
+  ProductHydratedFirestoreConfig,
+  ProductLogisticsDefaults,
+  ProductProviderApi,
+  ProductProviderCreateOptions,
+  ProductProviderWriteOptions,
+  ProductRecord,
+  ProductSku,
+  ProductSkuDoc
+} from './types.ts';
 
-function toPlainObject(value) {
+type LooseRecord = Record<string, unknown>;
+
+function toPlainObject(value: unknown): LooseRecord | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as AnyRecord;
+  return value as LooseRecord;
 }
 
-function runLooseObjectParser(text) {
+function runLooseObjectParser(text: string): unknown {
   try {
     return Function(`"use strict"; return (${text});`)();
   } catch (error) {
@@ -13,20 +29,20 @@ function runLooseObjectParser(text) {
   }
 }
 
-function sanitizeConfig(raw) {
+function sanitizeConfig(raw: unknown): ProductFirestoreConfig | null {
   const cfg = toPlainObject(raw);
   if (!cfg) return null;
-  const next: AnyRecord = {};
+  const next: Partial<ProductFirestoreConfig> = {};
   ['apiKey', 'authDomain', 'projectId', 'appId', 'storageBucket', 'messagingSenderId', 'measurementId'].forEach(key => {
     const value = String(cfg[key] || '').trim();
-    if (value) next[key] = value;
+    if (value) next[key as keyof ProductFirestoreConfig] = value;
   });
   if (!next.apiKey || !next.projectId || !next.appId) return null;
   if (!next.authDomain) next.authDomain = `${next.projectId}.firebaseapp.com`;
-  return next;
+  return next as ProductFirestoreConfig;
 }
 
-function parseConfigInput(raw) {
+function parseConfigInput(raw: unknown): ProductFirestoreConfig | null {
   if (!raw) return null;
   if (typeof raw === 'object') return sanitizeConfig(raw);
   const text = String(raw || '').trim();
@@ -41,55 +57,59 @@ function parseConfigInput(raw) {
   return sanitizeConfig(runLooseObjectParser(body));
 }
 
-function hydrateConfig(raw: AnyRecord = {}) {
-  const parsed = parseConfigInput(raw?.configText || raw?.firestoreConfigText || raw?.firebaseConfig || raw);
+function hydrateConfig(raw: unknown = {}): ProductHydratedFirestoreConfig {
+  const source = toPlainObject(raw) || {};
+  const parsed = parseConfigInput(source?.configText || source?.firestoreConfigText || source?.firebaseConfig || raw);
   return {
     config: parsed,
     configText: parsed ? JSON.stringify(parsed, null, 2) : '',
-    projectId: parsed?.projectId || String(raw?.projectId || raw?.firestoreProjectId || '').trim(),
-    user: String(raw?.user || '').trim()
+    projectId: parsed?.projectId || String(source?.projectId || source?.firestoreProjectId || '').trim(),
+    user: String(source?.user || '').trim()
   };
 }
 
-function getDisplayName(config: AnyRecord = {}) {
+function getDisplayName(config: unknown = {}): string {
   const next = hydrateConfig(config);
   if (next.user) return `${next.user} · Firestore`;
   if (next.projectId) return `${next.projectId} · Firestore`;
   return 'Firebase Firestore';
 }
 
-function toNullableText(value) {
+function toNullableText(value: unknown): string | null {
   const text = String(value ?? '').trim();
   return text ? text : null;
 }
 
-function toNullableDecimal(value) {
+function toNullableDecimal(value: unknown): number | null {
   const text = String(value ?? '').replace(/,/g, '').trim();
   if (!text) return null;
   const parsed = Number.parseFloat(text);
   return Number.isFinite(parsed) ? Number(parsed.toFixed(2)) : null;
 }
 
-function toNullableInteger(value) {
+function toNullableInteger(value: unknown): number | null {
   const text = String(value ?? '').trim();
   if (!text) return null;
   const parsed = Number.parseInt(text, 10);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function toIsoString(value, fallback = '') {
+function toIsoString(value: unknown, fallback = ''): string {
   if (!value && fallback) return fallback;
   if (!value) return '';
   if (typeof value === 'string') {
     const parsed = Date.parse(value);
     return Number.isFinite(parsed) ? new Date(parsed).toISOString() : value;
   }
-  if (typeof value?.toDate === 'function') return value.toDate().toISOString();
+  if (value && typeof value === 'object' && typeof (value as { toDate?: unknown }).toDate === 'function') {
+    return ((value as { toDate: () => Date }).toDate()).toISOString();
+  }
   if (value instanceof Date) return value.toISOString();
   return fallback || '';
 }
 
-function normalizePulledSku(data: AnyRecord) {
+function normalizePulledSku(raw: unknown): ProductSku {
+  const data = toPlainObject(raw) || {};
   const hasOwnSpec = data?.weightG != null
     || data?.lengthCm != null
     || data?.widthCm != null
@@ -99,7 +119,7 @@ function normalizePulledSku(data: AnyRecord) {
     || !!String(data?.shippingNote || '').trim();
   return {
     skuId: String(data?.skuId || '').trim(),
-    skuName: data?.skuName || '',
+    skuName: String(data?.skuName || ''),
     useProductDefaults: data?.useProductDefaults == null ? !hasOwnSpec : data.useProductDefaults !== false,
     weightG: data?.weightG == null ? '' : String(data.weightG),
     lengthCm: data?.lengthCm == null ? '' : String(data.lengthCm),
@@ -107,11 +127,11 @@ function normalizePulledSku(data: AnyRecord) {
     heightCm: data?.heightCm == null ? '' : String(data.heightCm),
     estimatedShippingFee: data?.estimatedShippingFee == null ? '' : String(data.estimatedShippingFee),
     chargeWeightKg: data?.chargeWeightKg == null ? '' : String(data.chargeWeightKg),
-    shippingNote: data?.shippingNote || ''
+    shippingNote: String(data?.shippingNote || '')
   };
 }
 
-function buildSkuDoc(sku: AnyRecord) {
+function buildSkuDoc(sku: ProductSku): ProductSkuDoc {
   return {
     skuId: String(sku?.skuId || '').trim(),
     skuName: toNullableText(sku?.skuName),
@@ -126,21 +146,22 @@ function buildSkuDoc(sku: AnyRecord) {
   };
 }
 
-function normalizeProductDefaults(data: AnyRecord) {
+function normalizeProductDefaults(raw: unknown): ProductLogisticsDefaults {
+  const data = toPlainObject(raw) || {};
   const defaults = toPlainObject(data?.defaults) || data || {};
   return {
-    cargoType: defaults?.cargoType || 'general',
+    cargoType: String(defaults?.cargoType || 'general'),
     weightG: defaults?.weightG == null ? '' : String(defaults.weightG),
     lengthCm: defaults?.lengthCm == null ? '' : String(defaults.lengthCm),
     widthCm: defaults?.widthCm == null ? '' : String(defaults.widthCm),
     heightCm: defaults?.heightCm == null ? '' : String(defaults.heightCm),
     estimatedShippingFee: defaults?.estimatedShippingFee == null ? '' : String(defaults.estimatedShippingFee),
     chargeWeightKg: defaults?.chargeWeightKg == null ? '' : String(defaults.chargeWeightKg),
-    shippingNote: defaults?.shippingNote || ''
+    shippingNote: String(defaults?.shippingNote || '')
   };
 }
 
-function buildProductDefaultsDoc(defaults: AnyRecord) {
+function buildProductDefaultsDoc(defaults: ProductLogisticsDefaults): ProductDefaultsDoc {
   return {
     cargoType: toNullableText(defaults?.cargoType) || 'general',
     weightG: toNullableInteger(defaults?.weightG),
@@ -153,14 +174,15 @@ function buildProductDefaultsDoc(defaults: AnyRecord) {
   };
 }
 
-function normalizePulledProduct(data: AnyRecord) {
+function normalizePulledProduct(raw: unknown): ProductRecord {
+  const data = toPlainObject(raw) || {};
   const defaults = normalizeProductDefaults(data);
   return {
     tkId: String(data?.tkId || '').trim(),
-    accountName: data?.accountName || '',
-    name: data?.name || '',
-    imageUrl: data?.imageUrl || '',
-    link1688: data?.link1688 || '',
+    accountName: String(data?.accountName || ''),
+    name: String(data?.name || ''),
+    imageUrl: String(data?.imageUrl || ''),
+    link1688: String(data?.link1688 || ''),
     defaults,
     skus: Array.isArray(data?.skus) ? data.skus.map(normalizePulledSku).filter(sku => sku.skuId) : [],
     createdAt: toIsoString(data?.createdAt || ''),
@@ -168,7 +190,7 @@ function normalizePulledProduct(data: AnyRecord) {
   };
 }
 
-function buildProductDoc(product: AnyRecord, { nowIso = () => new Date().toISOString() }: AnyRecord = {}) {
+function buildProductDoc(product: ProductRecord, { nowIso = () => new Date().toISOString() }: { nowIso?: () => string } = {}): ProductFirestoreDoc {
   const createdAt = toIsoString(product?.createdAt || '', nowIso()) || nowIso();
   const updatedAt = toIsoString(product?.updatedAt || '', createdAt) || nowIso();
   const defaults = buildProductDefaultsDoc(product?.defaults || product);
@@ -185,17 +207,17 @@ function buildProductDoc(product: AnyRecord, { nowIso = () => new Date().toISOSt
   };
 }
 
-function create({ state = {}, helpers = {}, window: rootWindow = globalThis.window }: AnyRecord = {}) {
+function create({ state = {}, helpers = {}, window: rootWindow = globalThis.window }: ProductProviderCreateOptions = {}): ProductProviderApi {
   const nowIso = helpers.nowIso || (() => new Date().toISOString());
-  let app = null;
-  let db = null;
+  let app: FirebaseCompatApp | null = null;
+  let db: FirebaseCompatFirestore | null = null;
 
-  async function requireDb() {
+  async function requireDb(): Promise<FirebaseCompatFirestore> {
     if (!db) throw new Error('Firestore 尚未初始化');
     return db;
   }
 
-  async function init(rawConfig = state) {
+  async function init(rawConfig: unknown = state): Promise<ProductHydratedFirestoreConfig> {
     const next = hydrateConfig(rawConfig);
     if (!next.config) throw new Error('请先填写有效的 firebaseConfig');
 
@@ -239,20 +261,25 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       .map(row => String(row.name || '').trim())
       .filter(Boolean)
       .sort((left, right) => left.localeCompare(right));
+    const lastRemoteUpdatedAt = snapshot.docs
+      .map(doc => String(doc.data()?.updatedAt || ''))
+      .filter(Boolean)
+      .sort()
+      .slice(-1)[0] || '';
     return {
       products: snapshot.docs.map(doc => normalizePulledProduct(doc.data())),
       accounts,
-      lastRemoteUpdatedAt: snapshot.docs.map(doc => doc.data()?.updatedAt || '').filter(Boolean).sort().slice(-1)[0] || ''
+      lastRemoteUpdatedAt
     };
   }
 
-  function trackWritePromise(promise, label, { waitForCommit = true } = {}) {
+  function trackWritePromise(promise: Promise<unknown>, label: string, { waitForCommit = true }: ProductProviderWriteOptions = {}): Promise<unknown> {
     const commitPromise = Promise.resolve(promise);
     if (!waitForCommit) commitPromise.catch(error => console.error(label, error));
     return commitPromise;
   }
 
-  async function upsertProduct(product, { waitForCommit = true } = {}) {
+  async function upsertProduct(product: ProductRecord, { waitForCommit = true }: ProductProviderWriteOptions = {}) {
     const currentDb = await requireDb();
     const doc = buildProductDoc(product, { nowIso });
     if (!doc.tkId) throw new Error('商品 TK ID 不能为空');
@@ -266,7 +293,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return waitForCommit ? saved : { product: saved, commitPromise };
   }
 
-  async function deleteProduct(tkId, { waitForCommit = true } = {}) {
+  async function deleteProduct(tkId: string, { waitForCommit = true }: ProductProviderWriteOptions = {}) {
     const currentDb = await requireDb();
     const id = String(tkId || '').trim();
     if (!id) throw new Error('商品 TK ID 不能为空');

@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import type { ProductRecord, ProductSku } from './types';
+import type { ProductProviderDeferredWrite, ProductRecord, ProductSku } from '../../../products/types.ts';
 
 type ProductDraftSku = ProductSku & {
   sizeText?: string;
@@ -165,6 +165,10 @@ function readGlobalConfig() {
 
 function showToast(message: string, type: ToastType = 'ok') {
   showAppToast(message, type);
+}
+
+function isProductDeferredWrite(value: ProductRecord | ProductProviderDeferredWrite<ProductRecord>): value is ProductProviderDeferredWrite<ProductRecord> {
+  return typeof value === 'object' && value !== null && 'commitPromise' in value;
 }
 
 function ProductPager({
@@ -1150,7 +1154,7 @@ function ProductsPage() {
     const current = editingTkId ? products.find(item => item.tkId === editingTkId) : null;
     const defaultSnapshot = buildProductDefaultsSnapshot();
     try {
-      const result: any = await providerRef.current.upsertProduct({
+      const result = await providerRef.current.upsertProduct({
         ...current,
         ...payload,
         defaults: {
@@ -1168,10 +1172,11 @@ function ProductsPage() {
         createdAt: current?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }, { waitForCommit: false });
-      const saved = result?.product || result;
+      const saved = isProductDeferredWrite(result) ? result.product : result;
+      if (!saved) throw new Error('商品保存结果为空');
       setProducts(previous => [...previous.filter(item => item.tkId !== saved.tkId), saved]);
       notifyProductsChanged({ action: 'upsert', tkId: saved?.tkId || payload.tkId });
-      result?.commitPromise?.then(() => {
+      if (isProductDeferredWrite(result)) result.commitPromise.then(() => {
         notifyProductsChanged({ action: 'commit', tkId: saved?.tkId || payload.tkId });
       }).catch(() => {});
       setModalOpen(false);

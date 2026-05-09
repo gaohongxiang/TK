@@ -1,9 +1,19 @@
-function formatDecimal(value, digits = 2) {
+import type {
+  ProductBatchSkuDraft,
+  ProductLogisticsDefaults,
+  ProductPricingContext,
+  ProductShippingCore,
+  ProductShippingSnapshot,
+  ProductSizeParseResult,
+  ProductSku
+} from './types.ts';
+
+function formatDecimal(value: unknown, digits = 2): string {
   const amount = Number(value);
   return Number.isFinite(amount) ? amount.toFixed(digits).replace(/\.?0+$/, '') : '';
 }
 
-function parseSizeInput(value) {
+function parseSizeInput(value: unknown): ProductSizeParseResult {
   const raw = String(value ?? '').trim();
   if (!raw) {
     return {
@@ -39,14 +49,14 @@ function parseSizeInput(value) {
   };
 }
 
-function formatSizeInput(product) {
+function formatSizeInput(product: ProductLogisticsDefaults = {}): string {
   const values = [product?.lengthCm, product?.widthCm, product?.heightCm]
     .map(value => formatDecimal(value, 1))
     .filter(Boolean);
   return values.length === 3 ? values.join('×') : '';
 }
 
-function parseBatchTokens(value) {
+function parseBatchTokens(value: unknown): string[] {
   return Array.from(new Set(
     String(value || '')
       .split(/[\n,，、\/|]+/)
@@ -55,7 +65,7 @@ function parseBatchTokens(value) {
   ));
 }
 
-function buildBatchSkuDrafts(...axisInputs) {
+function buildBatchSkuDrafts(...axisInputs: unknown[]): ProductBatchSkuDraft[] {
   const axes = axisInputs
     .map(parseBatchTokens)
     .filter(axis => axis.length);
@@ -67,7 +77,7 @@ function buildBatchSkuDrafts(...axisInputs) {
   }));
 }
 
-function tokenizeSkuName(value) {
+function tokenizeSkuName(value: unknown): string[] {
   return String(value || '')
     .toLowerCase()
     .split(/[\s/／、，,|_-]+/)
@@ -75,7 +85,7 @@ function tokenizeSkuName(value) {
     .filter(Boolean);
 }
 
-function matchesBatchSkuName(skuName, matchText) {
+function matchesBatchSkuName(skuName: unknown, matchText: unknown): boolean {
   const query = String(matchText || '').trim().toLowerCase();
   if (!query) return false;
   const normalizedName = String(skuName || '').trim().toLowerCase();
@@ -87,7 +97,7 @@ function matchesBatchSkuName(skuName, matchText) {
   return false;
 }
 
-function resolveProductDimensions(product) {
+function resolveProductDimensions(product: ProductLogisticsDefaults = {}): ProductSizeParseResult {
   const parsedFromText = parseSizeInput(product?.sizeText);
   if (parsedFromText.isComplete) return parsedFromText;
   const values = [product?.lengthCm, product?.widthCm, product?.heightCm]
@@ -102,7 +112,15 @@ function resolveProductDimensions(product) {
   };
 }
 
-function buildEstimatedShippingSnapshot({ shippingCore, product, pricingContext }) {
+function buildEstimatedShippingSnapshot({
+  shippingCore,
+  product = {},
+  pricingContext = {}
+}: {
+  shippingCore?: ProductShippingCore;
+  product?: ProductLogisticsDefaults;
+  pricingContext?: ProductPricingContext;
+}): ProductShippingSnapshot {
   if (!shippingCore?.computeShippingQuote || !shippingCore?.computeCalculatedShippingCost) {
     return {
       estimatedShippingFee: '',
@@ -137,7 +155,7 @@ function buildEstimatedShippingSnapshot({ shippingCore, product, pricingContext 
   };
 }
 
-function skuUsesProductDefaults(sku: Record<string, any> = {}) {
+function skuUsesProductDefaults(sku: ProductSku = {}): boolean {
   if (sku?.useProductDefaults === true) return true;
   if (sku?.useProductDefaults === false) return false;
   const hasOwnSpec = !!String(sku?.weightG || '').trim()

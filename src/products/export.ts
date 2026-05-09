@@ -1,30 +1,39 @@
 /* ============================================================
  * 商品库：CSV 导出纯函数
  * ============================================================ */
-type AnyRecord = Record<string, any>;
+import type {
+  ProductExportAccountOption,
+  ProductExportApi,
+  ProductExportHelpers,
+  ProductExportRow,
+  ProductExportState,
+  ProductLogisticsDefaults,
+  ProductRecord,
+  ProductSku
+} from './types.ts';
 
-function csvEscape(value) {
+function csvEscape(value: unknown): string {
   const text = String(value ?? '');
   return `"${text.replace(/"/g, '""')}"`;
 }
 
-function todayStr() {
+function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function getProductDefaults(product: AnyRecord = {}) {
+function getProductDefaults(product: ProductRecord = {}): ProductLogisticsDefaults {
   return product?.defaults && typeof product.defaults === 'object'
     ? product.defaults
     : product;
 }
 
-function getProductSkus(product: AnyRecord = {}) {
+function getProductSkus(product: ProductRecord = {}): ProductSku[] {
   return Array.isArray(product?.skus)
     ? product.skus.filter(sku => String(sku?.skuId || sku?.skuName || '').trim())
     : [];
 }
 
-function skuUsesProductDefaults(sku: AnyRecord = {}) {
+function skuUsesProductDefaults(sku: ProductSku = {}): boolean {
   if (sku?.useProductDefaults === true) return true;
   if (sku?.useProductDefaults === false) return false;
   const hasOwnSpec = !!String(sku?.weightG || '').trim()
@@ -36,14 +45,14 @@ function skuUsesProductDefaults(sku: AnyRecord = {}) {
   return !hasOwnSpec;
 }
 
-function toNumber(value) {
+function toNumber(value: unknown): number | null {
   const text = String(value ?? '').trim();
   if (!text) return null;
   const parsed = Number.parseFloat(text);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatSizeText(record: AnyRecord = {}) {
+function formatSizeText(record: ProductLogisticsDefaults = {}): string {
   const direct = String(record?.sizeText || '').trim();
   if (direct) return direct.replace(/\*/g, '×');
   const values = [record?.lengthCm, record?.widthCm, record?.heightCm]
@@ -52,7 +61,7 @@ function formatSizeText(record: AnyRecord = {}) {
   return values.length === 3 ? values.join('×') : '';
 }
 
-function mergeProductSku(product: AnyRecord = {}, sku: AnyRecord = {}) {
+function mergeProductSku(product: ProductRecord = {}, sku: ProductSku = {}): ProductLogisticsDefaults & ProductSku {
   const defaults = getProductDefaults(product);
   if (!skuUsesProductDefaults(sku)) return sku;
   return {
@@ -67,28 +76,31 @@ function mergeProductSku(product: AnyRecord = {}, sku: AnyRecord = {}) {
   };
 }
 
-function defaultNormalizeAccountName(value) {
+function defaultNormalizeAccountName(value: unknown): string {
   return String(value || '').trim();
 }
 
-function defaultUniqueAccounts(values = []) {
+function defaultUniqueAccounts(values: unknown[] = []): string[] {
   return [...new Set(values.map(defaultNormalizeAccountName).filter(Boolean))];
 }
 
-function defaultToAccountSlot(value) {
+function defaultToAccountSlot(value: unknown): string {
   return defaultNormalizeAccountName(value) || '__unassigned__';
 }
 
 function create({
   state = {},
   helpers = {}
-}: AnyRecord = {}) {
+}: {
+  state?: ProductExportState;
+  helpers?: ProductExportHelpers;
+} = {}): ProductExportApi {
   const getDisplayedProducts = helpers.getDisplayedProducts || (() => []);
   const normalizeAccountName = helpers.normalizeAccountName || defaultNormalizeAccountName;
   const uniqueAccounts = helpers.uniqueAccounts || defaultUniqueAccounts;
   const toAccountSlot = helpers.toAccountSlot || defaultToAccountSlot;
 
-  function getProductExportAccountOptions() {
+  function getProductExportAccountOptions(): ProductExportAccountOption[] {
     const products = getDisplayedProducts({ activeAccount: '__all__' });
     const accounts = uniqueAccounts([
       ...(state.accounts || []),
@@ -110,7 +122,7 @@ function create({
     return options;
   }
 
-  function buildProductExportFilename(selectedOptions) {
+  function buildProductExportFilename(selectedOptions: ProductExportAccountOption[] = []): string {
     const names = (selectedOptions || []).map(option => option.label).filter(Boolean);
     const suffix = names.length === 1
       ? names[0]
@@ -120,7 +132,7 @@ function create({
     return `商品数据导出_${suffix}_${todayStr()}.csv`;
   }
 
-  function buildProductExportRows(selectedSet) {
+  function buildProductExportRows(selectedSet: Set<string> | Iterable<string> = []): ProductExportRow[] {
     const selectedKeys = selectedSet instanceof Set ? selectedSet : new Set(selectedSet || []);
     const products = getDisplayedProducts({ activeAccount: '__all__' })
       .filter(product => selectedKeys.has(toAccountSlot(product?.accountName)));

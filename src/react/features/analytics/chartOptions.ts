@@ -1,5 +1,5 @@
-import type { EChartsOption } from 'echarts';
-import type { AnalyticsAnalysis, AnalyticsChannel, AnalyticsFunnelStage, AnalyticsRecord } from './types';
+import type { EChartsCoreOption } from 'echarts/core';
+import type { AnalyticsAnalysis, AnalyticsChannel, AnalyticsFunnelStage, AnalyticsRecord } from '../../../analytics/types';
 import { formatInteger, formatPercent, formatYen, shortenText } from './format';
 
 const CHANNEL_COLORS: Record<string, string> = {
@@ -43,7 +43,7 @@ function buildDonutOption({
   channels: AnalyticsChannel[];
   metric: 'gmv' | 'units';
   formatter: (value: number) => string;
-}): EChartsOption {
+}): EChartsCoreOption {
   const data = channels.map(channel => ({
     name: channel.label,
     value: channel[metric],
@@ -107,7 +107,7 @@ function buildFunnelStages(analysis: AnalyticsAnalysis): AnalyticsFunnelStage[] 
   });
 }
 
-function buildOverviewOption(analysis: AnalyticsAnalysis): EChartsOption {
+function buildOverviewOption(analysis: AnalyticsAnalysis): EChartsCoreOption {
   const funnelStages = buildFunnelStages(analysis);
   const channelData = analysis.channelTotals.map(channel => ({
     name: channel.label,
@@ -211,7 +211,7 @@ function buildOverviewOption(analysis: AnalyticsAnalysis): EChartsOption {
   };
 }
 
-function buildOpportunityScatterOption(analysis: AnalyticsAnalysis): EChartsOption {
+function buildOpportunityScatterOption(analysis: AnalyticsAnalysis): EChartsCoreOption {
   const records = [...analysis.records]
     .filter(record => record.exposureTotal > 0 || record.gmv > 0)
     .sort((a, b) => b.gmv - a.gmv)

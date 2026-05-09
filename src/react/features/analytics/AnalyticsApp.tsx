@@ -1,5 +1,6 @@
 import ReactEChartsCoreModule from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
+import type { EChartsCoreOption } from 'echarts/core';
 import { FunnelChart, PieChart, ScatterChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TitleComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
@@ -11,20 +12,23 @@ import { Card, CardTitle } from '@/components/ui/card';
 import { PageHero } from '@/components/ui/page-hero';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, TableViewport } from '@/components/ui/table-tools';
-import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsRecord } from './types';
+import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsRecord, AnalyticsXlsx } from '../../../analytics/types';
 import { buildFunnelStages, buildOpportunityScatterOption, buildOverviewOption, DIAGNOSIS_COLORS } from './chartOptions';
 import { formatInteger, formatPercent, formatYen, shortenText } from './format';
 import { cn } from '@/lib/utils';
 
 echarts.use([CanvasRenderer, FunnelChart, GridComponent, LegendComponent, PieChart, ScatterChart, TitleComponent, TooltipComponent]);
 
-const ReactEChartsCore = ((ReactEChartsCoreModule as any).default ?? ReactEChartsCoreModule) as ComponentType<{
+type ReactEChartsCoreProps = {
   echarts: typeof echarts;
   className?: string;
-  option: any;
-}>;
+  option: EChartsCoreOption;
+};
 
-function ReactECharts(props: { className?: string; option: any }) {
+const ReactEChartsCoreModuleValue = ReactEChartsCoreModule as unknown as { default?: ComponentType<ReactEChartsCoreProps> } & ComponentType<ReactEChartsCoreProps>;
+const ReactEChartsCore = ReactEChartsCoreModuleValue.default ?? ReactEChartsCoreModuleValue;
+
+function ReactECharts(props: { className?: string; option: EChartsCoreOption }) {
   return <ReactEChartsCore echarts={echarts} {...props} />;
 }
 
@@ -33,7 +37,7 @@ type AnalyticsCssVars = CSSProperties & Record<`--${string}`, string | number>;
 type AnalyticsAppProps = {
   parser: AnalyticsParser;
   analyzer: AnalyticsAnalyzer;
-  getXlsx?: () => any;
+  getXlsx?: () => AnalyticsXlsx | undefined;
   onToast?: (message: string, type?: 'ok' | 'error') => void;
 };
 
@@ -129,7 +133,7 @@ function analyticsTagClass(tone: string) {
   return cn('analytics-tag min-h-[26px] px-2.5 font-semibold', `is-${tone}`, toneClass);
 }
 
-function getSheetRows(workbook: any, xlsx: any) {
+function getSheetRows(workbook: ReturnType<AnalyticsXlsx['read']>, xlsx: AnalyticsXlsx): unknown[][] {
   const sheetName = workbook.SheetNames?.[0];
   if (!sheetName) throw new Error('Excel 文件里没有工作表');
   const sheet = workbook.Sheets[sheetName];
@@ -376,9 +380,9 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
       setAnalysis(next);
       setMeta(`${file.name} · ${next.period || '未知周期'} · ${next.records.length} 个商品`);
       onToast?.('商品流量数据已生成 React 看板', 'ok');
-    } catch (error: any) {
+    } catch (error) {
       setMeta('解析失败');
-      onToast?.(error?.message || 'Excel 解析失败', 'error');
+      onToast?.(error instanceof Error ? error.message : 'Excel 解析失败', 'error');
     }
   }
 

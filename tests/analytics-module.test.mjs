@@ -138,7 +138,7 @@ assert.match(
 
 assert.match(
   srcParserSource,
-  /function parseRows\(rows\)/,
+  /function parseRows\(rows(?:[\s\S]*?)?\)/,
   '数据分析 parser 需要暴露 Excel 行解析逻辑'
 );
 
@@ -150,7 +150,7 @@ assert.match(
 
 assert.match(
   srcAnalyzerSource,
-  /function analyze\(records, period\)/,
+  /function analyze\(records(?:[\s\S]*?)?,\s*period(?:[\s\S]*?)?\)/,
   '数据分析 analyzer 需要暴露分析逻辑'
 );
 

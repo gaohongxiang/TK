@@ -1,10 +1,18 @@
 import { CHANNELS } from './parser.ts';
+import type {
+  AnalyticsAnalysis,
+  AnalyticsChannel,
+  AnalyticsDiagnosis,
+  AnalyticsDiagnosisThresholds,
+  AnalyticsParsedRecord,
+  AnalyticsRecord
+} from './types.ts';
 
-function sum(records, resolver) {
+function sum(records: AnalyticsParsedRecord[], resolver: (record: AnalyticsParsedRecord) => number): number {
   return records.reduce((total, record) => total + (Number(resolver(record)) || 0), 0);
 }
 
-function buildChannelTotals(records) {
+function buildChannelTotals(records: AnalyticsParsedRecord[]): AnalyticsChannel[] {
   return CHANNELS.map(channel => {
     const total = records.reduce((acc, record) => {
       const row = record.channels[channel.key];
@@ -17,6 +25,8 @@ function buildChannelTotals(records) {
       };
     }, { gmv: 0, units: 0, exposure: 0, pageViews: 0, customers: 0 });
     return {
+      key: channel.key,
+      label: channel.label,
       ...channel,
       ...total,
       ctr: total.exposure ? total.pageViews / total.exposure : 0,
@@ -25,7 +35,7 @@ function buildChannelTotals(records) {
   });
 }
 
-function diagnoseProduct(record, thresholds) {
+function diagnoseProduct(record: AnalyticsParsedRecord, thresholds: AnalyticsDiagnosisThresholds): AnalyticsDiagnosis {
   if (record.gmv >= thresholds.heroGmv || record.orders >= thresholds.heroOrders) {
     return { tone: 'hero', label: '爆品放大', action: '继续加视频素材、补库存，配合新客券和秒杀价放大成交。' };
   }
@@ -44,7 +54,7 @@ function diagnoseProduct(record, thresholds) {
   return { tone: 'normal', label: '常规观察', action: '保持监控，优先把资源给高转化或高 GMV 商品。' };
 }
 
-function analyze(records, period) {
+function analyze(records: AnalyticsParsedRecord[], period: string): AnalyticsAnalysis {
   const activeRecords = records.filter(record => record.status !== 'Inactive');
   const channelTotals = buildChannelTotals(records);
   const totalGmv = sum(records, record => record.gmv);
@@ -61,7 +71,7 @@ function analyze(records, period) {
     highPageViews: 80,
     lowCtr: 0.018
   };
-  const enriched = records.map(record => ({
+  const enriched: AnalyticsRecord[] = records.map(record => ({
     ...record,
     diagnosis: diagnoseProduct(record, thresholds)
   }));

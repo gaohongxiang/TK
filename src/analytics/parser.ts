@@ -1,4 +1,13 @@
-const CHANNELS = [
+import type {
+  AnalyticsChannel,
+  AnalyticsChannelColumnMap,
+  AnalyticsChannelKey,
+  AnalyticsParsedRecord,
+  AnalyticsParseResult,
+  AnalyticsRawRecord
+} from './types.ts';
+
+const CHANNELS: AnalyticsChannelColumnMap[] = [
   {
     key: 'mall',
     label: '商城',
@@ -45,7 +54,7 @@ const CHANNELS = [
   }
 ];
 
-function normalizeNumber(value) {
+function normalizeNumber(value: unknown): number {
   const raw = String(value ?? '')
     .replace(/[,\s]/g, '')
     .replace(/[円¥￥]/g, '')
@@ -56,12 +65,13 @@ function normalizeNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function normalizePercent(value) {
+function normalizePercent(value: unknown): number {
   return normalizeNumber(value) / 100;
 }
 
-function normalizeRecord(record) {
+function normalizeRecord(record: AnalyticsRawRecord): AnalyticsParsedRecord {
   const channels = Object.fromEntries(CHANNELS.map(channel => [channel.key, {
+    key: channel.key,
     label: channel.label,
     gmv: normalizeNumber(record[channel.gmv]),
     units: normalizeNumber(record[channel.units]),
@@ -70,7 +80,7 @@ function normalizeRecord(record) {
     customers: normalizeNumber(record[channel.customers]),
     ctr: normalizePercent(record[channel.ctr]),
     conversion: normalizePercent(record[channel.conversion])
-  }]));
+  } satisfies AnalyticsChannel])) as Record<AnalyticsChannelKey, AnalyticsChannel>;
   const exposureTotal = CHANNELS.reduce((sum, channel) => sum + channels[channel.key].exposure, 0);
   const pageViewsTotal = CHANNELS.reduce((sum, channel) => sum + channels[channel.key].pageViews, 0);
   const customersTotal = CHANNELS.reduce((sum, channel) => sum + channels[channel.key].customers, 0);
@@ -90,7 +100,7 @@ function normalizeRecord(record) {
   };
 }
 
-function parseRows(rows) {
+function parseRows(rows: unknown[][] = []): AnalyticsParseResult {
   const nonEmptyRows = (rows || []).filter(row => Array.isArray(row) && row.some(cell => String(cell || '').trim()));
   if (nonEmptyRows.length < 2) throw new Error('Excel 内容为空或格式不完整');
   const period = String(nonEmptyRows[0]?.[0] || '').trim();
@@ -98,7 +108,7 @@ function parseRows(rows) {
   if (headerIndex < 0) throw new Error('没有找到商品流量表头，请确认是 TK 商品流量详情导出表');
   const headers = nonEmptyRows[headerIndex].map(value => String(value || '').trim());
   const records = nonEmptyRows.slice(headerIndex + 1)
-    .map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ''])))
+    .map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ''])) as AnalyticsRawRecord)
     .filter(record => String(record.ID || '').trim());
   if (!records.length) throw new Error('没有读取到商品数据');
   return {

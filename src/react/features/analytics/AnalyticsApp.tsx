@@ -61,7 +61,7 @@ function ReactECharts(props: { className?: string; optionKey?: string; option: E
         chartRef.current = chart;
         window.setTimeout(() => chart.resize(), 0);
       }}
-      style={{ height: '100%', minHeight: 'inherit', width: '100%' }}
+      style={{ width: '100%' }}
     />
   );
 }
@@ -102,7 +102,7 @@ const analyticsCardClass = 'analytics-chart-card min-w-0';
 const analyticsTableCardClass = 'analytics-table-card min-w-0';
 const sectionHeadClass = 'analytics-section-head mb-3.5 flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-2';
 const mutedChipClass = cn(analyticsChipClass, 'muted');
-const chartSlotClass = 'analytics-react-chart min-w-0 [&_.echarts-for-react]:h-full [&_.echarts-for-react]:min-h-[inherit] [&_.echarts-for-react]:w-full';
+const chartSlotClass = 'analytics-react-chart min-w-0 [&_.echarts-for-react]:h-full [&_.echarts-for-react]:w-full';
 const overviewChartWrapClass = 'analytics-react-overview-chart min-w-0';
 const overviewChartClass = cn(chartSlotClass, 'analytics-react-overview h-[332px] rounded-xl border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_32%,transparent),transparent),color-mix(in_srgb,var(--panel2)_18%,transparent)] px-1.5 pb-1 pt-2.5 max-[640px]:h-[250px]');
 const funnelSummaryClass = 'analytics-react-funnel-summary mt-2.5 grid grid-cols-4 gap-2 max-[860px]:grid-cols-2 max-[640px]:grid-cols-1';

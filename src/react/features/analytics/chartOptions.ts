@@ -65,11 +65,7 @@ function buildDonutOption({
       }
     },
     legend: {
-      bottom: 0,
-      left: 'center',
-      itemWidth: 9,
-      itemHeight: 9,
-      textStyle: { color: sharedMutedColor(), fontSize: 11 }
+      show: false
     },
     series: [
       {
@@ -187,11 +183,7 @@ function buildOverviewOption(analysis: AnalyticsAnalysis): EChartsCoreOption {
       }
     },
     legend: {
-      bottom: 0,
-      left: 'center',
-      itemWidth: 9,
-      itemHeight: 9,
-      textStyle: { color: sharedMutedColor(), fontSize: 11 }
+      show: false
     },
     series: [
       {

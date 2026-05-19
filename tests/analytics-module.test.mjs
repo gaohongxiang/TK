@@ -125,6 +125,18 @@ assert.match(
   'React 数据分析页需要用一个总览图结合渠道结构和流量漏斗'
 );
 
+assert.doesNotMatch(
+  reactAnalyticsSource,
+  /style=\{\{\s*height:\s*'100%'[\s\S]*\}\}/,
+  'React ECharts 不应使用内联 100% 高度覆盖固定画布高度，避免运营总览图塌陷'
+);
+
+assert.match(
+  reactChartOptionsSource,
+  /function buildOverviewOption\([\s\S]*legend:\s*\{\s*show:\s*false\s*\}[\s\S]*type:\s*'pie'[\s\S]*type:\s*'funnel'/,
+  '运营总览图内部图例应关闭，避免和流量漏斗卡片重叠'
+);
+
 assert.match(
   reactAnalyticsSource,
   /analytics-react-scatter h-\[324px\]/,

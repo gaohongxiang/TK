@@ -123,8 +123,20 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /搜索下单时间 \/ 订单号 \/ 产品 \/ 快递/,
-  '搜索提示文案需要明确包含下单时间'
+  /<TableSortButton[\s\S]*id="ot-sort-btn"[\s\S]*排序 \{sortIcon\}[\s\S]*<ProductPager[\s\S]*<TableHead>#<\/TableHead>/,
+  'React 订单排序按钮需要放在搜索分页工具栏里，并位于分页前面'
+);
+
+assert.match(
+  ordersPageSource,
+  /搜索订单 \/ 产品 \/ 快递；日期如 05-01 或 cg:05-01/,
+  '搜索提示文案需要说明订单字段和英文键盘日期语法'
+);
+
+assert.match(
+  ordersPageSource + fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'search-help.tsx'), 'utf8'),
+  /id="ot-search-help-btn"[\s\S]*modalId="ot-search-help-modal"[\s\S]*裸日期[\s\S]*05-18 等于 下单:2026-05-18[\s\S]*别名[\s\S]*xd=下单，cg=采购，dc=到仓[\s\S]*组合[\s\S]*NOMA 雨衣 xd:05-01~05-18 cg:>=05-18[\s\S]*搜索只作用于当前账号标签|搜索只作用于当前账号标签[\s\S]*id="ot-search-help-btn"[\s\S]*modalId="ot-search-help-modal"[\s\S]*裸日期[\s\S]*05-18 等于 下单:2026-05-18[\s\S]*别名[\s\S]*xd=下单，cg=采购，dc=到仓[\s\S]*组合[\s\S]*NOMA 雨衣 xd:05-01~05-18 cg:>=05-18/,
+  '订单搜索框右侧需要提供当前账号范围和搜索语法说明'
 );
 
 function toPlain(value) {
@@ -157,18 +169,123 @@ function toPlain(value) {
   assert.equal(creatorSearchResult.sorted.length, 1, '搜索达人应命中达人带货订单');
   assert.equal(creatorSearchResult.sorted[0].id, 'creator-1', '达人搜索应命中佣金率大于 0 的订单');
 
-  const dateSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+  const noteSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
     orders: [
-      { id: 'dated-1', '账号': 'A', '下单时间': '2026-04-23', '订单号': 'AA-1' },
-      { id: 'dated-2', '账号': 'A', '下单时间': '2026-04-10', '订单号': 'AA-2' }
+      { id: 'note-1', '账号': 'A', '订单号': 'AA-1', '备注': '催采购' },
+      { id: 'note-2', '账号': 'A', '订单号': 'AA-2', '备注': '' }
     ],
     activeAccount: '__all__',
-    searchQuery: '2026-04-23',
+    searchQuery: '催采购',
     sortOrder: 'asc'
   });
 
-  assert.equal(dateSearchResult.sorted.length, 1, '搜索应支持按下单时间匹配');
-  assert.equal(dateSearchResult.sorted[0].id, 'dated-1', '下单时间搜索应命中对应订单');
+  assert.equal(noteSearchResult.sorted.length, 1, '搜索应支持按订单备注匹配');
+  assert.equal(noteSearchResult.sorted[0].id, 'note-1', '备注搜索应命中对应订单');
+
+  const bareDateSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'dated-1', '账号': 'A', '下单时间': '2026-05-18', '订单号': 'AA-1' },
+      { id: 'dated-2', '账号': 'A', '下单时间': '2026-05-10', '订单号': 'AA-2' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '05-18',
+    sortOrder: 'asc'
+  });
+
+  assert.equal(bareDateSearchResult.sorted.length, 1, '裸日期搜索应默认按下单时间匹配');
+  assert.equal(bareDateSearchResult.sorted[0].id, 'dated-1', '裸日期搜索应命中对应订单');
+
+  const qualifiedDateSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'purchase-date', '账号': 'A', '下单时间': '2026-05-10', '采购日期': '2026-05-18', '订单号': 'AA-1' },
+      { id: 'order-date', '账号': 'A', '下单时间': '2026-05-18', '采购日期': '2026-05-12', '订单号': 'AA-2' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '采购:05-18',
+    sortOrder: 'asc'
+  });
+
+  assert.equal(qualifiedDateSearchResult.sorted.length, 1, '定语日期应按指定日期字段匹配');
+  assert.equal(qualifiedDateSearchResult.sorted[0].id, 'purchase-date', '采购日期搜索应命中采购日期对应订单');
+
+  const aliasDateSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'purchase-date', '账号': 'A', '下单时间': '2026-05-10', '采购日期': '2026-05-18', '订单号': 'AA-1' },
+      { id: 'order-date', '账号': 'A', '下单时间': '2026-05-18', '采购日期': '2026-05-12', '订单号': 'AA-2' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: 'CG：05/18',
+    sortOrder: 'asc'
+  });
+
+  assert.equal(aliasDateSearchResult.sorted.length, 1, '英文键盘别名和中文冒号应按指定日期字段匹配');
+  assert.equal(aliasDateSearchResult.sorted[0].id, 'purchase-date', 'cg 日期别名应命中采购日期对应订单');
+
+  const rangeSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'range-in', '账号': 'A', '下单时间': '2026-05-10', '订单号': 'AA-1' },
+      { id: 'range-out', '账号': 'A', '下单时间': '2026-05-22', '订单号': 'AA-2' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '下单:05-01～05-18',
+    sortOrder: 'asc'
+  });
+
+  assert.equal(rangeSearchResult.sorted.length, 1, '范围日期应按起止日期筛选');
+  assert.equal(rangeSearchResult.sorted[0].id, 'range-in', '范围日期搜索结果不正确');
+
+  const gteSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'gte-in', '账号': 'A', '下单时间': '2026-05-12', '采购日期': '2026-05-18', '订单号': 'AA-1' },
+      { id: 'gte-out', '账号': 'A', '下单时间': '2026-05-12', '采购日期': '2026-05-17', '订单号': 'AA-2' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '采购:>=05-18',
+    sortOrder: 'asc'
+  });
+
+  assert.equal(gteSearchResult.sorted.length, 1, '>= 日期应筛出大于等于目标日期的数据');
+  assert.equal(gteSearchResult.sorted[0].id, 'gte-in', '>= 日期搜索结果不正确');
+
+  const lteSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'lte-in', '账号': 'A', '最晚到仓时间': '2026-05-18', '订单号': 'AA-1' },
+      { id: 'lte-out', '账号': 'A', '最晚到仓时间': '2026-05-19', '订单号': 'AA-2' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '到仓:<=05-18',
+    sortOrder: 'asc'
+  });
+
+  assert.equal(lteSearchResult.sorted.length, 1, '<= 日期应筛出小于等于目标日期的数据');
+  assert.equal(lteSearchResult.sorted[0].id, 'lte-in', '<= 日期搜索结果不正确');
+
+  const warehouseAliasSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'lte-in', '账号': 'A', '最晚到仓时间': '2026-05-18', '订单号': 'AA-1' },
+      { id: 'lte-out', '账号': 'A', '最晚到仓时间': '2026-05-19', '订单号': 'AA-2' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: 'dc:＜＝05.18',
+    sortOrder: 'asc'
+  });
+
+  assert.equal(warehouseAliasSearchResult.sorted.length, 1, '英文键盘别名和全角比较符应按到仓时间匹配');
+  assert.equal(warehouseAliasSearchResult.sorted[0].id, 'lte-in', 'dc 日期别名应支持小于等于搜索');
+
+  const comboSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'combo-in', '账号': 'NOMA', '产品名称': '雨衣', '下单时间': '2026-05-10', '采购日期': '2026-05-18', '订单号': 'AA-1' },
+      { id: 'combo-text-out', '账号': 'NOMA', '产品名称': '杯子', '下单时间': '2026-05-10', '采购日期': '2026-05-18', '订单号': 'AA-2' },
+      { id: 'combo-date-out', '账号': 'NOMA', '产品名称': '雨衣', '下单时间': '2026-05-19', '采购日期': '2026-05-18', '订单号': 'AA-3' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: 'NOMA 雨衣 下单:05-01～05-18 采购:>=05-18',
+    sortOrder: 'asc'
+  });
+
+  assert.equal(comboSearchResult.sorted.length, 1, '文本和多个日期条件应同时生效');
+  assert.equal(comboSearchResult.sorted[0].id, 'combo-in', '组合搜索结果不正确');
 
   const dateSearchShouldIgnoreOtherDateFields = tableModule.OrderTableView.deriveDisplayedOrders({
     orders: [
@@ -190,7 +307,7 @@ function toPlain(value) {
       }
     ],
     activeAccount: '__all__',
-    searchQuery: '2026-04-23',
+    searchQuery: '04-23',
     sortOrder: 'asc'
   });
 
@@ -205,6 +322,19 @@ function toPlain(value) {
 
   assert.equal(accountOnlyResult.sorted.length, 1, '账号筛选应只保留目标账号');
   assert.equal(accountOnlyResult.sorted[0].id, '2', '账号筛选结果不正确');
+
+  const accountFirstSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'active-account', '账号': 'NOMA', '产品名称': '雨衣', '订单号': 'AA-1' },
+      { id: 'other-account', '账号': 'LUMI', '产品名称': '雨衣', '订单号': 'AA-2' }
+    ],
+    activeAccount: 'NOMA',
+    searchQuery: '雨衣',
+    sortOrder: 'asc'
+  });
+
+  assert.equal(accountFirstSearchResult.sorted.length, 1, '搜索必须先按当前账号标签过滤');
+  assert.equal(accountFirstSearchResult.sorted[0].id, 'active-account', '具体账号标签下搜索不能跨账号命中数据');
 
   const stableSortResult = tableModule.OrderTableView.deriveDisplayedOrders({
     orders: [

@@ -80,6 +80,7 @@ type OrderRecord = {
   '入仓状态'?: OrderStatus | null;
   '快递公司'?: string | null;
   '快递单号'?: string | null;
+  '备注'?: string | null;
   [key: string]: unknown;
 };
 
@@ -258,6 +259,7 @@ type OrderProviderPushChangesOptions = {
   deletions?: Array<{ id?: string; accountName?: string; deletedAt?: string }>;
   accountUpserts?: string[];
   accountDeletions?: string[];
+  accountSortOrder?: string[];
   clientId?: string;
   assignSeq?: boolean;
   waitForCommit?: boolean;
@@ -285,6 +287,15 @@ type OrderProviderApi = {
   signOut: () => Promise<void>;
   pullSnapshot: (options?: { cursor?: string }) => Promise<OrderProviderSnapshot>;
   pushChanges: (options?: OrderProviderPushChangesOptions) => Promise<OrderProviderPushResult>;
+  renameAccount: (
+    oldName: string,
+    newName: string,
+    options?: { accountOrder?: string[]; waitForCommit?: boolean }
+  ) => Promise<{ accounts: string[]; commitPromise?: Promise<unknown[]> }>;
+  deleteAccount: (
+    name: string,
+    options?: { accountOrder?: string[]; waitForCommit?: boolean }
+  ) => Promise<{ accounts: string[]; commitPromise?: Promise<unknown[]> }>;
 };
 
 type OrderItemDoc = {
@@ -326,6 +337,7 @@ type OrderFirestoreDoc = {
   weightText: string | null;
   sizeText: string | null;
   orderStatus: string | null;
+  note: string | null;
   items: OrderItemDoc[] | null;
 };
 

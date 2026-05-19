@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-type PageHeroVariant = 'analytics' | 'calc' | 'orders' | 'products';
+type PageHeroVariant = 'analytics' | 'calc' | 'collection' | 'orders' | 'products';
 
 type PageHeroProps = HTMLAttributes<HTMLDivElement> & {
   description: ReactNode;

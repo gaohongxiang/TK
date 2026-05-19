@@ -5,18 +5,18 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>隐私与数据边界 · TK 电商工具箱</title>
-  <meta name="description" content="TK 电商工具箱的数据边界说明：商品订单保存在用户自己的 Firebase，Excel 只在浏览器本地解析，Cloudflare 只托管静态资源。" />
+  <meta name="description" content="TK 电商工具箱的数据边界说明：商品订单和分析快照保存在用户自己的 Firebase，Excel 原始文件只在浏览器本地解析，Cloudflare 只托管静态资源。" />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://tk-evu.pages.dev/privacy.html" />
   <meta property="og:type" content="article" />
   <meta property="og:locale" content="zh_CN" />
   <meta property="og:title" content="隐私与数据边界 · TK 电商工具箱" />
-  <meta property="og:description" content="商品订单保存在用户自己的 Firebase，Excel 只在浏览器本地解析，Cloudflare 只托管静态资源。" />
+  <meta property="og:description" content="商品订单和分析快照保存在用户自己的 Firebase，Excel 原始文件只在浏览器本地解析，Cloudflare 只托管静态资源。" />
   <meta property="og:url" content="https://tk-evu.pages.dev/privacy.html" />
   <meta property="og:image" content="https://tk-evu.pages.dev/logo.png" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="隐私与数据边界 · TK 电商工具箱" />
-  <meta name="twitter:description" content="商品订单保存在用户自己的 Firebase，Excel 只在浏览器本地解析，Cloudflare 只托管静态资源。" />
+  <meta name="twitter:description" content="商品订单和分析快照保存在用户自己的 Firebase，Excel 原始文件只在浏览器本地解析，Cloudflare 只托管静态资源。" />
   <meta name="twitter:image" content="https://tk-evu.pages.dev/logo.png" />
   <meta name="theme-color" content="#ffffff" />
   <link rel="icon" type="image/png" sizes="500x500" href="/logo.png" />
@@ -29,7 +29,7 @@
   <main>
     <article class="panel">
       <h1>隐私与数据边界</h1>
-      <p class="lead">TK 电商工具箱是静态工具站。本站提供页面、计算、分析和本地交互能力，不保存你的商品、订单或 Excel 原始文件。</p>
+      <p class="lead">TK 电商工具箱是静态工具站。本站提供页面、计算、分析和本地交互能力，不保存你的商品、订单或 Excel 原始文件到工具作者的数据库。</p>
 
       <h2>数据保存位置</h2>
       <table>
@@ -52,9 +52,14 @@
             <td>订单管理保存和读取；Firestore SDK 负责离线缓存和同步。</td>
           </tr>
           <tr>
-            <td>商品流量 Excel</td>
+            <td>商品流量 Excel 原始文件</td>
             <td>当前浏览器内存</td>
-            <td>数据分析只在本地解析，不上传，不写入数据库。</td>
+            <td>数据分析只在本地解析原始文件，不上传。</td>
+          </tr>
+          <tr>
+            <td>数据分析快照和商品明细</td>
+            <td>你自己的 Firebase Firestore</td>
+            <td>用于刷新后恢复最近一次分析；本站不保存副本。</td>
           </tr>
           <tr>
             <td>汇率、运费倍率、连接配置</td>
@@ -72,13 +77,13 @@
       <h2>不会做的事</h2>
       <ul>
         <li>不会把你的订单或商品保存到工具作者的数据库。</li>
-        <li>不会上传或持久化 TikTok Shop 商品流量 Excel。</li>
+        <li>不会上传或持久化 TikTok Shop 商品流量 Excel 原始文件。</li>
         <li>不会把 Cloudflare Workers 当作用户业务数据库。</li>
         <li>不会在当前正式版本推荐 Supabase 作为活跃数据源。</li>
       </ul>
 
       <h2>Firebase 连接</h2>
-      <p>商品管理和订单管理共用一次 Firebase 连接。连接配置保存在当前浏览器本地，业务数据写入你自己的 Firestore 项目。退出数据库连接后，本地连接配置会被清除。</p>
+      <p>商品管理、订单管理、数据采集和数据分析共用一次 Firebase 连接。连接配置保存在当前浏览器本地，业务数据写入你自己的 Firestore 项目。退出数据库连接后，本地连接配置会被清除。</p>
 
       <h2>自己部署</h2>
       <p>你可以把主站和文档站部署到自己的 Cloudflare Pages 项目。部署后仍然遵守同样的数据边界：Pages 只发布静态文件，业务数据仍然进入用户自己的 Firebase 或浏览器本地内存。</p>

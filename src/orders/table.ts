@@ -4,6 +4,12 @@ import {
   parseCreatorCommissionRateValue,
   parseOrderMoneyValue
 } from './shared.ts';
+import {
+  getCurrentSearchYear,
+  matchesParsedSearchQuery,
+  normalizeSearchValue,
+  parseSearchQuery
+} from '../search-query.ts';
 import type {
   DeriveDisplayedOrdersOptions,
   DeriveDisplayedOrdersResult,
@@ -20,18 +26,29 @@ type ParsedMoneyAmount = {
   hasValue: boolean;
 };
 
-function normalizeSearchValue(value: unknown): string {
-  return String(value || '').trim().toLowerCase();
-}
+type BuildCurrentFilterTitleOptions = {
+  accounts?: unknown[];
+  currentYear?: number;
+};
 
-function isDateSearchQuery(value: unknown): boolean {
-  const normalized = normalizeSearchValue(value);
-  if (!normalized) return false;
-  if (!/^[\d\s./-]+$/.test(normalized)) return false;
-  const compact = normalized.replace(/\s+/g, '');
-  return /^\d{4}[-/.]\d{1,2}([-/.\d]{0,3})?$/.test(compact)
-    || /^\d{1,2}[-/.]\d{1,2}$/.test(compact);
-}
+const ORDER_DATE_ALIASES = {
+  'xd': '下单时间',
+  '下单': '下单时间',
+  '下单时间': '下单时间',
+  'cg': '采购日期',
+  '采购': '采购日期',
+  '采购日期': '采购日期',
+  'dc': '最晚到仓时间',
+  '到仓': '最晚到仓时间',
+  '最晚到仓': '最晚到仓时间',
+  '最晚到仓时间': '最晚到仓时间'
+};
+
+const ORDER_DATE_TITLE_LABELS: Record<string, string> = {
+  '下单时间': '下单时间',
+  '采购日期': '采购时间',
+  '最晚到仓时间': '到仓时间'
+};
 
 function parseOrderSortTime(order: OrderRecord): number {
   const createdAt = String(order?.createdAt || order?.created_at || order?.updatedAt || order?.updated_at || '').trim();
@@ -266,6 +283,36 @@ function getProfitCellToneClass(value: unknown): string {
   return 'neutral';
 }
 
+function getOrderSearchText(order: OrderRecord): unknown[] {
+  return [
+    order?.['账号'],
+    order?.['订单号'],
+    isOrderRefunded(order) ? '退款 已退款' : '',
+    isCreatorOrder(order) ? '达人 达人单' : '',
+    order?.['产品名称'],
+    order?.['数量'],
+    order?.['采购价格'],
+    order?.['售价'],
+    order?.['达人佣金率'],
+    order?.['达人佣金'],
+    order?.['预估运费'],
+    order?.['预估利润'],
+    order?.['重量'],
+    order?.['尺寸'],
+    order?.['订单状态'],
+    order?.['订单预警'],
+    order?.['快递公司'],
+    order?.['快递单号'],
+    order?.['备注'],
+    buildOrderCourierSummary(order, 'company', 'full'),
+    buildOrderCourierSummary(order, 'tracking', 'full')
+  ];
+}
+
+function getOrderSearchDate(order: OrderRecord, field: string): unknown {
+  return order?.[field] || '';
+}
+
 function deriveDisplayedOrders({ orders = [], activeAccount = '__all__', searchQuery = '', sortOrder = 'asc' }: DeriveDisplayedOrdersOptions = {}): DeriveDisplayedOrdersResult {
   const list = Array.isArray(orders) ? orders : [];
   const isAll = activeAccount === '__all__';
@@ -274,39 +321,19 @@ function deriveDisplayedOrders({ orders = [], activeAccount = '__all__', searchQ
     : activeAccount
       ? list.filter(order => String(order?.['账号'] || '').trim() === activeAccount)
       : list;
-  const query = normalizeSearchValue(searchQuery);
-  const dateOnlySearch = isDateSearchQuery(query);
-  const filtered = !query
-    ? accountFiltered
-    : accountFiltered.filter(order => {
-      const haystack = normalizeSearchValue(dateOnlySearch
-        ? [order?.['下单时间']].join(' ')
-        : [
-          order?.['账号'],
-          order?.['下单时间'],
-          order?.['采购日期'],
-          order?.['最晚到仓时间'],
-          order?.['订单号'],
-          isOrderRefunded(order) ? '退款 已退款' : '',
-          isCreatorOrder(order) ? '达人 达人单' : '',
-          order?.['产品名称'],
-          order?.['数量'],
-          order?.['采购价格'],
-          order?.['售价'],
-          order?.['达人佣金率'],
-          order?.['达人佣金'],
-          order?.['预估运费'],
-          order?.['预估利润'],
-          order?.['重量'],
-          order?.['尺寸'],
-          order?.['订单状态'],
-          order?.['快递公司'],
-          order?.['快递单号'],
-          buildOrderCourierSummary(order, 'company', 'full'),
-          buildOrderCourierSummary(order, 'tracking', 'full')
-        ].join(' '));
-      return haystack.includes(query);
-    });
+  const query = parseSearchQuery(searchQuery, {
+    currentYear: getCurrentSearchYear(),
+    defaultDateField: '下单时间',
+    dateAliases: ORDER_DATE_ALIASES
+  });
+  const filtered = query.textTokens.length || query.dateFilters.length
+    ? accountFiltered.filter(order => matchesParsedSearchQuery({
+      query,
+      record: order,
+      getText: getOrderSearchText,
+      getDate: getOrderSearchDate
+    }))
+    : accountFiltered;
   const sorted = [...filtered].sort((a, b) => {
     const sa = parseOrderSeq(a);
     const sb = parseOrderSeq(b);
@@ -401,18 +428,86 @@ function derivePurchaseSummary({
   };
 }
 
-function buildCurrentFilterTitle(activeAccount = '__all__', searchQuery = ''): string {
+function normalizeTitleAccountList(accounts: unknown[] = []): string[] {
+  return accounts
+    .map(account => String(account || '').trim())
+    .filter(Boolean);
+}
+
+function findTitleAccount(token: string, accounts: unknown[] = []): string {
+  const needle = normalizeSearchValue(token);
+  if (!needle) return '';
+  return normalizeTitleAccountList(accounts).find(account => normalizeSearchValue(account) === needle) || '';
+}
+
+function getSearchTokenExpression(token: string): string {
+  const colonIndex = token.indexOf(':');
+  const fullWidthColonIndex = token.indexOf('：');
+  const delimiterIndex = colonIndex > 0
+    ? colonIndex
+    : fullWidthColonIndex > 0
+      ? fullWidthColonIndex
+      : -1;
+  return delimiterIndex > 0 ? token.slice(delimiterIndex + 1).trim() : token.trim();
+}
+
+function formatDateTitlePart(field: string, expression: string): string {
+  const label = ORDER_DATE_TITLE_LABELS[field] || field;
+  return expression ? `${label}：${expression}` : label;
+}
+
+function buildSearchTitleParts(activeAccount: string, searchQuery: string, options: BuildCurrentFilterTitleOptions = {}): string[] {
+  const parts: string[] = [];
+  const textTokens: string[] = [];
+  const query = String(searchQuery || '').trim();
+  if (!query) return parts;
+
+  function flushTextTokens() {
+    if (!textTokens.length) return;
+    parts.push(`搜索：${textTokens.join(' ')}`);
+    textTokens.length = 0;
+  }
+
+  query.split(/\s+/).filter(Boolean).forEach(token => {
+    const parsed = parseSearchQuery(token, {
+      currentYear: options.currentYear || getCurrentSearchYear(),
+      defaultDateField: '下单时间',
+      dateAliases: ORDER_DATE_ALIASES
+    });
+    if (parsed.dateFilters.length === 1 && parsed.textTokens.length === 0) {
+      flushTextTokens();
+      const [filter] = parsed.dateFilters;
+      parts.push(formatDateTitlePart(filter.field, getSearchTokenExpression(token)));
+      return;
+    }
+
+    const account = findTitleAccount(token, options.accounts);
+    if (account) {
+      flushTextTokens();
+      if (normalizeSearchValue(account) !== normalizeSearchValue(activeAccount)) {
+        parts.push(`账号：${account}`);
+      }
+      return;
+    }
+
+    textTokens.push(token);
+  });
+  flushTextTokens();
+  return parts;
+}
+
+function buildCurrentFilterTitle(activeAccount = '__all__', searchQuery = '', options: BuildCurrentFilterTitleOptions = {}): string {
   const conditions = [];
   const account = String(activeAccount || '').trim();
-  const query = String(searchQuery || '').trim();
   if (account && account !== '__all__') conditions.push(`账号：${account}`);
-  if (query) conditions.push(`搜索：${query}`);
+  conditions.push(...buildSearchTitleParts(account, searchQuery, options));
   return conditions.length
     ? `当前筛选 · ${conditions.join(' · ')}`
     : '当前筛选';
 }
 
 const OrderTableView = {
+  ORDER_DATE_ALIASES,
   buildCurrentFilterTitle,
   buildOrderCourierSummary,
   buildOrderNoCellMarkup,
@@ -428,16 +523,19 @@ const OrderTableView = {
   formatTableCellValue,
   formatTableMoneyValue,
   getOrderCourierValues,
+  getOrderSearchDate,
+  getOrderSearchText,
   getProfitCellToneClass,
   getSummaryTone,
   isCreatorOrder,
-  isDateSearchQuery,
   parseMoneyAmount,
   parseOrderSeq,
   parseOrderSortTime
 };
 
 export {
+  ORDER_DATE_ALIASES,
+  ORDER_DATE_TITLE_LABELS,
   OrderTableView,
   buildCurrentFilterTitle,
   buildOrderCourierSummary,
@@ -454,10 +552,11 @@ export {
   formatTableCellValue,
   formatTableMoneyValue,
   getOrderCourierValues,
+  getOrderSearchDate,
+  getOrderSearchText,
   getProfitCellToneClass,
   getSummaryTone,
   isCreatorOrder,
-  isDateSearchQuery,
   normalizeSearchValue,
   parseMoneyAmount,
   parseOrderSeq,

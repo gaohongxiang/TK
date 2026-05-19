@@ -33,8 +33,14 @@ assert.match(
 
 assert.match(
   srcConfigSource,
-  /analytics:\s*'browser-memory-only'/,
-  '数据分析配置需要明确只在浏览器内存处理'
+  /analytics:\s*'user-owned-firestore'/,
+  '数据分析配置需要明确保存到用户自己的 Firestore'
+);
+
+assert.match(
+  srcConfigSource,
+  /collection:\s*'user-owned-firestore'/,
+  '商品采编配置需要明确同步到用户自己的 Firestore'
 );
 
 assert.match(
@@ -81,7 +87,7 @@ assert.doesNotMatch(
   assert.strictEqual(module.TKAppConfig.storesUserBusinessData, false, '本站不应保存用户业务数据');
   assert.deepStrictEqual(
     Array.from(module.TKAppConfig.modules, item => item.key),
-    ['calc', 'products', 'orders', 'analytics'],
+    ['calc', 'products', 'orders', 'collection', 'analytics'],
     '模块顺序需要和导航一致'
   );
   assert.match(reactMainSource, /getElementById\('root'\)[\s\S]*<App \/>/, 'React 主入口需要只挂载单一 SPA root');

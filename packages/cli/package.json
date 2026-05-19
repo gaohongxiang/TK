@@ -1,0 +1,9 @@
+{
+  "name": "@tk-ecom/toolbox-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "tk": "./bin/tk.mjs"
+  }
+}

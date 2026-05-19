@@ -1,8 +1,9 @@
 import type { DeriveDisplayedProductsOptions, ProductLogisticsDefaults, ProductRecord, ProductSku, ProductSortOrder } from './types.ts';
-
-function normalizeSearchValue(value: unknown): string {
-  return String(value || '').trim().toLowerCase();
-}
+import {
+  matchesParsedSearchQuery,
+  normalizeSearchValue,
+  parseSearchQuery
+} from '../search-query.ts';
 
 function toNumber(value: unknown): number | null {
   const text = String(value ?? '').trim();
@@ -114,27 +115,37 @@ function compareProducts(a: ProductRecord, b: ProductRecord, sortOrder: ProductS
   return sortOrder === 'asc' ? byTkId : -byTkId;
 }
 
+function getProductSearchText(product: ProductRecord): unknown[] {
+  return [
+    product?.accountName,
+    product?.tkId,
+    product?.name,
+    product?.note,
+    product?.link1688,
+    getCargoTypeLabel(getProductDefaults(product)?.cargoType),
+    ...getProductSkus(product).flatMap(sku => [sku?.skuId, sku?.skuName])
+  ];
+}
+
 function deriveDisplayedProducts({ products = [], activeAccount = '__all__', searchQuery = '', sortOrder = 'asc' }: DeriveDisplayedProductsOptions = {}): ProductRecord[] {
   const list = Array.isArray(products) ? products : [];
   const accountFiltered = activeAccount && activeAccount !== '__all__'
     ? list.filter(product => String(product?.accountName || '').trim() === activeAccount)
     : list;
   const sortProducts = (items: ProductRecord[]) => [...items].sort((a, b) => compareProducts(a, b, sortOrder));
-  const query = normalizeSearchValue(searchQuery);
-  if (!query) {
+  const query = parseSearchQuery(searchQuery, {
+    enableBareDate: false,
+    dateAliases: {}
+  });
+  if (!query.textTokens.length && !query.dateFilters.length) {
     return sortProducts(accountFiltered);
   }
-  return accountFiltered.filter(product => {
-    const haystack = normalizeSearchValue([
-      product?.accountName,
-      product?.tkId,
-      product?.name,
-      product?.link1688,
-      getCargoTypeLabel(getProductDefaults(product)?.cargoType),
-      ...getProductSkus(product).flatMap(sku => [sku?.skuId, sku?.skuName])
-    ].join(' '));
-    return haystack.includes(query);
-  }).sort((a, b) => compareProducts(a, b, sortOrder));
+  return accountFiltered.filter(product => matchesParsedSearchQuery({
+    query,
+    record: product,
+    getText: getProductSearchText,
+    getDate: () => ''
+  })).sort((a, b) => compareProducts(a, b, sortOrder));
 }
 
 const ProductLibraryTable = {
@@ -152,6 +163,7 @@ const ProductLibraryTable = {
   formatSkuLabel,
   formatSkuShippingFee,
   getCargoTypeLabel,
+  getProductSearchText,
   parseProductSortTime,
   compareProducts,
   deriveDisplayedProducts
@@ -169,6 +181,7 @@ export {
   formatText,
   formatWeight,
   getCargoTypeLabel,
+  getProductSearchText,
   getProductDefaults,
   getProductSkus,
   mergeProductSku,

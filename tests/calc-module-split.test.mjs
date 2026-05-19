@@ -53,6 +53,18 @@ assert.match(
 
 assert.match(
   reactCalculatorSource,
+  /calcResultTableClass = 'calc-result-table[\s\S]*text-\[14\.5px\][\s\S]*calcResultHeadClass = 'px-\[11px\] py-\[11\.5px\][\s\S]*calcResultCellClass = 'px-\[11px\] py-\[11\.5px\]/,
+  '利润计算器折扣结果表只应比原版略大，不能过度放大'
+);
+
+assert.match(
+  reactCalculatorSource,
+  /calcFormulaBlockClass = 'calc-formula-block mt-3 text-\[var\(--muted\)\]'[\s\S]*calcFormulaListClass = 'calc-formula-list[\s\S]*text-\[10\.5px\][\s\S]*原价反推 = 总费用 × 目标利润率 × 汇率 ÷ \[基准折扣 × \(1 − 平台手续费率\) × \(1 − 达人佣金率\)\]/,
+  '利润计算器公式区需要去掉外框、保持小字体，并补全原价反推公式'
+);
+
+assert.match(
+  reactCalculatorSource,
   /id="totalCostNew" tone="expense"[\s\S]*id="totalCostReview" tone="expense"/,
   '定价新和利润复盘总费用字段需要保持费用红色输入框风格'
 );

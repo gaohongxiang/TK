@@ -27,8 +27,14 @@ assert.doesNotMatch(
 
 assert.match(
   ordersPageSource,
-  /const allAccounts = useMemo\([\s\S]*uniqueAccounts[\s\S]*<AccountTabsBar[\s\S]*id="ot-acc-tabs"[\s\S]*id: 'ot-tab-add'[\s\S]*id="ot-add"/,
-  'React 订单页需要通过 AccountTabsBar 渲染账号标签栏和新增订单入口'
+  /const allAccounts = accounts[\s\S]*<AccountTabsBar[\s\S]*id="ot-acc-tabs"[\s\S]*id: 'ot-tab-add'[\s\S]*id="ot-add"/,
+  'React 订单页需要通过共享账号表渲染 AccountTabsBar 和新增订单入口'
+);
+
+assert.doesNotMatch(
+  ordersPageSource,
+  /mergeAccountOrder|orders\.map\(order => order\['账号'\]\)[\s\S]*setAccounts/,
+  '订单账号标签只能来自 order_accounts 共享账号表，不能从订单数据反推账号列表'
 );
 
 assert.match(

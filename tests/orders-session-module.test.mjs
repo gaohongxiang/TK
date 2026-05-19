@@ -22,8 +22,8 @@ assert.ok(!fs.existsSync(path.join(root, 'src', 'orders', 'sync.mjs')), '完整 
 
 assert.match(
   ordersPageSource,
-  /orders、order_accounts、sync_state 和 products[\s\S]*notifyRulesUpdateNeeded/,
-  'React 订单页在 Firestore 权限不足时需要触发全局规则更新提示'
+  /formatFirestoreRulesUpdateMessage\('orders'[\s\S]*permissionBlocked[\s\S]*<ModuleListState[\s\S]*订单管理保存不可用/,
+  'React 订单页在 Firestore 权限不足时需要在列表区提示，并提供复制规则入口'
 );
 
 assert.ok(!fs.existsSync(path.join(root, 'src', 'orders', 'index.mjs')), '完整 React SPA 重建后旧订单 DOM 入口应删除');
@@ -36,7 +36,7 @@ assert.doesNotMatch(
 
 assert.match(
   ordersPageSource,
-  /tk-firestore-config-changed[\s\S]*id="ot-open-connection"[\s\S]*id="ot-refresh"/,
+  /tk-firestore-config-changed[\s\S]*id="ot-refresh"[\s\S]*id: 'ot-open-connection'|tk-firestore-config-changed[\s\S]*id: 'ot-open-connection'[\s\S]*id="ot-refresh"/,
   'React 订单页需要直接接管 Firestore 配置变化、连接按钮和刷新按钮'
 );
 

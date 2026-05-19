@@ -2,6 +2,7 @@ node_modules/
 .DS_Store
 .claude/
 dist/
+data/
 test-results/
 playwright-report/
 docs/.vitepress/cache/

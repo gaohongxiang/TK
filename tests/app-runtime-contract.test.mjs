@@ -124,6 +124,12 @@ assert.match(
 );
 
 assert.match(
+  appShell,
+  /appHeaderClass = 'app-header sticky top-0 z-\[60\][\s\S]*pt-3\.5[\s\S]*before:w-screen[\s\S]*before:bg-\[color-mix\(in_srgb,var\(--bg\)_98%,transparent\)\][\s\S]*before:backdrop-blur-xl[\s\S]*max-\[640px\]:pt-2\.5/,
+  '顶部 TK 电商工具箱主导航需要滚动时固定在顶部，用全屏宽背景避免容器两侧透底'
+);
+
+assert.match(
   reactApp,
   /import \{ AppRuntime \} from '\.\/AppRuntime'[\s\S]*import\('\.\.\/features\/analytics\/AnalyticsRoute'\)[\s\S]*AnalyticsPane[\s\S]*<AppRuntime \/>/,
   'React 数据分析应按路由懒加载，避免首屏提前加载图表库'
@@ -146,6 +152,7 @@ assert.match(
   'input.tsx',
   'label.tsx',
   'select.tsx',
+  'search-help.tsx',
   'searchable-select.tsx',
   'table.tsx',
   'tabs.tsx',
@@ -168,12 +175,30 @@ assert.match(
   'badge.tsx',
   'alert.tsx',
   'toast.tsx',
-  'searchable-select.tsx'
+  'searchable-select.tsx',
+  'search-help.tsx'
 ].forEach(file => {
   const source = fs.readFileSync(path.join(uiRoot, file), 'utf8');
   assert.match(source, /data-slot=/, `${file} 需要暴露 data-slot，便于后续 UI 收敛和测试`);
   assert.match(source, /var\(--|color-mix\(in_srgb|class-variance-authority|cn\(/, `${file} 需要复用现有 token 或 Tailwind/cva 样式`);
 });
+
+const searchHelpSource = fs.readFileSync(path.join(uiRoot, 'search-help.tsx'), 'utf8');
+assert.match(
+  searchHelpSource,
+  /createPortal\(dialog, document\.body\)/,
+  '搜索说明弹窗需要挂到 body，避免被表格工具条层叠和滚动容器影响'
+);
+assert.match(
+  searchHelpSource,
+  /size="smIcon"[\s\S]*<HelpCircle/,
+  '搜索说明入口需要是纯图标按钮'
+);
+assert.doesNotMatch(
+  searchHelpSource,
+  /<HelpCircle[\s\S]*说明[\s\S]*<\/Button>/,
+  '搜索说明入口按钮不应再显示“说明”文字'
+);
 
 assert.match(
   fs.readFileSync(path.join(uiRoot, 'input.tsx'), 'utf8'),
@@ -182,9 +207,27 @@ assert.match(
 );
 
 assert.match(
+  fs.readFileSync(path.join(uiRoot, 'select.tsx'), 'utf8'),
+  /appearance-none[\s\S]*bg-none/,
+  'Select primitive 需要隐藏原生下拉箭头，保持货物类型和基准折扣档位显示简洁'
+);
+
+assert.match(
+  fs.readFileSync(path.join(uiRoot, 'status-strip.tsx'), 'utf8'),
+  /syncStatusBaseClass = 'sync[\s\S]*border-0[\s\S]*bg-transparent[\s\S]*px-0/,
+  '商品管理和订单管理同步状态文本不应带边框或底色'
+);
+
+assert.match(
   fs.readFileSync(path.join(uiRoot, 'input.tsx'), 'utf8'),
-  /min-h-10[\s\S]*expense:[\s\S]*min-h-\[48px\][\s\S]*color-mix\(in_srgb,var\(--expense\)_13%,white\)[\s\S]*success:[\s\S]*min-h-\[48px\][\s\S]*color-mix\(in_srgb,var\(--ok\)_13%,white\)/s,
-  'Input primitive 的计算器语义输入框需要保持适中高度和柔和红色/绿色底色'
+  /min-h-10[\s\S]*readonly:[\s\S]*tk-input-tone-readonly[\s\S]*expense:[\s\S]*tk-input-tone-expense[\s\S]*success:[\s\S]*tk-input-tone-success/s,
+  'Input primitive 的计算器语义输入框需要保持 GitHub main 同款柔和红色/绿色底色'
+);
+
+assert.match(
+  fs.readFileSync(path.join(root, 'src', 'react', 'styles', 'base.css'), 'utf8'),
+  /\.tk-input-tone-success[\s\S]*background:\s*linear-gradient\(180deg,\s*rgba\(138,\s*255,\s*207,\s*\.18\),\s*rgba\(138,\s*255,\s*207,\s*\.08\)\)[\s\S]*\.tk-input-tone-expense[\s\S]*background:\s*linear-gradient\(180deg,\s*rgba\(240,\s*138,\s*134,\s*\.18\),\s*rgba\(240,\s*138,\s*134,\s*\.08\)\)/s,
+  '计算器语义输入框需要用 background 简写覆盖基础蓝底，避免透明红绿叠色发灰'
 );
 
 assert.match(

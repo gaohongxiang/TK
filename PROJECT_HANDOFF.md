@@ -17,6 +17,7 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - 利润计算器
 - 商品管理
 - 订单管理
+- 数据采集
 - 数据分析
 - VitePress 文档站
 - TK 运营文档
@@ -62,7 +63,7 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 - ECharts。
 - lucide-react。
 
-当前选择暂不使用 Next.js。原因是主站仍是静态工具站，用户业务数据在用户自己的 Firebase Firestore，数据分析 Excel 只在浏览器本地解析；当前不需要 SSR、Server Components 或后端 API 路由。先用 Vite React 保持部署边界简单。
+当前选择暂不使用 Next.js。原因是主站仍是静态工具站，用户业务数据在用户自己的 Firebase Firestore，数据分析 Excel 原始文件只在浏览器本地解析；当前不需要 SSR、Server Components 或后端 API 路由。先用 Vite React 保持部署边界简单。
 
 当前也暂不使用 TanStack Table。商品和订单表格先用本地 shadcn 风格 `Table` primitive、共享 `table-tools` 控件和既有纯函数完成；只有后续出现复杂列配置、虚拟滚动或大量交互排序筛选需求时再评估。
 
@@ -86,7 +87,7 @@ TK 电商工具箱是给 TikTok Shop 日本跨境店使用的运营工具站。
 
 - 订单数据写入用户自己的 Firebase Firestore。
 - 商品数据写入用户自己的 Firebase Firestore。
-- 数据分析 Excel 只在浏览器本地解析，不上传，不持久化。
+- 数据分析 Excel 原始文件只在浏览器本地解析，不上传；解析后的分析快照写入用户自己的 Firestore。
 - Cloudflare 只托管静态资源。
 - 本地工具参数可以保存在用户浏览器 `localStorage`。
 - 不增加平台方数据库来保存用户商品、订单、Excel。
@@ -109,13 +110,20 @@ modern-react-spa
 - 数据分析页已迁到 React + ECharts，并由 `src/react/features/analytics/AnalyticsRoute.tsx` 按需懒加载；`src/analytics/parser.ts` 和 `src/analytics/analyzer.ts` 仍作为纯函数来源复用。
 - 商品管理已迁到完整 React 页面：React 接管连接状态、账号筛选、表格、分页、新增/编辑商品弹窗、SKU 编辑、CSV 导出和商品变更广播；继续复用现有 Firestore provider、商品表格纯函数、SKU 表单纯函数和运费核心，不改变 Firestore 数据结构。
 - 订单管理已迁到完整 React 页面；继续复用现有 Firestore provider、订单共享计算、导出和表格筛选 helper，不改变 Firestore 数据结构；旧订单同步运行壳层已删除，保存流程由 React 订单页直接调用 provider。
+- 数据采集模块已接入主导航和 React 页面：采集表按共享账号筛选，合格商品和店小秘状态合并到用户 Firestore 的 `collection_records`，拒绝品只写轻量 `collection_excluded_products` 去重记录；页面状态统一为未连接、权限不足、无数据、有数据四种列表状态。
+- 账号系统已收敛为三模块共享账号表：商品、订单、数据采集的账号标签只来自统一 `order_accounts`，业务数据里的 `accountName` 只负责计数和筛选，不再反向生成账号标签；空账号或已删除账号的数据只在“全部”里显示。
+- 搜索体系已统一：新增 `src/search-query.ts` 共享解析器，订单、商品、数据采集都先按当前账号标签过滤，再在过滤后的数据里搜索；订单支持下单/采购/到仓日期语法，商品只做文本搜索，数据采集支持采集/编辑日期语法。三个模块搜索框右侧都有“说明”弹窗，明确搜索只作用于当前账号标签。
+- FastMoss/店小秘采集默认使用当前授权采集窗口。FastMoss 本机配置全局复用；店小秘按 TK 账号绑定复用；多个账号顺序切换，不并行处理多个采集窗口。平台人工确认、付费确认和发布确认仍由用户处理。
+- `packages/cli/` 是内部 TK CLI，保留给开发和排查使用；用户采集路径不依赖它。
+- 数据采集脚本母本位于 `skills/tk-product-selection/`，全局 skill 的脚本为实际执行入口。常用流程是先检查目标账号，再创建独立运行目录并用 `firestore-sync.mjs dedupe ... --account <目标账号名>` 从数据库生成去重清单，然后用当前授权采集窗口完成 FastMoss 和店小秘页面动作，用 skill 自带筛选/状态脚本生成本批次文件，最后 `firestore-sync.mjs sync ... --account <目标账号名>` 同步。
+- 数据采集用户文档已新增：`docs/guide/collection.md`，并接入 VitePress 侧边栏；内部 SOP 仍在 `docs/ops/fastmoss-selection-sop.md`。
 - `index.html` 当前只保留 `#root`、`/src/react/main.tsx`、Firebase compat SDK 和 SheetJS；不再加载旧 DOM 入口。
 - 已删除旧运行时入口和旧 React 二次挂载文件：`src/main.mjs`、`src/calc/index.mjs`、`src/orders/index.mjs`、`src/products/index.mjs`、`src/analytics/index.mjs`、`src/analytics/charts.mjs`、`src/react/features/analytics/mountAnalytics.tsx`、`src/react/features/products/ProductsTable.tsx`、`src/react/features/products/mountProductsTable.tsx`。
 - `src/orders/table.ts` 和 `src/products/table.ts` 已收缩为纯 helper，不再暴露 DOM `render` 壳或挂旧全局表格视图。
 - 商品主表已使用本地 shadcn 风格 `Table` / `Button` primitives；商品导出弹层由 React 控制，CSV 行构建和文件名继续复用 `src/products/export.ts`。
 - 订单摘要已保留收入、支出、利润、退款和达人佣金口径；退款订单行和订单号达人/退款标签仍由纯函数口径驱动。
 - 视觉系统收敛二期已完成到当前目标：商品、订单和数据分析的表格搜索、分页、吸顶控制带、横向滚动外壳和空状态已收敛到 `src/react/components/ui/table-tools.tsx`；商品/订单导出账号选择已收敛到 `ExportOptions`；商品/订单账号标签栏已收敛到 `AccountTabsBar`；表格状态标签、连接状态和同步状态已收敛到 `Badge`；App Shell、导航、skip link、帮助图标、计算器、数据分析和订单摘要样式已迁入 React/Tailwind 常量。
-- 旧 React CSS 分模块样式已清理完成：`src/react/styles.css` 只导入 Tailwind utilities 和 `src/react/styles/base.css`；`src/react/styles/base.css` 仅保留 token、明暗主题、body/a 基础规则，React 专用 CSS 总量约 56 行。
+- 旧 React CSS 分模块样式已清理完成：`src/react/styles.css` 只导入 Tailwind utilities 和 `src/react/styles/base.css`；`src/react/styles/base.css` 仅保留 token、明暗主题、body/a 基础规则，React 侧 CSS 总量约 56 行。
 - 当前不再依赖旧 `ot-table-*`、`.btn`、旧 modal/action、`.ot-export-*`、`.ot-acc-*`、`.ot-empty`、`.chip`、`.workspace-chip`、`.calc-tab`、旧 App Shell/nav/skip-link 全局视觉样式。
 - `scripts/preview-smoke.mjs` 已适配完整 React SPA：首页 HTTP smoke 检查单根 React 入口、SEO meta、Firebase/SheetJS 脚本、构建产物和静态页面；运行后交互由 Playwright 覆盖。
 - 构建产物不再发布旧 `dist/js/`。
@@ -129,10 +137,17 @@ modern-react-spa
 最近已验证通过：
 
 ```bash
+node tests/search-query.test.mjs
+node tests/orders-table-view.test.mjs
+node tests/products-view-ui.test.mjs
+node tests/collection-module.test.mjs
+node tests/orders-search-ime-guard.test.mjs
+npm run typecheck
 npm test
 npm run typecheck
 npm run build
 git diff --check
+node tests/collection-module.test.mjs
 npm run smoke
 npx playwright test tests/e2e/release.spec.ts --project=desktop-chromium --project=mobile-chromium
 npm run release:check
@@ -506,7 +521,7 @@ npm run release:check
 - 数据分析页已由 React 入口直接接入 `src/analytics/parser.ts` 和 `src/analytics/analyzer.ts`，不再通过旧 `TKDataSourceRegistry` 注册方式。
 - 旧 `src/analytics/index.mjs`、`src/analytics/charts.mjs` 和旧 `js/analytics/*.js` 已删除。
 - Vite 构建只打包 React 数据分析路由和 parser/analyzer 纯函数；构建产物不包含旧 `js/analytics/*`。
-- `tests/analytics-module.test.mjs` 和 `tests/main-build-contract.test.mjs` 已覆盖 React 数据分析入口和“不上传/不持久化 Excel”的边界。
+- `tests/analytics-module.test.mjs` 和 `tests/main-build-contract.test.mjs` 已覆盖 React 数据分析入口和“原始 Excel 不上传、分析快照进 Firestore”的边界。
 
 当前已验证通过：
 
@@ -575,7 +590,7 @@ npm run release:check
 - 新增 `src/products/table.ts`，提供商品表格筛选、排序、SKU 默认值合并、SKU 标签/尺寸/运费格式化等纯函数 ESM 导出。
 - `src/products/table.ts` 已收敛为纯 ESM helper，不再挂旧 `window.ProductLibraryTableView` 或 DOM render。
 - `tests/products-view-ui.test.mjs` 已新增动态 `import()` 断言，确认商品表格 ESM 纯函数排序、筛选和 React 渲染壳存在。
-- 新增 `src/products/accounts.ts`，提供商品账号归并、账号槽和账号列表等纯函数 ESM 导出；账号下拉和账号标签由 React 商品页直接渲染，不再挂旧 `window.ProductLibraryAccounts`。
+- 新增 `src/products/accounts.ts`，提供账号名称归一化、去重和账号槽等纯函数 ESM 导出；账号标签列表来自统一共享账号表，不再从商品数据反向归并生成。
 - 新增 `src/products/form-utils.ts`，提供商品 CRUD/SKU 弹窗的尺寸解析、批量 SKU 草稿、SKU 名称匹配、运费快照、SKU 默认值判断等纯函数 ESM 导出。
 - `tests/products-form-utils-module.test.mjs` 已新增动态 `import()` 断言，确认商品表单纯函数 ESM 输出稳定。
 - `src/products/form-utils.ts` 已收敛为纯 ESM helper，不再挂旧 `window.ProductLibraryFormUtils`。
@@ -629,7 +644,7 @@ npm run release:check
 已完成：
 
 - 新增 `src/orders/shared.ts`，提供 `OrderTrackerShared`、`create` 以及订单归一化、旧结构迁移/清洗、快递识别、金额/佣金/利润计算等关键纯函数 ESM 导出。
-- `src/orders/shared.ts` 保留旧 `OrderTrackerShared.create()` 返回接口，并让原来依赖 `window` / `document` 的读取点可注入，方便 Node 测试和后续入口迁移。
+- `src/orders/shared.ts` 保留旧 `OrderTrackerShared.create()` 返回方法，并让原来依赖 `window` / `document` 的读取点可注入，方便 Node 测试和后续入口迁移。
 - `tests/orders-shared-module.test.mjs` 已新增动态 `import()` 断言，对照旧 `js/orders/shared.js` 验证账号去重、汇率读取、利润计算、快递识别、多明细订单归一化和旧订单结构清洗输出一致。
 - 新增 `src/orders/table.ts`，提供订单表格筛选排序、日期型搜索判断、退款/达人识别、快递汇总、金额格式化、利润颜色、采购/销售/运费/达人佣金/利润摘要统计和表格渲染壳等 ESM 导出。
 - `tests/orders-table-view.test.mjs` 已新增动态 `import()` 断言，对照旧 `js/orders/table.js` 验证搜索筛选、达人搜索、稳定排序、利润颜色和多明细快递紧凑展示口径一致。
@@ -645,7 +660,7 @@ npm run release:check
 - 新增 `src/orders/provider-firestore.ts`，提供 Firestore 配置解析/序列化、显示名、items 归一化、旧结构清洗识别、订单拉取映射、订单写入 doc 构造等 ESM 纯函数，并保留 `OrderTrackerProviderFirestore.create()` 兼容壳。
 - `tests/orders-provider-firestore-module.test.mjs` 已新增动态 `import()` 断言，验证 ESM provider 的配置解析、显示名、items 清洗、拉取订单字段映射、写入 doc 汇总和空字段处理。
 - 完整 React SPA 重建后已删除 `src/orders/sync.mjs` 旧同步运行壳层；React 订单页直接使用 Firestore provider 拉远端快照、计算 upsert/delete/account 变更，并用 `waitForCommit: false` 投递 SDK 本地写入队列。
-- `tests/orders-react-sync-contract.test.mjs` 已新增断言，保护订单页直连 `pullSnapshot()` / `pushChanges()`、后台 `commitPromise` 和 provider 的 cursor/seq 能力；`tests/orders-sync-provider-contract.test.mjs` 已改为保护 provider 同步接口而不是旧 sync 壳层。
+- `tests/orders-react-sync-contract.test.mjs` 已新增断言，保护订单页直连 `pullSnapshot()` / `pushChanges()`、后台 `commitPromise` 和 provider 的 cursor/seq 能力；`tests/orders-sync-provider-contract.test.mjs` 已改为保护 provider 同步方法而不是旧 sync 壳层。
 - 完整 React SPA 重建后已删除 `src/orders/index.mjs`，订单运行入口由 `src/react/features/orders/OrdersPage.tsx` 接管，不再挂旧 `window.OrderTracker`。
 - 完整 React SPA 重建后已删除 `src/orders/products.mjs`，订单页直接通过 `ProductLibraryProviderFirestore` 拉取商品资料，监听 `tk-products-changed` 并在页面内完成商品关联。
 - `tests/orders-products-module.test.mjs` 已改为断言旧订单商品桥接 runtime 不存在，并保护 React 订单页直接读取商品资料、监听商品变更和按账号/TK ID 关联商品。
@@ -955,13 +970,37 @@ ECharts 图表：
 
 - `src/products/types.ts`：商品、SKU、商品 provider、导出和运费快照类型。
 - `src/orders/types.ts`：订单、订单明细、订单 provider、摘要和导出类型。
-- `src/analytics/types.ts`：分析记录、渠道、诊断、SheetJS 浏览器接口和 ECharts 页面输入类型。
+- `src/analytics/types.ts`：分析记录、渠道、诊断、SheetJS 浏览器类型和 ECharts 页面输入类型。
 - `src/types/firestore.ts`：Firebase compat 配置、App、Firestore、Collection、Doc 和 Batch 边界类型。
 - `src/shipping-core.ts`、`src/global-settings.ts`：运费计算与全局定价设置类型。
 
 `strict: true` 已试跑评估，当前仍会暴露较多深层空值/隐式参数问题，暂不建议一次打开。后续如果继续做，应按模块逐步消化，而不是为了 strict 大范围改业务逻辑。
 
-### 9.10 测试要求
+### 9.10 账号管理抽屉
+
+当前状态：已完成。
+
+账号新增、拖动排序、编辑账号名和删除账号名已接入商品管理、订单管理和数据采集。账号标签上的管理入口只对具体账号显示，“全部”不显示。
+
+- 账号管理入口放在账号标签自身附近，只对具体账号显示，“全部”不显示编辑/删除。
+- 编辑账号名时校验非空和不重名。
+- 编辑成功后更新统一账号表，并迁移相关业务数据的账号引用：商品 `accountName`、订单 `accountName`、采集记录 `accountName`、采集行里的账号字段和拒绝品去重记录。
+- 删除账号名时必须二次确认，确认文案直接说明“不会删除商品、订单或采集记录；这些数据之后只在全部里显示”。
+- 删除只删除统一账号标签，不删除、不清空、不迁移任何模块的业务数据，不做级联删除。
+- 删除后所有模块中属于该账号的数据都会落到“全部”里，包括商品、订单、数据采集以及未来新增模块的数据；原因是账号标签列表只来自统一账号表，业务数据保留原账号字段但不再生成标签入口。
+- 未来新增模块必须复用统一账号表，删除账号名后也只能让数据进入“全部”，不能在模块内私自删除或清空账号数据。
+- 删除后广播 `tk-accounts-changed`，当前模块和其他已挂载模块刷新账号列表；如果当前正选中被删除账号，自动回到“全部”。
+- 不引入新权限系统，不引入 TanStack Table，不为了账号抽屉重写表格。
+
+实现位置：
+
+- `src/accounts/firestore-account-actions.ts`：共享账号重命名、删除和排序 helper。
+- `src/react/components/ui/account-tabs-bar.tsx`：账号标签菜单入口。
+- `src/react/components/ui/account-manage-dialogs.tsx`：编辑账号名和删除确认弹窗。
+- 商品、订单、数据采集 provider 均暴露 `renameAccount` 和 `deleteAccount`，页面调用同一套账号语义。
+- `tests/accounts-management-contract.test.mjs` 覆盖菜单、弹窗、三模块接线、重命名迁移和删除不删业务数据。
+
+### 9.11 测试要求
 
 每一步至少跑：
 
@@ -1025,7 +1064,7 @@ src/types/firestore.ts
 4. Phase T4：数据分析类型
    - 统一 parser/analyzer 和 React analytics 的 `AnalyticsRecord`、`AnalyticsChannel`、`AnalyticsAnalysis` 类型。
    - 收紧 `src/analytics/parser.ts`、`src/analytics/analyzer.ts`、`src/react/features/analytics/chartOptions.ts`。
-   - 保持 Excel 只在浏览器本地解析，不写入 Firestore、localStorage 或远端。
+   - 保持 Excel 原始文件只在浏览器本地解析，不写入 localStorage 或上传远端；解析后的分析快照写入用户自己的 Firestore。
 
 5. Phase T5：UI 页面接线类型
    - 让 `ProductsPage.tsx`、`OrdersPage.tsx`、`CalculatorApp.tsx` 使用领域类型。
@@ -1056,7 +1095,7 @@ npm run release:check
 - 每阶段均已跑 `npm test`、`npm run typecheck`、`npm run build`、`git diff --check`。
 - 最终大阶段需要重新跑 `npm run release:check` 作为当前交付门禁。
 
-### 9.10 完成标准
+### 9.12 完成标准
 
 第一阶段完成标准：
 

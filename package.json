@@ -11,6 +11,9 @@
     "e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "release:check": "sh scripts/release-check.sh",
+    "tk": "node packages/cli/bin/tk.mjs",
+    "collect:select": "node scripts/collectors/fastmoss/select-fastmoss-products.mjs",
+    "collect:dxm:init": "node scripts/collectors/fastmoss/init-dianxiaomi-status.mjs",
     "test": "sh -c 'for f in tests/*.test.mjs; do node \"$f\" || exit 1; done'"
   },
   "devDependencies": {

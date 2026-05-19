@@ -28,6 +28,7 @@ export default {
           { text: '利润计算器', link: '/guide/calculator' },
           { text: '商品管理', link: '/guide/products' },
           { text: '订单管理', link: '/guide/orders' },
+          { text: '数据采集', link: '/guide/collection' },
           { text: '数据分析', link: '/guide/analytics' },
           { text: '部署发布', link: '/guide/deploy' },
           { text: '常见问题', link: '/guide/faq' }
@@ -49,6 +50,7 @@ export default {
           },
           { text: 'AI 视频日更', link: '/ops/ai-video-daily' },
           { text: '优惠券与秒杀', link: '/ops/promotions' },
+          { text: 'PingPong 收款绑定', link: '/ops/payment-pingpong' },
           { text: '运营话术', link: '/ops/scripts' }
         ]
       }

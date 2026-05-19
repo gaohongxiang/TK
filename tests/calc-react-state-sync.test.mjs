@@ -44,8 +44,20 @@ assert.match(
 
 assert.match(
   calculatorSource,
+  /function syncCalculatedShipping\([\s\S]*finalShippingCost\(state\)[\s\S]*shippingSourceNew === 'manual'[\s\S]*overseasShippingNew: finalCost[\s\S]*shippingInputSignatureRef[\s\S]*useEffect\(\(\) => \{[\s\S]*syncCalculatedShipping\(previous,\s*\{\s*force\s*\}\)[\s\S]*state\.shipActualWeightNew[\s\S]*state\.labelFeeNew/,
+  '海外运费计算器结果需要自动回填；用户手动改值后保留，运费参数变化时再用新计算值覆盖'
+);
+
+assert.match(
+  calculatorSource,
   /<Field id="creatorRateNew"[\s\S]*value=\{state\.creatorRateNew\}[\s\S]*updateNumber\('creatorRateNew', value\)[\s\S]*<Field id="creatorRateReview"[\s\S]*value=\{state\.creatorRateNew\}[\s\S]*updateNumber\('creatorRateNew', value\)/,
   '定价新和利润复盘达人佣金率需要共用 creatorRateNew 状态'
+);
+
+assert.match(
+  calculatorSource,
+  /<Field id="creatorRateReview"[\s\S]*inputClassName="min-h-\[48px\] text-\[18px\]/,
+  '利润复盘达人佣金率输入框需要和同组重点输入框保持一致高度'
 );
 
 console.log('calc react state sync ok');

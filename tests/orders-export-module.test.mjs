@@ -100,7 +100,8 @@ assert.doesNotMatch(
       '尺寸': '10×10×10',
       '订单状态': '已采购',
       '快递公司': '顺丰快递',
-      '快递单号': 'SF123'
+      '快递单号': 'SF123',
+      '备注': '催采购'
     },
     {
       '账号': '',
@@ -145,6 +146,7 @@ assert.doesNotMatch(
 
   assert.equal(rows[0][11], 5, 'ESM 订单导出模块应按当前汇率计算达人佣金');
   assert.equal(rows[0][13], 20, 'ESM 订单导出模块应按当前汇率计算预估利润');
+  assert.equal(rows[0].at(-1), '催采购', 'ESM 订单导出模块应包含订单备注');
 
   const csv = exportModule.buildOrdersCsv({ rows });
   assert.match(

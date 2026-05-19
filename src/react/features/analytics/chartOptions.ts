@@ -109,12 +109,28 @@ function buildFunnelStages(analysis: AnalyticsAnalysis): AnalyticsFunnelStage[] 
 
 function buildOverviewOption(analysis: AnalyticsAnalysis): EChartsCoreOption {
   const funnelStages = buildFunnelStages(analysis);
-  const channelData = analysis.channelTotals.map(channel => ({
-    name: channel.label,
-    value: channel.gmv,
-    itemStyle: { color: CHANNEL_COLORS[channel.key] || '#8b93c2' },
-    channel
+  const channelData = analysis.channelTotals
+    .filter(channel => channel.gmv > 0 || channel.units > 0 || channel.exposure > 0)
+    .map(channel => ({
+      name: channel.label,
+      value: channel.gmv,
+      itemStyle: { color: CHANNEL_COLORS[channel.key] || '#8b93c2' },
+      channel
+    }));
+  const diagnosisTotals = Object.entries(analysis.records.reduce<Record<string, { label: string; tone: string; count: number; gmv: number }>>((acc, record) => {
+    const key = record.diagnosis.tone;
+    if (!acc[key]) acc[key] = { label: record.diagnosis.label, tone: key, count: 0, gmv: 0 };
+    acc[key].count += 1;
+    acc[key].gmv += record.gmv;
+    return acc;
+  }, {})).map(([key, row]) => ({
+    name: row.label,
+    value: row.gmv || row.count,
+    itemStyle: { color: DIAGNOSIS_COLORS[key] || DIAGNOSIS_COLORS.normal },
+    diagnosis: row
   }));
+  const leftTitle = channelData.length ? 'GMV 渠道' : '诊断分布';
+  const leftData = channelData.length ? channelData : diagnosisTotals;
   const funnelData = funnelStages.map(stage => ({
     name: stage.label,
     value: stage.value,
@@ -122,10 +138,10 @@ function buildOverviewOption(analysis: AnalyticsAnalysis): EChartsCoreOption {
     stage
   }));
   return {
-    color: [...analysis.channelTotals.map(channel => CHANNEL_COLORS[channel.key] || '#8b93c2'), ...funnelStages.map(stage => stage.color)],
+    color: [...(channelData.length ? analysis.channelTotals.map(channel => CHANNEL_COLORS[channel.key] || '#8b93c2') : diagnosisTotals.map(item => item.itemStyle.color)), ...funnelStages.map(stage => stage.color)],
     title: [
       {
-        text: 'GMV 渠道',
+        text: leftTitle,
         left: '21%',
         top: 4,
         textAlign: 'center',
@@ -142,7 +158,7 @@ function buildOverviewOption(analysis: AnalyticsAnalysis): EChartsCoreOption {
     tooltip: {
       trigger: 'item',
       formatter: params => {
-        const data = params.data as { channel?: AnalyticsChannel; stage?: AnalyticsFunnelStage };
+        const data = params.data as { channel?: AnalyticsChannel; diagnosis?: { label: string; count: number; gmv: number }; stage?: AnalyticsFunnelStage };
         if (data.channel) {
           return [
             `<strong>${data.channel.label}</strong>`,
@@ -150,6 +166,13 @@ function buildOverviewOption(analysis: AnalyticsAnalysis): EChartsCoreOption {
             `成交件数：${formatInteger(data.channel.units)} 件`,
             `点击率：${formatPercent(data.channel.ctr)}`,
             `转化率：${formatPercent(data.channel.conversion)}`
+          ].join('<br/>');
+        }
+        if (data.diagnosis) {
+          return [
+            `<strong>${data.diagnosis.label}</strong>`,
+            `商品数：${formatInteger(data.diagnosis.count)}`,
+            `GMV：${formatYen(data.diagnosis.gmv)}`
           ].join('<br/>');
         }
         if (data.stage) {
@@ -173,13 +196,13 @@ function buildOverviewOption(analysis: AnalyticsAnalysis): EChartsCoreOption {
     series: [
       {
         type: 'pie',
-        name: 'GMV 渠道',
+        name: leftTitle,
         radius: ['38%', '58%'],
         center: ['22%', '51%'],
         avoidLabelOverlap: true,
         label: { show: false },
         labelLine: { show: false },
-        data: channelData
+        data: leftData
       },
       {
         type: 'funnel',
@@ -216,10 +239,11 @@ function buildOpportunityScatterOption(analysis: AnalyticsAnalysis): EChartsCore
     .filter(record => record.exposureTotal > 0 || record.gmv > 0)
     .sort((a, b) => b.gmv - a.gmv)
     .slice(0, 40);
+  const useRankAxis = records.every(record => record.exposureTotal <= 0);
   const maxGmv = Math.max(...records.map(record => record.gmv), 1);
-  const data = records.map(record => ({
+  const data = records.map((record, index) => ({
     name: record.name,
-    value: [record.exposureTotal, record.overallConversion, record.gmv, record.orders, record.diagnosis.label],
+    value: [useRankAxis ? index + 1 : record.exposureTotal, record.overallConversion, record.gmv, record.orders, record.diagnosis.label],
     itemStyle: { color: DIAGNOSIS_COLORS[record.diagnosis.tone] || DIAGNOSIS_COLORS.normal },
     record
   }));
@@ -241,8 +265,8 @@ function buildOpportunityScatterOption(analysis: AnalyticsAnalysis): EChartsCore
       }
     },
     xAxis: {
-      type: 'log',
-      name: '曝光',
+      type: useRankAxis ? 'value' : 'log',
+      name: useRankAxis ? 'GMV 排名' : '曝光',
       nameTextStyle: { color: sharedMutedColor(), fontSize: 11 },
       axisLabel: { color: sharedMutedColor(), fontSize: 10 },
       axisLine: { lineStyle: { color: 'rgba(139,147,194,.35)' } },

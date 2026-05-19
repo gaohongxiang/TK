@@ -62,7 +62,7 @@ pages_build_output_dir = "./dist"
 - `使用条款` 链接能打开。
 - `robots.txt` 和 `sitemap.xml` 能访问。
 - 商品管理和订单管理未连接时显示 `连接 Firebase`。
-- 数据分析可以选择 Excel 文件，且不会要求连接 Firebase。
+- 数据分析可以选择 Excel 文件；连接 Firebase 后会保存并恢复最近一次分析。
 
 ## 文档站 Cloudflare Pages 配置
 
@@ -83,4 +83,4 @@ pages_build_output_dir = "./dist"
 
 ## 数据边界
 
-Cloudflare Pages 只托管静态资源。商品、SKU、订单和物流信息保存到用户自己的 Firebase Firestore；商品流量 Excel 只在浏览器本地解析，不上传到 Cloudflare，不写入 Firestore。
+Cloudflare Pages 只托管静态资源。商品、SKU、订单和物流信息保存到用户自己的 Firebase Firestore；商品流量 Excel 原始文件只在浏览器本地解析，不上传到 Cloudflare；解析后的分析快照写入你自己的 Firestore。

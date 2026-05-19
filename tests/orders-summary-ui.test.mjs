@@ -81,7 +81,7 @@ const orders = [
 
 assert.match(
   ordersPageSource,
-  /filteredCreatorCommissionTotal[\s\S]*allCreatorCommissionTotal[\s\S]*buildExpenseNote[\s\S]*采购 \$\{formatSummaryMetric\(purchaseMetric\)\} · 运费 \$\{formatSummaryMetric\(shippingMetric\)\} · 达人 \$\{formatSummaryMetric\(creatorCommissionMetric\)\}/,
+  /filteredCreatorCommissionTotal[\s\S]*allCreatorCommissionTotal[\s\S]*buildExpenseNote[\s\S]*采购 \$\{formatSummaryMetric\(purchaseMetric\)\} \+ 运费 \$\{formatSummaryMetric\(shippingMetric\)\} \+ 达人 \$\{formatSummaryMetric\(creatorCommissionMetric\)\}/,
   '统计卡片需要按收入和支出组织汇总信息，并把达人佣金计入支出'
 );
 
@@ -107,6 +107,24 @@ assert.match(
   ordersPageSource,
   /ot-summary-hero[\s\S]*预估总利润/,
   '统计卡片需要把预估利润总额放进独立主区'
+);
+
+assert.match(
+  ordersPageSource,
+  /orders-react-actions[\s\S]*<Button size="smIcon" data-edit=\{String\(order\.id\)\} title="编辑订单" aria-label="编辑订单"[\s\S]*<Pencil size=\{14\} strokeWidth=\{2\} \/>[\s\S]*<Button size="smIcon" variant="danger" data-del=\{String\(order\.id\)\} title="删除订单" aria-label="删除订单"[\s\S]*<Trash2 size=\{14\} strokeWidth=\{2\} \/>/,
+  '订单表格操作列需要使用编辑/删除图标按钮，并保留 data-edit/data-del 钩子'
+);
+
+assert.match(
+  ordersPageSource,
+  /orderActionsClass = 'orders-react-actions inline-flex min-w-\[78px\] items-center justify-between gap-3'/,
+  '订单表格操作列图标按钮需要稍微拉开距离'
+);
+
+assert.doesNotMatch(
+  ordersPageSource,
+  /data-edit=\{String\(order\.id\)\}[\s\S]{0,160}>编辑<\/Button>[\s\S]*data-del=\{String\(order\.id\)\}[\s\S]{0,160}>删除<\/Button>/,
+  '订单表格操作列不应退回文字按钮'
 );
 
 assert.match(
@@ -148,6 +166,12 @@ function toPlain(value) {
   assert.equal(tableModule.getSummaryTone({ total: -5, count: 1 }, 'profit'), 'profit-negative', '负利润汇总应使用红色');
   assert.equal(tableModule.formatCurrencyAmount(summary.filteredTotal), '¥ 15.25', '金额格式化结果不正确');
   assert.equal(tableModule.buildCurrentFilterTitle('B', '蓝色'), '当前筛选 · 账号：B · 搜索：蓝色', '当前筛选标题应同步显示账号和搜索条件');
+  assert.equal(tableModule.buildCurrentFilterTitle('NOMA', '05-01'), '当前筛选 · 账号：NOMA · 下单时间：05-01', '裸日期搜索标题应说明默认按下单时间搜索');
+  assert.equal(tableModule.buildCurrentFilterTitle('__all__', '采购:05-01'), '当前筛选 · 采购时间：05-01', '采购日期搜索标题应显示采购时间');
+  assert.equal(tableModule.buildCurrentFilterTitle('__all__', 'CG：05/01'), '当前筛选 · 采购时间：05/01', '采购日期标题应支持英文别名和中文冒号');
+  assert.equal(tableModule.buildCurrentFilterTitle('__all__', '到仓:05-07'), '当前筛选 · 到仓时间：05-07', '到仓日期搜索标题应显示到仓时间');
+  assert.equal(tableModule.buildCurrentFilterTitle('__all__', 'lumi', { accounts: ['NOMA', 'LUMI'] }), '当前筛选 · 账号：LUMI', '账号关键词搜索标题应显示为账号条件');
+  assert.equal(tableModule.buildCurrentFilterTitle('NOMA', '05-01 雨衣'), '当前筛选 · 账号：NOMA · 下单时间：05-01 · 搜索：雨衣', '组合搜索标题应分别展示日期字段和文本条件');
   assert.equal(tableModule.buildCurrentFilterTitle('__all__', ''), '当前筛选', '没有筛选条件时不应额外拼接说明');
 
   const zeroSaleSummary = tableModule.OrderTableView.derivePurchaseSummary({
@@ -220,6 +244,12 @@ function toPlain(value) {
     tableModule.buildCurrentFilterTitle('B', '蓝色'),
     '当前筛选 · 账号：B · 搜索：蓝色',
     'ESM 订单表格应保留当前筛选标题'
+  );
+
+  assert.equal(
+    tableModule.buildCurrentFilterTitle('__all__', 'LUMI 采购:05-01', { accounts: ['NOMA', 'LUMI'] }),
+    '当前筛选 · 账号：LUMI · 采购时间：05-01',
+    'ESM 订单表格应把账号关键词和定语日期分开展示'
   );
 
   console.log('orders summary ui contract ok');

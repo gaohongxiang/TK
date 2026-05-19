@@ -9,10 +9,11 @@ const fallbackModules: ModuleItem[] = [
   { key: 'calc', label: '利润计算器' },
   { key: 'products', label: '商品管理' },
   { key: 'orders', label: '订单管理' },
+  { key: 'collection', label: '商品采编' },
   { key: 'analytics', label: '数据分析' }
 ];
 
-const appHeaderClass = 'app-header flex flex-nowrap items-center justify-start gap-2.5 border-b border-[color-mix(in_srgb,var(--border)_72%,transparent)] px-0.5 pb-[7px] pt-0.5 mb-3.5 max-[640px]:mb-[18px] max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-3';
+const appHeaderClass = 'app-header sticky top-0 z-[60] mb-3.5 flex flex-nowrap items-center justify-start gap-2.5 border-b border-[color-mix(in_srgb,var(--border)_72%,transparent)] px-0.5 pb-[7px] pt-3.5 before:absolute before:inset-y-0 before:left-1/2 before:z-[-1] before:w-screen before:-translate-x-1/2 before:bg-[color-mix(in_srgb,var(--bg)_98%,transparent)] before:backdrop-blur-xl max-[640px]:mb-[18px] max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-3 max-[640px]:pt-2.5';
 const appBrandClass = 'app-brand flex-none text-left max-[640px]:text-center';
 const appBrandTitleClass = 'm-0 inline-flex items-center gap-2.5 text-[15px] font-semibold tracking-[.02em] max-[640px]:text-base';
 const appLogoClass = 'app-logo h-[38px] w-[38px] flex-none rounded-[10px] object-cover';

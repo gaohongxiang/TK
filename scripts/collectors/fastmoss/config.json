@@ -1,0 +1,12 @@
+{
+  "country": "JP",
+  "currency": "JPY",
+  "shopTotalSalesMin": 10000,
+  "shopTotalSalesMax": 80000,
+  "shop7dSalesMin": 1,
+  "product7dSalesMin": 1,
+  "startUrl": "https://www.fastmoss.com/zh/",
+  "dxmStartUrl": "https://www.tiktok.com/",
+  "outputDir": "data/collection/fastmoss/runs",
+  "captureDir": "data/collection/fastmoss/captures"
+}

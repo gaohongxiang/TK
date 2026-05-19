@@ -168,7 +168,52 @@ async function installOfflineFixtures(page: Page) {
           updatedAt: now,
           schemaVersion: 1
         }
-      }
+      },
+      collection_records: {
+        'tk-e2e-collection': {
+          productKey: 'tk-e2e-collection',
+          accountName: 'Test-Account',
+          productId: 'FM-P-001',
+          productUrl: 'https://example.test/product',
+          fastmossUrl: 'https://example.test/shop',
+          shopName: 'Fast Shop',
+          productName: 'E2E 露营挂钩',
+          collectStatus: '已采集',
+          collectedToDxm: true,
+          collectedAt: null,
+          collectFailureReason: null,
+          note: '',
+          lastDatasetKey: 'records',
+          source: 'fastmoss',
+          createdAt: now,
+          updatedAt: now,
+          datasets: {
+            records: {
+              filename: 'collection_records.csv',
+              headers: ['账号', '选品分', '商品名称', '店铺名', '商品价格', '商品近7天销量', '商品链接', '采集时间', '采集状态', '选品判断', '店小秘编辑状态', '编辑判断'],
+              row: {
+                '账号': 'Test-Account',
+                '选品分': '88',
+                '商品名称': 'E2E 露营挂钩',
+                '店铺名': 'Fast Shop',
+                '商品价格': '980円',
+                '商品近7天销量': '12',
+                '商品链接': 'https://example.test/product',
+                '采集时间': now,
+                '采集状态': '已采集',
+                '选品判断': '露营收纳场景明确，轻小件，已采集到店小秘。',
+                '店小秘编辑状态': '未编辑',
+                '编辑判断': ''
+              },
+              updatedAt: now
+            }
+          }
+        }
+      },
+      collection_excluded_products: {},
+      analytics_snapshots: {},
+      analytics_records: {},
+      _tk_probe: {}
     };
 
     function clone(value) {
@@ -208,6 +253,9 @@ async function installOfflineFixtures(page: Page) {
           return makeDocRef(collectionName, String(id || '').trim());
         },
         orderBy() {
+          return ref;
+        },
+        limit() {
           return ref;
         },
         async get() {
@@ -476,14 +524,32 @@ test.describe('release browser smoke', () => {
     await page.locator('#ot-form button[type="submit"]').click();
     await expect(page.locator('#ot-table-container')).toContainText('已采购');
 
+    await page.locator('nav.modules a[data-view="collection"]').click();
+    await expect(page.locator('#view-collection')).toBeVisible();
+    await expect(page.locator('nav.modules a[data-view="collection"]')).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('[data-react-collection-page-ready="true"]')).toBeVisible();
+    await expect(page.locator('#collection-sync')).toContainText('已同步');
+    await expect(page.locator('#collection-export')).toContainText('导出 CSV');
+    await expect(page.locator('#collection-disconnect-firestore')).toContainText('退出数据库');
+    await expect(page.locator('.collection-table')).toContainText('E2E 露营挂钩');
+    await page.locator('#collection-search').fill('露营');
+    await expect(page.locator('.collection-table')).toContainText('E2E 露营挂钩');
+    await expect(page.locator('.collection-table')).toContainText('已采集');
+    await expect(page.locator('.collection-table')).toContainText('露营收纳场景明确');
+    await expect(page.locator('button').filter({ hasText: '导出当前表' })).toHaveCount(0);
+
     await page.locator('nav.modules a[data-view="analytics"]').click();
     await expect(page.locator('#view-analytics')).toBeVisible();
+    await expect(page.locator('#analytics-user')).toContainText('已连接 · tk-e2e');
+    await expect(page.locator('#analytics-acc-tabs')).toContainText('Test-Account');
+    await page.locator('#analytics-acc-tabs').getByText('Test-Account').click();
     await page.locator('#analytics-file-input').setInputFiles({
       name: 'traffic.xlsx',
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       buffer: Buffer.from('fake workbook')
     });
     await expect(page.locator('#analytics-file-meta')).toContainText('traffic.xlsx');
+    await expect(page.locator('#analytics-sync-status')).toContainText('已保存到 Firestore');
     await expect(page.locator('[data-react-analytics-ready="true"]')).toBeVisible();
     await expect(page.locator('#analytics-kpi-grid')).toContainText('70,036 円');
     await expect(page.locator('#analytics-channel-share canvas')).toHaveCount(1);
@@ -492,6 +558,9 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#analytics-bubble-chart canvas')).toHaveCount(1);
     await expect(page.locator('#analytics-channel-share')).toContainText('视频');
     await expect(page.locator('#analytics-diagnostics')).toContainText('爆品放大');
+    await expect(page.evaluate(() => Object.keys(window.__tkE2eFirestoreStore.analytics_snapshots || {}).length)).resolves.toBeGreaterThan(0);
+    await expect(page.evaluate(() => Object.keys(window.__tkE2eFirestoreStore.analytics_records || {}).length)).resolves.toBeGreaterThan(0);
+    await expect(page.evaluate(() => Object.values(window.__tkE2eFirestoreStore.analytics_snapshots || {}).every((snapshot: any) => snapshot.accountName === 'Test-Account'))).resolves.toBe(true);
 
     await expect(page.locator('footer a[href="/privacy.html"]')).toHaveText('隐私与数据边界');
     await expect(page.locator('footer a[href="/terms.html"]')).toHaveText('使用条款');
@@ -525,7 +594,8 @@ test.describe('release browser smoke', () => {
     await page.locator('#ot-disconnect-firestore').click();
     await page.locator('#app-confirm-firestore-disconnect').click();
     await expect(page.locator('#app-firestore-disconnect-modal')).not.toBeVisible();
-    await expect(page.locator('#ot-setup')).toBeVisible();
+    await expect(page.locator('#ot-main')).toBeVisible();
+    await expect(page.locator('#ot-main').getByText('连接数据库')).toBeVisible();
     await expect(page.locator('#ot-open-connection')).toBeVisible();
     await expect(page.evaluate(() => localStorage.getItem('tk.firestore.cfg.v1'))).resolves.toBeNull();
     expect(nativeDialogs).toEqual([]);
@@ -535,7 +605,7 @@ test.describe('release browser smoke', () => {
     await page.goto('/privacy.html');
     await expect(page.locator('h1')).toHaveText('隐私与数据边界');
     await expect(page.locator('main')).toContainText('你自己的 Firebase Firestore');
-    await expect(page.locator('main')).toContainText('当前浏览器内存');
+    await expect(page.locator('main')).toContainText('数据分析快照');
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', '隐私与数据边界 · TK 电商工具箱');
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
 

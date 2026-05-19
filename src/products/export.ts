@@ -156,7 +156,8 @@ function create({
           product?.link1688 || '',
           product?.imageUrl || '',
           product?.createdAt || '',
-          product?.updatedAt || ''
+          product?.updatedAt || '',
+          product?.note || ''
         ]];
       }
       return skus.map(sku => {
@@ -171,7 +172,8 @@ function create({
           product?.link1688 || '',
           product?.imageUrl || '',
           product?.createdAt || '',
-          product?.updatedAt || ''
+          product?.updatedAt || '',
+          product?.note || ''
         ];
       });
     });

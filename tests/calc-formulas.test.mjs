@@ -31,6 +31,11 @@ assert.match(
   /const result = calcSalePrice\(\{ state, totalCost \}\)/,
   'React 利润复盘面板需要直接复用纯公式模块'
 );
+assert.match(
+  reactCalculatorSource,
+  /达人佣金 = 日元售价 ÷ 汇率 × 达人佣金率[\s\S]*人民币到手 = 日元售价 ÷ 汇率 − 达人佣金[\s\S]*原价反推 = 总费用 × 目标利润率 × 汇率 ÷ \[基准折扣 × \(1 − 平台手续费率\) × \(1 − 达人佣金率\)\][\s\S]*达人佣金 = 实际售价 ÷ 日元汇率 × 达人佣金率[\s\S]*人民币到手 = 实际售价 ÷ 日元汇率 − 达人佣金/,
+  '利润计算器页面公式文案需要和纯函数的人民币佣金口径一致'
+);
 ['legacy.mjs', 'pricing.mjs'].forEach(file => {
   assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'calc', file)), `完整 React SPA 后不应保留 calc ${file} DOM 壳层`);
 });

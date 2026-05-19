@@ -8,7 +8,7 @@ function Select({ className, ...props }: SelectProps) {
     <select
       data-slot="select"
       className={cn(
-        'min-h-10 w-full rounded-[10px] border border-[var(--border)] bg-[var(--panel2)] px-3 py-2.5 text-[13px] text-[var(--text)] outline-none transition-[border-color,box-shadow,background] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(110,168,255,.2)] disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-[var(--danger)] max-[640px]:text-[16px]',
+        'min-h-10 w-full appearance-none rounded-[10px] border border-[var(--border)] bg-[var(--panel2)] bg-none px-3 py-2.5 text-[13px] text-[var(--text)] outline-none transition-[border-color,box-shadow,background] focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_rgba(110,168,255,.2)] disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-[var(--danger)] max-[640px]:text-[16px]',
         className
       )}
       {...props}

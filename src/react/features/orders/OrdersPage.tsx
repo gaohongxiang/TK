@@ -1,5 +1,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AccountDeleteDialog, AccountEditDialog } from '@/components/ui/account-manage-dialogs';
 import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
+import { AddAccountDialog } from '@/components/ui/add-account-dialog';
 import { Badge, badgeToneMap } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,14 +11,21 @@ import { FormField, FormRow } from '@/components/ui/form';
 import { HelpItem, HelpStack } from '@/components/ui/help-stack';
 import { InlineToken } from '@/components/ui/inline-token';
 import { Input } from '@/components/ui/input';
+import { ModuleListState } from '@/components/ui/module-list-state';
 import { PageHero } from '@/components/ui/page-hero';
+import { SearchHelpButton } from '@/components/ui/search-help';
 import { Select } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, storageHelpButtonClass, syncStatusClass } from '@/components/ui/status-strip';
-import { EmptyState, TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
+import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import { showAppToast } from '@/app/toast';
 import { TKFirestoreConnection } from '../../../firestore-connection.ts';
+import {
+  formatFirestoreRulesUpdateMessage,
+  isPermissionDenied
+} from '../../../firestore-rules-compatibility.ts';
 import { OrderTrackerProviderFirestore } from '../../../orders/provider-firestore.ts';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.ts';
 import {
@@ -39,6 +48,7 @@ import {
   getExportAccountOptions
 } from '../../../orders/export.ts';
 import {
+  buildCurrentFilterTitle,
   buildOrderCourierSummary,
   deriveDisplayedOrders,
   derivePurchaseSummary,
@@ -52,13 +62,16 @@ import { ensureGlobalSettingsStore } from '../../../global-settings.ts';
 import { TKShippingCore } from '../../../shipping-core.ts';
 import { cn } from '@/lib/utils';
 import {
+  CalendarDays,
   Copy,
   FileDown,
   HelpCircle,
+  Pencil,
   Plus,
   RefreshCw,
+  Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import type { ProductLogisticsDefaults, ProductRecord, ProductSku } from '../../../products/types.ts';
 import type { OrderFormDraftItem, OrderRecord, OrderSummaryMetric } from '../../../orders/types.ts';
 
@@ -82,12 +95,17 @@ type OrderDraft = {
   creatorCommission: string;
   orderStatus: string;
   weightText: string;
+  manualWeightText: boolean;
   sizeText: string;
+  manualSizeText: boolean;
+  manualEstimatedShippingFee: boolean;
+  note: string;
   items: OrderItemDraft[];
 };
 
 const LS_KEY = 'tk.orders.runtime.v1';
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
+const ACCOUNT_UPDATED_EVENT = 'tk-accounts-changed';
 const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
 const ORDER_STATUS_OPTIONS = ['未采购', '已采购', '在途', '已入仓', '已送达', '已完成', '订单取消'];
 const modalCopyClass = 'mb-4 text-[13px] leading-[1.75] text-[var(--muted)]';
@@ -156,6 +174,22 @@ function formatNumericValue(value: unknown) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '';
   return number.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function isPositiveIntegerText(value: unknown) {
+  return /^[1-9]\d*$/.test(String(value ?? '').trim());
+}
+
+function parseItemQuantity(value: unknown) {
+  const text = String(value ?? '').trim();
+  return isPositiveIntegerText(text) ? Number(text) : 0;
+}
+
+function normalizeQuantityInput(value: unknown) {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  if (!/^\d+$/.test(text)) return null;
+  return text.replace(/^0+/, '');
 }
 
 function parseSizeText(value: unknown) {
@@ -240,6 +274,7 @@ function createEmptyOrderItem(): OrderItemDraft {
 }
 
 function normalizeDraftItem(item: Partial<OrderItemDraft> = {}): OrderItemDraft {
+  const hasQuantity = Object.prototype.hasOwnProperty.call(item, 'quantity');
   return {
     ...createEmptyOrderItem(),
     ...item,
@@ -248,7 +283,7 @@ function normalizeDraftItem(item: Partial<OrderItemDraft> = {}): OrderItemDraft 
     productSkuId: String(item.productSkuId || '').trim(),
     productSkuName: String(item.productSkuName || '').trim(),
     productName: String(item.productName || '').trim(),
-    quantity: String(item.quantity || '1').trim() || '1',
+    quantity: hasQuantity ? String(item.quantity ?? '').trim() : '1',
     unitSalePrice: String(item.unitSalePrice || '').trim(),
     unitPurchasePrice: String(item.unitPurchasePrice || '').trim(),
     unitWeightG: String(item.unitWeightG || '').trim(),
@@ -312,14 +347,18 @@ function buildDraftFromOrder(order: OrderRecord | null, activeAccount: string, a
     creatorCommission: String(order?.['达人佣金'] || ''),
     orderStatus: status,
     weightText: String(order?.['重量'] || ''),
+    manualWeightText: !!String(order?.['重量'] || '').trim(),
     sizeText: String(order?.['尺寸'] || ''),
+    manualSizeText: !!String(order?.['尺寸'] || '').trim(),
+    manualEstimatedShippingFee: !!String(order?.['预估运费'] || '').trim(),
+    note: String(order?.['备注'] || order?.note || ''),
     items: getOrderItemsFromOrder(order)
   };
 }
 
 function computeItemTotals(items: OrderItemDraft[]) {
   return items.reduce((acc, item) => {
-    const quantity = Number.parseInt(String(item.quantity || '').trim(), 10) || 0;
+    const quantity = parseItemQuantity(item.quantity);
     const unitPurchase = parseOrderMoneyValue(item.unitPurchasePrice) || 0;
     const unitSale = parseOrderMoneyValue(item.unitSalePrice) || 0;
     const unitWeight = parseOrderMoneyValue(item.unitWeightG) || 0;
@@ -378,9 +417,11 @@ function computeAutoFields(draft: OrderDraft, products: ProductRecord[]) {
   const totals = computeItemTotals(items);
   const latestWarehouseAt = draft.orderedAt ? addDays(draft.orderedAt, 6) : '';
   const singleSize = items.length === 1 ? items[0].unitSizeText : '';
-  const weightText = totals.weight ? formatNumericValue(totals.weight) : draft.weightText;
-  const sizeText = singleSize || draft.sizeText;
-  const estimatedShippingFee = draft.estimatedShippingFee || computeEstimatedShipping({ ...draft, items, weightText, sizeText }, products);
+  const weightText = draft.manualWeightText ? draft.weightText : (totals.weight ? formatNumericValue(totals.weight) : draft.weightText);
+  const sizeText = draft.manualSizeText ? draft.sizeText : (singleSize || draft.sizeText);
+  const estimatedShippingFee = draft.manualEstimatedShippingFee
+    ? draft.estimatedShippingFee
+    : computeEstimatedShipping({ ...draft, items, weightText, sizeText }, products);
   const tempOrder = {
     '下单时间': draft.orderedAt,
     '最晚到仓时间': latestWarehouseAt,
@@ -499,6 +540,7 @@ const orderItemBlockCopyClass = 'ot-item-block-copy mt-1 text-xs leading-[1.55] 
 const orderItemListClass = 'ot-item-list flex flex-col gap-2 overflow-visible';
 const orderItemRowClass = 'ot-item-edit-row relative grid grid-cols-12 gap-2 rounded-[14px] border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel)_96%,white)] py-3 pl-3 pr-11';
 const orderItemRemoveClass = 'ot-item-remove absolute right-2.5 top-2.5 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 text-[18px] leading-none text-[color-mix(in_srgb,var(--expense)_84%,white)] transition-[background,color] hover:bg-[color-mix(in_srgb,var(--expense)_10%,white)] hover:text-[var(--expense)]';
+const orderActionsClass = 'orders-react-actions inline-flex min-w-[78px] items-center justify-between gap-3';
 const orderItemFieldClass = 'ot-item-field ot-item-span-3 col-span-3 min-w-0';
 const orderItemLabelClass = 'min-h-0 !text-[10.5px] !leading-[1.2] tracking-[.04em]';
 const orderItemInputClass = '!h-10 !min-h-10 text-center';
@@ -521,6 +563,8 @@ const orderSaleCellClass = 'ot-sale-cell inline-flex w-full flex-col items-cente
 const orderSaleCurrentClass = 'ot-sale-current font-semibold text-[#c44e4e]';
 const orderOrderNoCellClass = 'ot-order-no-cell inline-flex min-w-0 flex-nowrap items-center gap-1.5';
 const orderOrderNoTextClass = 'ot-order-no-text min-w-0';
+const orderNoteCellClass = 'orders-react-note-cell max-w-[220px]';
+const orderNoteTextClass = 'block truncate text-[12.5px] text-[var(--muted)]';
 const orderTagClass = 'ot-order-tag ot-order-tag-creator inline-flex h-[18px] items-center justify-center whitespace-nowrap rounded-full border border-[rgba(196,78,78,.22)] bg-[rgba(196,78,78,.12)] px-[7px] text-[10.5px] font-bold leading-none tracking-[.04em] text-[#b5525e] opacity-[.98]';
 const orderSetupCardClass = 'ot-setup mx-auto max-w-[880px]';
 const orderHeaderRowClass = 'ot-header-row mb-3.5 last:mb-0';
@@ -602,11 +646,21 @@ function OrderItemsEditor({
   products: ProductRecord[];
   onDraftChange: (draft: OrderDraft) => void;
 }) {
-  function updateItem(index: number, patch: Partial<OrderItemDraft>) {
+  function updateItem(
+    index: number,
+    patch: Partial<OrderItemDraft>,
+    resetAuto: { weight?: boolean; size?: boolean; shipping?: boolean } = {}
+  ) {
     const nextItems = draft.items.map((item, currentIndex) => (
       currentIndex === index ? normalizeDraftItem({ ...item, ...patch }) : item
     ));
-    onDraftChange(computeAutoFields({ ...draft, items: nextItems }, products));
+    onDraftChange(computeAutoFields({
+      ...draft,
+      manualWeightText: resetAuto.weight ? false : draft.manualWeightText,
+      manualSizeText: resetAuto.size ? false : draft.manualSizeText,
+      manualEstimatedShippingFee: resetAuto.shipping ? false : draft.manualEstimatedShippingFee,
+      items: nextItems
+    }, products));
   }
 
   function handleProductChange(index: number, productTkId: string) {
@@ -618,7 +672,7 @@ function OrderItemsEditor({
       productName: product ? String(product.name || '').trim() : '',
       unitWeightG: '',
       unitSizeText: ''
-    });
+    }, { weight: true, size: true, shipping: true });
   }
 
   function handleSkuChange(index: number, productTkId: string, skuId: string) {
@@ -630,7 +684,7 @@ function OrderItemsEditor({
       productSkuName: sku ? String(sku.skuName || '').trim() : '',
       unitWeightG: source?.weightG ? String(source.weightG) : '',
       unitSizeText: formatProductSize(source)
-    });
+    }, { weight: true, size: true, shipping: true });
   }
 
   return (
@@ -647,7 +701,13 @@ function OrderItemsEditor({
               title="删除明细"
               onClick={() => {
                 const nextItems = draft.items.filter((_, currentIndex) => currentIndex !== index);
-                onDraftChange(computeAutoFields({ ...draft, items: nextItems.length ? nextItems : [createEmptyOrderItem()] }, products));
+                onDraftChange(computeAutoFields({
+                  ...draft,
+                  manualWeightText: false,
+                  manualSizeText: false,
+                  manualEstimatedShippingFee: false,
+                  items: nextItems.length ? nextItems : [createEmptyOrderItem()]
+                }, products));
               }}
             >
               ×
@@ -668,13 +728,27 @@ function OrderItemsEditor({
               </Select>
             </FormField>
             <FormField label="数量" labelClassName={orderItemLabelClass} className={orderItemFieldClass}>
-              <Input density="skuInline" type="number" className={orderItemInputClass} data-item-field="quantity" min="1" step="1" value={item.quantity} onChange={event => updateItem(index, { quantity: event.target.value })} />
+              <Input
+                density="skuInline"
+                type="text"
+                inputMode="numeric"
+                pattern="[1-9][0-9]*"
+                className={orderItemInputClass}
+                data-item-field="quantity"
+                required
+                value={item.quantity}
+                onChange={event => {
+                  const quantity = normalizeQuantityInput(event.target.value);
+                  if (quantity === null) return;
+                  updateItem(index, { quantity }, { weight: true, shipping: true });
+                }}
+              />
             </FormField>
             <FormField label="单件重量(g)" labelClassName={orderItemLabelClass} className={orderItemFieldClass}>
-              <Input density="skuInline" className={orderItemInputClass} data-item-field="unitWeightG" value={item.unitWeightG} onChange={event => updateItem(index, { unitWeightG: event.target.value })} />
+              <Input density="skuInline" className={orderItemInputClass} data-item-field="unitWeightG" value={item.unitWeightG} onChange={event => updateItem(index, { unitWeightG: event.target.value }, { weight: true, shipping: true })} />
             </FormField>
             <FormField label="单件尺寸(cm)" labelClassName={orderItemLabelClass} className={orderItemFieldClass}>
-              <Input density="skuInline" className={orderItemInputClass} data-item-field="unitSizeText" value={item.unitSizeText} placeholder="20×15×10" onChange={event => updateItem(index, { unitSizeText: event.target.value })} />
+              <Input density="skuInline" className={orderItemInputClass} data-item-field="unitSizeText" value={item.unitSizeText} placeholder="20×15×10" onChange={event => updateItem(index, { unitSizeText: event.target.value }, { size: true, shipping: true })} />
             </FormField>
             <FormField
               className={orderItemFieldClass}
@@ -753,13 +827,15 @@ function OrdersSummary({
   activeAccount,
   searchQuery,
   sortOrder,
-  exchangeRate
+  exchangeRate,
+  accounts
 }: {
   orders: OrderRecord[];
   activeAccount: string;
   searchQuery: string;
   sortOrder: string;
   exchangeRate: number | null;
+  accounts: string[];
 }) {
   const summary = derivePurchaseSummary({
     orders,
@@ -779,7 +855,7 @@ function OrdersSummary({
   }
 
   function buildExpenseNote(purchaseMetric: OrderSummaryMetric, shippingMetric: OrderSummaryMetric, creatorCommissionMetric: OrderSummaryMetric) {
-    return `采购 ${formatSummaryMetric(purchaseMetric)} · 运费 ${formatSummaryMetric(shippingMetric)} · 达人 ${formatSummaryMetric(creatorCommissionMetric)}`;
+    return `采购 ${formatSummaryMetric(purchaseMetric)} + 运费 ${formatSummaryMetric(shippingMetric)} + 达人 ${formatSummaryMetric(creatorCommissionMetric)}`;
   }
 
   function buildSummaryMeta(prefix: string, count: number, refundMetric: OrderSummaryMetric) {
@@ -829,7 +905,7 @@ function OrdersSummary({
     <div className={orderSummarySurfaceClass}>
       <div className={orderSummaryGridClass}>
         {card(
-          activeAccount !== '__all__' || searchQuery ? `当前筛选${activeAccount !== '__all__' ? ` · 账号：${activeAccount}` : ''}${searchQuery ? ` · 搜索：${searchQuery}` : ''}` : '当前筛选',
+          buildCurrentFilterTitle(activeAccount, searchQuery, { accounts }),
           summary.filteredProfitMetric,
           summary.filteredSaleMetric,
           summary.filteredGrossSaleMetric,
@@ -863,11 +939,13 @@ function OrdersTable({
   orders,
   activeAccount,
   searchQuery,
+  searchHelpOpen,
   sortOrder,
   pageSize,
   currentPage,
   exchangeRate,
   onSearchChange,
+  onSearchHelpOpenChange,
   onPageSizeChange,
   onPageChange,
   onSortToggle,
@@ -877,11 +955,13 @@ function OrdersTable({
   orders: OrderRecord[];
   activeAccount: string;
   searchQuery: string;
+  searchHelpOpen: boolean;
   sortOrder: string;
   pageSize: number;
   currentPage: number;
   exchangeRate: number | null;
   onSearchChange: (value: string) => void;
+  onSearchHelpOpenChange: (open: boolean) => void;
   onPageSizeChange: (value: number) => void;
   onPageChange: (delta: number) => void;
   onSortToggle: () => void;
@@ -902,29 +982,54 @@ function OrdersTable({
           left={(
             <TableSearch
               id="ot-table-search-input"
-              hint="搜索下单时间 / 订单号 / 产品 / 快递"
+              hint="搜索订单 / 产品 / 快递；日期如 05-01 或 cg:05-01"
               value={searchQuery}
               onChange={onSearchChange}
+              after={(
+                <SearchHelpButton
+                  id="ot-search-help-btn"
+                  modalId="ot-search-help-modal"
+                  title="订单搜索说明"
+                  open={searchHelpOpen}
+                  onOpenChange={onSearchHelpOpenChange}
+                  items={[
+                    { label: '裸文本', children: 'NOMA、雨衣、5834、顺丰。会搜索订单号、账号、产品、快递、备注、状态等字段。' },
+                    { label: '裸日期', children: '05-18 等于 下单:2026-05-18。' },
+                    { label: '定语日期', children: '采购:05-18、到仓:05-25；也可用英文键盘别名 cg:05-18、dc:05-25。' },
+                    { label: '别名', children: 'xd=下单，cg=采购，dc=到仓。' },
+                    { label: '符号兼容', children: '别名大小写不敏感，支持中文冒号、~ 或 ～、05/01 或 05.01、全角 ＞＝ / ＜＝。' },
+                    { label: '范围', children: '下单:05-01～05-18，或 xd:05-01~05-18。' },
+                    { label: '比较', children: '下单:>=05-01、采购:<=05-18，或 xd:>=05-01、cg:<=05-18。' },
+                    { label: '组合', children: 'NOMA 雨衣 xd:05-01~05-18 cg:>=05-18。' }
+                  ]}
+                />
+              )}
             />
           )}
           right={(
-            <ProductPager pageSize={pageState.pageSize} currentPage={pageState.currentPage} totalPages={pageState.totalPages} onPageSizeChange={onPageSizeChange} onPageChange={onPageChange} />
+            <div className="inline-flex flex-wrap items-center gap-4 max-[768px]:gap-3">
+              <TableSortButton id="ot-sort-btn" className="orders-react-sort" title={sortTitle} onClick={onSortToggle}>
+                排序 {sortIcon}
+              </TableSortButton>
+              <ProductPager pageSize={pageState.pageSize} currentPage={pageState.currentPage} totalPages={pageState.totalPages} onPageSizeChange={onPageSizeChange} onPageChange={onPageChange} />
+            </div>
           )}
         />
       </div>
       <TableViewport>
         <div id="ot-table-container">
           {!sorted.length ? (
-            <EmptyState
+            <ModuleListState
+              tone="empty"
               title={searchQuery ? '没有匹配的订单' : activeAccount !== '__all__' ? `账号「${activeAccount}」下还没有订单` : '还没有订单'}
               description={searchQuery ? '试试更换关键词' : '点击右上角「+ 新增订单」开始记录'}
             />
           ) : (
             <TableFrame>
-              <Table className="orders-react-table mt-1.5 min-w-[1100px] text-[13px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_tbody_tr.is-refunded:hover]:bg-[rgba(196,78,78,.09)] [&_tbody_tr.is-refunded]:bg-[rgba(196,78,78,.055)] [&_tbody_tr:hover]:bg-[rgba(110,168,255,.05)] max-[768px]:text-[13px] max-[768px]:[&_td]:px-1.5 max-[768px]:[&_td]:py-[9px] max-[768px]:[&_th]:px-1.5 max-[768px]:[&_th]:py-[9px] max-[768px]:[&_th]:text-[10.5px]">
+              <Table className="orders-react-table mt-1.5 min-w-[1240px] text-[13px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_tbody_tr.is-refunded:hover]:bg-[rgba(196,78,78,.09)] [&_tbody_tr.is-refunded]:bg-[rgba(196,78,78,.055)] [&_tbody_tr:hover]:bg-[rgba(110,168,255,.05)] max-[768px]:text-[13px] max-[768px]:[&_td]:px-1.5 max-[768px]:[&_td]:py-[9px] max-[768px]:[&_th]:px-1.5 max-[768px]:[&_th]:py-[9px] max-[768px]:[&_th]:text-[10.5px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead><TableSortButton id="ot-sort-btn" className="orders-react-sort" title={sortTitle} onClick={onSortToggle}># {sortIcon}</TableSortButton></TableHead>
+                    <TableHead>#</TableHead>
                     {isAll ? <TableHead>账号</TableHead> : null}
                     <TableHead>下单时间</TableHead>
                     <TableHead>采购日期</TableHead>
@@ -942,6 +1047,7 @@ function OrdersTable({
                     <TableHead>订单状态</TableHead>
                     <TableHead>快递公司</TableHead>
                     <TableHead>快递单号</TableHead>
+                    <TableHead>备注</TableHead>
                     <TableHead>操作</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -974,9 +1080,18 @@ function OrdersTable({
                         <TableCell>{formatTableCellValue(order['订单状态'])}</TableCell>
                         <TableCell title={courierSummary}>{formatTableCellValue(courierSummary)}</TableCell>
                         <TableCell title={trackingSummary}>{formatTableCellValue(trackingSummary)}</TableCell>
+                        <TableCell className={orderNoteCellClass} title={String(order['备注'] || '')}>
+                          <span className={orderNoteTextClass}>{formatTableCellValue(order['备注'])}</span>
+                        </TableCell>
                         <TableCell>
-                          <Button size="sm" data-edit={String(order.id)} onClick={() => onEdit(String(order.id))}>编辑</Button>
-                          <Button size="sm" variant="danger" data-del={String(order.id)} onClick={() => onDelete(String(order.id))}>删除</Button>
+                          <div className={orderActionsClass}>
+                            <Button size="smIcon" data-edit={String(order.id)} title="编辑订单" aria-label="编辑订单" onClick={() => onEdit(String(order.id))}>
+                              <Pencil size={14} strokeWidth={2} />
+                            </Button>
+                            <Button size="smIcon" variant="danger" data-del={String(order.id)} title="删除订单" aria-label="删除订单" onClick={() => onDelete(String(order.id))}>
+                              <Trash2 size={14} strokeWidth={2} />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -996,6 +1111,43 @@ function OrdersTable({
         />
       </div>
     </>
+  );
+}
+
+type OrderDateInputProps = ComponentProps<typeof Input>;
+
+const orderDateInputWrapClass = 'relative w-full';
+const orderDateInputClass = 'cursor-pointer pr-11 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-y-0 [&::-webkit-calendar-picker-indicator]:right-3 [&::-webkit-calendar-picker-indicator]:my-auto [&::-webkit-calendar-picker-indicator]:h-5 [&::-webkit-calendar-picker-indicator]:w-5 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0';
+const orderDateInputIconClass = 'pointer-events-none absolute right-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[var(--text)]';
+
+function showNativeDatePicker(input: HTMLInputElement) {
+  const showPicker = (input as HTMLInputElement & { showPicker?: () => void }).showPicker;
+  if (typeof showPicker !== 'function') {
+    input.focus();
+    return;
+  }
+  try {
+    showPicker.call(input);
+  } catch {
+    input.focus();
+  }
+}
+
+function OrderDateInput({ className, onClick, ...props }: OrderDateInputProps) {
+  return (
+    <div className={orderDateInputWrapClass}>
+      <Input
+        {...props}
+        type="date"
+        className={cn(orderDateInputClass, className)}
+        onClick={event => {
+          onClick?.(event);
+          if (event.defaultPrevented || event.currentTarget.readOnly || event.currentTarget.disabled) return;
+          showNativeDatePicker(event.currentTarget);
+        }}
+      />
+      <CalendarDays className={orderDateInputIconClass} size={18} strokeWidth={2} aria-hidden="true" />
+    </div>
   );
 }
 
@@ -1050,10 +1202,10 @@ function OrderModal({
           </FormRow>
           <FormRow columns={3} className="triple mt-[18px] max-[768px]:mt-3">
             <FormField label="下单时间 *">
-              <Input type="date" name="下单时间" required value={draft.orderedAt} onChange={event => updateDraft({ orderedAt: event.target.value })} />
+              <OrderDateInput name="下单时间" required value={draft.orderedAt} onChange={event => updateDraft({ orderedAt: event.target.value })} />
             </FormField>
             <FormField label="采购日期">
-              <Input type="date" name="采购日期" value={draft.purchaseDate} onChange={event => updateDraft({ purchaseDate: event.target.value }, false)} />
+              <OrderDateInput name="采购日期" value={draft.purchaseDate} onChange={event => updateDraft({ purchaseDate: event.target.value }, false)} />
             </FormField>
             <FormField label={<>最晚到仓时间 <InlineToken>自动</InlineToken></>}>
               <Input type="date" name="最晚到仓时间" readOnly value={draft.latestWarehouseAt} />
@@ -1065,7 +1217,18 @@ function OrderModal({
                 <h4 className="m-0 text-sm">订单明细</h4>
                 <div className={orderItemBlockCopyClass}>一个 TK 订单可以包含多个商品和多个 SKU；每条订单明细对应一个商品的一个 SKU。</div>
               </div>
-              <Button id="ot-add-item-btn" onClick={() => onDraftChange(computeAutoFields({ ...draft, items: [...draft.items, createEmptyOrderItem()] }, products))}>+ 添加明细</Button>
+              <Button
+                id="ot-add-item-btn"
+                onClick={() => onDraftChange(computeAutoFields({
+                  ...draft,
+                  manualWeightText: false,
+                  manualSizeText: false,
+                  manualEstimatedShippingFee: false,
+                  items: [...draft.items, createEmptyOrderItem()]
+                }, products))}
+              >
+                + 添加明细
+              </Button>
             </div>
             <OrderItemsEditor draft={draft} products={products} onDraftChange={onDraftChange} />
             <input type="hidden" name="商品TK ID" id="ot-product-select" value={draft.items.length === 1 ? draft.items[0].productTkId : ''} readOnly />
@@ -1079,10 +1242,10 @@ function OrderModal({
               <Input id="ot-total-quantity" readOnly value={computeItemTotals(draft.items).quantity || ''} />
             </FormField>
             <FormField label={<>总重量(g) <span className={orderInlineHintClass} id="ot-weight-hint">{computeItemTotals(draft.items).quantity > 1 ? '已按各 SKU 单件重量 × 数量汇总' : ''}</span></>}>
-              <Input name="重量" value={draft.weightText} onChange={event => updateDraft({ weightText: event.target.value })} />
+              <Input name="重量" value={draft.weightText} onChange={event => updateDraft({ weightText: event.target.value, manualWeightText: true, manualEstimatedShippingFee: false })} />
             </FormField>
             <FormField label={<>总尺寸(cm) <span className={orderInlineHintClass}>多个订单明细时请自行调整尺寸</span></>}>
-              <Input name="尺寸" value={draft.sizeText} onChange={event => updateDraft({ sizeText: event.target.value })} />
+              <Input name="尺寸" value={draft.sizeText} onChange={event => updateDraft({ sizeText: event.target.value, manualSizeText: true, manualEstimatedShippingFee: false })} />
             </FormField>
           </FormRow>
           <FormRow columns={5} className={orderMoneyRowClass}>
@@ -1105,7 +1268,7 @@ function OrderModal({
               <Input type="number" id="ot-total-purchase" name="采购价格" min="0" step="0.01" value={draft.purchasePrice} onChange={event => updateDraft({ purchasePrice: event.target.value })} />
             </FormField>
             <FormField label="预估总海外运费（元）">
-              <Input type="number" name="预估运费" min="0" step="0.01" value={draft.estimatedShippingFee} onChange={event => updateDraft({ estimatedShippingFee: event.target.value })} />
+              <Input type="number" name="预估运费" min="0" step="0.01" value={draft.estimatedShippingFee} onChange={event => updateDraft({ estimatedShippingFee: event.target.value, manualEstimatedShippingFee: true })} />
             </FormField>
             <FormField label={<>预估利润（人民币） <InlineToken>自动</InlineToken></>}>
               <Input type="number" name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
@@ -1128,42 +1291,20 @@ function OrderModal({
               <Input name="订单预警" readOnly value={draft.warningText} />
             </FormField>
           </FormRow>
-          <DialogActions>
-            <Button id="ot-cancel" onClick={() => onOpenChange(false)}>取消</Button>
-            <Button type="submit" variant="primary">保存</Button>
-          </DialogActions>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function AddAccountModal({
-  open,
-  value,
-  onValueChange,
-  onOpenChange,
-  onConfirm
-}: {
-  open: boolean;
-  value: string;
-  onValueChange: (value: string) => void;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Dialog id="ot-add-acc-modal" open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[400px]">
-        <DialogTitle>添加新账号</DialogTitle>
-        <form id="ot-add-acc-form" autoComplete="off" onSubmit={event => { event.preventDefault(); onConfirm(); }}>
-          <FormRow>
-            <FormField label="新账号名称" full>
-              <Input id="ot-new-acc-input" value={value} placeholder="例如：US-TK-01" required onChange={event => onValueChange(event.target.value)} />
+          <FormRow columns={1} className="mt-[18px] max-[768px]:mt-3">
+            <FormField label="备注" full>
+              <Textarea
+                name="备注"
+                value={draft.note}
+                placeholder="可记录采购沟通、异常处理、售后风险等"
+                className="min-h-20 resize-y"
+                onChange={event => updateDraft({ note: event.target.value }, false)}
+              />
             </FormField>
           </FormRow>
           <DialogActions>
-            <Button id="ot-add-acc-cancel" onClick={() => onOpenChange(false)}>取消</Button>
-            <Button type="submit" variant="primary">确定</Button>
+            <Button id="ot-cancel" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button type="submit" variant="primary">保存</Button>
           </DialogActions>
         </form>
       </DialogContent>
@@ -1230,7 +1371,7 @@ function StorageHelpModal({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
-function OrdersPage() {
+function OrdersPage({ active = true }: { active?: boolean }) {
   const providerRef = useRef(OrderTrackerProviderFirestore.create({
     state: {},
     helpers: {
@@ -1261,12 +1402,20 @@ function OrdersPage() {
   const [draft, setDraft] = useState<OrderDraft>(() => buildDraftFromOrder(null, '__all__', []));
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
+  const [accountEditOpen, setAccountEditOpen] = useState(false);
+  const [editingAccountName, setEditingAccountName] = useState('');
+  const [editingAccountValue, setEditingAccountValue] = useState('');
+  const [accountDeleteOpen, setAccountDeleteOpen] = useState(false);
+  const [deletingAccountName, setDeletingAccountName] = useState('');
   const [exportOpen, setExportOpen] = useState(false);
   const [exportSelected, setExportSelected] = useState<Set<string>>(new Set());
   const [storageHelpOpen, setStorageHelpOpen] = useState(false);
+  const [searchHelpOpen, setSearchHelpOpen] = useState(false);
+  const [permissionBlocked, setPermissionBlocked] = useState(false);
+  const [copyingRules, setCopyingRules] = useState(false);
   const exchangeRate = ensureGlobalSettingsStore().getExchangeRate();
 
-  const allAccounts = useMemo(() => uniqueAccounts([...accounts, ...orders.map(order => order['账号'])]).sort((left, right) => left.localeCompare(right)), [accounts, orders]);
+  const allAccounts = accounts;
   const exportOptions = useMemo(() => getExportAccountOptions({ accounts: allAccounts, orders, constants: { UNASSIGNED_ACCOUNT_SLOT } }).map(option => ({
     key: String(option.key),
     label: String(option.label),
@@ -1278,15 +1427,33 @@ function OrdersPage() {
     count: orders.filter(order => normalizeAccountName(order['账号']) === account).length
   })), [allAccounts, orders]);
 
+  const notifyAccountsChanged = useCallback((detail: Record<string, unknown> = {}) => {
+    window.dispatchEvent(new CustomEvent(ACCOUNT_UPDATED_EVENT, {
+      detail: {
+        source: 'orders',
+        projectId,
+        ...detail
+      }
+    }));
+  }, [projectId]);
+
   const formatFirestoreError = useCallback((error: unknown, fallback = '订单管理操作失败') => {
     const err = error as { code?: string; message?: string };
     const message = String(err?.message || '').trim();
-    if (String(err?.code || '').includes('permission-denied') || /Missing or insufficient permissions/i.test(message)) {
-      const next = '当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则，确保 orders、order_accounts、sync_state 和 products 都已放行。';
-      TKFirestoreConnection.notifyRulesUpdateNeeded(next);
-      return next;
+    if (isPermissionDenied(error)) {
+      return formatFirestoreRulesUpdateMessage('orders', ['orders.read', 'orders.write', 'products.read']);
     }
     return message || fallback;
+  }, []);
+
+  const markPermissionBlocked = useCallback(() => {
+    setConnected(true);
+    setPermissionBlocked(true);
+    setOrders([]);
+    setAccounts([]);
+    setProducts([]);
+    setSyncText('');
+    setSyncClass('error');
   }, []);
 
   const loadProducts = useCallback(async () => {
@@ -1303,6 +1470,7 @@ function OrdersPage() {
       return nextProducts;
     } catch (error) {
       setProducts([]);
+      if (isPermissionDenied(error)) throw error;
       showToast(formatFirestoreError(error, '商品资料加载失败'), 'error');
       return [];
     }
@@ -1312,6 +1480,7 @@ function OrdersPage() {
     const cfg = readGlobalConfig();
     if (!cfg?.configText) {
       setConnected(false);
+      setPermissionBlocked(false);
       setSyncText('未连接');
       setSyncClass('');
       return false;
@@ -1326,13 +1495,19 @@ function OrdersPage() {
         loadProducts()
       ]);
       setOrders(snapshot.orders || []);
-      setAccounts(uniqueAccounts([...(snapshot.accounts || []), ...(snapshot.orders || []).map((order: OrderRecord) => order['账号'])]));
+      setAccounts(snapshot.accounts || []);
       setProjectId(cfg.projectId || '');
       setConnected(true);
+      setPermissionBlocked(false);
       setSyncText(`已同步 · ${(snapshot.orders || []).length} 条`);
       setSyncClass('saved');
       return true;
     } catch (error) {
+      if (isPermissionDenied(error)) {
+        setProjectId(cfg.projectId || '');
+        markPermissionBlocked();
+        return false;
+      }
       setConnected(false);
       setSyncText('加载失败');
       setSyncClass('error');
@@ -1341,7 +1516,7 @@ function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [formatFirestoreError, loadProducts]);
+  }, [formatFirestoreError, loadProducts, markPermissionBlocked]);
 
   useEffect(() => {
     try {
@@ -1356,6 +1531,7 @@ function OrdersPage() {
       const detail = (event as CustomEvent<{ connected?: boolean }>).detail || {};
       if (detail.connected === false || !readGlobalConfig()?.configText) {
         setConnected(false);
+        setPermissionBlocked(false);
         setOrders([]);
         setProducts([]);
         setProjectId('');
@@ -1368,13 +1544,49 @@ function OrdersPage() {
     const handleProductsChanged = () => {
       void loadProducts();
     };
+    const handleAccountsChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ source?: string; accounts?: string[] }>).detail || {};
+      if (detail.source === 'orders' || !readGlobalConfig()?.configText) return;
+      if (Array.isArray(detail.accounts)) {
+        const nextAccounts = uniqueAccounts(detail.accounts);
+        setAccounts(nextAccounts);
+        setActiveAccount(current => current === '__all__' || nextAccounts.includes(current) ? current : '__all__');
+        setCurrentPage(1);
+      }
+      void connectUsingGlobalConfig();
+    };
     window.addEventListener('tk-firestore-config-changed', handleConnectionChange);
     window.addEventListener('tk-products-changed', handleProductsChanged);
+    window.addEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
     return () => {
       window.removeEventListener('tk-firestore-config-changed', handleConnectionChange);
       window.removeEventListener('tk-products-changed', handleProductsChanged);
+      window.removeEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
     };
   }, [connectUsingGlobalConfig, loadProducts]);
+
+  useEffect(() => {
+    if (!active || !connected || !readGlobalConfig()?.configText) return;
+    void connectUsingGlobalConfig();
+  }, [active, connected, connectUsingGlobalConfig]);
+
+  useEffect(() => {
+    if (activeAccount === '__all__' || allAccounts.includes(activeAccount)) return;
+    setActiveAccount('__all__');
+    setCurrentPage(1);
+  }, [activeAccount, allAccounts]);
+
+  async function copyFirestoreRules() {
+    setCopyingRules(true);
+    try {
+      await TKFirestoreConnection.copyRules();
+      showToast('Firestore 规则已复制');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '规则复制失败', 'error');
+    } finally {
+      setCopyingRules(false);
+    }
+  }
 
   function openOrderModal(id = '') {
     const order = id ? orders.find(item => String(item.id) === id) || null : null;
@@ -1391,7 +1603,17 @@ function OrdersPage() {
     setSyncClass('saving');
     const cfg = readGlobalConfig();
     if (!cfg?.configText) return;
-    const remote = await providerRef.current.pullSnapshot({ cursor: '' }).catch(() => ({ orders: [], accounts: [] }));
+    let remote: { orders: OrderRecord[]; accounts: string[] };
+    try {
+      remote = await providerRef.current.pullSnapshot({ cursor: '' });
+    } catch (error) {
+      if (isPermissionDenied(error)) {
+        markPermissionBlocked();
+        showToast(formatFirestoreError(error, '写入失败'), 'error');
+        return;
+      }
+      remote = { orders: [], accounts: [] };
+    }
     const remoteMap = new Map((remote.orders || []).map((order: OrderRecord) => [String(order.id), order]));
     const nextMap = new Map(nextOrders.map(order => [String(order.id), order]));
     const upserts = nextOrders.filter(order => JSON.stringify(order) !== JSON.stringify(remoteMap.get(String(order.id)) || null));
@@ -1404,19 +1626,33 @@ function OrdersPage() {
     const remoteAccountSet = new Set(remote.accounts || []);
     const accountUpserts = nextAccounts.filter(account => !remoteAccountSet.has(account));
     const accountDeletions = (remote.accounts || []).filter((account: string) => !nextAccountSet.has(account));
-    const result = await providerRef.current.pushChanges({
-      upserts,
-      deletions,
-      accountUpserts,
-      accountDeletions,
-      clientId: '',
-      assignSeq: true,
-      waitForCommit: false
-    });
+    let result: Awaited<ReturnType<typeof providerRef.current.pushChanges>>;
+    try {
+      result = await providerRef.current.pushChanges({
+        upserts,
+        deletions,
+        accountUpserts,
+        accountDeletions,
+        accountSortOrder: nextAccounts,
+        clientId: '',
+        assignSeq: true,
+        waitForCommit: false
+      });
+    } catch (error) {
+      if (isPermissionDenied(error)) {
+        markPermissionBlocked();
+        showToast(formatFirestoreError(error, '写入失败'), 'error');
+        return;
+      }
+      throw error;
+    }
+    setPermissionBlocked(false);
     result?.commitPromise?.then(() => {
       setSyncText(`已同步 · ${nextOrders.length} 条`);
       setSyncClass('saved');
+      setPermissionBlocked(false);
     }).catch(error => {
+      if (isPermissionDenied(error)) markPermissionBlocked();
       setSyncText('Firestore 写入失败，已保留本地视图');
       setSyncClass('error');
       showToast(formatFirestoreError(error, '写入失败'), 'error');
@@ -1436,6 +1672,10 @@ function OrdersPage() {
     for (const item of autoDraft.items) {
       const product = findProduct(products, autoDraft.accountName, item.productTkId);
       const relatedSkus = getProductSkus(product);
+      if (!isPositiveIntegerText(item.quantity)) {
+        showToast('每条明细的数量必须是大于等于 1 的整数', 'error');
+        return;
+      }
       if (!item.productTkId && !item.productName) {
         showToast('请填写每条明细的商品名称，或先关联商品', 'error');
         return;
@@ -1475,15 +1715,15 @@ function OrdersPage() {
       '订单状态': autoDraft.orderStatus,
       '快递公司': uniqueCompanies.length === 1 ? uniqueCompanies[0] : '',
       '快递单号': uniqueTrackings.length === 1 ? uniqueTrackings[0] : '',
+      '备注': autoDraft.note.trim(),
       items: autoDraft.items
     });
     const nextOrders = editingId
       ? orders.map(order => String(order.id) === editingId ? payload : order)
       : [payload, ...orders];
-    const nextAccounts = uniqueAccounts([...allAccounts, payload['账号']]);
     setModalOpen(false);
     setEditingId('');
-    await persistOrders(nextOrders, nextAccounts, '已保存到 Firestore 本地队列…');
+    await persistOrders(nextOrders, allAccounts, '已保存到 Firestore 本地队列…');
     showToast('已保存到本地');
   }
 
@@ -1494,18 +1734,161 @@ function OrdersPage() {
     showToast('已删除');
   }
 
-  function addAccount() {
+  async function addAccount() {
     const name = newAccountName.trim();
     if (!name) return;
     if (allAccounts.includes(name)) {
       showToast('该账号已存在', 'error');
       return;
     }
-    const nextAccounts = uniqueAccounts([name, ...allAccounts]);
+    const nextAccounts = uniqueAccounts([...allAccounts, name]);
     setAccounts(nextAccounts);
+    setActiveAccount(name);
+    setCurrentPage(1);
     setDraft(previous => ({ ...previous, accountName: name }));
     setNewAccountName('');
     setAccountModalOpen(false);
+    setPermissionBlocked(false);
+    setSyncText('账号已保存到 Firestore 本地队列…');
+    setSyncClass('saving');
+    try {
+      const result = await providerRef.current.pushChanges({
+        accountUpserts: [name],
+        accountSortOrder: nextAccounts,
+        clientId: '',
+        assignSeq: false,
+        waitForCommit: false
+      });
+      notifyAccountsChanged({ action: 'upsert', account: name, accounts: nextAccounts });
+      result?.commitPromise?.then(() => {
+        setSyncText(`已同步 · ${orders.length} 条`);
+        setSyncClass('saved');
+        setPermissionBlocked(false);
+        notifyAccountsChanged({ action: 'commit', account: name, accounts: nextAccounts });
+      }).catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+        setSyncText('Firestore 写入失败，已保留本地视图');
+        setSyncClass('error');
+        showToast(formatFirestoreError(error, '账号保存失败'), 'error');
+      });
+      showToast('账号已添加');
+    } catch (error) {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      showToast(formatFirestoreError(error, '账号保存失败'), 'error');
+    }
+  }
+
+  async function reorderAccounts(nextOrder: string[]) {
+    const nextAccounts = uniqueAccounts(nextOrder);
+    if (!nextAccounts.length) return;
+    setAccounts(nextAccounts);
+    notifyAccountsChanged({ action: 'reorder', accounts: nextAccounts });
+    try {
+      const result = await providerRef.current.pushChanges({
+        accountSortOrder: nextAccounts,
+        clientId: '',
+        assignSeq: false,
+        waitForCommit: false
+      });
+      result?.commitPromise?.catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+        showToast(formatFirestoreError(error, '账号排序保存失败'), 'error');
+      });
+    } catch (error) {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      showToast(formatFirestoreError(error, '账号排序保存失败'), 'error');
+    }
+  }
+
+  function openEditAccount(account: string) {
+    setEditingAccountName(account);
+    setEditingAccountValue(account);
+    setAccountEditOpen(true);
+  }
+
+  function openDeleteAccount(account: string) {
+    setDeletingAccountName(account);
+    setAccountDeleteOpen(true);
+  }
+
+  async function renameAccount() {
+    const oldName = editingAccountName.trim();
+    const newName = editingAccountValue.trim();
+    if (!oldName || !newName) return;
+    if (oldName === newName) {
+      setAccountEditOpen(false);
+      return;
+    }
+    if (allAccounts.some(account => account !== oldName && account === newName)) {
+      showToast('该账号已存在', 'error');
+      return;
+    }
+    const nextAccounts = allAccounts.map(account => account === oldName ? newName : account);
+    const nextOrders = orders.map(order => (
+      normalizeAccountName(order['账号']) === oldName ? { ...order, '账号': newName } : order
+    ));
+    setAccounts(nextAccounts);
+    setOrders(nextOrders);
+    if (activeAccount === oldName) setActiveAccount(newName);
+    setCurrentPage(1);
+    setAccountEditOpen(false);
+    setEditingAccountName('');
+    setEditingAccountValue('');
+    setPermissionBlocked(false);
+    setSyncText('账号名已保存到 Firestore 本地队列…');
+    setSyncClass('saving');
+    notifyAccountsChanged({ action: 'rename', oldAccount: oldName, account: newName, accounts: nextAccounts });
+    try {
+      const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, waitForCommit: false });
+      if (result?.commitPromise) result.commitPromise.then(() => {
+        setSyncText(`已同步 · ${nextOrders.length} 条`);
+        setSyncClass('saved');
+        setPermissionBlocked(false);
+        notifyAccountsChanged({ action: 'commit', account: newName, accounts: nextAccounts });
+      }).catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+        setSyncText('Firestore 写入失败，已保留本地视图');
+        setSyncClass('error');
+        showToast(formatFirestoreError(error, '账号名保存失败'), 'error');
+      });
+      showToast('账号名已更新');
+    } catch (error) {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      showToast(formatFirestoreError(error, '账号名保存失败'), 'error');
+    }
+  }
+
+  async function deleteAccount() {
+    const name = deletingAccountName.trim();
+    if (!name) return;
+    const nextAccounts = allAccounts.filter(account => account !== name);
+    setAccounts(nextAccounts);
+    setActiveAccount(current => current === name ? '__all__' : current);
+    setCurrentPage(1);
+    setAccountDeleteOpen(false);
+    setDeletingAccountName('');
+    setPermissionBlocked(false);
+    setSyncText('账号名已删除，数据保留在全部…');
+    setSyncClass('saving');
+    notifyAccountsChanged({ action: 'delete', account: name, accounts: nextAccounts });
+    try {
+      const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, waitForCommit: false });
+      if (result?.commitPromise) result.commitPromise.then(() => {
+        setSyncText(`已同步 · ${orders.length} 条`);
+        setSyncClass('saved');
+        setPermissionBlocked(false);
+        notifyAccountsChanged({ action: 'commit-delete', account: name, accounts: nextAccounts });
+      }).catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+        setSyncText('Firestore 写入失败，已保留本地视图');
+        setSyncClass('error');
+        showToast(formatFirestoreError(error, '账号名删除失败'), 'error');
+      });
+      showToast('账号名已删除，数据仍在全部里');
+    } catch (error) {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      showToast(formatFirestoreError(error, '账号名删除失败'), 'error');
+    }
   }
 
   function openExportModal() {
@@ -1558,24 +1941,12 @@ function OrdersPage() {
         data-react-orders-page-ready="true"
       />
 
-      {!connected ? (
-        <Card className={orderSetupCardClass} id="ot-setup">
-          <EmptyState
-            className="py-[60px]"
-            title="尚未连接 Firebase 数据源"
-            description="订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。"
-          >
-            <Button id="ot-open-connection" variant="primary" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>
-          </EmptyState>
-        </Card>
-      ) : null}
-
-      {connected ? <Card id="ot-main">
+      <Card id="ot-main" className={!connected ? orderSetupCardClass : undefined}>
         <div id="ot-header-status-row" className={cn(orderHeaderRowClass, 'ot-header-status-row')}>
           <div className={statusStripClass}>
             <div className={statusStripLeftClass}>
-              <Badge id="ot-user" className="min-h-[30px] text-[var(--text)] font-semibold">已连接 · {projectId || 'Firebase Firestore'}</Badge>
-              <Badge id="ot-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge>
+              <Badge id="ot-user" className="min-h-[30px] text-[var(--text)] font-semibold">{connected ? `已连接 · ${projectId || 'Firebase Firestore'}` : '未连接 Firebase'}</Badge>
+              {permissionBlocked ? null : <Badge id="ot-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge>}
               <Button id="ot-refresh" variant="plain" className={refreshButtonClass(loading)} aria-label="刷新订单数据" title="刷新订单数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void connectUsingGlobalConfig()}>
                 <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
               </Button>
@@ -1584,46 +1955,76 @@ function OrdersPage() {
               </Button>
             </div>
             <div className={statusStripRightClass}>
-              <Button id="ot-export" size="sm" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-              <Button id="ot-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
+              {connected ? (
+                <>
+                  <Button id="ot-export" size="sm" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
+                  <Button id="ot-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
-        <div id="ot-header-summary-row" className={cn(orderHeaderRowClass, 'ot-header-summary-row')}>
-          <div id="ot-summary-container" className={orderSummaryContainerClass}>
-            <OrdersSummary orders={orders} activeAccount={activeAccount} searchQuery={searchQuery} sortOrder={sortOrder} exchangeRate={exchangeRate} />
-          </div>
-        </div>
-        <div id="ot-header-accounts-row" className={cn(orderHeaderRowClass, 'ot-header-accounts-row')}>
-          <AccountTabsBar
-            id="ot-acc-tabs"
-            activeKey={activeAccount}
-            allCount={orders.length}
-            allTabsId="ot-acc-tabs-all"
-            scrollId="ot-acc-tabs-scroll"
-            items={accountTabItems}
-            addAccountButton={{ id: 'ot-tab-add', title: '添加账号', onClick: () => setAccountModalOpen(true) }}
-            actionsId="ot-acc-actions"
-            onChange={account => { setActiveAccount(account); setCurrentPage(1); }}
-            actions={<Button id="ot-add" variant="primary" onClick={() => openOrderModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增订单</Button>}
+        {!connected ? (
+          <ModuleListState
+            tone="connect"
+            title="连接数据库"
+            description="订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。"
+            actions={[{ id: 'ot-open-connection', label: '连接 Firebase', variant: 'primary', onClick: () => TKFirestoreConnection.open() }]}
           />
-        </div>
-        <OrdersTable
-          orders={orders}
-          activeAccount={activeAccount}
-          searchQuery={searchQuery}
-          sortOrder={sortOrder}
-          pageSize={pageSize}
-          currentPage={currentPage}
-          exchangeRate={exchangeRate}
-          onSearchChange={value => { setSearchQuery(value); setCurrentPage(1); }}
-          onPageSizeChange={value => { setPageSize(Math.max(1, Number(value) || 50)); setCurrentPage(1); }}
-          onPageChange={delta => setCurrentPage(page => Math.max(1, page + delta))}
-          onSortToggle={() => { setSortOrder(value => value === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}
-          onEdit={openOrderModal}
-          onDelete={deleteOrder}
-        />
-      </Card> : null}
+        ) : permissionBlocked ? (
+          <ModuleListState
+            tone="permission"
+            title="数据库权限不足"
+            description="当前数据库权限不足，订单管理保存不可用。复制最新 Firestore 规则发布后刷新页面。"
+            actions={[
+              { label: '打开 Firebase Console', onClick: () => TKFirestoreConnection.openConsole() },
+              { label: copyingRules ? '复制中…' : '复制 Firestore 规则', variant: 'primary', disabled: copyingRules, onClick: () => void copyFirestoreRules() }
+            ]}
+          />
+        ) : (
+          <>
+            <div id="ot-header-summary-row" className={cn(orderHeaderRowClass, 'ot-header-summary-row')}>
+              <div id="ot-summary-container" className={orderSummaryContainerClass}>
+                <OrdersSummary orders={orders} activeAccount={activeAccount} searchQuery={searchQuery} sortOrder={sortOrder} exchangeRate={exchangeRate} accounts={allAccounts} />
+              </div>
+            </div>
+            <div id="ot-header-accounts-row" className={cn(orderHeaderRowClass, 'ot-header-accounts-row')}>
+              <AccountTabsBar
+                id="ot-acc-tabs"
+                activeKey={activeAccount}
+                allCount={orders.length}
+                allTabsId="ot-acc-tabs-all"
+                scrollId="ot-acc-tabs-scroll"
+                items={accountTabItems}
+                addAccountButton={{ id: 'ot-tab-add', title: '添加账号', onClick: () => setAccountModalOpen(true) }}
+                onEditAccount={openEditAccount}
+                onDeleteAccount={openDeleteAccount}
+                onReorder={reorderAccounts}
+                actionsId="ot-acc-actions"
+                onChange={account => { setActiveAccount(account); setCurrentPage(1); }}
+                actions={<Button id="ot-add" variant="primary" onClick={() => openOrderModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增订单</Button>}
+              />
+            </div>
+            <OrdersTable
+              orders={orders}
+              activeAccount={activeAccount}
+              searchQuery={searchQuery}
+              searchHelpOpen={searchHelpOpen}
+              sortOrder={sortOrder}
+              pageSize={pageSize}
+              currentPage={currentPage}
+              exchangeRate={exchangeRate}
+              onSearchChange={value => { setSearchQuery(value); setCurrentPage(1); }}
+              onSearchHelpOpenChange={setSearchHelpOpen}
+              onPageSizeChange={value => { setPageSize(Math.max(1, Number(value) || 50)); setCurrentPage(1); }}
+              onPageChange={delta => setCurrentPage(page => Math.max(1, page + delta))}
+              onSortToggle={() => { setSortOrder(value => value === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}
+              onEdit={openOrderModal}
+              onDelete={deleteOrder}
+            />
+          </>
+        )}
+      </Card>
 
       <OrderModal
         open={modalOpen}
@@ -1636,7 +2037,34 @@ function OrdersPage() {
         onSubmit={submitOrder}
         onAddAccount={() => setAccountModalOpen(true)}
       />
-      <AddAccountModal open={accountModalOpen} value={newAccountName} onValueChange={setNewAccountName} onOpenChange={setAccountModalOpen} onConfirm={addAccount} />
+      <AddAccountDialog
+        modalId="ot-add-acc-modal"
+        formId="ot-add-acc-form"
+        inputId="ot-new-acc-input"
+        open={accountModalOpen}
+        value={newAccountName}
+        onValueChange={setNewAccountName}
+        onOpenChange={setAccountModalOpen}
+        onConfirm={addAccount}
+      />
+      <AccountEditDialog
+        modalId="ot-edit-acc-modal"
+        formId="ot-edit-acc-form"
+        inputId="ot-edit-acc-input"
+        open={accountEditOpen}
+        accountName={editingAccountName}
+        value={editingAccountValue}
+        onValueChange={setEditingAccountValue}
+        onOpenChange={setAccountEditOpen}
+        onConfirm={renameAccount}
+      />
+      <AccountDeleteDialog
+        modalId="ot-delete-acc-modal"
+        open={accountDeleteOpen}
+        accountName={deletingAccountName}
+        onOpenChange={setAccountDeleteOpen}
+        onConfirm={deleteAccount}
+      />
       <ExportModal open={exportOpen} options={exportOptions} selected={exportSelected} onSelectedChange={setExportSelected} onOpenChange={setExportOpen} onConfirm={confirmExport} />
       <StorageHelpModal open={storageHelpOpen} onOpenChange={setStorageHelpOpen} />
     </>

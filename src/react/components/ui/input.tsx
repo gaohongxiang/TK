@@ -12,10 +12,10 @@ const inputVariants = cva(
       },
       tone: {
         default: '',
-        readonly: 'min-h-[48px] border-[color-mix(in_srgb,var(--ok)_42%,var(--border))] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--ok)_13%,white),color-mix(in_srgb,var(--ok)_4%,var(--panel)))] text-[18px] font-bold tracking-[.5px] text-[color-mix(in_srgb,var(--ok)_88%,#0b6f50)] shadow-[inset_0_1px_0_rgba(255,255,255,.75)] focus:border-[color-mix(in_srgb,var(--ok)_64%,var(--border))] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ok)_18%,transparent)] max-[640px]:text-[18px]',
-        primary: 'min-h-[48px] border-[color-mix(in_srgb,var(--warn)_44%,var(--border))] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--warn)_15%,white),color-mix(in_srgb,var(--warn)_5%,var(--panel)))] text-[18px] font-bold tracking-[.5px] text-[color-mix(in_srgb,var(--warn)_86%,#7a5200)] shadow-[inset_0_1px_0_rgba(255,255,255,.75)] focus:border-[color-mix(in_srgb,var(--warn)_68%,var(--border))] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--warn)_20%,transparent)] max-[640px]:text-[18px]',
-        expense: 'min-h-[48px] border-[color-mix(in_srgb,var(--expense)_42%,var(--border))] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--expense)_13%,white),color-mix(in_srgb,var(--expense)_4%,var(--panel)))] text-[18px] font-bold tracking-[.5px] text-[color-mix(in_srgb,var(--expense)_88%,#8a2434)] shadow-[inset_0_1px_0_rgba(255,255,255,.75)] focus:border-[color-mix(in_srgb,var(--expense)_62%,var(--border))] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--expense)_18%,transparent)] max-[640px]:text-[18px]',
-        success: 'min-h-[48px] border-[color-mix(in_srgb,var(--ok)_42%,var(--border))] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--ok)_13%,white),color-mix(in_srgb,var(--ok)_4%,var(--panel)))] text-[18px] font-bold tracking-[.5px] text-[color-mix(in_srgb,var(--ok)_88%,#0b6f50)] shadow-[inset_0_1px_0_rgba(255,255,255,.75)] focus:border-[color-mix(in_srgb,var(--ok)_64%,var(--border))] focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--ok)_18%,transparent)] max-[640px]:text-[18px]'
+        readonly: 'tk-input-tone-readonly min-h-[48px] text-[18px] font-bold tracking-[.5px] max-[640px]:text-[18px]',
+        primary: 'tk-input-tone-primary min-h-[48px] text-[18px] font-bold tracking-[.5px] max-[640px]:text-[18px]',
+        expense: 'tk-input-tone-expense min-h-[48px] text-[18px] font-bold tracking-[.5px] max-[640px]:text-[18px]',
+        success: 'tk-input-tone-success min-h-[48px] text-[18px] font-bold tracking-[.5px] max-[640px]:text-[18px]'
       }
     },
     defaultVariants: {

@@ -14,6 +14,7 @@ const srcTableSource = fs.readFileSync(path.join(root, 'src', 'products', 'table
 const srcAccountsSource = fs.readFileSync(path.join(root, 'src', 'products', 'accounts.ts'), 'utf8');
 const srcExportSource = fs.readFileSync(path.join(root, 'src', 'products', 'export.ts'), 'utf8');
 const reactProductsPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
+const reactSearchHelpSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'search-help.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const reactAppShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
@@ -91,7 +92,7 @@ assert.match(
 
 assert.match(
   reactAppSource,
-  /id="view-products"[\s\S]*<ProductsPage \/>/,
+  /id="view-products"[\s\S]*<ProductsPage active=\{active === 'products'\} \/>/,
   'React App 需要新增商品库视图容器'
 );
 
@@ -99,6 +100,12 @@ assert.match(
   reactProductsPageSource,
   /id="pl-main"/,
   '商品库 React 页面需要提供主列表容器'
+);
+
+assert.match(
+  reactProductsPageSource,
+  /<PageHero[\s\S]*title="商品管理"[\s\S]*kicker="商品资料 \/ 预估运费 \/ 采购链接"[\s\S]*description="沉淀商品资料、预估运费和采购链接，录一次基础资料，后续订单直接复用。"/,
+  '商品管理需要保留商品资料、预估运费和采购链接说明文案'
 );
 
 assert.match(
@@ -229,13 +236,13 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /<Card id="pl-disconnected"(?![^>]*className="card")/,
-  '商品库在未连接时需要通过 Card primitive 提供轻量空态容器'
+  /<Card id="pl-main"[\s\S]*tone="connect"/,
+  '商品库在未连接时需要通过 Card primitive 的列表区四态提供轻量空态容器'
 );
 
 assert.match(
   reactProductsPageSource,
-  /id="pl-open-connection"/,
+  /id(?:=|:) ['"]pl-open-connection['"]/,
   '商品库在未连接时需要提供打开全局连接弹层的按钮'
 );
 
@@ -313,8 +320,8 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /products 集合[\s\S]*notifyRulesUpdateNeeded/,
-  'React 商品库在 Firestore 权限不足时需要触发全局规则更新提示'
+  /formatFirestoreRulesUpdateMessage\('products'[\s\S]*permissionBlocked[\s\S]*<ModuleListState[\s\S]*商品管理保存不可用/,
+  'React 商品库在 Firestore 权限不足时需要在列表区提示，并提供复制规则入口'
 );
 
 assert.match(
@@ -355,14 +362,20 @@ assert.match(
 
 assert.match(
   srcAccountsSource,
-  /function getAllProductAccounts\(/,
-  '商品库账号模块需要保留账号纯函数'
+  /function uniqueAccounts\(/,
+  '商品库账号模块需要保留账号名称纯函数'
 );
 
 assert.match(
   reactProductsPageSource,
-  /搜索 TK ID \/ 名称 \/ 1688 链接/,
-  '商品库搜索框需要通过共用表格控件复用订单页的搜索样式结构'
+  /文本搜索账号 \/ TK ID \/ 商品 \/ SKU \/ 1688/,
+  '商品库搜索框需要通过共用表格控件复用订单页的搜索样式结构，并写清可搜字段'
+);
+
+assert.match(
+  reactProductsPageSource + reactSearchHelpSource,
+  /id="pl-search-help-btn"[\s\S]*modalId="pl-search-help-modal"[\s\S]*只做文本搜索，不把 05-18 当日期[\s\S]*账号、TK ID、商品名、备注、1688 链接、货物类型、SKU ID、SKU 名称[\s\S]*搜索只作用于当前账号标签|搜索只作用于当前账号标签[\s\S]*id="pl-search-help-btn"[\s\S]*modalId="pl-search-help-modal"[\s\S]*只做文本搜索，不把 05-18 当日期[\s\S]*账号、TK ID、商品名、备注、1688 链接、货物类型、SKU ID、SKU 名称/,
+  '商品搜索框右侧需要提供当前账号范围和文本搜索说明'
 );
 
 assert.match(
@@ -385,8 +398,8 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /id="pl-sort-btn"/,
-  '商品库表格需要提供和订单页一致的排序切换按钮'
+  /<TableSortButton[\s\S]*id="pl-sort-btn"[\s\S]*排序 \{sortIcon\}[\s\S]*<ProductPager[\s\S]*<TableHead>#<\/TableHead>/,
+  '商品库排序按钮需要放在搜索分页工具栏里，并位于分页前面'
 );
 
 assert.match(
@@ -397,8 +410,14 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /<TableHead>商品名称<\/TableHead>[\s\S]*<TableHead>货物类型<\/TableHead>[\s\S]*<TableHead>SKU数<\/TableHead>[\s\S]*<TableHead>1688<\/TableHead>/,
-  '商品库主表应在货物类型后直接进入 SKU 数量与 1688 列'
+  /<TableHead>商品名称<\/TableHead>[\s\S]*<TableHead>备注<\/TableHead>[\s\S]*<TableHead>货物类型<\/TableHead>[\s\S]*<TableHead>SKU数<\/TableHead>[\s\S]*<TableHead(?: className=\{productLinkCellClass\})?>1688<\/TableHead>/,
+  '商品库主表应在商品名称后展示备注，并保留货物类型、SKU 数量与 1688 列'
+);
+
+assert.match(
+  reactProductsPageSource,
+  /<Textarea[\s\S]*name="note"[\s\S]*value=\{draft\.note\}[\s\S]*updateField\('note'/,
+  '商品库表单需要提供备注输入并写入商品草稿'
 );
 
 assert.doesNotMatch(
@@ -433,7 +452,7 @@ assert.match(
 
 assert.match(
   reactAppSource,
-  /id="view-products"[\s\S]*<ProductsPage \/>/,
+  /id="view-products"[\s\S]*<ProductsPage active=\{active === 'products'\} \/>/,
   'React App 需要直接渲染商品页面'
 );
 
@@ -526,14 +545,32 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /\{connected \? <Card id="pl-main">[\s\S]*<AccountTabsBar[\s\S]*<ProductsTableView[\s\S]*<\/Card> : null\}/,
-  '商品管理连接后的主区域需要和订单管理一样使用 Card 白底容器，避免表格露出页面灰蓝底色'
+  /<Card id="pl-main">[\s\S]*tone="connect"[\s\S]*tone="permission"[\s\S]*<AccountTabsBar[\s\S]*<ProductsTableView[\s\S]*<\/Card>/,
+  '商品管理主区域需要和订单管理一样使用 Card 白底容器，并在同一列表区覆盖连接、权限和数据状态'
 );
 
 assert.match(
   reactProductsPageSource,
   /productTableClass = 'pl-table products-react-table mt-1\.5 min-w-\[1100px\][\s\S]*\[\&_td\]:whitespace-nowrap/,
   '商品主表需要对齐订单管理表格的间距、横向宽度和单元格不换行样式'
+);
+
+assert.doesNotMatch(
+  reactProductsPageSource,
+  /productTableClass = 'pl-table products-react-table[^']*table-fixed/,
+  '商品主表需要参考订单管理使用自然列宽，不应再强制 table-fixed 造成列宽生硬'
+);
+
+assert.match(
+  reactProductsPageSource,
+  /productNameCellClass = 'products-react-name-cell min-w-\[170px\] max-w-\[260px\]'[\s\S]*productLinkCellClass = 'products-react-link-cell w-\[104px\] min-w-\[104px\]'[\s\S]*productActionsCellClass = 'products-react-actions-cell w-\[104px\] min-w-\[104px\]'/,
+  '商品名称列需要收敛宽度，1688 和操作按钮列宽度够用即可'
+);
+
+assert.match(
+  reactProductsPageSource,
+  /productLinkActionsClass = 'pl-link-actions products-react-link-actions inline-flex min-w-\[78px\] items-center justify-between gap-3'[\s\S]*productActionsClass = 'products-react-actions inline-flex min-w-\[78px\] items-center justify-between gap-3'/,
+  '商品表 1688 和操作列的图标按钮需要稍微拉开距离'
 );
 
 assert.match(
@@ -621,6 +658,29 @@ const numericProducts = [
 
   assert.equal(accountScoped.length, 1, '商品表格 ESM 应支持按账号筛选');
   assert.equal(accountScoped[0].tkId, 'TK-001', '商品表格 ESM 账号筛选结果不正确');
+
+  const dateLikeText = tableModule.ProductLibraryTable.deriveDisplayedProducts({
+    products: [
+      { tkId: 'TK-005', accountName: 'A', name: '05-18 活动款' },
+      { tkId: 'TK-006', accountName: 'A', name: '普通款', note: '2026-05-18 复核' }
+    ],
+    activeAccount: 'A',
+    searchQuery: '05-18'
+  });
+
+  assert.equal(dateLikeText.length, 2, '商品搜索不应把日期样式文本当日期过滤');
+
+  const productAccountFirst = tableModule.ProductLibraryTable.deriveDisplayedProducts({
+    products: [
+      { tkId: 'TK-NOMA', accountName: 'NOMA', name: '雨衣' },
+      { tkId: 'TK-LUMI', accountName: 'LUMI', name: '雨衣' }
+    ],
+    activeAccount: 'NOMA',
+    searchQuery: '雨衣'
+  });
+
+  assert.equal(productAccountFirst.length, 1, '商品搜索必须先按当前账号标签过滤');
+  assert.equal(productAccountFirst[0].tkId, 'TK-NOMA', '商品具体账号标签下搜索不能跨账号命中数据');
 
   const descSorted = tableModule.ProductLibraryTable.deriveDisplayedProducts({
     products: numericProducts,

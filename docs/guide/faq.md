@@ -18,11 +18,11 @@
 
 ## 数据分析会上传我的 Excel 吗
 
-不会。数据分析只在浏览器本地读取 Excel 文件，解析结果只存在当前页面内存里。刷新页面或关闭标签页后，分析结果不会继续保留。
+不会。数据分析只在浏览器本地读取 Excel 原始文件，不上传文件；解析后的分析快照会写入你自己的 Firebase Firestore，刷新后可以恢复最近一次分析。
 
 ## Cloudflare Pages 会保存我的订单和商品吗
 
-不会。Cloudflare Pages 只托管静态资源，例如 HTML、CSS、JS、图片和文档。订单和商品写入你自己的 Firebase Firestore，Excel 只在浏览器本地解析。
+不会。Cloudflare Pages 只托管静态资源，例如 HTML、CSS、JS、图片和文档。订单、商品和数据分析快照写入你自己的 Firebase Firestore，Excel 原始文件只在浏览器本地解析。
 
 ## 为什么不继续推荐 Supabase
 

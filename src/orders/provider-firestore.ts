@@ -1,6 +1,7 @@
 import {
   normalizeOrderItems as normalizeSharedOrderItems
 } from './shared.ts';
+import { deleteAccountLabel, renameAccountAcrossModules } from '../accounts/firestore-account-actions.ts';
 import type {
   OrderFirestoreConfig,
   OrderFirestoreDoc,
@@ -367,7 +368,8 @@ function normalizePulledOrder(raw: unknown, options: { nowIso?: () => string } =
     '尺寸': String(data?.sizeText || ''),
     '订单状态': String(data?.orderStatus || ''),
     '快递公司': String(courierSummary || ''),
-    '快递单号': String(trackingSummary || '')
+    '快递单号': String(trackingSummary || ''),
+    '备注': String(data?.note || data?.remark || '')
   };
 }
 
@@ -407,6 +409,7 @@ function buildOrderDoc(order: OrderRecord, options: { nowIso?: () => string } = 
     weightText: topLevelWeight || (items.length && totals.weight ? Number(totals.weight.toFixed(2)).toString() : null),
     sizeText: topLevelSize || (items.length === 1 ? toNullableText(items[0]?.unitSizeText || '') : null),
     orderStatus: toNullableText(order?.['订单状态']),
+    note: toNullableText(order?.['备注'] || order?.note),
     items: items.length ? items.map(item => {
       const row: OrderItemDoc = {
         lineId: item.lineId,
@@ -447,6 +450,11 @@ function sortOrdersForSeqAssignment(left: OrderRecord, right: OrderRecord, optio
   if (leftUpdatedAt !== rightUpdatedAt) return leftUpdatedAt - rightUpdatedAt;
 
   return String(left?.id || '').localeCompare(String(right?.id || ''));
+}
+
+function toSortIndex(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function create({ state = {}, helpers = {}, window: rootWindow = globalThis.window }: OrderProviderCreateOptions = {}): OrderProviderApi {
@@ -612,10 +620,11 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       })
     );
 
-    const accountRows = accountsSnap.docs.map(doc => {
+    const accountRows = accountsSnap.docs.map((doc, index) => {
       const data = doc.data() || {};
       return {
         name: String(data?.name || '').trim(),
+        sortIndex: toSortIndex(data?.sortIndex, index),
         updatedAt: toIsoString(data?.updatedAt || ''),
         deletedAt: toIsoString(data?.deletedAt || '')
       };
@@ -624,7 +633,10 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       const updatedAt = account.deletedAt || account.updatedAt || '';
       return !cursor || updatedAt > cursor;
     });
-    const activeAccounts = uniqueAccounts(accountRows.filter(row => !row.deletedAt).map(row => row.name));
+    const activeAccounts = uniqueAccounts(accountRows
+      .filter(row => !row.deletedAt)
+      .sort((left, right) => left.sortIndex - right.sortIndex || left.name.localeCompare(right.name))
+      .map(row => row.name));
     const accountUpdatedAt = latestIso(accountRows.filter(row => !row.deletedAt).map(row => row.updatedAt));
 
     const syncMeta = syncStateSnap.exists ? (syncStateSnap.data() || {}) : {};
@@ -651,6 +663,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     deletions = [],
     accountUpserts = [],
     accountDeletions = [],
+    accountSortOrder = [],
     clientId = '',
     assignSeq = true,
     waitForCommit = true
@@ -686,6 +699,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       mutations.push(batch => batch.set(accountRef(currentDb, normalized), {
         id: accountDocId(normalized),
         name: normalized,
+        ...(accountSortOrder.includes(normalized) ? { sortIndex: accountSortOrder.indexOf(normalized) } : {}),
         updatedAt,
         deletedAt: null,
         createdAt: updatedAt
@@ -700,6 +714,17 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
         name: normalized,
         updatedAt,
         deletedAt: updatedAt
+      }, { merge: true }));
+    });
+
+    uniqueAccounts(accountSortOrder).forEach((name, index) => {
+      mutations.push(batch => batch.set(accountRef(currentDb, name), {
+        id: accountDocId(name),
+        name,
+        sortIndex: index,
+        updatedAt,
+        deletedAt: null,
+        createdAt: updatedAt
       }, { merge: true }));
     });
 
@@ -720,6 +745,16 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     };
   }
 
+  async function renameAccount(oldName: string, newName: string, options: { accountOrder?: string[]; waitForCommit?: boolean } = {}) {
+    const currentDb = await requireDb();
+    return renameAccountAcrossModules(currentDb, oldName, newName, nowIso, options);
+  }
+
+  async function deleteAccount(name: string, options: { accountOrder?: string[]; waitForCommit?: boolean } = {}) {
+    const currentDb = await requireDb();
+    return deleteAccountLabel(currentDb, name, nowIso, options);
+  }
+
   return {
     key: 'firestore',
     label: 'Firebase Firestore',
@@ -734,7 +769,9 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     isConnected,
     signOut,
     pullSnapshot,
-    pushChanges
+    pushChanges,
+    renameAccount,
+    deleteAccount
   };
 }
 

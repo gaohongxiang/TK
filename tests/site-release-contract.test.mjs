@@ -45,7 +45,7 @@ assert.match(
 
 assert.match(
   docsIndex,
-  /商品、订单在你的 Firebase，Excel 只在浏览器本地解析/,
+  /商品、订单在你的 Firebase，Excel 原始文件只在浏览器本地解析/,
   '文档首页需要直接说明数据边界'
 );
 
@@ -75,13 +75,13 @@ assert.match(
 
 assert.match(
   analytics,
-  /不上传到 Cloudflare[\s\S]*不写入 Firestore[\s\S]*商品诊断标签[\s\S]*不把分析结果发送到第三方接口/,
-  '数据分析文档需要说明本地解析、诊断标签和不上传边界'
+  /不上传到 Cloudflare[\s\S]*分析快照会写入你的 Firestore[\s\S]*商品诊断标签[\s\S]*不把分析结果发送到第三方接口/,
+  '数据分析文档需要说明本地解析、Firestore 快照、诊断标签和不上传边界'
 );
 
 assert.match(
   deploy,
-  /npm run release:check[\s\S]*隐私页、使用条款页和 404[\s\S]*\.github\/workflows\/release-check\.yml[\s\S]*Framework preset \| `Vite`[\s\S]*Root directory \| `docs`[\s\S]*商品流量 Excel 只在浏览器本地解析/,
+  /npm run release:check[\s\S]*隐私页、使用条款页和 404[\s\S]*\.github\/workflows\/release-check\.yml[\s\S]*Framework preset \| `Vite`[\s\S]*Root directory \| `docs`[\s\S]*商品流量 Excel 原始文件只在浏览器本地解析/,
   '部署发布页需要覆盖发布检查、CI、主站/文档站 Cloudflare 配置和数据边界'
 );
 
@@ -105,8 +105,8 @@ assert.match(
 
 assert.match(
   privacy,
-  /property="og:title" content="隐私与数据边界 · TK 电商工具箱"[\s\S]*name="twitter:image" content="https:\/\/tk-evu\.pages\.dev\/logo\.png"[\s\S]*不会把你的订单或商品保存到工具作者的数据库[\s\S]*不会上传或持久化 TikTok Shop 商品流量 Excel[\s\S]*href="\/terms\.html"[\s\S]*查看使用条款/,
-  '隐私页需要明确不会保存业务数据或上传 Excel，并提供社交元信息和使用条款入口'
+  /property="og:title" content="隐私与数据边界 · TK 电商工具箱"[\s\S]*name="twitter:image" content="https:\/\/tk-evu\.pages\.dev\/logo\.png"[\s\S]*数据分析快照和商品明细[\s\S]*你自己的 Firebase Firestore[\s\S]*不会上传或持久化 TikTok Shop 商品流量 Excel 原始文件[\s\S]*href="\/terms\.html"[\s\S]*查看使用条款/,
+  '隐私页需要明确分析快照进入用户 Firestore、不会上传 Excel 原始文件，并提供社交元信息和使用条款入口'
 );
 
 assert.match(

@@ -22,7 +22,7 @@ function TableToolbar({ bottom = false, className, innerClassName, left, right, 
       {...props}
     >
       <div
-        className={cn(
+      className={cn(
           'flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_srgb,var(--panel)_92%,transparent)] px-3 py-2.5 shadow-[0_14px_30px_rgba(0,0,0,.12)] backdrop-blur-[10px] max-[768px]:items-stretch',
           innerClassName
         )}
@@ -42,19 +42,22 @@ type TableSearchProps = {
   id: string;
   hint: string;
   value: string;
+  after?: ReactNode;
   className?: string;
   onChange: (value: string) => void;
 };
 
-function TableSearch({ className, hint, id, onChange, value }: TableSearchProps) {
+function TableSearch({ after, className, hint, id, onChange, value }: TableSearchProps) {
   const [composing, setComposing] = useState(false);
 
   return (
-    <label
+    <div className="inline-flex min-w-0 max-w-full items-center gap-2 max-[768px]:w-full">
+      <label
       className={cn(
         'relative inline-flex h-8 w-80 max-w-full items-center overflow-hidden rounded-full border border-[var(--border)] bg-[rgba(255,255,255,.035)] transition-[border-color,box-shadow,background] focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_3px_rgba(110,168,255,.14)] max-[768px]:w-full',
         className
       )}
+      data-composing={composing ? 'true' : undefined}
     >
       <span className="pointer-events-none absolute left-[11px] top-1/2 z-[3] inline-flex h-[15px] w-[15px] -translate-y-1/2 items-center justify-center text-[var(--muted)]" aria-hidden="true">
         <Search size={15} strokeWidth={2.1} />
@@ -72,13 +75,15 @@ function TableSearch({ className, hint, id, onChange, value }: TableSearchProps)
           onChange(event.currentTarget.value);
         }}
         onChange={event => {
-          if (!composing) onChange(event.currentTarget.value);
+          onChange(event.currentTarget.value);
         }}
       />
       <span className="pointer-events-none absolute left-[34px] right-3 top-1/2 z-[1] -translate-y-1/2 truncate text-[12.5px] text-[var(--muted)] opacity-100 transition-opacity peer-focus:opacity-0 peer-[:not(:placeholder-shown)]:opacity-0">
         {hint}
       </span>
-    </label>
+      </label>
+      {after}
+    </div>
   );
 }
 
@@ -146,8 +151,8 @@ function TableSortButton({ children, className, id, onClick, title }: TableSortB
     <Button
       id={id}
       variant="plain"
-      className={cn(
-        'min-h-6 rounded-full px-[7px] text-xs font-semibold leading-none text-[var(--muted)] hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] hover:text-[var(--accent)]',
+        className={cn(
+        'h-[30px] min-w-[68px] rounded-full border border-[var(--border)] bg-[rgba(255,255,255,.035)] px-3 text-[12px] font-semibold leading-none text-[var(--muted)] hover:border-[color-mix(in_srgb,var(--accent)_45%,var(--border))] hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] hover:text-[var(--accent)]',
         className
       )}
       title={title}
@@ -158,7 +163,7 @@ function TableSortButton({ children, className, id, onClick, title }: TableSortB
   );
 }
 
-type EmptyStateProps = HTMLAttributes<HTMLDivElement> & {
+type EmptyStateProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
   title: ReactNode;
   description?: ReactNode;
 };

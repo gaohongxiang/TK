@@ -25,6 +25,7 @@ type ProductSku = ProductLogisticsDefaults & {
 type ProductRecord = ProductLogisticsDefaults & {
   tkId?: string;
   name?: string | null;
+  note?: string | null;
   accountName?: string | null;
   imageUrl?: string | null;
   link1688?: string | null;
@@ -81,9 +82,18 @@ type ProductProviderWriteOptions = {
   waitForCommit?: boolean;
 };
 
+type ProductProviderAccountWriteOptions = ProductProviderWriteOptions & {
+  sortIndex?: number;
+};
+
 type ProductProviderDeferredWrite<T> = {
   product?: T;
   deleted?: boolean;
+  commitPromise: Promise<unknown>;
+};
+
+type ProductProviderDeferredAccountWrite = {
+  account: string;
   commitPromise: Promise<unknown>;
 };
 
@@ -102,6 +112,23 @@ type ProductProviderApi = {
     tkId: string,
     options?: ProductProviderWriteOptions
   ) => Promise<boolean | ProductProviderDeferredWrite<never>>;
+  upsertAccount: (
+    name: string,
+    options?: ProductProviderAccountWriteOptions
+  ) => Promise<string | ProductProviderDeferredAccountWrite>;
+  saveAccountOrder: (
+    names: string[],
+    options?: ProductProviderWriteOptions
+  ) => Promise<number | { count: number; commitPromise: Promise<unknown> }>;
+  renameAccount: (
+    oldName: string,
+    newName: string,
+    options?: ProductProviderWriteOptions & { accountOrder?: string[] }
+  ) => Promise<{ accounts: string[]; commitPromise?: Promise<unknown[]> }>;
+  deleteAccount: (
+    name: string,
+    options?: ProductProviderWriteOptions & { accountOrder?: string[] }
+  ) => Promise<{ accounts: string[]; commitPromise?: Promise<unknown[]> }>;
 };
 
 type ProductProviderCreateOptions = {
@@ -140,6 +167,7 @@ type ProductFirestoreDoc = {
   tkId: string;
   accountName: string | null;
   name: string | null;
+  note: string | null;
   imageUrl: string | null;
   link1688: string | null;
   defaults: ProductDefaultsDoc;
@@ -192,7 +220,9 @@ export type {
   ProductLogisticsDefaults,
   ProductPricingContext,
   ProductProviderApi,
+  ProductProviderAccountWriteOptions,
   ProductProviderCreateOptions,
+  ProductProviderDeferredAccountWrite,
   ProductProviderDeferredWrite,
   ProductProviderPullResult,
   ProductProviderWriteOptions,

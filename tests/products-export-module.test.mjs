@@ -86,6 +86,7 @@ function exporterInputProducts() {
       accountName: 'A',
       tkId: 'TK-1',
       name: '杯子',
+      note: '首批重点跟进',
       defaults: {
         cargoType: 'general',
         weightG: '100',
@@ -137,6 +138,7 @@ function plain(value) {
   assert.strictEqual(rows.length, 3, '商品导出 ESM 需要按 SKU 展开行，并包含无 SKU 商品');
   assert.strictEqual(rows[0][4], '白 / S', '商品导出 ESM 行需要包含 SKU 名称');
   assert.strictEqual(rows[0][7], '10×8×6', '商品导出 ESM 继承默认参数的 SKU 需要导出商品默认尺寸');
+  assert.strictEqual(rows[0].at(-1), '首批重点跟进', '商品导出 ESM 行需要包含商品备注');
   assert.strictEqual(rows[2][0], '', '商品导出 ESM 未关联账号商品导出账号列应为空');
 
   assert.deepStrictEqual(

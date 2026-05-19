@@ -17,6 +17,7 @@ const reactAppShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'lay
 const reactAnalyticsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'AnalyticsApp.tsx'), 'utf8');
 const reactAnalyticsRouteSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'AnalyticsRoute.tsx'), 'utf8');
 const reactChartOptionsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'chartOptions.ts'), 'utf8');
+const analyticsFirestoreSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'provider-firestore.ts'), 'utf8');
 const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.ts'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const styleSource = readReactStyleSource(root);
@@ -183,8 +184,38 @@ assert.match(
 
 assert.doesNotMatch(
   [srcParserSource, srcAnalyzerSource, reactAnalyticsSource, reactAnalyticsRouteSource, reactChartOptionsSource].join('\n'),
-  /\bfetch\s*\(|XMLHttpRequest|sendBeacon|firebase|localStorage\.setItem/,
-  '数据分析相关模块不应上传或持久化用户 Excel 数据'
+  /\bfetch\s*\(|XMLHttpRequest|sendBeacon|localStorage\.setItem/,
+  '数据分析相关模块不应上传或写浏览器持久化用户 Excel 数据'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /AnalyticsProviderFirestore[\s\S]*pullAccounts\(\)[\s\S]*listSavedAnalyses\(\)[\s\S]*pullAnalysisBySnapshot\([\s\S]*saveAnalysis\(next,\s*\{\s*accountName,\s*filename\s*\}\)[\s\S]*analytics-sync-status/,
+  'React 数据分析需要按账号保存到用户自己的 Firestore、恢复历史快照并显示同步状态'
+);
+
+assert.match(
+  analyticsFirestoreSource,
+  /analytics_snapshots[\s\S]*analytics_records[\s\S]*buildAnalyticsSnapshotDoc[\s\S]*buildAnalyticsRecordDoc[\s\S]*listSavedAnalyses[\s\S]*pullAnalysisBySnapshot[\s\S]*pullLatestAnalysis[\s\S]*saveAnalysis/,
+  '数据分析 Firestore provider 需要保存快照和商品明细，并支持列出和恢复历史分析'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /isPermissionDenied\(error\)[\s\S]*TKFirestoreConnection\.notifyRulesUpdateNeeded\(message\)/,
+  '数据分析权限不足时需要走全局 Firestore 规则弹窗'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /AccountTabsBar[\s\S]*id="analytics-acc-tabs"[\s\S]*allCount=\{savedSnapshots\.length\}[\s\S]*items=\{accountTabItems\}/,
+  '数据分析需要和其他模块一样显示账号标签'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /connected = !!projectId[\s\S]*connected \? \([\s\S]*<AccountTabsBar[\s\S]*connected && !permissionBlocked \? \([\s\S]*id="analytics-file-input"[\s\S]*id="analytics-connect-state"/,
+  '数据分析未连接数据库时不应显示账号标签和导入流量表入口'
 );
 
 assert.match(
@@ -255,8 +286,26 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /from '@\/components\/ui\/alert'[\s\S]*from '@\/components\/ui\/badge'[\s\S]*from '@\/components\/ui\/card'|from '@\/components\/ui\/card'[\s\S]*from '@\/components\/ui\/badge'[\s\S]*from '@\/components\/ui\/alert'/,
-  '数据分析页面容器、状态标签和本地解析提示需要使用共享 Alert/Badge/Card primitives'
+  /formatSnapshotOption[\s\S]*filterSnapshotsByAccount[\s\S]*pullAnalysisBySnapshot[\s\S]*id="analytics-snapshot-select"/,
+  '数据分析页面需要支持按账号切换多个历史流量表快照'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /tableWrapClass = 'analytics-table-wrap max-h-\[620px\] overflow-auto'[\s\S]*sort\(\(a, b\) => b\.gmv - a\.gmv/,
+  '数据分析商品明细需要在滚动容器中展示全部商品'
+);
+
+assert.doesNotMatch(
+  reactAnalyticsSource,
+  /slice\(0,\s*50\)|仅展示前 50/,
+  '数据分析商品明细不应再固定只展示前 50 条'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /from '@\/components\/ui\/badge'[\s\S]*from '@\/components\/ui\/button'[\s\S]*from '@\/components\/ui\/card'[\s\S]*from '@\/components\/ui\/dialog'/,
+  '数据分析页面容器、状态标签、说明入口和说明弹窗需要使用共享 primitives'
 );
 
 assert.match(
@@ -273,8 +322,20 @@ assert.doesNotMatch(
 
 assert.match(
   reactAnalyticsSource,
-  /analyticsCardClass = 'analytics-chart-card[\s\S]*mutedChipClass = cn\(analyticsChipClass, 'muted'\)[\s\S]*<Card className=\{cn\(analyticsCardClass, 'analytics-overview-card'\)\}[\s\S]*<Badge className=\{mutedChipClass\}[\s\S]*<Alert variant="info" className=\{uploadPrivacyClass\}[\s\S]*<Card id="analytics-empty" className=\{emptyCardClass\}/,
-  '数据分析页面应在保留现有 class 的前提下，把卡片、标签和提示容器收敛到 primitives'
+  /analyticsCardClass = 'analytics-chart-card[\s\S]*mutedChipClass = cn\(analyticsChipClass, 'muted'\)[\s\S]*<Card className=\{cn\(analyticsCardClass, 'analytics-overview-card'\)\}[\s\S]*<Badge className=\{mutedChipClass\}[\s\S]*id="analytics-help"[\s\S]*<Card id="analytics-empty" className=\{emptyCardClass\}/,
+  '数据分析页面应在保留现有 class 的前提下，把卡片、标签和说明入口收敛到 primitives'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /import \{ refreshButtonClass, statusStripClass, statusStripLeftClass, storageHelpButtonClass, syncStatusClass \} from '@\/components\/ui\/status-strip';[\s\S]*<div className=\{statusStripLeftClass\}>[\s\S]*id="analytics-user"[\s\S]*id="analytics-sync-status"[\s\S]*id="analytics-refresh"[\s\S]*id="analytics-help"[\s\S]*<\/div>\s*<\/div>\s*\{connected \? \(/,
+  '数据分析刷新和说明入口需要紧跟连接和同步状态，不能放到状态栏最右侧'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /function AnalyticsHelpDialog[\s\S]*<Dialog id="analytics-help-modal"[\s\S]*<HelpStack>[\s\S]*<DialogActions>/,
+  '数据分析说明需要使用共享 Dialog 和 HelpStack primitives'
 );
 
 assert.match(
@@ -291,8 +352,8 @@ assert.match(
 
 assert.match(
   readmeSource,
-  /数据分析模块只在浏览器内读取 Excel 文件/,
-  'README 需要说明数据分析文件只在浏览器本地解析'
+  /数据分析模块只在浏览器内读取 Excel 原始文件[\s\S]*分析快照会写入用户自己的 Firebase Firestore/,
+  'README 需要说明数据分析原始文件本地解析，分析快照写入用户自己的 Firestore'
 );
 
 const rows = [
@@ -429,6 +490,18 @@ const rows = [
     '需要给高 GMV 商品生成运营诊断'
   );
   assert.strictEqual(typeof analyzerModule.TKAnalyticsAnalyzer.diagnoseProduct, 'function', 'analytics analyzer ESM 模块需要保留命名空间导出');
+
+  const analyticsProvider = await import(`file://${path.join(root, 'src', 'analytics', 'provider-firestore.ts')}`);
+  const snapshotDoc = analyticsProvider.buildAnalyticsSnapshotDoc(analysisByModule, {
+    accountName: 'NOMA',
+    filename: 'traffic.xlsx',
+    nowIso: '2026-05-19T00:00:00.000Z'
+  });
+  assert.strictEqual(snapshotDoc.accountName, 'NOMA', '数据分析快照需要保存账号名');
+  assert.strictEqual(snapshotDoc.recordCount, 2, '数据分析快照需要记录商品数量');
+  assert.match(snapshotDoc.id, /2026-04-27_~_2026-05-03_traffic_xlsx/, '数据分析快照 ID 需要包含周期和文件名');
+  const recordDoc = analyticsProvider.buildAnalyticsRecordDoc(snapshotDoc.id, analysisByModule.records[0], snapshotDoc.updatedAt);
+  assert.strictEqual(recordDoc.snapshotId, snapshotDoc.id, '数据分析商品明细需要关联快照 ID');
 
   console.log('analytics module contract ok');
 })().catch(error => {

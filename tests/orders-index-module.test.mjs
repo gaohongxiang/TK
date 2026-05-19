@@ -22,9 +22,14 @@ assert.doesNotMatch(
 
 assert.match(
   ordersPageSource,
-  /OrderTrackerProviderFirestore[\s\S]*ProductLibraryProviderFirestore[\s\S]*deriveDisplayedOrders[\s\S]*id="ot-modal"[\s\S]*id="ot-add-acc-modal"[\s\S]*id="ot-export-modal"[\s\S]*tk-products-changed/,
+  /OrderTrackerProviderFirestore[\s\S]*ProductLibraryProviderFirestore[\s\S]*deriveDisplayedOrders/,
   '完整 React SPA 重建后订单页需要由 React 组件直接接管数据、表格和弹窗'
 );
+
+assert.match(ordersPageSource, /id="ot-modal"/, '订单编辑弹窗应由 React 订单页渲染');
+assert.match(ordersPageSource, /modalId="ot-add-acc-modal"/, '订单新增账号弹窗应由 React 订单页渲染');
+assert.match(ordersPageSource, /id="ot-export-modal"/, '订单导出弹层应由 React 订单页渲染');
+assert.match(ordersPageSource, /tk-products-changed/, '订单页应监听商品资料变化');
 
 assert.doesNotMatch(
   htmlSource,

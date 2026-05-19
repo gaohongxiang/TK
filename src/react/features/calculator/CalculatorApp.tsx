@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { calcLegacyRow, calcPricingRow, calcSalePrice, deriveLegacyOrigPrice, derivePricingOrigPrice } from '../../../calc/formulas.ts';
 import { ensureGlobalSettingsStore } from '../../../global-settings.ts';
 import { DEFAULT_CONSTANTS, SHIPPING_RULES, computeCalculatedShippingCost, computeShippingQuote } from '../../../shipping-core.ts';
@@ -159,6 +159,17 @@ function finalShippingCost(state: CalcState, quote = quoteForPricing(state)) {
   } as Parameters<typeof computeCalculatedShippingCost>[0]);
 }
 
+function syncCalculatedShipping(state: CalcState, { force = false }: { force?: boolean } = {}): CalcState {
+  const finalCost = finalShippingCost(state);
+  if (finalCost === null || state.overseasShippingNew === finalCost) return state;
+  if (!force && state.shippingSourceNew === 'manual' && state.overseasShippingNew > 0) return state;
+  return {
+    ...state,
+    overseasShippingNew: finalCost,
+    shippingSourceNew: 'calculator'
+  };
+}
+
 function chargeRuleText(quote: ReturnType<typeof computeShippingQuote>) {
   if (quote.actualWeightKg <= 0) return '输入实重和尺寸后显示计费依据';
   if (quote.volumeWeightKg === null) return '尺寸未填完整，暂按实重计费';
@@ -224,7 +235,7 @@ const calcHelpButtonClass = 'calc-help-icon h-7 w-7 shrink-0 rounded-full border
 const knownSaleItemClass = 'known-sale-item flex flex-col justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--panel2)] px-3.5 py-3';
 const knownSaleLabelClass = 'label text-[11px] uppercase tracking-[1px] text-[var(--muted)]';
 const knownSaleValueClass = 'value text-xl font-bold leading-[1.2] text-[var(--text)] tabular-nums max-[768px]:text-lg';
-const reviewFormulaClass = 'review-formula mt-3.5 grid gap-[3px] border-t border-dashed border-[var(--border)] pt-3 text-[11.5px] leading-[1.35] text-[var(--muted)] tabular-nums';
+const reviewFormulaClass = 'review-formula mt-3.5 grid gap-[3px] text-[11px] leading-[1.35] text-[var(--muted)] tabular-nums [overflow-wrap:anywhere]';
 const shippingFieldLabelClass = 'min-h-0 text-xs';
 const shippingControlClass = 'min-h-10 rounded-[9px] px-2.5 py-2.5 text-[13.5px]';
 const shippingSummaryFieldLabelClass = 'text-[11px]';
@@ -246,12 +257,12 @@ const shippingMetricRuleClass = 'pricing-ship-inline-rule whitespace-normal text
 const shippingPriceButtonClass = 'pricing-ship-inline-price pricing-ship-inline-price-clickable expense flex w-full min-w-0 flex-col items-center justify-center gap-1.5 rounded-[10px] border-0 bg-transparent px-1 py-0.5 transition-[background,box-shadow,opacity] hover:bg-[rgba(240,138,134,.08)] disabled:cursor-not-allowed disabled:opacity-50';
 const shippingPriceValueClass = 'v text-center text-xl font-bold text-[var(--expense)] tabular-nums';
 const shippingFormulaClass = 'pricing-ship-inline-formula mt-2.5 whitespace-normal text-center text-[9px] leading-[1.35] text-[var(--muted)] tabular-nums [overflow-wrap:anywhere]';
-const calcFormulaBlockClass = 'calc-formula-block mt-2.5 border-t border-dashed border-[var(--border)] pt-2 text-[var(--muted)]';
+const calcFormulaBlockClass = 'calc-formula-block mt-3 text-[var(--muted)]';
 const calcFormulaTitleClass = 'calc-formula-title mb-1 text-[9.5px] uppercase tracking-[.6px] opacity-70';
-const calcFormulaListClass = 'calc-formula-list flex flex-col gap-[3px] font-mono text-[10.5px] leading-[1.28]';
-const calcResultTableClass = 'calc-result-table mt-1.5 w-full border-collapse border-0 text-sm tabular-nums [&_td]:border-x-0 [&_td]:border-t-0 [&_th]:border-x-0 [&_th]:border-t-0 [&_tbody_tr:last-child_td]:border-b-0 max-[640px]:text-xs';
-const calcResultHeadClass = 'px-2.5 py-[11px] text-[11.5px] max-[640px]:px-1 max-[640px]:py-[9px] max-[640px]:text-[10.5px]';
-const calcResultCellClass = 'px-2.5 py-[11px] max-[640px]:px-1 max-[640px]:py-[9px]';
+const calcFormulaListClass = 'calc-formula-list flex flex-col gap-[3px] font-mono text-[10.5px] leading-[1.32] [overflow-wrap:anywhere]';
+const calcResultTableClass = 'calc-result-table mt-2 w-full border-collapse border-0 text-[14.5px] tabular-nums [&_td]:border-x-0 [&_td]:border-t-0 [&_th]:border-x-0 [&_th]:border-t-0 [&_tbody_tr:last-child_td]:border-b-0 max-[640px]:text-[13px]';
+const calcResultHeadClass = 'px-[11px] py-[11.5px] text-[11.5px] max-[640px]:px-1.5 max-[640px]:py-2.5 max-[640px]:text-[10.5px]';
+const calcResultCellClass = 'px-[11px] py-[11.5px] max-[640px]:px-1.5 max-[640px]:py-2.5';
 const calcResultAnchorCellClass = 'bg-[linear-gradient(90deg,rgba(110,168,255,.14),transparent)] font-semibold';
 const calcResultOrigCellClass = 'bg-[linear-gradient(180deg,rgba(138,255,207,.16),rgba(138,255,207,.08))] font-semibold';
 const calcResultOrigStrongCellClass = cn(calcResultOrigCellClass, 'font-bold text-[var(--accent2)]');
@@ -313,7 +324,7 @@ function ShippingInline({
     <div className={shippingInlineClass}>
       <div className={shippingTitleRowClass}>
         <div className={shippingTitleClass}>海外运费计算器</div>
-        <div className={shippingTipClass}>点击计算结果可回填到海外运费框</div>
+        <div className={shippingTipClass}>计算结果自动回填到海外运费框</div>
         <div className={shippingAlertClass} id={`shipChargeReason${suffix}`}>{quote.alerts[0]?.text || ''}</div>
       </div>
       <div className={shippingInputsClass}>
@@ -397,7 +408,11 @@ function PricingNewPanel({
     discount
   }));
   const origRow = calcPricingRow({ state: { ...state, anchorNew: anchor }, totalCost, origPrice, discount: 1 });
-  const updateNumber = (key: keyof CalcState, value: string) => setState(prev => ({ ...prev, [key]: toNumber(value) }));
+  const updateNumber = (key: keyof CalcState, value: string) => setState(prev => ({
+    ...prev,
+    [key]: toNumber(value),
+    ...(key === 'overseasShippingNew' ? { shippingSourceNew: 'manual' } : {})
+  }));
   const updateCargo = (value: CargoType) => setState(prev => ({ ...prev, shipCargoTypeNew: value }));
   const importShipping = () => {
     const finalCost = finalShippingCost(state);
@@ -484,10 +499,11 @@ function PricingNewPanel({
               <div>海外运费 =（基础费 + 每千克重量费 × 计费重 − 用户承担）× 运费倍率 ÷ 汇率 + 贴单费</div>
               <div>总费用 = 采购价 + 海外运费</div>
               <div>日元售价 = 原价 × 折扣 ×（1 − 平台手续费率）</div>
-              <div>达人佣金 = 日元售价 × 达人佣金率</div>
-              <div>人民币到手 =（日元售价 − 达人佣金）÷ 汇率</div>
+              <div>达人佣金 = 日元售价 ÷ 汇率 × 达人佣金率</div>
+              <div>人民币到手 = 日元售价 ÷ 汇率 − 达人佣金</div>
               <div>利润 = 人民币到手 − 总费用</div>
               <div>利润率 = 人民币到手 ÷ 总费用</div>
+              <div>原价反推 = 总费用 × 目标利润率 × 汇率 ÷ [基准折扣 × (1 − 平台手续费率) × (1 − 达人佣金率)]</div>
             </div>
           </div>
         </Card>
@@ -501,7 +517,11 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
   const anchor = nearestDiscount(discounts, state.anchor);
   const origPrice = deriveLegacyOrigPrice({ ...state, anchor });
   const rows = discounts.slice().sort((a, b) => a - b).map(discount => calcLegacyRow(state, origPrice, discount));
-  const updateNumber = (key: keyof CalcState, value: string) => setState(prev => ({ ...prev, [key]: toNumber(value) }));
+  const updateNumber = (key: keyof CalcState, value: string) => setState(prev => ({
+    ...prev,
+    [key]: toNumber(value),
+    ...(key === 'overseasShippingNew' ? { shippingSourceNew: 'manual' } : {})
+  }));
   return (
     <div className={calcPanelClass} id="calc-panel-pricing">
       <div className={calcLayoutClass}>
@@ -563,7 +583,11 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
 function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch<SetStateAction<CalcState>> }) {
   const totalCost = state.costNew + state.overseasShippingNew;
   const result = calcSalePrice({ state, totalCost });
-  const updateNumber = (key: keyof CalcState, value: string) => setState(prev => ({ ...prev, [key]: toNumber(value) }));
+  const updateNumber = (key: keyof CalcState, value: string) => setState(prev => ({
+    ...prev,
+    [key]: toNumber(value),
+    ...(key === 'overseasShippingNew' ? { shippingSourceNew: 'manual' } : {})
+  }));
   const importShipping = () => {
     const finalCost = finalShippingCost(state);
     if (finalCost === null) return;
@@ -589,7 +613,7 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
           </div>
           <div className={calcFormSectionClass}>
             <FormRow>
-              <Field id="creatorRateReview" label="达人佣金率（%）" value={state.creatorRateNew} onChange={value => updateNumber('creatorRateNew', value)} />
+              <Field id="creatorRateReview" label="达人佣金率（%）" inputClassName="min-h-[48px] text-[18px] max-[640px]:text-[18px]" value={state.creatorRateNew} onChange={value => updateNumber('creatorRateNew', value)} />
               <Field id="saleCommissionReview" label="达人佣金 ¥" className="expense-field" value={result ? result.creatorCommission.toFixed(2) : ''} readOnly />
             </FormRow>
           </div>
@@ -615,8 +639,8 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
           </div>
           <div className={reviewFormulaClass}>
             <div>总费用 = 采购价 + 海外运费</div>
-            <div>达人佣金 = 实际售价 × 达人佣金率</div>
-            <div>人民币到手 =（实际售价 − 达人佣金）÷ 日元汇率</div>
+            <div>达人佣金 = 实际售价 ÷ 日元汇率 × 达人佣金率</div>
+            <div>人民币到手 = 实际售价 ÷ 日元汇率 − 达人佣金</div>
             <div>利润 = 人民币到手 − 总费用</div>
             <div>利润率 = 人民币到手 ÷ 总费用</div>
           </div>
@@ -706,6 +730,32 @@ function CalculatorApp() {
       : next;
   });
   const [helpOpen, setHelpOpen] = useState(false);
+  const shippingInputSignatureRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const signature = [
+      state.shipCargoTypeNew,
+      state.shipActualWeightNew,
+      state.shipLengthNew,
+      state.shipWidthNew,
+      state.shipHeightNew,
+      state.rateNew,
+      state.shippingMultiplierNew,
+      state.labelFeeNew
+    ].join('|');
+    const force = shippingInputSignatureRef.current !== null && shippingInputSignatureRef.current !== signature;
+    setState(previous => syncCalculatedShipping(previous, { force }));
+    shippingInputSignatureRef.current = signature;
+  }, [
+    state.shipCargoTypeNew,
+    state.shipActualWeightNew,
+    state.shipLengthNew,
+    state.shipWidthNew,
+    state.shipHeightNew,
+    state.rateNew,
+    state.shippingMultiplierNew,
+    state.labelFeeNew
+  ]);
 
   useEffect(() => {
     saveState(state);

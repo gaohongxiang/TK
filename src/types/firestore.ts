@@ -17,6 +17,7 @@ type HydratedFirebaseConfig = {
 };
 
 type FirebaseCompatDocSnapshot<TData extends Record<string, unknown> = Record<string, unknown>> = {
+  id?: string;
   exists?: boolean;
   data: () => TData;
 };
@@ -33,6 +34,7 @@ type FirebaseCompatDocRef = {
 
 type FirebaseCompatCollectionRef = {
   orderBy: (field: string, direction?: string) => FirebaseCompatCollectionRef;
+  limit?: (count: number) => FirebaseCompatCollectionRef;
   get: (options?: unknown) => Promise<FirebaseCompatQuerySnapshot>;
   doc: (id: string) => FirebaseCompatDocRef;
 };
@@ -54,6 +56,9 @@ type FirebaseCompatApp = {
   firestore: () => FirebaseCompatFirestore;
   __tkProductsFirestoreConfigured?: boolean;
   __tkOrdersFirestoreConfigured?: boolean;
+  __tkCollectionFirestoreConfigured?: boolean;
+  __tkAnalyticsFirestoreConfigured?: boolean;
+  __tkRulesCheckFirestoreConfigured?: boolean;
 };
 
 type FirebaseCompatNamespace = {

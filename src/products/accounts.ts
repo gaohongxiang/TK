@@ -1,5 +1,3 @@
-import type { ProductRecord } from './types.ts';
-
 function normalizeAccountName(value: unknown): string {
   return String(value || '').trim();
 }
@@ -21,18 +19,7 @@ function uniqueAccounts(values: unknown[] = []): string[] {
   return result;
 }
 
-function getAllProductAccounts({ accounts = [], products = [] }: {
-  accounts?: unknown[];
-  products?: ProductRecord[];
-} = {}): string[] {
-  return uniqueAccounts([
-    ...accounts,
-    ...products.map(product => product?.accountName)
-  ]);
-}
-
 const ProductLibraryAccounts = {
-  getAllProductAccounts,
   normalizeAccountName,
   toAccountSlot,
   uniqueAccounts
@@ -40,7 +27,6 @@ const ProductLibraryAccounts = {
 
 export {
   ProductLibraryAccounts,
-  getAllProductAccounts,
   normalizeAccountName,
   toAccountSlot,
   uniqueAccounts

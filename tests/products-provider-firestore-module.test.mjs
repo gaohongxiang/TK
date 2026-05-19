@@ -160,6 +160,7 @@ const configText = `const firebaseConfig = {
       tkId: 'TK-001',
       accountName: '账号A',
       name: '雨衣',
+      note: '售后风险低',
       imageUrl: '',
       link1688: 'https://detail.1688.com/item.htm?id=1',
       defaults: {
@@ -182,6 +183,7 @@ const configText = `const firebaseConfig = {
       nowIso: () => '2026-04-24T10:00:00.000Z'
     });
   assert.equal(productDoc.tkId, 'TK-001', '商品 provider ESM 需要构造商品 doc TK ID');
+  assert.equal(productDoc.note, '售后风险低', '商品 provider ESM 写入 Firestore 时需要保存商品备注');
   assert.equal(productDoc.defaults.cargoType, 'special', '商品 provider ESM 需要构造 defaults');
   assert.equal(productDoc.defaults.lengthCm, 20.05, '商品 provider ESM 需要按两位小数保存尺寸');
   assert.equal(productDoc.defaults.estimatedShippingFee, 17.03, '商品 provider ESM 需要按两位小数保存运费');
@@ -189,6 +191,7 @@ const configText = `const firebaseConfig = {
   assert.equal(productDoc.skus[0].useProductDefaults, true, '商品 provider ESM 需要保留 SKU 默认值标记');
 
   const normalized = module.normalizePulledProduct(productDoc);
+  assert.equal(normalized.note, '售后风险低', '商品 provider ESM 拉取 Firestore 时需要恢复商品备注');
   assert.equal(normalized.defaults.estimatedShippingFee, '17.03', '商品 provider ESM 需要把 Firestore 数值归一化为表单字符串');
   assert.equal(normalized.skus[0].skuId, 'S-1', '商品 provider ESM 需要归一化 SKU 子结构');
 

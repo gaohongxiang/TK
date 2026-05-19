@@ -117,7 +117,7 @@ assert.match(
 
 assert.match(
   reactAppSource,
-  /id="view-orders"[\s\S]*<OrdersPage \/>/,
+  /id="view-orders"[\s\S]*<OrdersPage active=\{active === 'orders'\} \/>/,
   'React App 需要直接渲染订单页面外壳'
 );
 

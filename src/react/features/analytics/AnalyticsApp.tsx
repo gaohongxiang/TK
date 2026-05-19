@@ -1,18 +1,31 @@
 import ReactEChartsCoreModule from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
-import type { EChartsCoreOption } from 'echarts/core';
+import type { EChartsCoreOption, EChartsType } from 'echarts/core';
 import { FunnelChart, PieChart, ScatterChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TitleComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { Upload } from 'lucide-react';
-import { useMemo, useState, type ComponentType, type CSSProperties } from 'react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { HelpCircle, RefreshCw, Upload } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { HelpItem, HelpStack } from '@/components/ui/help-stack';
 import { PageHero } from '@/components/ui/page-hero';
+import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, TableViewport } from '@/components/ui/table-tools';
+import { ModuleListState } from '@/components/ui/module-list-state';
+import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
+import { refreshButtonClass, statusStripClass, statusStripLeftClass, storageHelpButtonClass, syncStatusClass } from '@/components/ui/status-strip';
 import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsRecord, AnalyticsXlsx } from '../../../analytics/types';
+import { AnalyticsProviderFirestore, type AnalyticsProviderSnapshotSummary } from '../../../analytics/provider-firestore.ts';
+import { TKFirestoreConnection } from '../../../firestore-connection.ts';
+import { normalizeAccountName, uniqueAccounts } from '../../../products/accounts.ts';
+import {
+  formatFirestoreRulesUpdateMessage,
+  isPermissionDenied
+} from '../../../firestore-rules-compatibility.ts';
 import { buildFunnelStages, buildOpportunityScatterOption, buildOverviewOption, DIAGNOSIS_COLORS } from './chartOptions';
 import { formatInteger, formatPercent, formatYen, shortenText } from './format';
 import { cn } from '@/lib/utils';
@@ -23,13 +36,34 @@ type ReactEChartsCoreProps = {
   echarts: typeof echarts;
   className?: string;
   option: EChartsCoreOption;
+  onChartReady?: (chart: EChartsType) => void;
+  style?: CSSProperties;
 };
 
 const ReactEChartsCoreModuleValue = ReactEChartsCoreModule as unknown as { default?: ComponentType<ReactEChartsCoreProps> } & ComponentType<ReactEChartsCoreProps>;
 const ReactEChartsCore = ReactEChartsCoreModuleValue.default ?? ReactEChartsCoreModuleValue;
 
-function ReactECharts(props: { className?: string; option: EChartsCoreOption }) {
-  return <ReactEChartsCore echarts={echarts} {...props} />;
+function ReactECharts(props: { className?: string; optionKey?: string; option: EChartsCoreOption }) {
+  const chartRef = useRef<EChartsType | null>(null);
+  const { className, option, optionKey } = props;
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return undefined;
+    const tick = window.setTimeout(() => chart.resize(), 0);
+    return () => window.clearTimeout(tick);
+  }, [optionKey, option]);
+  return (
+    <ReactEChartsCore
+      echarts={echarts}
+      className={className}
+      option={option}
+      onChartReady={chart => {
+        chartRef.current = chart;
+        window.setTimeout(() => chart.resize(), 0);
+      }}
+      style={{ height: '100%', minHeight: 'inherit', width: '100%' }}
+    />
+  );
 }
 
 type AnalyticsCssVars = CSSProperties & Record<`--${string}`, string | number>;
@@ -41,18 +75,20 @@ type AnalyticsAppProps = {
   onToast?: (message: string, type?: 'ok' | 'error') => void;
 };
 
-const analyticsShellClass = 'analytics-react-shell grid gap-4';
-const uploadCardClass = 'analytics-upload-card analytics-react-upload-card mb-4 border-[color-mix(in_srgb,var(--accent2)_24%,var(--border))]';
-const uploadGridClass = 'analytics-upload-grid grid grid-cols-[minmax(0,1fr)_auto] items-center gap-[18px] max-[860px]:grid-cols-1 max-[640px]:gap-3.5';
-const uploadCopyTextClass = 'm-0 max-w-[680px] text-[13px] leading-[1.65] text-[var(--muted)]';
-const uploadPrivacyClass = 'analytics-privacy-strip mt-3 flex flex-wrap gap-2';
+const analyticsShellClass = 'analytics-react-shell grid gap-3.5';
+const analyticsControlCardClass = 'analytics-control-card mb-2 grid gap-3 border-[color-mix(in_srgb,var(--accent2)_24%,var(--border))] p-4';
+const analyticsUploadRowClass = 'analytics-upload-card analytics-react-upload-card grid grid-cols-[minmax(0,1fr)_minmax(240px,320px)] items-center gap-3.5 max-[860px]:grid-cols-1 max-[640px]:gap-3';
+const uploadSummaryClass = 'analytics-upload-summary flex min-w-0 flex-wrap items-center gap-2.5';
+const uploadCopyTitleClass = 'mb-0 mr-1 text-[13px] font-semibold uppercase tracking-[.3px] text-[var(--muted)]';
+const uploadToolsClass = 'analytics-upload-tools ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 max-[860px]:ml-0 max-[860px]:justify-start max-[640px]:w-full';
 const analyticsChipClass = 'analytics-chip inline-flex min-h-[26px] items-center whitespace-nowrap rounded-full border border-[color-mix(in_srgb,var(--border)_82%,transparent)] bg-[color-mix(in_srgb,var(--panel2)_80%,transparent)] px-2.5 text-xs font-semibold text-[var(--muted)]';
 const privacyPrimaryChipClass = cn(analyticsChipClass, 'border-[color-mix(in_srgb,var(--accent2)_42%,var(--border))] bg-[color-mix(in_srgb,var(--accent2)_13%,var(--panel))] text-[color-mix(in_srgb,var(--accent2)_72%,var(--text))]');
-const uploadActionClass = 'analytics-upload-action relative min-w-[220px] max-[860px]:w-[min(320px,100%)] max-[640px]:w-full max-[640px]:min-w-0';
+const uploadActionClass = 'analytics-upload-action relative grid min-w-0 gap-1.5 max-[640px]:w-full';
 const filePickerClass = 'analytics-file-picker inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-[9px] rounded-xl border border-[color-mix(in_srgb,var(--accent)_54%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_13%,var(--panel))] px-4 text-[13px] font-bold text-[color-mix(in_srgb,var(--accent)_76%,white)] transition-[transform,border-color,background-color] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--accent)_72%,white)] hover:bg-[color-mix(in_srgb,var(--accent)_18%,var(--panel))]';
 const fileIconClass = 'analytics-file-icon inline-flex h-[18px] w-[18px] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:fill-none [&_svg]:stroke-current';
 const fileInputClass = 'pointer-events-none absolute h-px w-px overflow-hidden opacity-0';
-const fileMetaClass = 'analytics-file-meta mt-[9px] text-center text-xs text-[var(--muted)]';
+const fileMetaClass = 'analytics-file-meta min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-center text-xs text-[var(--muted)]';
+const snapshotSelectClass = 'analytics-snapshot-select h-8 min-h-8 w-[240px] max-w-full rounded-full bg-[rgba(255,255,255,.035)] py-1 pl-3 pr-8 text-xs max-[640px]:w-full';
 const emptyCardClass = 'analytics-empty analytics-react-empty grid min-h-[180px] place-items-center border-dashed bg-[color-mix(in_srgb,var(--panel2)_38%,transparent)]';
 const analyticsMainClass = 'analytics-main analytics-react-main grid gap-4';
 const kpiGridClass = 'analytics-kpi-grid grid grid-cols-4 gap-3 max-[860px]:grid-cols-2 max-[640px]:grid-cols-1';
@@ -66,7 +102,7 @@ const analyticsCardClass = 'analytics-chart-card min-w-0';
 const analyticsTableCardClass = 'analytics-table-card min-w-0';
 const sectionHeadClass = 'analytics-section-head mb-3.5 flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-2';
 const mutedChipClass = cn(analyticsChipClass, 'muted');
-const chartSlotClass = 'analytics-react-chart min-w-0';
+const chartSlotClass = 'analytics-react-chart min-w-0 [&_.echarts-for-react]:h-full [&_.echarts-for-react]:min-h-[inherit] [&_.echarts-for-react]:w-full';
 const overviewChartWrapClass = 'analytics-react-overview-chart min-w-0';
 const overviewChartClass = cn(chartSlotClass, 'analytics-react-overview h-[332px] rounded-xl border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_32%,transparent),transparent),color-mix(in_srgb,var(--panel2)_18%,transparent)] px-1.5 pb-1 pt-2.5 max-[640px]:h-[250px]');
 const funnelSummaryClass = 'analytics-react-funnel-summary mt-2.5 grid grid-cols-4 gap-2 max-[860px]:grid-cols-2 max-[640px]:grid-cols-1';
@@ -98,7 +134,7 @@ const diagnosisCountClass = 'text-[13px] text-[var(--muted)]';
 const diagnosisCopyClass = 'm-0 text-xs leading-[1.55] text-[var(--muted)]';
 const diagnosisProductsClass = 'analytics-diagnosis-products flex flex-wrap gap-1.5';
 const diagnosisProductPillClass = 'inline-flex min-h-6 max-w-full items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-[7px] bg-[color-mix(in_srgb,var(--panel)_76%,transparent)] px-2 text-[11.5px] text-[color-mix(in_srgb,var(--text)_78%,var(--muted))]';
-const tableWrapClass = 'analytics-table-wrap max-h-[560px]';
+const tableWrapClass = 'analytics-table-wrap max-h-[620px] overflow-auto';
 const detailTableClass = 'analytics-detail-table mt-1.5 w-full border-collapse text-sm max-[640px]:text-[13px]';
 const detailHeadClass = 'px-2.5 py-[11px] text-[11.5px] max-[640px]:px-1.5 max-[640px]:py-[9px] max-[640px]:text-[10.5px]';
 const detailFirstHeadClass = cn(detailHeadClass, 'min-w-[260px] text-left max-[640px]:min-w-[220px]');
@@ -142,6 +178,36 @@ function getSheetRows(workbook: ReturnType<AnalyticsXlsx['read']>, xlsx: Analyti
     raw: false,
     defval: ''
   }) as unknown[][];
+}
+
+function formatAnalyticsError(error: unknown, fallback = '数据分析同步失败') {
+  const message = error instanceof Error ? error.message : String(error || '');
+  if (isPermissionDenied(error)) {
+    return formatFirestoreRulesUpdateMessage('analytics', [
+      'analytics_snapshots.read',
+      'analytics_snapshots.write',
+      'analytics_records.read',
+      'analytics_records.write'
+    ]);
+  }
+  return message || fallback;
+}
+
+function handleAnalyticsSyncError(error: unknown, fallback = '数据分析同步失败') {
+  const message = formatAnalyticsError(error, fallback);
+  if (isPermissionDenied(error)) TKFirestoreConnection.notifyRulesUpdateNeeded(message);
+  return message;
+}
+
+function formatSnapshotOption(snapshot: AnalyticsProviderSnapshotSummary) {
+  const period = snapshot.period || '未知周期';
+  const name = snapshot.filename || '已保存分析';
+  return `${period} · ${name} · ${snapshot.recordCount} 个商品`;
+}
+
+function filterSnapshotsByAccount(snapshots: AnalyticsProviderSnapshotSummary[], activeAccount: string) {
+  if (activeAccount === '__all__') return snapshots;
+  return snapshots.filter(snapshot => normalizeAccountName(snapshot.accountName) === activeAccount);
 }
 
 function KpiGrid({ analysis }: { analysis: AnalyticsAnalysis }) {
@@ -222,7 +288,7 @@ function DiagnosisCards({ records }: { records: AnalyticsRecord[] }) {
 }
 
 function DetailTable({ records }: { records: AnalyticsRecord[] }) {
-  const rows = useMemo(() => [...records].sort((a, b) => b.gmv - a.gmv || b.exposureTotal - a.exposureTotal).slice(0, 50), [records]);
+  const rows = useMemo(() => [...records].sort((a, b) => b.gmv - a.gmv || b.exposureTotal - a.exposureTotal), [records]);
   return (
     <Table className={detailTableClass}>
       <TableHeader>
@@ -303,8 +369,28 @@ function FunnelSummary({ stages }: { stages: AnalyticsFunnelStage[] }) {
   );
 }
 
+function AnalyticsHelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  return (
+    <Dialog id="analytics-help-modal" open={open} titleId="analytics-help-title" onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[560px]">
+        <DialogTitle id="analytics-help-title">数据分析说明</DialogTitle>
+        <HelpStack>
+          <HelpItem label="导入">选择 TikTok Shop 导出的商品流量详情 Excel。原始 Excel 只在浏览器本地解析，不上传到本站服务器。</HelpItem>
+          <HelpItem label="保存">解析后的分析快照和商品明细会保存到你自己的 Firestore。刷新页面后会自动恢复最近一次分析。</HelpItem>
+          <HelpItem label="多周数据">每次导入都会生成一个新的分析快照。顶部下拉框可以切换以前导入过的周期。</HelpItem>
+          <HelpItem label="权限">如果 Firestore 规则没有发布到最新版本，页面会弹出统一规则提示，可直接复制最新规则。</HelpItem>
+        </HelpStack>
+        <DialogActions>
+          <Button variant="primary" onClick={() => onOpenChange(false)}>知道了</Button>
+        </DialogActions>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
   const funnelStages = buildFunnelStages(analysis);
+  const chartKey = `${analysis.period}|${analysis.records.length}|${analysis.kpis.totalGmv}|${analysis.kpis.totalExposure}`;
   return (
     <section className={analyticsMainClass} data-react-analytics-ready="true">
       <KpiGrid analysis={analysis} />
@@ -316,7 +402,7 @@ function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
           </div>
           <div id="analytics-channel-share" className={overviewChartWrapClass}>
             <ChannelSummary analysis={analysis} />
-            <ReactECharts className={overviewChartClass} option={buildOverviewOption(analysis)} />
+            <ReactECharts className={overviewChartClass} option={buildOverviewOption(analysis)} optionKey={`overview-${chartKey}`} />
           </div>
           <FunnelSummary stages={funnelStages} />
         </Card>
@@ -326,7 +412,7 @@ function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
             <Badge className={mutedChipClass}>曝光 × 转化 × GMV</Badge>
           </div>
           <div id="analytics-bubble-chart" className={scatterWrapClass}>
-            <ReactECharts className={scatterChartClass} option={buildOpportunityScatterOption(analysis)} />
+            <ReactECharts className={scatterChartClass} option={buildOpportunityScatterOption(analysis)} optionKey={`scatter-${chartKey}`} />
           </div>
           <ScatterLegend />
         </Card>
@@ -350,7 +436,7 @@ function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
       <Card className={analyticsTableCardClass}>
         <div className={sectionHeadClass}>
           <CardTitle className="mb-0">商品明细</CardTitle>
-          <Badge className={mutedChipClass}>{analysis.records.length} 个商品 · 仅展示前 50</Badge>
+          <Badge className={mutedChipClass}>{analysis.records.length} 个商品 · 滚动查看全部</Badge>
         </div>
         <TableViewport className={tableWrapClass}>
           <DetailTable records={analysis.records} />
@@ -363,6 +449,221 @@ function AnalyticsDashboard({ analysis }: { analysis: AnalyticsAnalysis }) {
 function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps) {
   const [analysis, setAnalysis] = useState<AnalyticsAnalysis | null>(null);
   const [meta, setMeta] = useState('尚未导入数据');
+  const [projectId, setProjectId] = useState('');
+  const [syncText, setSyncText] = useState('未连接');
+  const [syncTone, setSyncTone] = useState<'local' | 'saving' | 'saved' | 'error'>('local');
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [permissionBlocked, setPermissionBlocked] = useState(false);
+  const [copyingRules, setCopyingRules] = useState(false);
+  const [accounts, setAccounts] = useState<string[]>([]);
+  const [activeAccount, setActiveAccount] = useState('__all__');
+  const [savedSnapshots, setSavedSnapshots] = useState<AnalyticsProviderSnapshotSummary[]>([]);
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState('');
+  const providerRef = useRef(AnalyticsProviderFirestore.create({
+    state: {},
+    helpers: { nowIso: () => new Date().toISOString() }
+  }));
+  const scopedSnapshots = useMemo(() => filterSnapshotsByAccount(savedSnapshots, activeAccount), [activeAccount, savedSnapshots]);
+  const accountTabItems = useMemo(() => accounts.map(account => ({
+    key: account,
+    label: account,
+    count: savedSnapshots.filter(snapshot => normalizeAccountName(snapshot.accountName) === account).length,
+    dataAttrs: { 'data-analytics-acc': account }
+  })), [accounts, savedSnapshots]);
+  const connected = !!projectId;
+  const loading = syncTone === 'saving';
+
+  const loadSnapshot = useCallback(async (snapshotId: string) => {
+    const cfg = TKFirestoreConnection.getConfig();
+    const id = String(snapshotId || '').trim();
+    if (!cfg?.configText || !id) return false;
+    setSyncText('正在恢复已保存的数据分析…');
+    setSyncTone('saving');
+    try {
+      const next = await providerRef.current.init({ firestoreConfigText: cfg.configText });
+      setProjectId(next.projectId);
+      const snapshot = await providerRef.current.pullAnalysisBySnapshot(id);
+      if (!snapshot) {
+        setAnalysis(null);
+        setSyncText('没有找到这个分析快照');
+        setSyncTone('error');
+        return false;
+      }
+      setAnalysis(snapshot.analysis);
+      setPermissionBlocked(false);
+      setMeta(`${snapshot.filename || '已保存分析'} · ${snapshot.analysis.period || '未知周期'} · ${snapshot.analysis.records.length} 个商品`);
+      setSelectedSnapshotId(snapshot.snapshotId);
+      setSyncText(`已恢复分析 · ${snapshot.updatedAt.slice(0, 10)}`);
+      setSyncTone('saved');
+      return true;
+    } catch (error) {
+      handleAnalyticsSyncError(error);
+      if (isPermissionDenied(error)) {
+        setPermissionBlocked(true);
+        setAnalysis(null);
+        setSyncText('');
+      } else {
+        setSyncText(formatAnalyticsError(error));
+      }
+      setSyncTone('error');
+      return false;
+    }
+  }, []);
+
+  const loadLatestAnalysis = useCallback(async () => {
+    const cfg = TKFirestoreConnection.getConfig();
+    if (!cfg?.configText) {
+      setProjectId('');
+      setSyncText('未连接');
+      setSyncTone('local');
+      setPermissionBlocked(false);
+      setAccounts([]);
+      setAnalysis(null);
+      setSavedSnapshots([]);
+      setSelectedSnapshotId('');
+      return false;
+    }
+    setSyncText('正在读取最近一次数据分析…');
+    setSyncTone('saving');
+    try {
+      const next = await providerRef.current.init({ firestoreConfigText: cfg.configText });
+      setProjectId(next.projectId);
+      const remoteAccounts = await providerRef.current.pullAccounts();
+      let snapshotsPermissionBlocked = false;
+      const snapshots = await providerRef.current.listSavedAnalyses().catch(error => {
+        if (isPermissionDenied(error)) {
+          snapshotsPermissionBlocked = true;
+          return [] as AnalyticsProviderSnapshotSummary[];
+        }
+        throw error;
+      });
+      const snapshotAccounts = snapshots.map(snapshot => snapshot.accountName);
+      const nextAccounts = uniqueAccounts([...remoteAccounts, ...snapshotAccounts]);
+      setAccounts(nextAccounts);
+      const resolvedActiveAccount = activeAccount === '__all__' || nextAccounts.includes(activeAccount) ? activeAccount : '__all__';
+      if (resolvedActiveAccount !== activeAccount) setActiveAccount(resolvedActiveAccount);
+      setSavedSnapshots(snapshots);
+      if (snapshotsPermissionBlocked) {
+        setAnalysis(null);
+        setSelectedSnapshotId('');
+        setPermissionBlocked(true);
+        setSyncText('');
+        setSyncTone('error');
+        return false;
+      }
+      const visibleSnapshots = filterSnapshotsByAccount(snapshots, resolvedActiveAccount);
+      if (!visibleSnapshots.length) {
+        setAnalysis(null);
+        setSelectedSnapshotId('');
+        setPermissionBlocked(false);
+        setSyncText('尚未保存分析');
+        setSyncTone('saved');
+        return true;
+      }
+      const latest = await providerRef.current.pullAnalysisBySnapshot(visibleSnapshots[0].snapshotId);
+      if (!latest) {
+        setAnalysis(null);
+        setSyncText('没有找到最近一次分析快照');
+        setSyncTone('error');
+        return false;
+      }
+      setAnalysis(latest.analysis);
+      setPermissionBlocked(false);
+      setMeta(`${latest.filename || '已保存分析'} · ${latest.analysis.period || '未知周期'} · ${latest.analysis.records.length} 个商品`);
+      setSelectedSnapshotId(latest.snapshotId);
+      setSyncText(`已恢复最近分析 · ${latest.updatedAt.slice(0, 10)}`);
+      setSyncTone('saved');
+      return true;
+    } catch (error) {
+      handleAnalyticsSyncError(error);
+      if (isPermissionDenied(error)) {
+        setPermissionBlocked(true);
+        setAnalysis(null);
+        setSelectedSnapshotId('');
+        setSyncText('');
+      } else {
+        setSyncText(formatAnalyticsError(error));
+      }
+      setSyncTone('error');
+      return false;
+    }
+  }, [activeAccount]);
+
+  useEffect(() => {
+    void loadLatestAnalysis();
+    const handler = () => void loadLatestAnalysis();
+    window.addEventListener('tk-firestore-config-changed', handler);
+    return () => window.removeEventListener('tk-firestore-config-changed', handler);
+  }, [loadLatestAnalysis]);
+
+  async function saveAnalysisToFirestore(next: AnalyticsAnalysis, filename: string) {
+    const cfg = TKFirestoreConnection.getConfig();
+    if (!cfg?.configText) {
+      setSyncText('未连接数据库，本次分析未保存');
+      setSyncTone('local');
+      setProjectId('');
+      setPermissionBlocked(false);
+      return false;
+    }
+    setSyncText('正在保存数据分析到 Firestore…');
+    setSyncTone('saving');
+    try {
+      const firestoreConfig = await providerRef.current.init({ firestoreConfigText: cfg.configText });
+      setProjectId(firestoreConfig.projectId);
+      const accountName = activeAccount !== '__all__' ? activeAccount : accounts[0] || '';
+      const result = await providerRef.current.saveAnalysis(next, { accountName, filename });
+      setSyncText(`已保存到 Firestore · ${result.recordCount} 个商品`);
+      setSyncTone('saved');
+      setPermissionBlocked(false);
+      const snapshots = await providerRef.current.listSavedAnalyses();
+      if (accountName) setAccounts(previous => uniqueAccounts([...previous, accountName]));
+      setSavedSnapshots(snapshots);
+      setSelectedSnapshotId(result.snapshotId);
+      return true;
+    } catch (error) {
+      handleAnalyticsSyncError(error, '数据分析保存失败');
+      if (isPermissionDenied(error)) {
+        setPermissionBlocked(true);
+        setAnalysis(null);
+        setSyncText('');
+      } else {
+        setSyncText(formatAnalyticsError(error, '数据分析保存失败'));
+      }
+      setSyncTone('error');
+      if (!isPermissionDenied(error)) onToast?.(error instanceof Error ? error.message : '数据分析保存失败', 'error');
+      return false;
+    }
+  }
+
+  useEffect(() => {
+    if (activeAccount === '__all__' || accounts.includes(activeAccount)) return;
+    setActiveAccount('__all__');
+  }, [accounts, activeAccount]);
+
+  useEffect(() => {
+    if (permissionBlocked) return;
+    const nextSnapshot = scopedSnapshots[0];
+    if (!nextSnapshot) {
+      setAnalysis(null);
+      setSelectedSnapshotId('');
+      setSyncText(projectId ? '尚未保存分析' : '未连接');
+      setSyncTone(projectId ? 'saved' : 'local');
+      return;
+    }
+    if (nextSnapshot.snapshotId !== selectedSnapshotId) void loadSnapshot(nextSnapshot.snapshotId);
+  }, [activeAccount, loadSnapshot, permissionBlocked, projectId, scopedSnapshots, selectedSnapshotId]);
+
+  async function copyFirestoreRules() {
+    setCopyingRules(true);
+    try {
+      await TKFirestoreConnection.copyRules();
+      onToast?.('Firestore 规则已复制', 'ok');
+    } catch (error) {
+      onToast?.(error instanceof Error ? error.message : '规则复制失败', 'error');
+    } finally {
+      setCopyingRules(false);
+    }
+  }
 
   async function handleFile(file: File | null) {
     if (!file) return;
@@ -379,7 +680,8 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
       const next = analyzer.analyze(parsed.records, parsed.period);
       setAnalysis(next);
       setMeta(`${file.name} · ${next.period || '未知周期'} · ${next.records.length} 个商品`);
-      onToast?.('商品流量数据已生成 React 看板', 'ok');
+      const saved = await saveAnalysisToFirestore(next, file.name);
+      onToast?.(saved ? '商品流量数据已生成并保存' : '商品流量数据已生成，尚未保存到数据库', saved ? 'ok' : 'error');
     } catch (error) {
       setMeta('解析失败');
       onToast?.(error instanceof Error ? error.message : 'Excel 解析失败', 'error');
@@ -394,30 +696,110 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
         kicker="Excel 导入 / 流量诊断 / 商品动作"
         description="本地解析 TikTok Shop 商品流量导出表，生成渠道表现、商品排行和运营诊断；数据不上传到本站服务器。"
       />
-      <Card className={uploadCardClass}>
-        <div className={uploadGridClass}>
-          <div className="analytics-upload-copy">
-            <CardTitle>导入商品流量表</CardTitle>
-            <p className={uploadCopyTextClass}>支持 TikTok Shop 导出的商品流量详情 Excel。React 看板只在当前浏览器内解析，不上传、不保存到本站数据库。</p>
-            <Alert variant="info" className={uploadPrivacyClass}>
-              <AlertDescription className="contents">
-                <span className={privacyPrimaryChipClass}>本地解析</span>
-                <span className={analyticsChipClass}>ECharts 图表</span>
-                <span className={analyticsChipClass}>不保存用户数据</span>
-              </AlertDescription>
-            </Alert>
-          </div>
-          <div className={uploadActionClass}>
-            <label className={filePickerClass} htmlFor="analytics-file-input">
-              <span className={fileIconClass} aria-hidden="true"><Upload size={18} strokeWidth={2} /></span>
-              <span>选择 Excel 文件</span>
-            </label>
-            <input id="analytics-file-input" className={fileInputClass} type="file" accept=".xlsx,.xls" onChange={event => void handleFile(event.target.files?.[0] || null)} />
-            <div id="analytics-file-meta" className={fileMetaClass}>{meta}</div>
+      <Card className={analyticsControlCardClass}>
+        <div className={statusStripClass}>
+          <div className={statusStripLeftClass}>
+            <Badge id="analytics-user" className="min-h-[30px] text-[var(--text)] font-semibold">{projectId ? `已连接 · ${projectId}` : '未连接 Firebase'}</Badge>
+            {permissionBlocked ? null : <Badge id="analytics-sync-status" className={syncStatusClass(syncTone)} data-sync-state={syncTone}>{syncText}</Badge>}
+            <Button
+              id="analytics-refresh"
+              variant="plain"
+              className={refreshButtonClass(loading)}
+              disabled={loading}
+              aria-label="刷新数据分析"
+              title="刷新数据分析"
+              aria-busy={loading ? 'true' : 'false'}
+              onClick={() => void loadLatestAnalysis()}
+            >
+              <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
+            </Button>
+            <Button
+              id="analytics-help"
+              variant="plain"
+              className={storageHelpButtonClass}
+              aria-controls="analytics-help-modal"
+              aria-haspopup="dialog"
+              aria-label="数据分析说明"
+              title="数据分析说明"
+              onClick={() => setHelpOpen(true)}
+            >
+              <HelpCircle size={14} strokeWidth={2} aria-hidden="true" />
+            </Button>
           </div>
         </div>
+        {connected ? (
+          <AccountTabsBar
+            id="analytics-acc-tabs"
+            activeKey={activeAccount}
+            allCount={savedSnapshots.length}
+            allDataAttrs={{ 'data-analytics-acc': '__all__' }}
+            allTabsId="analytics-acc-tabs-all"
+            scrollId="analytics-acc-tabs-scroll"
+            actionsId="analytics-acc-actions"
+            items={accountTabItems}
+            emptyText="暂无账号"
+            onChange={account => setActiveAccount(account)}
+          />
+        ) : null}
+        {connected && !permissionBlocked ? (
+          <div className={analyticsUploadRowClass}>
+            <div className={uploadSummaryClass}>
+              <CardTitle className={uploadCopyTitleClass}>导入商品流量表</CardTitle>
+              <span className={privacyPrimaryChipClass}>本地解析</span>
+              <span className={analyticsChipClass}>原始 Excel 不上传</span>
+              <div className={uploadToolsClass}>
+                <Select
+                  id="analytics-snapshot-select"
+                  className={snapshotSelectClass}
+                  value={selectedSnapshotId}
+                  disabled={!scopedSnapshots.length || syncTone === 'saving'}
+                  title="选择已保存的数据分析"
+                  onChange={event => void loadSnapshot(event.currentTarget.value)}
+                >
+                  {scopedSnapshots.length ? (
+                    scopedSnapshots.map(snapshot => (
+                      <option value={snapshot.snapshotId} key={snapshot.snapshotId}>{formatSnapshotOption(snapshot)}</option>
+                    ))
+                  ) : <option value="">暂无已保存分析</option>}
+                </Select>
+              </div>
+            </div>
+            <div className={uploadActionClass}>
+              <label className={filePickerClass} htmlFor="analytics-file-input">
+                <span className={fileIconClass} aria-hidden="true"><Upload size={18} strokeWidth={2} /></span>
+                <span>选择 Excel 文件</span>
+              </label>
+              <input id="analytics-file-input" className={fileInputClass} type="file" accept=".xlsx,.xls" onChange={event => void handleFile(event.target.files?.[0] || null)} />
+              <div id="analytics-file-meta" className={fileMetaClass}>{meta}</div>
+            </div>
+          </div>
+        ) : null}
       </Card>
-      {!analysis ? (
+      <AnalyticsHelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
+      {!connected ? (
+        <Card id="analytics-connect-state" className={emptyCardClass}>
+          <ModuleListState
+            tone="connect"
+            className="py-0"
+            title="连接数据库"
+            description="连接你的 Firebase Firestore 后，才能导入并保存数据分析快照。"
+            actions={[{ id: 'analytics-open-connection', label: '连接 Firebase', variant: 'primary', onClick: () => TKFirestoreConnection.open() }]}
+          />
+        </Card>
+      ) : permissionBlocked ? (
+        <Card id="analytics-permission-state" className={emptyCardClass}>
+          <ModuleListState
+            tone="permission"
+            className="py-0"
+            title="数据库权限不足"
+            description="当前数据库权限不足，数据分析保存不可用。复制最新 Firestore 规则发布后刷新页面。"
+            actions={[
+              { label: '打开 Firebase Console', onClick: () => TKFirestoreConnection.openConsole() },
+              { label: copyingRules ? '复制中…' : '复制 Firestore 规则', variant: 'primary', disabled: copyingRules, onClick: () => void copyFirestoreRules() }
+            ]}
+          />
+        </Card>
+      ) : !analysis ? (
         <Card id="analytics-empty" className={emptyCardClass}>
           <EmptyState
             className="py-0"

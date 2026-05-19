@@ -295,6 +295,7 @@ const configText = `const firebaseConfig = {
       accountName: 'A',
       orderedAt: '2026-04-23',
       orderNo: 'ORDER-1',
+      note: '优先处理',
       isRefunded: true,
       items: [
         {
@@ -328,6 +329,7 @@ const configText = `const firebaseConfig = {
     assert.equal(pulledOrder['数量'], '5', 'ESM Firestore provider 拉取时应汇总数量');
     assert.equal(pulledOrder['采购价格'], '56', 'ESM Firestore provider 拉取时应汇总采购价格');
     assert.equal(pulledOrder['售价'], '1560', 'ESM Firestore provider 拉取时应汇总售价');
+    assert.equal(pulledOrder['备注'], '优先处理', 'ESM Firestore provider 拉取时应映射订单备注');
     assert.equal(pulledOrder['是否退款'], '1', 'ESM Firestore provider 拉取时应映射退款字段');
     assert.equal(pulledOrder['快递公司'], '顺丰快递', 'ESM Firestore provider 拉取时应汇总快递公司');
 
@@ -339,6 +341,7 @@ const configText = `const firebaseConfig = {
       '账号': 'A',
       '下单时间': '2026-04-23',
       '订单号': 'ORDER-1',
+      '备注': '催单记录',
       '是否退款': '1',
       '达人佣金率': '10',
       '达人佣金': '3',
@@ -366,6 +369,7 @@ const configText = `const firebaseConfig = {
     assert.equal(orderDoc.quantity, 2, 'ESM Firestore provider 写入时应汇总数量');
     assert.equal(orderDoc.purchasePrice, 20, 'ESM Firestore provider 写入时应汇总采购价格');
     assert.equal(orderDoc.salePrice, 600, 'ESM Firestore provider 写入时应汇总售价');
+    assert.equal(orderDoc.note, '催单记录', 'ESM Firestore provider 写入时应保存订单备注');
     assert.equal(orderDoc.isRefunded, true, 'ESM Firestore provider 写入时应映射退款字段');
     assert.deepEqual(
       orderDoc.items[0],

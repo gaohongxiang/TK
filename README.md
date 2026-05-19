@@ -7,6 +7,7 @@
 - 利润计算器：按采购价、平台费、达人佣金、汇率、海外运费测算定价和利润。
 - 商品管理：连接用户自己的 Firebase Firestore，管理商品和 SKU。
 - 订单管理：连接用户自己的 Firebase Firestore，管理订单、利润、物流单号和同步状态。
+- 数据采集：通过 Codex skill 和当前授权采集窗口按账号筛选商品，并把采集表、店小秘状态和拒绝品去重记录同步到用户自己的 Firebase Firestore。
 - 数据分析：本地导入 TikTok Shop 商品流量 Excel，生成渠道表现、Top 商品排行、流量漏斗和商品诊断。
 - 文档站：使用 VitePress 单独维护使用说明和运营文档。
 
@@ -15,15 +16,17 @@
 主站是完整 Vite React SPA：
 
 - `index.html` 只保留单根 `#root`、`/src/react/main.tsx`、Firebase compat SDK 和 SheetJS。
-- `src/react/app/App.tsx` 接管 App Shell、hash 路由、页脚和四个主视图。
-- `src/react/features/` 放四大业务页面：`calculator`、`products`、`orders`、`analytics`。
+- `src/react/app/App.tsx` 接管 App Shell、hash 路由、页脚和五个主视图。
+- `src/react/features/` 放业务页面：`calculator`、`products`、`orders`、`collection`、`analytics`。
 - `src/react/components/ui/` 放本地 shadcn 风格 primitives 和共享 UI 控件。
 - `src/react/styles.css` 是样式入口，导入 Tailwind utilities 和 `src/react/styles/base.css`。
 - `src/` 下业务纯函数、Firestore provider、解析器和导出逻辑使用 TypeScript 维护。
+- `skills/tk-product-selection/` 是 Codex 选品采集 skill 母本；对外采集流程使用 skill 自带脚本保存本地配置、检查账号权限并同步 Firestore，不要求用户安装项目 CLI 或 npm 包。
+- `packages/cli/` 是内部 TK CLI，保留给项目开发和排查使用；用户采集路径不依赖它。
 - 领域类型入口集中在 `src/products/types.ts`、`src/orders/types.ts`、`src/analytics/types.ts` 和 `src/types/firestore.ts`；当前 `src/` 没有显式 `any`。
 - `tsconfig.json` 暂保留 `strict: false`，并开启 `noImplicitReturns`、`noFallthroughCasesInSwitch`、`useUnknownInCatchVariables` 等低风险检查。
 - `package.json` 使用 `"type": "module"`，Node 测试也统一为 ESM `.mjs`。
-- 数据分析图表使用 ECharts，Excel 只在浏览器本地解析。
+- 数据分析图表使用 ECharts，Excel 原始文件只在浏览器本地解析，分析快照写入用户自己的 Firestore。
 
 旧 `js/` 源目录、旧 `css/style.css`、旧 DOM runtime、旧 React island 二次挂载入口已经清理；构建产物不发布旧 `dist/js/`。
 
@@ -32,9 +35,10 @@
 这是当前项目最重要的原则：
 
 - 本站不保存用户业务数据。
-- 用户的商品和订单数据写入用户自己配置的 Firebase Firestore。
-- 商品管理、订单管理使用 Firestore SDK 的离线缓存能力，先保证本地交互速度，再由 Firebase SDK 同步到云端。
-- 数据分析模块只在浏览器内读取 Excel 文件，解析结果只存在当前页面内存里，不上传到 Cloudflare，也不会写入本站数据库或 Firestore。
+- 用户的商品、订单和采集记录写入用户自己配置的 Firebase Firestore。
+- 商品管理、订单管理和数据采集共用同一个 Firestore 连接；页面会检查规则是否支持当前模块，并用用户能理解的文案提示更新规则。
+- 数据分析模块只在浏览器内读取 Excel 原始文件，不上传到 Cloudflare；解析后的分析快照会写入用户自己的 Firebase Firestore，刷新后可以恢复最近一次分析。
+- 数据采集原始输出保存在本机 `data/collection/fastmoss/`，不会提交到仓库；同步到 Firestore 的只是一张带账号的采集表和拒绝品去重记录。
 - 本地参数只保存在用户浏览器 `localStorage`，例如汇率、运费、默认配置等工具参数。
 
 Cloudflare 只负责托管静态网站和文档站，不持有用户的商品、订单、流量文件。
@@ -56,6 +60,8 @@ Cloudflare 只负责托管静态网站和文档站，不持有用户的商品、
 │   └── shipping-core.ts
 ├── public/
 ├── docs/
+├── packages/
+│   └── cli/
 ├── scripts/
 ├── tests/
 ├── vite.config.mjs
@@ -109,6 +115,45 @@ dist/
 npm run preview
 ```
 
+TK Product Selection skill：
+
+```bash
+node skills/tk-product-selection/scripts/local-credentials.mjs status
+node skills/tk-product-selection/scripts/firestore-sync.mjs preflight --account NOMA
+node skills/tk-product-selection/scripts/firestore-sync.mjs dedupe data/collection/fastmoss/runs/<run-id> --account NOMA
+node skills/tk-product-selection/scripts/firestore-sync.mjs sync data/collection/fastmoss/runs/<run-id> --account NOMA
+node skills/tk-product-selection/scripts/firestore-sync.mjs mark-dxm-edited --account NOMA --product-url <商品链接> --product-name <商品名称> --edited-title <编辑标题>
+```
+
+Codex 会先检查本机配置状态，缺什么才让用户提供什么：缺数据库配置就提供数据库配置，缺 FastMoss 就提供 FastMoss 配置，缺某个 TK 账号的店小秘绑定就提供该账号店小秘信息；已有配置直接复用。平台人工确认只临时处理，不保存。
+
+FastMoss 采集流程：
+
+```bash
+# 采集前先确认目标账号存在，且数据采集集合可读写
+node skills/tk-product-selection/scripts/firestore-sync.mjs preflight --account NOMA
+
+# 生成本批次数据库去重清单
+node skills/tk-product-selection/scripts/firestore-sync.mjs dedupe data/collection/fastmoss/runs/<run-id> --account NOMA
+
+# 使用当前授权采集窗口完成 FastMoss 页面采集，
+# 并把页面结果保存到 data/collection/fastmoss/runs/<run-id>/products.json
+
+# 目标账号筛选和店小秘状态
+node skills/tk-product-selection/scripts/select-fastmoss-products.mjs data/collection/fastmoss/runs/<run-id>/products.json --account NOMA
+node skills/tk-product-selection/scripts/init-dianxiaomi-status.mjs data/collection/fastmoss/runs/<run-id>/selection_candidates.json --account NOMA
+
+# 在同一授权采集窗口里切到目标店小秘账号并采集到店小秘
+
+# 店小秘状态记录完成后，把运行目录同步到 Firestore
+node skills/tk-product-selection/scripts/firestore-sync.mjs sync data/collection/fastmoss/runs/<run-id> --account NOMA
+
+# 店小秘商品详情页编辑完成后，回写同一条采集表商品
+node skills/tk-product-selection/scripts/firestore-sync.mjs mark-dxm-edited --account NOMA --product-url <商品链接> --product-name <商品名称> --edited-title <编辑标题>
+```
+
+默认约定是使用当前授权采集窗口。FastMoss 本机配置全局复用；店小秘按 TK 账号绑定复用。多个账号顺序切换，不并行处理多个采集窗口。
+
 ## 检查命令
 
 单元/契约测试：
@@ -147,6 +192,15 @@ npm run release:check
 ## 文档站
 
 文档源码在 `docs/`，使用 VitePress。
+
+工具使用文档包含：
+
+- `docs/guide/database.md`
+- `docs/guide/calculator.md`
+- `docs/guide/products.md`
+- `docs/guide/orders.md`
+- `docs/guide/collection.md`
+- `docs/guide/analytics.md`
 
 启动文档开发预览：
 

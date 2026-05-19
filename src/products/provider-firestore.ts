@@ -5,12 +5,14 @@ import type {
   ProductHydratedFirestoreConfig,
   ProductLogisticsDefaults,
   ProductProviderApi,
+  ProductProviderAccountWriteOptions,
   ProductProviderCreateOptions,
   ProductProviderWriteOptions,
   ProductRecord,
   ProductSku,
   ProductSkuDoc
 } from './types.ts';
+import { deleteAccountLabel, renameAccountAcrossModules } from '../accounts/firestore-account-actions.ts';
 import type { FirebaseCompatApp, FirebaseCompatFirestore } from '../types/firestore.ts';
 
 type LooseRecord = Record<string, unknown>;
@@ -107,6 +109,11 @@ function toIsoString(value: unknown, fallback = ''): string {
   return fallback || '';
 }
 
+function toSortIndex(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function normalizePulledSku(raw: unknown): ProductSku {
   const data = toPlainObject(raw) || {};
   const hasOwnSpec = data?.weightG != null
@@ -180,6 +187,7 @@ function normalizePulledProduct(raw: unknown): ProductRecord {
     tkId: String(data?.tkId || '').trim(),
     accountName: String(data?.accountName || ''),
     name: String(data?.name || ''),
+    note: String(data?.note || ''),
     imageUrl: String(data?.imageUrl || ''),
     link1688: String(data?.link1688 || ''),
     defaults,
@@ -197,6 +205,7 @@ function buildProductDoc(product: ProductRecord, { nowIso = () => new Date().toI
     tkId: String(product?.tkId || '').trim(),
     accountName: toNullableText(product?.accountName),
     name: toNullableText(product?.name),
+    note: toNullableText(product?.note),
     imageUrl: toNullableText(product?.imageUrl),
     link1688: toNullableText(product?.link1688),
     defaults,
@@ -214,6 +223,11 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
   async function requireDb(): Promise<FirebaseCompatFirestore> {
     if (!db) throw new Error('Firestore 尚未初始化');
     return db;
+  }
+
+  function accountDocId(name: unknown = ''): string {
+    const raw = String(name || '').trim();
+    return raw ? encodeURIComponent(raw) : '__unassigned__';
   }
 
   async function init(rawConfig: unknown = state): Promise<ProductHydratedFirestoreConfig> {
@@ -255,11 +269,16 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       currentDb.collection('order_accounts').get()
     ]);
     const accounts = accountsSnapshot.docs
-      .map(doc => doc.data() || {})
-      .filter(row => !row.deletedAt)
-      .map(row => String(row.name || '').trim())
-      .filter(Boolean)
-      .sort((left, right) => left.localeCompare(right));
+      .map((doc, index) => ({ data: doc.data() || {}, fallbackIndex: index }))
+      .filter(row => !row.data.deletedAt)
+      .map(row => ({
+        name: String(row.data.name || '').trim(),
+        sortIndex: toSortIndex(row.data.sortIndex, row.fallbackIndex)
+      }))
+      .filter(row => row.name)
+      .sort((left, right) => left.sortIndex - right.sortIndex || left.name.localeCompare(right.name))
+      .map(row => row.name)
+      .filter(Boolean);
     const lastRemoteUpdatedAt = snapshot.docs
       .map(doc => String(doc.data()?.updatedAt || ''))
       .filter(Boolean)
@@ -305,6 +324,64 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return waitForCommit ? true : { deleted: true, commitPromise };
   }
 
+  async function upsertAccount(name: string, { sortIndex, waitForCommit = true }: ProductProviderAccountWriteOptions = {}) {
+    const currentDb = await requireDb();
+    const normalized = String(name || '').trim();
+    if (!normalized) throw new Error('账号名称不能为空');
+    const updatedAt = nowIso();
+    const id = accountDocId(normalized);
+    const commitPromise = trackWritePromise(
+      currentDb.collection('order_accounts').doc(id).set({
+        id,
+        name: normalized,
+        ...(Number.isFinite(Number(sortIndex)) ? { sortIndex: Number(sortIndex) } : {}),
+        updatedAt,
+        deletedAt: null,
+        createdAt: updatedAt
+      }, { merge: true }),
+      'Firestore account local queue write failed',
+      { waitForCommit }
+    );
+    if (waitForCommit) await commitPromise;
+    return waitForCommit ? normalized : { account: normalized, commitPromise };
+  }
+
+  async function saveAccountOrder(names: string[] = [], { waitForCommit = true }: ProductProviderWriteOptions = {}) {
+    const currentDb = await requireDb();
+    const normalizedNames = [...new Set(names.map(name => String(name || '').trim()).filter(Boolean))];
+    if (!normalizedNames.length) return waitForCommit ? 0 : { count: 0, commitPromise: Promise.resolve() };
+    const updatedAt = nowIso();
+    const batch = currentDb.batch();
+    normalizedNames.forEach((name, index) => {
+      const id = accountDocId(name);
+      batch.set(currentDb.collection('order_accounts').doc(id), {
+        id,
+        name,
+        sortIndex: index,
+        updatedAt,
+        deletedAt: null,
+        createdAt: updatedAt
+      }, { merge: true });
+    });
+    const commitPromise = trackWritePromise(
+      batch.commit(),
+      'Firestore account order local queue write failed',
+      { waitForCommit }
+    );
+    if (waitForCommit) await commitPromise;
+    return waitForCommit ? normalizedNames.length : { count: normalizedNames.length, commitPromise };
+  }
+
+  async function renameAccount(oldName: string, newName: string, options: ProductProviderWriteOptions & { accountOrder?: string[] } = {}) {
+    const currentDb = await requireDb();
+    return renameAccountAcrossModules(currentDb, oldName, newName, nowIso, options);
+  }
+
+  async function deleteAccount(name: string, options: ProductProviderWriteOptions & { accountOrder?: string[] } = {}) {
+    const currentDb = await requireDb();
+    return deleteAccountLabel(currentDb, name, nowIso, options);
+  }
+
   return {
     key: 'firestore',
     parseConfigInput,
@@ -313,7 +390,11 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     init,
     pullProducts,
     upsertProduct,
-    deleteProduct
+    deleteProduct,
+    upsertAccount,
+    saveAccountOrder,
+    renameAccount,
+    deleteAccount
   };
 }
 

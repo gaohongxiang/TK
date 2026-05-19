@@ -45,10 +45,10 @@ assert.ok(
   'contract 测试应统一使用 ESM .mjs 后缀，不再保留 CommonJS .cjs'
 );
 
-assert.strictEqual(
+assert.match(
   packageJson.scripts.build,
-  'vite build && node scripts/copy-main-assets.mjs',
-  '主站 build 需要先跑 Vite，再补充稳定静态资源'
+  /^vite build && node scripts\/copy-main-assets\.mjs(?: && .+)?$/,
+  '主站 build 需要先跑 Vite，再补充稳定静态资源，后面可追加构建产物生成'
 );
 
 assert.strictEqual(
@@ -185,8 +185,20 @@ assert.match(
 
 assert.match(
   reactAppSource,
-  /<main id="main-content" className=\{appMainClass\}[\s\S]*id="view-calc"[\s\S]*id="view-orders"[\s\S]*id="view-products"[\s\S]*id="view-analytics"[\s\S]*<\/main>[\s\S]*<footer(?:\s+className=\{appFooterClass\})?>/,
+  /<main id="main-content" className=\{appMainClass\}[\s\S]*id="view-calc"[\s\S]*id="view-orders"[\s\S]*id="view-products"[\s\S]*id="view-collection"[\s\S]*id="view-analytics"[\s\S]*<\/main>[\s\S]*<footer(?:\s+className=\{appFooterClass\})?>/,
   '主站核心工具视图需要由 React 放在 main landmark 内，footer 需要留在 main 之后'
+);
+
+assert.match(
+  reactAppSource,
+  /function viewClass\(active: string, key: string\) \{[\s\S]*active === key \? 'relative block' : 'relative hidden'/,
+  '主站视图容器不能创建 z-index stacking context，否则页面内 fixed 弹窗会被 footer 盖住'
+);
+
+assert.match(
+  reactAppSource,
+  /appFooterClass = 'relative mt-\[30px\] grid justify-items-center[\s\S]*appFooterCopyClass[\s\S]*appFooterLinksClass[\s\S]*appFooterCopyrightClass[\s\S]*<span className=\{appFooterCopyClass\}>[\s\S]*<span className=\{appFooterLinksClass\}>[\s\S]*<span className=\{appFooterCopyrightClass\}>/,
+  '主站 footer 需要把说明、链接和版权分层排版，且不能用 z-index 抢商品弹窗点击'
 );
 
 assert.match(
@@ -298,7 +310,7 @@ assert.match(
 
 assert.match(
   privacySource,
-  /<link rel="canonical" href="https:\/\/tk-evu\.pages\.dev\/privacy\.html" \/>[\s\S]*property="og:title" content="隐私与数据边界 · TK 电商工具箱"[\s\S]*property="og:url" content="https:\/\/tk-evu\.pages\.dev\/privacy\.html"[\s\S]*name="twitter:image" content="https:\/\/tk-evu\.pages\.dev\/logo\.png"[\s\S]*name="theme-color" content="#ffffff"[\s\S]*<link rel="stylesheet" href="\/site-page\.css" \/>[\s\S]*商品、SKU、账号[\s\S]*你自己的 Firebase Firestore[\s\S]*商品流量 Excel[\s\S]*当前浏览器内存[\s\S]*href="\/terms\.html"[\s\S]*查看使用条款/,
+  /<link rel="canonical" href="https:\/\/tk-evu\.pages\.dev\/privacy\.html" \/>[\s\S]*property="og:title" content="隐私与数据边界 · TK 电商工具箱"[\s\S]*property="og:url" content="https:\/\/tk-evu\.pages\.dev\/privacy\.html"[\s\S]*name="twitter:image" content="https:\/\/tk-evu\.pages\.dev\/logo\.png"[\s\S]*name="theme-color" content="#ffffff"[\s\S]*<link rel="stylesheet" href="\/site-page\.css" \/>[\s\S]*商品、SKU、账号[\s\S]*你自己的 Firebase Firestore[\s\S]*商品流量 Excel 原始文件[\s\S]*当前浏览器内存[\s\S]*数据分析快照和商品明细[\s\S]*你自己的 Firebase Firestore[\s\S]*href="\/terms\.html"[\s\S]*查看使用条款/,
   '隐私页需要提供 canonical、社交分享元信息、使用条款入口，并说明商品订单和 Excel 的数据保存位置'
 );
 

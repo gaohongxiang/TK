@@ -110,9 +110,8 @@ function AppRuntime() {
           <DialogTitle id="app-firestore-title">连接 Firebase Firestore</DialogTitle>
           <Alert variant="info" className={modalCopyClass}>
             <AlertDescription>
-            订单管理和商品管理共用同一个 Firestore 项目。添加应用时选 <code>网页</code>，不用勾 Hosting；创建数据库时选 <code>区域级</code> 和
-            <code>生产模式</code>。如果这个项目之前只发布过旧规则，请重新复制并发布最新 Firestore 规则，把
-            <code>orders</code>、<code>order_accounts</code>、<code>sync_state</code> 和 <code>products</code> 一并放行。
+            订单管理、商品管理和商品采编共用同一个 Firestore 项目。添加应用时选 <code>网页</code>，不用勾 Hosting；创建数据库时选 <code>区域级</code> 和
+            <code>生产模式</code>。如果这个项目之前只发布过旧规则，请重新复制并发布最新 Firestore 规则，确保商品资料、订单资料和商品采编都可以正常保存。
             </AlertDescription>
           </Alert>
           <FormRow className="mt-[14px]">

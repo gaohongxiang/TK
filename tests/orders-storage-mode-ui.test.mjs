@@ -86,14 +86,20 @@ assert.match(
 );
 
 assert.match(
+  appRuntimeSource,
+  /商品资料、订单资料和商品采编都可以正常保存/,
+  'React 全局 Firestore 连接弹层需要用用户能理解的描述提示商品采编也要放行'
+);
+
+assert.match(
   ordersPageSource,
-  /id="ot-open-connection"/,
+  /id(?:=|:) ['"]ot-open-connection['"]/,
   '订单模块未连接时需要提供打开全局连接弹层的按钮'
 );
 
 assert.match(
   productsPageSource,
-  /id="pl-open-connection"/,
+  /id(?:=|:) ['"]pl-open-connection['"]/,
   '商品库模块未连接时需要提供打开全局连接弹层的按钮'
 );
 

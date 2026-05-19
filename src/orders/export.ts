@@ -39,7 +39,8 @@ const CSV_HEADERS = [
   '尺寸',
   '订单状态',
   '快递公司',
-  '快递单号'
+  '快递单号',
+  '备注'
 ];
 
 function normalizeAccountName(account: unknown): string {
@@ -143,7 +144,8 @@ function buildExportRows({
       order?.['尺寸'] || '',
       order?.['订单状态'] || '',
       order?.['快递公司'] || '',
-      order?.['快递单号'] || ''
+      order?.['快递单号'] || '',
+      order?.['备注'] || ''
     ];
   });
 }

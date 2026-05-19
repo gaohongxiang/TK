@@ -48,3 +48,38 @@ a {
   color: var(--accent);
   text-decoration: none
 }
+
+.tk-input-tone-readonly,
+.tk-input-tone-success {
+  background: linear-gradient(180deg, rgba(138, 255, 207, .18), rgba(138, 255, 207, .08));
+  border-color: rgba(138, 255, 207, .42);
+  color: var(--accent2);
+}
+
+.tk-input-tone-readonly:focus,
+.tk-input-tone-success:focus {
+  border-color: var(--accent2);
+  box-shadow: 0 0 0 3px rgba(138, 255, 207, .18);
+}
+
+.tk-input-tone-primary {
+  background: linear-gradient(180deg, rgba(255, 200, 87, .18), rgba(255, 200, 87, .08));
+  border-color: rgba(255, 200, 87, .55);
+  color: var(--warn);
+}
+
+.tk-input-tone-primary:focus {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 3px rgba(255, 200, 87, .22);
+}
+
+.tk-input-tone-expense {
+  background: linear-gradient(180deg, rgba(240, 138, 134, .18), rgba(240, 138, 134, .08));
+  border-color: rgba(240, 138, 134, .48);
+  color: var(--expense);
+}
+
+.tk-input-tone-expense:focus {
+  border-color: var(--expense);
+  box-shadow: 0 0 0 3px rgba(240, 138, 134, .18);
+}

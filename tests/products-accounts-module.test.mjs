@@ -15,8 +15,8 @@ const htmlSource = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
 assert.match(
   srcSource,
-  /function getAllProductAccounts\(/,
-  '商品账号 ESM 模块需要负责汇总商品账号'
+  /function uniqueAccounts\(/,
+  '商品账号 ESM 模块需要保留账号名称规范化和去重纯函数'
 );
 
 assert.doesNotMatch(
@@ -27,8 +27,8 @@ assert.doesNotMatch(
 
 assert.match(
   reactProductsSource,
-  /from '\.\.\/\.\.\/\.\.\/products\/accounts\.ts'[\s\S]*allAccounts[\s\S]*activeAccount[\s\S]*id="pl-acc-tabs"/,
-  'React 商品页需要直接接管账号聚合和账号标签'
+  /const allAccounts = accounts[\s\S]*activeAccount[\s\S]*id="pl-acc-tabs"/,
+  'React 商品页账号标签只能来自 order_accounts 共享账号表'
 );
 
 assert.match(
@@ -47,8 +47,8 @@ assert.doesNotMatch(
 
 assert.doesNotMatch(
   reactProductsSource,
-  /function getAllProductAccounts\(|function renderAccountTabs\(|function normalizeAccountName\(|function uniqueAccounts\(/,
-  'React 商品页不应继续内联旧账号工厂或重复账号纯函数'
+  /function getAllProductAccounts\(|function renderAccountTabs\(|function normalizeAccountName\(|function uniqueAccounts\(|products\.map\(product => product\.accountName\)[\s\S]*allAccounts/,
+  'React 商品页不应继续内联旧账号工厂、重复账号纯函数，或从商品数据反推账号标签'
 );
 
 (async () => {
@@ -59,14 +59,6 @@ assert.doesNotMatch(
     '商品账号 ESM 模块需要保留账号去重逻辑'
   );
   assert.strictEqual(module.toAccountSlot('  '), '__unassigned__', '商品账号 ESM 模块需要保留未关联账号槽');
-  assert.deepStrictEqual(
-    module.getAllProductAccounts({
-      accounts: ['NOMA', '  ', 'A'],
-      products: [{ accountName: 'A' }, { accountName: 'B' }, { accountName: '' }]
-    }),
-    ['NOMA', 'A', 'B'],
-    '商品账号 ESM 模块需要合并配置账号和商品账号'
-  );
   assert.equal(typeof module.ProductLibraryAccounts.uniqueAccounts, 'function', '商品账号 ESM 模块需要保留纯函数命名空间');
 
   console.log('products accounts module contract ok');

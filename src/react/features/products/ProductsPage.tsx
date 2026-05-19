@@ -1,5 +1,7 @@
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AccountDeleteDialog, AccountEditDialog } from '@/components/ui/account-manage-dialogs';
 import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
+import { AddAccountDialog } from '@/components/ui/add-account-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,12 +9,20 @@ import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/
 import { ExportOptions } from '@/components/ui/export-options';
 import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { ModuleListState } from '@/components/ui/module-list-state';
+import { PageHero } from '@/components/ui/page-hero';
+import { SearchHelpButton } from '@/components/ui/search-help';
 import { Select } from '@/components/ui/select';
 import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, syncStatusClass } from '@/components/ui/status-strip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { EmptyState, TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
+import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
+import { Textarea } from '@/components/ui/textarea';
 import { showAppToast, type ToastType } from '@/app/toast';
 import { TKFirestoreConnection } from '../../../firestore-connection.ts';
+import {
+  formatFirestoreRulesUpdateMessage,
+  isPermissionDenied
+} from '../../../firestore-rules-compatibility.ts';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.ts';
 import { ProductLibraryExport, csvEscape } from '../../../products/export.ts';
 import {
@@ -52,6 +62,7 @@ type ProductFormDraft = {
   accountName: string;
   tkId: string;
   name: string;
+  note: string;
   link1688: string;
   imageUrl: string;
   cargoType: string;
@@ -65,6 +76,7 @@ type ProductFormDraft = {
 };
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
+const ACCOUNT_UPDATED_EVENT = 'tk-accounts-changed';
 const modalCopyClass = 'mb-4 text-[13px] leading-[1.75] text-[var(--muted)]';
 const productSkuPanelClass = 'pl-sku-panel mt-4 rounded-[14px] border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel)_92%,white)] px-4 py-3.5';
 const productSkuHeaderClass = 'pl-sku-header flex items-start justify-between gap-3';
@@ -104,11 +116,15 @@ const productExpandCaretClass = 'pl-expand-caret text-xs leading-none text-[var(
 const productImageCellClass = 'pl-image-cell w-[74px]';
 const productImageClass = 'pl-image products-react-image h-12 w-12 rounded-[10px] border border-[var(--border)] bg-[var(--panel2)] object-cover';
 const productImagePlaceholderClass = 'pl-image-placeholder products-react-image-placeholder inline-flex h-12 w-12 items-center justify-center rounded-[10px] border border-dashed border-[var(--border)] text-[var(--muted)]';
-const productIdCellClass = 'products-react-id min-w-[150px] tabular-nums';
-const productNameCellClass = 'products-react-name-cell min-w-[260px] max-w-[420px]';
-const productNameTextClass = 'truncate';
-const productLinkActionsClass = 'pl-link-actions products-react-link-actions flex flex-wrap items-center justify-center gap-1.5';
-const productActionsClass = 'products-react-actions inline-flex items-center justify-center gap-1.5';
+const productIdCellClass = 'products-react-id min-w-[170px] tabular-nums';
+const productNameCellClass = 'products-react-name-cell min-w-[170px] max-w-[260px]';
+const productNameTextClass = 'block truncate';
+const productNoteCellClass = 'products-react-note-cell min-w-[150px] max-w-[230px]';
+const productNoteTextClass = 'block truncate text-[12.5px] text-[var(--muted)]';
+const productLinkCellClass = 'products-react-link-cell w-[104px] min-w-[104px]';
+const productActionsCellClass = 'products-react-actions-cell w-[104px] min-w-[104px]';
+const productLinkActionsClass = 'pl-link-actions products-react-link-actions inline-flex min-w-[78px] items-center justify-between gap-3';
+const productActionsClass = 'products-react-actions inline-flex min-w-[78px] items-center justify-between gap-3';
 const productRowClass = 'pl-product-row products-react-row [&.is-expandable]:cursor-pointer [&.is-expandable_td]:transition-[background-color] [&.is-expandable_td]:duration-150 [&.is-expanded_td]:bg-[rgba(110,168,255,.045)]';
 const productSkuListClass = 'pl-sku-list mt-3.5';
 const productSkuEditWrapClass = 'pl-sku-table-wrap overflow-x-auto border-t border-[color-mix(in_srgb,var(--border)_88%,white)]';
@@ -120,6 +136,7 @@ const EMPTY_PRODUCT_FORM: ProductFormDraft = {
   accountName: '',
   tkId: '',
   name: '',
+  note: '',
   link1688: '',
   imageUrl: '',
   cargoType: 'general',
@@ -203,11 +220,13 @@ function ProductsTableView({
   products,
   activeAccount,
   searchQuery,
+  searchHelpOpen,
   sortOrder,
   pageSize,
   currentPage,
   expandedTkIds,
   onSearchChange,
+  onSearchHelpOpenChange,
   onPageSizeChange,
   onPageChange,
   onSortToggle,
@@ -219,11 +238,13 @@ function ProductsTableView({
   products: ProductRecord[];
   activeAccount: string;
   searchQuery: string;
+  searchHelpOpen: boolean;
   sortOrder: string;
   pageSize: number;
   currentPage: number;
   expandedTkIds: Record<string, boolean>;
   onSearchChange: (value: string) => void;
+  onSearchHelpOpenChange: (open: boolean) => void;
   onPageSizeChange: (value: number) => void;
   onPageChange: (delta: number) => void;
   onSortToggle: () => void;
@@ -253,29 +274,49 @@ function ProductsTableView({
         className="products-react-toolbar"
         innerClassName="products-react-toolbar-inner gap-3 max-[640px]:gap-2.5 max-[900px]:items-start"
         left={(
-          <TableSearch
-            id="pl-table-search-input"
-            className="products-react-search w-full max-w-[520px]"
-            hint="搜索 TK ID / 名称 / 1688 链接"
+            <TableSearch
+              id="pl-table-search-input"
+              className="products-react-search w-full max-w-[520px]"
+            hint="文本搜索账号 / TK ID / 商品 / SKU / 1688"
             value={searchQuery}
             onChange={onSearchChange}
+            after={(
+              <SearchHelpButton
+                id="pl-search-help-btn"
+                modalId="pl-search-help-modal"
+                title="商品搜索说明"
+                open={searchHelpOpen}
+                onOpenChange={onSearchHelpOpenChange}
+                items={[
+                  { label: '文本搜索', children: '只做文本搜索，不把 05-18 当日期。' },
+                  { label: '可搜字段', children: '账号、TK ID、商品名、备注、1688 链接、货物类型、SKU ID、SKU 名称。' },
+                  { label: '例子', children: 'NOMA、雨衣、5834、特货、SKU-01、05-18。' }
+                ]}
+              />
+            )}
           />
         )}
         right={(
-          <ProductPager
-            pageSize={pageState.pageSize}
-            currentPage={pageState.currentPage}
-            totalPages={pageState.totalPages}
-            onPageSizeChange={onPageSizeChange}
-            onPageChange={onPageChange}
-          />
+          <div className="inline-flex flex-wrap items-center gap-4 max-[768px]:gap-3">
+            <TableSortButton id="pl-sort-btn" className="products-react-sort" title={sortTitle} onClick={onSortToggle}>
+              排序 {sortIcon}
+            </TableSortButton>
+            <ProductPager
+              pageSize={pageState.pageSize}
+              currentPage={pageState.currentPage}
+              totalPages={pageState.totalPages}
+              onPageSizeChange={onPageSizeChange}
+              onPageChange={onPageChange}
+            />
+          </div>
         )}
       />
 
       <TableViewport className="products-react-table-wrap products-react-table-shell">
         <div id="pl-table-container" data-react-products-table-ready="true">
           {!displayed.length ? (
-            <EmptyState
+            <ModuleListState
+              tone="empty"
               className="products-react-empty"
               title={searchQuery.trim()
                 ? '没有匹配的商品'
@@ -289,19 +330,16 @@ function ProductsTableView({
               <Table className={cn(productTableClass, showAccount ? 'is-all-accounts' : 'is-account-scoped')}>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
-                    <TableSortButton id="pl-sort-btn" className="products-react-sort" title={sortTitle} onClick={onSortToggle}>
-                      # {sortIcon}
-                    </TableSortButton>
-                  </TableHead>
+                  <TableHead>#</TableHead>
                   <TableHead>图片</TableHead>
                   {showAccount ? <TableHead>账号</TableHead> : null}
                   <TableHead>TK ID</TableHead>
                   <TableHead>商品名称</TableHead>
+                  <TableHead>备注</TableHead>
                   <TableHead>货物类型</TableHead>
                   <TableHead>SKU数</TableHead>
-                  <TableHead>1688</TableHead>
-                  <TableHead className="products-react-actions-head min-w-[92px]">操作</TableHead>
+                  <TableHead className={productLinkCellClass}>1688</TableHead>
+                  <TableHead className={productActionsCellClass}>操作</TableHead>
                 </TableRow>
               </TableHeader>
               {paged.map((product, index) => {
@@ -337,14 +375,17 @@ function ProductsTableView({
                       </TableCell>
                       {showAccount ? <TableCell><Badge className="products-react-account-chip">{ProductLibraryTable.formatText(product.accountName)}</Badge></TableCell> : null}
                       <TableCell className={productIdCellClass}>{ProductLibraryTable.formatText(product.tkId)}</TableCell>
-                      <TableCell className={productNameCellClass}><div className={productNameTextClass}>{ProductLibraryTable.formatText(product.name)}</div></TableCell>
+                      <TableCell className={productNameCellClass} title={String(product.name || '')}><div className={productNameTextClass}>{ProductLibraryTable.formatText(product.name)}</div></TableCell>
+                      <TableCell className={productNoteCellClass} title={String(product.note || '')}>
+                        <div className={productNoteTextClass}>{ProductLibraryTable.formatText(product.note)}</div>
+                      </TableCell>
                       <TableCell>{ProductLibraryTable.getCargoTypeLabel(defaults?.cargoType)}</TableCell>
-                      <TableCell className="products-react-actions-cell min-w-[92px]">
+                      <TableCell className="products-react-sku-cell min-w-[92px]">
                         <span className={cn(productSkuCountPillClass, isExpandable ? productSkuCountExpandableClass : '')} title={isExpandable ? '点击展开 SKU 明细' : undefined}>
                           {ProductLibraryTable.formatSkuCount(product)}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className={productLinkCellClass}>
                         {link1688 ? (
                           <div className={productLinkActionsClass}>
                             <Button asChild size="smIcon" title="打开 1688 链接" aria-label="打开 1688 链接">
@@ -356,7 +397,7 @@ function ProductsTableView({
                           </div>
                         ) : '-'}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className={productActionsCellClass}>
                         <div className={productActionsClass}>
                           <Button size="smIcon" data-edit={tkId} title="编辑商品" aria-label="编辑商品" onClick={() => onEdit(tkId)}>
                             <Pencil size={14} strokeWidth={2} />
@@ -508,6 +549,17 @@ function ProductModal({
           <FormRow className="mt-3">
             <FormField label="商品名称" full>
               <Input name="name" value={draft.name} onChange={event => updateField('name', event.target.value)} />
+            </FormField>
+          </FormRow>
+          <FormRow className="mt-3">
+            <FormField label="备注" full>
+              <Textarea
+                name="note"
+                value={draft.note}
+                placeholder="可记录选品判断、采购注意事项、售后风险等"
+                className="min-h-20 resize-y"
+                onChange={event => updateField('note', event.target.value)}
+              />
             </FormField>
           </FormRow>
           <FormRow className="mt-3">
@@ -788,6 +840,7 @@ function buildDraftFromProduct(product: ProductRecord | null, activeAccount: str
     accountName: String(product.accountName || ''),
     tkId: String(product.tkId || ''),
     name: String(product.name || ''),
+    note: String(product.note || ''),
     link1688: String(product.link1688 || ''),
     imageUrl: String(product.imageUrl || ''),
     cargoType: String(defaults?.cargoType || 'general'),
@@ -804,7 +857,7 @@ function buildDraftFromProduct(product: ProductRecord | null, activeAccount: str
   };
 }
 
-function ProductsPage() {
+function ProductsPage({ active = true }: { active?: boolean }) {
   const providerRef = useRef(ProductLibraryProviderFirestore.create({
     state: {},
     helpers: { nowIso: () => new Date().toISOString() }
@@ -812,6 +865,8 @@ function ProductsPage() {
   const [connected, setConnected] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [permissionBlocked, setPermissionBlocked] = useState(false);
+  const [copyingRules, setCopyingRules] = useState(false);
   const [syncText, setSyncText] = useState('未连接');
   const [syncClass, setSyncClass] = useState('');
   const [projectId, setProjectId] = useState('');
@@ -828,13 +883,18 @@ function ProductsPage() {
   const [editingTkId, setEditingTkId] = useState('');
   const [draft, setDraft] = useState<ProductFormDraft>({ ...EMPTY_PRODUCT_FORM, skus: [createEmptySku()] });
   const [invalid, setInvalid] = useState<Set<string>>(new Set());
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const [newAccountName, setNewAccountName] = useState('');
+  const [accountEditOpen, setAccountEditOpen] = useState(false);
+  const [editingAccountName, setEditingAccountName] = useState('');
+  const [editingAccountValue, setEditingAccountValue] = useState('');
+  const [accountDeleteOpen, setAccountDeleteOpen] = useState(false);
+  const [deletingAccountName, setDeletingAccountName] = useState('');
   const [exportOpen, setExportOpen] = useState(false);
   const [exportSelected, setExportSelected] = useState<Set<string>>(new Set());
+  const [searchHelpOpen, setSearchHelpOpen] = useState(false);
 
-  const allAccounts = useMemo(() => uniqueAccounts([
-    ...accounts,
-    ...products.map(product => product.accountName)
-  ]).sort((left, right) => left.localeCompare(right)), [accounts, products]);
+  const allAccounts = accounts;
 
   const productExporter = useMemo(() => ProductLibraryExport.create({
     state: {
@@ -882,14 +942,21 @@ function ProductsPage() {
     }));
   }, [projectId]);
 
+  const notifyAccountsChanged = useCallback((detail: Record<string, unknown> = {}) => {
+    window.dispatchEvent(new CustomEvent(ACCOUNT_UPDATED_EVENT, {
+      detail: {
+        source: 'products',
+        projectId,
+        ...detail
+      }
+    }));
+  }, [projectId]);
+
   const formatFirestoreError = useCallback((error: unknown, fallback = '商品管理操作失败') => {
     const err = error as { code?: string; message?: string };
-    const code = String(err?.code || '').trim();
     const message = String(err?.message || '').trim();
-    if (code.includes('permission-denied') || /Missing or insufficient permissions/i.test(message)) {
-      const next = '当前 Firebase 项目的 Firestore 规则还没放行 products 集合。请打开 Firebase Console → Firestore Database → Rules，重新复制并发布最新规则。';
-      TKFirestoreConnection.notifyRulesUpdateNeeded(next);
-      return next;
+    if (isPermissionDenied(error)) {
+      return formatFirestoreRulesUpdateMessage('products', ['products.read', 'products.write']);
     }
     return message || fallback;
   }, []);
@@ -899,8 +966,19 @@ function ProductsPage() {
     setProducts(result.products || []);
     setAccounts(Array.isArray(result.accounts) ? result.accounts : []);
     setLoaded(true);
+    setPermissionBlocked(false);
     setSyncText(`已同步 · ${(result.products || []).length} 个商品`);
     setSyncClass('saved');
+  }, []);
+
+  const markPermissionBlocked = useCallback(() => {
+    setLoaded(true);
+    setConnected(true);
+    setPermissionBlocked(true);
+    setProducts([]);
+    setAccounts([]);
+    setSyncText('');
+    setSyncClass('error');
   }, []);
 
   const connectUsingGlobalConfig = useCallback(async () => {
@@ -908,6 +986,7 @@ function ProductsPage() {
     if (!cfg?.configText) {
       setConnected(false);
       setLoaded(false);
+      setPermissionBlocked(false);
       setSyncText('未连接');
       setSyncClass('');
       return false;
@@ -921,10 +1000,16 @@ function ProductsPage() {
       setConnected(true);
       await loadProducts();
       return true;
+    } catch (error) {
+      if (isPermissionDenied(error)) {
+        markPermissionBlocked();
+        return false;
+      }
+      throw error;
     } finally {
       setLoading(false);
     }
-  }, [loadProducts]);
+  }, [loadProducts, markPermissionBlocked]);
 
   useEffect(() => {
     void connectUsingGlobalConfig().catch(error => {
@@ -948,6 +1033,7 @@ function ProductsPage() {
       setPageSize(50);
       setCurrentPage(1);
       setEditingTkId('');
+      setPermissionBlocked(false);
       if (!nextConnected) {
         setConnected(false);
         setSyncText('未连接');
@@ -961,14 +1047,38 @@ function ProductsPage() {
         setSyncClass('');
       });
     };
+    const handleAccountsChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ source?: string; accounts?: string[] }>).detail || {};
+      if (detail.source === 'products' || !readGlobalConfig()?.configText) return;
+      if (Array.isArray(detail.accounts)) {
+        const nextAccounts = uniqueAccounts(detail.accounts);
+        setAccounts(nextAccounts);
+        setActiveAccount(current => current === '__all__' || nextAccounts.includes(current) ? current : '__all__');
+        setCurrentPage(1);
+      }
+      void loadProducts().catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+      });
+    };
     window.addEventListener('tk-firestore-config-changed', handleConnectionChange);
-    return () => window.removeEventListener('tk-firestore-config-changed', handleConnectionChange);
-  }, [connectUsingGlobalConfig, formatFirestoreError]);
+    window.addEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
+    return () => {
+      window.removeEventListener('tk-firestore-config-changed', handleConnectionChange);
+      window.removeEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
+    };
+  }, [connectUsingGlobalConfig, formatFirestoreError, loadProducts, markPermissionBlocked]);
 
   useEffect(() => {
     if (activeAccount === '__all__' || allAccounts.includes(activeAccount)) return;
     setActiveAccount('__all__');
   }, [activeAccount, allAccounts]);
+
+  useEffect(() => {
+    if (!active || !connected || !readGlobalConfig()?.configText) return;
+    void loadProducts().catch(error => {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+    });
+  }, [active, connected, loadProducts, markPermissionBlocked]);
 
   function openProductModal(tkId = '') {
     const product = tkId ? products.find(item => item.tkId === tkId) || null : null;
@@ -990,6 +1100,18 @@ function ProductsPage() {
       showToast('链接已复制');
     } catch (error) {
       showToast((error as Error)?.message || '复制失败', 'error');
+    }
+  }
+
+  async function copyFirestoreRules() {
+    setCopyingRules(true);
+    try {
+      await TKFirestoreConnection.copyRules();
+      showToast('Firestore 规则已复制');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '规则复制失败', 'error');
+    } finally {
+      setCopyingRules(false);
     }
   }
 
@@ -1132,6 +1254,7 @@ function ProductsPage() {
       accountName: draft.accountName.trim(),
       tkId: draft.tkId.trim(),
       name: draft.name.trim(),
+      note: draft.note.trim(),
       link1688: draft.link1688.trim(),
       imageUrl: draft.imageUrl.trim()
     };
@@ -1178,11 +1301,16 @@ function ProductsPage() {
       notifyProductsChanged({ action: 'upsert', tkId: saved?.tkId || payload.tkId });
       if (isProductDeferredWrite(result)) result.commitPromise.then(() => {
         notifyProductsChanged({ action: 'commit', tkId: saved?.tkId || payload.tkId });
-      }).catch(() => {});
+      }).catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+        showToast(formatFirestoreError(error, '商品保存失败'), 'error');
+      });
       setModalOpen(false);
       setEditingTkId('');
+      setPermissionBlocked(false);
       showToast('商品已保存');
     } catch (error) {
+      if (isPermissionDenied(error)) markPermissionBlocked();
       showToast(formatFirestoreError(error, '商品保存失败'), 'error');
     }
   }
@@ -1195,10 +1323,151 @@ function ProductsPage() {
       notifyProductsChanged({ action: 'delete', tkId });
       if (typeof result === 'object' && result?.commitPromise) result.commitPromise.then(() => {
         notifyProductsChanged({ action: 'commit', tkId });
-      }).catch(() => {});
+      }).catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+        showToast(formatFirestoreError(error, '商品删除失败'), 'error');
+      });
+      setPermissionBlocked(false);
       showToast('商品已删除');
     } catch (error) {
+      if (isPermissionDenied(error)) markPermissionBlocked();
       showToast(formatFirestoreError(error, '商品删除失败'), 'error');
+    }
+  }
+
+  async function addAccount() {
+    const name = newAccountName.trim();
+    if (!name) return;
+    if (allAccounts.includes(name)) {
+      showToast('该账号已存在', 'error');
+      return;
+    }
+    try {
+      const nextAccounts = uniqueAccounts([...allAccounts, name]);
+      const result = await providerRef.current.upsertAccount(name, { sortIndex: nextAccounts.indexOf(name), waitForCommit: false });
+      setAccounts(nextAccounts);
+      setActiveAccount(name);
+      setCurrentPage(1);
+      setDraft(previous => ({ ...previous, accountName: name }));
+      setNewAccountName('');
+      setAccountModalOpen(false);
+      setPermissionBlocked(false);
+      setSyncText('账号已保存到 Firestore 本地队列…');
+      setSyncClass('saving');
+      notifyAccountsChanged({ action: 'upsert', account: name, accounts: nextAccounts });
+      if (typeof result === 'object' && result?.commitPromise) result.commitPromise.then(() => {
+        setSyncText(`已同步 · ${products.length} 个商品`);
+        setSyncClass('saved');
+        notifyAccountsChanged({ action: 'commit', account: name, accounts: nextAccounts });
+      }).catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+        showToast(formatFirestoreError(error, '账号保存失败'), 'error');
+      });
+      showToast('账号已添加');
+    } catch (error) {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      showToast(formatFirestoreError(error, '账号保存失败'), 'error');
+    }
+  }
+
+  async function reorderAccounts(nextOrder: string[]) {
+    const nextAccounts = uniqueAccounts(nextOrder);
+    if (!nextAccounts.length) return;
+    setAccounts(nextAccounts);
+    notifyAccountsChanged({ action: 'reorder', accounts: nextAccounts });
+    try {
+      const result = await providerRef.current.saveAccountOrder(nextAccounts, { waitForCommit: false });
+      if (typeof result === 'object' && result?.commitPromise) result.commitPromise.catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+        showToast(formatFirestoreError(error, '账号排序保存失败'), 'error');
+      });
+    } catch (error) {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      showToast(formatFirestoreError(error, '账号排序保存失败'), 'error');
+    }
+  }
+
+  function openEditAccount(account: string) {
+    setEditingAccountName(account);
+    setEditingAccountValue(account);
+    setAccountEditOpen(true);
+  }
+
+  function openDeleteAccount(account: string) {
+    setDeletingAccountName(account);
+    setAccountDeleteOpen(true);
+  }
+
+  async function renameAccount() {
+    const oldName = editingAccountName.trim();
+    const newName = editingAccountValue.trim();
+    if (!oldName || !newName) return;
+    if (oldName === newName) {
+      setAccountEditOpen(false);
+      return;
+    }
+    if (allAccounts.some(account => account !== oldName && account === newName)) {
+      showToast('该账号已存在', 'error');
+      return;
+    }
+    const nextAccounts = allAccounts.map(account => account === oldName ? newName : account);
+    const nextProducts = products.map(product => (
+      normalizeAccountName(product.accountName) === oldName ? { ...product, accountName: newName } : product
+    ));
+    setAccounts(nextAccounts);
+    setProducts(nextProducts);
+    if (activeAccount === oldName) setActiveAccount(newName);
+    setCurrentPage(1);
+    setAccountEditOpen(false);
+    setEditingAccountName('');
+    setEditingAccountValue('');
+    setSyncText('账号名已保存到 Firestore 本地队列…');
+    setSyncClass('saving');
+    notifyAccountsChanged({ action: 'rename', oldAccount: oldName, account: newName, accounts: nextAccounts });
+    notifyProductsChanged({ action: 'rename-account', oldAccount: oldName, account: newName });
+    try {
+      const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, waitForCommit: false });
+      if (result?.commitPromise) result.commitPromise.then(() => {
+        setSyncText(`已同步 · ${nextProducts.length} 个商品`);
+        setSyncClass('saved');
+        notifyAccountsChanged({ action: 'commit', account: newName, accounts: nextAccounts });
+      }).catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+        showToast(formatFirestoreError(error, '账号名保存失败'), 'error');
+      });
+      showToast('账号名已更新');
+    } catch (error) {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      showToast(formatFirestoreError(error, '账号名保存失败'), 'error');
+    }
+  }
+
+  async function deleteAccount() {
+    const name = deletingAccountName.trim();
+    if (!name) return;
+    const nextAccounts = allAccounts.filter(account => account !== name);
+    setAccounts(nextAccounts);
+    setActiveAccount(current => current === name ? '__all__' : current);
+    setCurrentPage(1);
+    setAccountDeleteOpen(false);
+    setDeletingAccountName('');
+    setSyncText('账号名已删除，数据保留在全部…');
+    setSyncClass('saving');
+    notifyAccountsChanged({ action: 'delete', account: name, accounts: nextAccounts });
+    try {
+      const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, waitForCommit: false });
+      if (result?.commitPromise) result.commitPromise.then(() => {
+        setSyncText(`已同步 · ${products.length} 个商品`);
+        setSyncClass('saved');
+        notifyAccountsChanged({ action: 'commit-delete', account: name, accounts: nextAccounts });
+      }).catch(error => {
+        if (isPermissionDenied(error)) markPermissionBlocked();
+        showToast(formatFirestoreError(error, '账号名删除失败'), 'error');
+      });
+      showToast('账号名已删除，数据仍在全部里');
+    } catch (error) {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      showToast(formatFirestoreError(error, '账号名删除失败'), 'error');
     }
   }
 
@@ -1224,7 +1493,7 @@ function ProductsPage() {
       showToast('当前选择下没有可导出的商品数据', 'error');
       return;
     }
-    const headers = ['账号', 'TK ID', '商品名称', '货物类型', 'SKU 名称', 'SKU ID', '重量(g)', '尺寸(cm)', '单件预估海外运费(元)', '1688 链接', '图片 URL', '创建时间', '更新时间'];
+    const headers = ['账号', 'TK ID', '商品名称', '货物类型', 'SKU 名称', 'SKU ID', '重量(g)', '尺寸(cm)', '单件预估海外运费(元)', '1688 链接', '图片 URL', '创建时间', '更新时间', '备注'];
     const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
     const selectedOptions = exportOptions.filter(option => exportSelected.has(option.key));
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -1242,25 +1511,20 @@ function ProductsPage() {
 
   return (
     <section className="products-page" data-react-products-page-ready="true">
-      {!connected ? (
-        <Card id="pl-disconnected">
-          <EmptyState
-            className="py-[60px]"
-            title="商品管理"
-            description="先连接你的 Firebase Firestore。商品和订单共用同一个 Firebase 项目，本站不保存你的商品资料。"
-          >
-            <Button id="pl-open-connection" variant="primary" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>
-          </EmptyState>
-        </Card>
-      ) : null}
+      <PageHero
+        variant="products"
+        title="商品管理"
+        kicker="商品资料 / 预估运费 / 采购链接"
+        description="沉淀商品资料、预估运费和采购链接，录一次基础资料，后续订单直接复用。"
+      />
 
-      {connected ? <Card id="pl-main">
+      <Card id="pl-main">
         <div className={cn('ot-header-status-row mb-3', statusStripClass)}>
           <div className={cn(statusStripLeftClass, 'min-w-0 flex-wrap')}>
             <Badge className="min-h-[30px] min-w-0 max-w-full truncate text-[var(--text)] font-semibold" id="pl-user">
-              {projectId ? `已连接 · ${projectId} · Firestore` : '已连接 · Firebase Firestore'}
+              {connected ? (projectId ? `已连接 · ${projectId} · Firestore` : '已连接 · Firebase Firestore') : '未连接 Firebase'}
             </Badge>
-            <Badge id="pl-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge>
+            {permissionBlocked ? null : <Badge id="pl-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge>}
             <Button
               id="pl-refresh"
               variant="plain"
@@ -1270,6 +1534,11 @@ function ProductsPage() {
               title="刷新商品数据"
               aria-busy={loading ? 'true' : 'false'}
               onClick={() => void loadProducts().catch(error => {
+                if (isPermissionDenied(error)) {
+                  markPermissionBlocked();
+                  showToast(formatFirestoreError(error, '刷新失败'), 'error');
+                  return;
+                }
                 showToast(formatFirestoreError(error, '刷新失败'), 'error');
                 setSyncText('刷新失败');
                 setSyncClass('error');
@@ -1279,44 +1548,75 @@ function ProductsPage() {
             </Button>
           </div>
           <div className={statusStripRightClass}>
-            <Button id="pl-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-            <Button id="pl-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
+            {connected ? (
+              <>
+                <Button id="pl-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
+                <Button id="pl-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
+              </>
+            ) : null}
           </div>
         </div>
 
-        <AccountTabsBar
-          id="pl-acc-tabs"
-          className="pl-account-tabs-row mb-3"
-          activeKey={activeAccount}
-          allCount={products.length}
-          allDataAttrs={{ 'data-pl-acc': '__all__' }}
-          allTabsId="pl-acc-tabs-all"
-          scrollId="pl-acc-tabs-scroll"
-          actionsId="pl-acc-actions"
-          items={accountTabItems}
-          emptyText="暂无账号，先去订单管理添加账号或在已有商品里关联账号"
-          onChange={account => { setActiveAccount(account); setCurrentPage(1); }}
-          actions={<Button id="pl-add" variant="primary" onClick={() => openProductModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增商品</Button>}
-        />
+        {!connected ? (
+          <ModuleListState
+            tone="connect"
+            title="连接数据库"
+            description="先连接你的 Firebase Firestore。商品和订单共用同一个 Firebase 项目，本站不保存你的商品资料。"
+            actions={[{ id: 'pl-open-connection', label: '连接 Firebase', variant: 'primary', onClick: () => TKFirestoreConnection.open() }]}
+          />
+        ) : permissionBlocked ? (
+          <ModuleListState
+            tone="permission"
+            title="数据库权限不足"
+            description="当前数据库权限不足，商品管理保存不可用。复制最新 Firestore 规则发布后刷新页面。"
+            actions={[
+              { label: '打开 Firebase Console', onClick: () => TKFirestoreConnection.openConsole() },
+              { label: copyingRules ? '复制中…' : '复制 Firestore 规则', variant: 'primary', disabled: copyingRules, onClick: () => void copyFirestoreRules() }
+            ]}
+          />
+        ) : (
+          <>
+            <AccountTabsBar
+              id="pl-acc-tabs"
+              className="pl-account-tabs-row mb-3"
+              activeKey={activeAccount}
+              allCount={products.length}
+              allDataAttrs={{ 'data-pl-acc': '__all__' }}
+              allTabsId="pl-acc-tabs-all"
+              scrollId="pl-acc-tabs-scroll"
+              actionsId="pl-acc-actions"
+              items={accountTabItems}
+              emptyText="暂无账号，点击 + 添加账号"
+              addAccountButton={{ id: 'pl-tab-add', title: '添加账号', onClick: () => setAccountModalOpen(true) }}
+              onEditAccount={openEditAccount}
+              onDeleteAccount={openDeleteAccount}
+              onReorder={reorderAccounts}
+              onChange={account => { setActiveAccount(account); setCurrentPage(1); }}
+              actions={<Button id="pl-add" variant="primary" onClick={() => openProductModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增商品</Button>}
+            />
 
-        <ProductsTableView
-          products={products}
-          activeAccount={activeAccount}
-          searchQuery={searchQuery}
-          sortOrder={sortOrder}
-          pageSize={pageSize}
-          currentPage={currentPage}
-          expandedTkIds={expandedTkIds}
-          onSearchChange={value => { setSearchQuery(value); setCurrentPage(1); }}
-          onPageSizeChange={value => { setPageSize(Math.max(1, Number(value) || 50)); setCurrentPage(1); }}
-          onPageChange={delta => setCurrentPage(page => Math.max(1, page + delta))}
-          onSortToggle={() => { setSortOrder(value => value === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}
-          onToggleExpand={tkId => setExpandedTkIds(previous => ({ ...previous, [tkId]: !previous[tkId] }))}
-          onCopyLink={copyLink}
-          onEdit={openProductModal}
-          onDelete={deleteProduct}
-        />
-      </Card> : null}
+            <ProductsTableView
+              products={products}
+              activeAccount={activeAccount}
+              searchQuery={searchQuery}
+              searchHelpOpen={searchHelpOpen}
+              sortOrder={sortOrder}
+              pageSize={pageSize}
+              currentPage={currentPage}
+              expandedTkIds={expandedTkIds}
+              onSearchChange={value => { setSearchQuery(value); setCurrentPage(1); }}
+              onSearchHelpOpenChange={setSearchHelpOpen}
+              onPageSizeChange={value => { setPageSize(Math.max(1, Number(value) || 50)); setCurrentPage(1); }}
+              onPageChange={delta => setCurrentPage(page => Math.max(1, page + delta))}
+              onSortToggle={() => { setSortOrder(value => value === 'asc' ? 'desc' : 'asc'); setCurrentPage(1); }}
+              onToggleExpand={tkId => setExpandedTkIds(previous => ({ ...previous, [tkId]: !previous[tkId] }))}
+              onCopyLink={copyLink}
+              onEdit={openProductModal}
+              onDelete={deleteProduct}
+            />
+          </>
+        )}
+      </Card>
 
       <ProductModal
         open={modalOpen}
@@ -1332,6 +1632,37 @@ function ProductsPage() {
         onAddSku={() => setDraft(previous => ({ ...previous, skus: [...previous.skus, createEmptySku()] }))}
         onRemoveSku={index => setDraft(previous => ({ ...previous, skus: previous.skus.filter((_, currentIndex) => currentIndex !== index) }))}
         onSubmit={submitProduct}
+      />
+
+      <AddAccountDialog
+        modalId="pl-add-acc-modal"
+        formId="pl-add-acc-form"
+        inputId="pl-new-acc-input"
+        open={accountModalOpen}
+        value={newAccountName}
+        onValueChange={setNewAccountName}
+        onOpenChange={setAccountModalOpen}
+        onConfirm={addAccount}
+      />
+
+      <AccountEditDialog
+        modalId="pl-edit-acc-modal"
+        formId="pl-edit-acc-form"
+        inputId="pl-edit-acc-input"
+        open={accountEditOpen}
+        accountName={editingAccountName}
+        value={editingAccountValue}
+        onValueChange={setEditingAccountValue}
+        onOpenChange={setAccountEditOpen}
+        onConfirm={renameAccount}
+      />
+
+      <AccountDeleteDialog
+        modalId="pl-delete-acc-modal"
+        open={accountDeleteOpen}
+        accountName={deletingAccountName}
+        onOpenChange={setAccountDeleteOpen}
+        onConfirm={deleteAccount}
       />
 
       <ExportModal

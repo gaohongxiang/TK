@@ -125,10 +125,10 @@ assert.match(
   'React 数据分析页需要用一个总览图结合渠道结构和流量漏斗'
 );
 
-assert.doesNotMatch(
+assert.match(
   reactAnalyticsSource,
-  /style=\{\{\s*height:\s*'100%'[\s\S]*\}\}/,
-  'React ECharts 不应使用内联 100% 高度覆盖固定画布高度，避免运营总览图塌陷'
+  /<div className=\{className\}>[\s\S]*<ReactEChartsCore[\s\S]*className="h-full w-full"[\s\S]*style=\{\{\s*height:\s*'100%',\s*width:\s*'100%'\s*\}\}[\s\S]*<\/div>/,
+  'React ECharts 需要用外层固定画布高度、内层 100% 填充，避免库默认 300px 或父级塌陷'
 );
 
 assert.match(

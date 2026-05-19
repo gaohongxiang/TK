@@ -53,16 +53,18 @@ function ReactECharts(props: { className?: string; optionKey?: string; option: E
     return () => window.clearTimeout(tick);
   }, [optionKey, option]);
   return (
-    <ReactEChartsCore
-      echarts={echarts}
-      className={className}
-      option={option}
-      onChartReady={chart => {
-        chartRef.current = chart;
-        window.setTimeout(() => chart.resize(), 0);
-      }}
-      style={{ width: '100%' }}
-    />
+    <div className={className}>
+      <ReactEChartsCore
+        echarts={echarts}
+        className="h-full w-full"
+        option={option}
+        onChartReady={chart => {
+          chartRef.current = chart;
+          window.setTimeout(() => chart.resize(), 0);
+        }}
+        style={{ height: '100%', width: '100%' }}
+      />
+    </div>
   );
 }
 

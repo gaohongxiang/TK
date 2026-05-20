@@ -14,9 +14,11 @@ const accountDialogsSource = fs.readFileSync(path.join(root, 'src', 'react', 'co
 const productsPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const ordersPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
 const collectionPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'collection', 'CollectionPage.tsx'), 'utf8');
+const analyticsPageSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'AnalyticsApp.tsx'), 'utf8');
 const productsProviderSource = fs.readFileSync(path.join(root, 'src', 'products', 'provider-firestore.ts'), 'utf8');
 const ordersProviderSource = fs.readFileSync(path.join(root, 'src', 'orders', 'provider-firestore.ts'), 'utf8');
 const collectionProviderSource = fs.readFileSync(path.join(root, 'src', 'collection', 'provider-firestore.ts'), 'utf8');
+const analyticsProviderSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'provider-firestore.ts'), 'utf8');
 
 assert.match(
   accountTabsSource,
@@ -45,7 +47,8 @@ assert.match(
 for (const [name, source, prefix] of [
   ['商品管理', productsPageSource, 'pl'],
   ['订单管理', ordersPageSource, 'ot'],
-  ['商品采编', collectionPageSource, 'collection']
+  ['商品采编', collectionPageSource, 'collection'],
+  ['数据分析', analyticsPageSource, 'analytics']
 ]) {
   assert.match(
     source,
@@ -72,8 +75,8 @@ assert.match(
 
 assert.match(
   helperSource,
-  /renameAccountAcrossModules[\s\S]*renameProductAccounts[\s\S]*renameOrderAccounts[\s\S]*renameCollectionAccounts/,
-  '共享账号 helper 需要在重命名时迁移商品、订单和采集记录账号引用'
+  /renameAccountAcrossModules[\s\S]*renameProductAccounts[\s\S]*renameOrderAccounts[\s\S]*renameCollectionAccounts[\s\S]*renameAnalyticsAccounts/,
+  '共享账号 helper 需要在重命名时迁移商品、订单、采集记录和数据分析快照账号引用'
 );
 
 assert.match(
@@ -95,10 +98,24 @@ assert.doesNotMatch(deleteFunctionBody, /collection\('products'\)|collection\('o
 for (const [name, source] of [
   ['商品 provider', productsProviderSource],
   ['订单 provider', ordersProviderSource],
-  ['商品采编 provider', collectionProviderSource]
+  ['商品采编 provider', collectionProviderSource],
+  ['数据分析 provider', analyticsProviderSource]
 ]) {
   assert.match(source, /renameAccountAcrossModules[\s\S]*deleteAccountLabel/, `${name} 需要复用共享账号重命名和删除逻辑`);
   assert.match(source, /renameAccount[\s\S]*deleteAccount/, `${name} 需要暴露 renameAccount 和 deleteAccount`);
+}
+
+for (const [name, source] of [
+  ['商品管理', productsPageSource],
+  ['订单管理', ordersPageSource],
+  ['商品采编', collectionPageSource],
+  ['数据分析', analyticsPageSource]
+]) {
+  assert.match(
+    source,
+    /detail\.action === 'reorder'[\s\S]*detail\.action === 'upsert'[\s\S]*detail\.action === 'rename'[\s\S]*detail\.action === 'delete'[\s\S]*return/,
+    `${name} 收到账号排序/增删改事件时应先使用事件里的账号列表，不能马上用旧远端顺序覆盖`
+  );
 }
 
 const module = await import(pathToFileURL(helperPath).href);

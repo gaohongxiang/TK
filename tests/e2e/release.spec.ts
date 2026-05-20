@@ -543,13 +543,19 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#analytics-user')).toContainText('已连接 · tk-e2e');
     await expect(page.locator('#analytics-acc-tabs')).toContainText('Test-Account');
     await page.locator('#analytics-acc-tabs').getByText('Test-Account').click();
-    await page.locator('#analytics-file-input').setInputFiles({
+    await page.locator('.analytics-file-picker').click();
+    await expect(page.locator('#analytics-upload-account-modal')).toBeVisible();
+    await expect(page.locator('#analytics-upload-account-select')).toHaveValue('Test-Account');
+    const analyticsFileChooser = page.waitForEvent('filechooser');
+    await page.locator('#analytics-upload-account-modal').getByRole('button', { name: '选择文件' }).click();
+    await (await analyticsFileChooser).setFiles({
       name: 'traffic.xlsx',
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       buffer: Buffer.from('fake workbook')
     });
-    await expect(page.locator('#analytics-file-meta')).toContainText('traffic.xlsx');
-    await expect(page.locator('#analytics-sync-status')).toContainText('已保存到 Firestore');
+    await expect(page.locator('#analytics-file-meta')).toContainText('全部周期 · 1 张流量表 · 2 个商品');
+    await expect(page.locator('#analytics-sync-status')).toContainText('已聚合全部周期');
+    await expect(page.locator('#analytics-snapshot-select')).toContainText('全部周期');
     await expect(page.locator('[data-react-analytics-ready="true"]')).toBeVisible();
     await expect(page.locator('#analytics-kpi-grid')).toContainText('70,036 円');
     await expect(page.locator('#analytics-channel-share canvas')).toHaveCount(1);

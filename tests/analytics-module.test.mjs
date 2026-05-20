@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename);
 const root = path.join(__dirname, '..');
 const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'parser.ts'), 'utf8');
 const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'analyzer.ts'), 'utf8');
+const srcAggregateSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'aggregate.ts'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const reactAppShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
@@ -127,7 +128,7 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /<div className=\{className\}>[\s\S]*<ReactEChartsCore[\s\S]*className="h-full w-full"[\s\S]*style=\{\{\s*height:\s*'100%',\s*width:\s*'100%'\s*\}\}[\s\S]*<\/div>/,
+  /<div ref=\{containerRef\} className=\{className\}>[\s\S]*<ReactEChartsCore[\s\S]*className="h-full w-full"[\s\S]*style=\{\{\s*height:\s*'100%',\s*width:\s*'100%'\s*\}\}[\s\S]*<\/div>/,
   'React ECharts 需要用外层固定画布高度、内层 100% 填充，避免库默认 300px 或父级塌陷'
 );
 
@@ -202,14 +203,14 @@ assert.doesNotMatch(
 
 assert.match(
   reactAnalyticsSource,
-  /AnalyticsProviderFirestore[\s\S]*pullAccounts\(\)[\s\S]*listSavedAnalyses\(\)[\s\S]*pullAnalysisBySnapshot\([\s\S]*saveAnalysis\(next,\s*\{\s*accountName,\s*filename\s*\}\)[\s\S]*analytics-sync-status/,
+  /AnalyticsProviderFirestore[\s\S]*pullAccounts\(\)[\s\S]*listSavedAnalyses\(\)[\s\S]*pullAnalysesBySnapshots\([\s\S]*aggregateAnalyses\([\s\S]*saveAnalysis\(next,\s*\{\s*accountName:\s*normalizedAccountName,\s*filename\s*\}\)[\s\S]*analytics-sync-status/,
   'React 数据分析需要按账号保存到用户自己的 Firestore、恢复历史快照并显示同步状态'
 );
 
 assert.match(
   analyticsFirestoreSource,
-  /analytics_snapshots[\s\S]*analytics_records[\s\S]*buildAnalyticsSnapshotDoc[\s\S]*buildAnalyticsRecordDoc[\s\S]*listSavedAnalyses[\s\S]*pullAnalysisBySnapshot[\s\S]*pullLatestAnalysis[\s\S]*saveAnalysis/,
-  '数据分析 Firestore provider 需要保存快照和商品明细，并支持列出和恢复历史分析'
+  /analytics_snapshots[\s\S]*analytics_records[\s\S]*buildAnalyticsSnapshotDoc[\s\S]*buildAnalyticsRecordDoc[\s\S]*listSavedAnalyses[\s\S]*pullAnalysisBySnapshot[\s\S]*pullAnalysesBySnapshots[\s\S]*pullLatestAnalysis[\s\S]*saveAnalysis[\s\S]*upsertAccount[\s\S]*saveAccountOrder[\s\S]*renameAccount[\s\S]*deleteAccount/,
+  '数据分析 Firestore provider 需要保存快照和商品明细，支持列出和恢复历史分析，并复用共享账号写入能力'
 );
 
 assert.match(
@@ -220,14 +221,50 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /AccountTabsBar[\s\S]*id="analytics-acc-tabs"[\s\S]*allCount=\{savedSnapshots\.length\}[\s\S]*items=\{accountTabItems\}/,
-  '数据分析需要和其他模块一样显示账号标签'
+  /AccountTabsBar[\s\S]*id="analytics-acc-tabs"[\s\S]*allCount=\{savedSnapshots\.length\}[\s\S]*items=\{accountTabItems\}[\s\S]*addAccountButton=\{\{ id: 'analytics-tab-add'[\s\S]*onEditAccount=\{openEditAccount\}[\s\S]*onDeleteAccount=\{openDeleteAccount\}[\s\S]*onReorder=\{reorderAccounts\}/,
+  '数据分析需要和其他模块一样显示账号标签，并接入添加、编辑、删除和拖拽排序'
 );
 
 assert.match(
   reactAnalyticsSource,
   /connected = !!projectId[\s\S]*connected \? \([\s\S]*<AccountTabsBar[\s\S]*connected && !permissionBlocked \? \([\s\S]*id="analytics-file-input"[\s\S]*id="analytics-connect-state"/,
   '数据分析未连接数据库时不应显示账号标签和导入流量表入口'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /const nextAccounts = uniqueAccounts\(remoteAccounts\)/,
+  '数据分析账号标签必须只来自 order_accounts 共享账号表，不能从历史分析快照反推账号'
+);
+
+assert.doesNotMatch(
+  reactAnalyticsSource,
+  /snapshotAccounts|uniqueAccounts\(\[\.\.\.remoteAccounts,\s*\.\.\.snapshotAccounts\]\)/,
+  '数据分析不应把历史快照账号混入账号标签列表'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /ACCOUNT_UPDATED_EVENT = 'tk-accounts-changed'[\s\S]*detail\.action === 'rename'[\s\S]*detail\.action === 'reorder'[\s\S]*detail\.action === 'rename'[\s\S]*window\.addEventListener\(ACCOUNT_UPDATED_EVENT,\s*handleAccountsChanged\)/,
+  '数据分析需要监听跨模块账号变更，并即时应用排序和重命名'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /modalId="analytics-add-acc-modal"[\s\S]*modalId="analytics-edit-acc-modal"[\s\S]*onConfirm=\{renameAccount\}[\s\S]*modalId="analytics-delete-acc-modal"[\s\S]*onConfirm=\{deleteAccount\}/,
+  '数据分析需要渲染和其他模块一致的账号添加、编辑和删除弹窗'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /uploadAccountOpen[\s\S]*uploadAccountDraft[\s\S]*fileInputRef[\s\S]*openUploadAccountDialog[\s\S]*confirmUploadAccount[\s\S]*fileInputRef\.current\?\.click\(\)[\s\S]*id="analytics-upload-account-modal"[\s\S]*id="analytics-upload-account-select"/,
+  '数据分析导入流量表时需要先弹出账号选择，再打开 Excel 文件选择器'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /const accountName = normalizeAccountName\(uploadAccountDraft\)[\s\S]*saveAnalysisToFirestore\(next,\s*file\.name,\s*accountName\)/,
+  '数据分析保存快照时必须使用上传弹窗选择的具体账号'
 );
 
 assert.match(
@@ -298,8 +335,20 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /formatSnapshotOption[\s\S]*filterSnapshotsByAccount[\s\S]*pullAnalysisBySnapshot[\s\S]*id="analytics-snapshot-select"/,
-  '数据分析页面需要支持按账号切换多个历史流量表快照'
+  /ALL_PERIODS_KEY[\s\S]*formatPeriodOption[\s\S]*filterSnapshotsByAccount[\s\S]*pullAnalysesBySnapshots[\s\S]*aggregateAnalyses[\s\S]*id="analytics-snapshot-select"[\s\S]*全部周期/,
+  '数据分析页面需要先按账号过滤，再支持全部周期聚合和单周期切换'
+);
+
+assert.match(
+  srcAggregateSource,
+  /overallCtr[\s\S]*overallConversion[\s\S]*periodCount[\s\S]*latestPeriod[\s\S]*gmvTrend[\s\S]*gmvDelta[\s\S]*conversionDelta[\s\S]*function buildPeriodComparisons[\s\S]*function aggregateAnalyses[\s\S]*byProduct/,
+  '数据分析多周期聚合需要按商品合并，并重新计算比例、覆盖周期、最近周期、趋势和周期对比'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /function PeriodComparisonTable[\s\S]*周期对比[\s\S]*GMV[\s\S]*订单[\s\S]*CTR[\s\S]*转化率[\s\S]*analysis\.periodComparisons/,
+  '数据分析全部周期模式需要展示多周期对比表'
 );
 
 assert.match(
@@ -336,6 +385,12 @@ assert.match(
   reactAnalyticsSource,
   /analyticsCardClass = 'analytics-chart-card[\s\S]*mutedChipClass = cn\(analyticsChipClass, 'muted'\)[\s\S]*<Card className=\{cn\(analyticsCardClass, 'analytics-overview-card'\)\}[\s\S]*<Badge className=\{mutedChipClass\}[\s\S]*id="analytics-help"[\s\S]*<Card id="analytics-empty" className=\{emptyCardClass\}/,
   '数据分析页面应在保留现有 class 的前提下，把卡片、标签和说明入口收敛到 primitives'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /chart\.resize\(\)[\s\S]*ResizeObserver[\s\S]*window\.addEventListener\('resize'[\s\S]*window\.addEventListener\('hashchange'/,
+  '数据分析 ECharts 需要在容器尺寸和路由切换时重新 resize，避免空白或错位'
 );
 
 assert.match(
@@ -483,6 +538,7 @@ const rows = [
 (async () => {
   const parserModule = await import(`file://${path.join(root, 'src', 'analytics', 'parser.ts')}`);
   const analyzerModule = await import(`file://${path.join(root, 'src', 'analytics', 'analyzer.ts')}`);
+  const aggregateModule = await import(`file://${path.join(root, 'src', 'analytics', 'aggregate.ts')}`);
   const parsedByModule = parserModule.parseRows(rows);
   assert.strictEqual(parsedByModule.period, '2026-04-27 ~ 2026-05-03', '需要读取导出周期');
   assert.strictEqual(parsedByModule.records.length, 2, '需要读取商品数据行');
@@ -502,6 +558,71 @@ const rows = [
     '需要给高 GMV 商品生成运营诊断'
   );
   assert.strictEqual(typeof analyzerModule.TKAnalyticsAnalyzer.diagnoseProduct, 'function', 'analytics analyzer ESM 模块需要保留命名空间导出');
+
+  const nextRows = JSON.parse(JSON.stringify(rows));
+  nextRows[0][0] = '2026-05-04 ~ 2026-05-10';
+  nextRows[2][3] = '90,000円';
+  nextRows[2][4] = '70';
+  nextRows[2][5] = '60';
+  nextRows[2][8] = '1500';
+  nextRows[2][9] = '180';
+  nextRows[2][10] = '100';
+  const parsedNext = parserModule.parseRows(nextRows);
+  const analysisNext = analyzerModule.analyze(parsedNext.records, parsedNext.period);
+  const aggregated = aggregateModule.aggregateAnalyses([
+    {
+      analysis: analysisByModule,
+      snapshotId: 'first',
+      period: analysisByModule.period,
+      updatedAt: '2026-05-03T00:00:00.000Z'
+    },
+    {
+      analysis: analysisNext,
+      snapshotId: 'second',
+      period: analysisNext.period,
+      updatedAt: '2026-05-10T00:00:00.000Z'
+    }
+  ]);
+  const aggregatedRaincoat = aggregated.records.find(record => record.id === '1001');
+  assert.ok(aggregatedRaincoat, '全部周期需要保留商品明细');
+  assert.strictEqual(aggregated.period, '全部周期 · 2 期', '全部周期聚合需要显示覆盖周期数量');
+  assert.strictEqual(aggregated.records.length, 2, '同一商品 ID 的多周期明细需要聚合成一行');
+  assert.strictEqual(aggregated.kpis.totalGmv, analysisByModule.kpis.totalGmv + analysisNext.kpis.totalGmv, '全部周期 GMV 需要求和');
+  assert.strictEqual(aggregatedRaincoat.gmv, 160036, '同一商品的多周期 GMV 需要求和');
+  assert.strictEqual(aggregatedRaincoat.periodCount, 2, '商品明细需要记录覆盖周期数');
+  assert.strictEqual(aggregatedRaincoat.latestPeriod, '2026-05-04 ~ 2026-05-10', '商品明细需要记录最近周期');
+  assert.strictEqual(aggregatedRaincoat.gmvTrend, 19964, '商品明细需要记录最近周期相对首周期的 GMV 趋势');
+  assert.strictEqual(aggregatedRaincoat.overallCtr, aggregatedRaincoat.pageViewsTotal / aggregatedRaincoat.exposureTotal, '聚合后点击率需要按总浏览/总曝光重新计算');
+  assert.strictEqual(aggregatedRaincoat.channels.mall.ctr, 300 / 2500, '聚合后渠道点击率需要按总量重新计算，不能平均');
+  assert.strictEqual(aggregated.periodComparisons.length, 2, '全部周期需要生成周期对比行');
+  assert.strictEqual(aggregated.periodComparisons[1].period, '2026-05-04 ~ 2026-05-10', '周期对比需要按时间顺序保留周期');
+  assert.strictEqual(aggregated.periodComparisons[1].totalGmv, analysisNext.kpis.totalGmv, '周期对比 GMV 需要来自单周期快照');
+  assert.strictEqual(aggregated.periodComparisons[1].gmvDelta, analysisNext.kpis.totalGmv - analysisByModule.kpis.totalGmv, '周期对比需要计算 GMV 环比差异');
+  assert.strictEqual(aggregated.periodComparisons[1].ctr, 622 / 12500, '周期对比 CTR 需要按周期总浏览/总曝光重算');
+  assert.strictEqual(aggregated.periodComparisons[1].conversionDelta, aggregated.periodComparisons[1].conversion - aggregated.periodComparisons[0].conversion, '周期对比转化率需要计算百分点变化');
+  const samePeriodComparisons = aggregateModule.buildPeriodComparisons([
+    {
+      analysis: analysisByModule,
+      snapshotId: 'first',
+      period: analysisByModule.period,
+      updatedAt: '2026-05-03T00:00:00.000Z'
+    },
+    {
+      analysis: analysisNext,
+      snapshotId: 'second-noma',
+      period: analysisNext.period,
+      updatedAt: '2026-05-10T00:00:00.000Z'
+    },
+    {
+      analysis: analysisNext,
+      snapshotId: 'second-lumi',
+      period: analysisNext.period,
+      updatedAt: '2026-05-10T01:00:00.000Z'
+    }
+  ]);
+  assert.strictEqual(samePeriodComparisons.length, 2, '全部账号下同一周期的多张流量表需要合并成同一条周期对比');
+  assert.strictEqual(samePeriodComparisons[1].snapshotCount, 2, '周期对比需要记录同一周期覆盖的快照数量');
+  assert.strictEqual(samePeriodComparisons[1].totalGmv, analysisNext.kpis.totalGmv * 2, '同一周期多张流量表的 GMV 需要求和');
 
   const analyticsProvider = await import(`file://${path.join(root, 'src', 'analytics', 'provider-firestore.ts')}`);
   const snapshotDoc = analyticsProvider.buildAnalyticsSnapshotDoc(analysisByModule, {

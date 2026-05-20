@@ -46,6 +46,10 @@ type AnalyticsParsedRecord = {
   overallConversion: number;
   channels: Record<AnalyticsChannelKey, AnalyticsChannel>;
   diagnosis?: AnalyticsDiagnosis;
+  periodCount?: number;
+  latestPeriod?: string;
+  gmvTrend?: number;
+  gmvTrendRate?: number;
 };
 
 type AnalyticsRecord = AnalyticsParsedRecord & {
@@ -63,12 +67,41 @@ type AnalyticsKpis = {
   unitPrice: number;
 };
 
+type AnalyticsPeriodComparison = {
+  period: string;
+  updatedAt: string;
+  snapshotCount: number;
+  productCount: number;
+  activeCount: number;
+  soldProducts: number;
+  totalGmv: number;
+  totalOrders: number;
+  totalUnits: number;
+  totalExposure: number;
+  totalPageViews: number;
+  totalCustomers: number;
+  aov: number;
+  unitPrice: number;
+  ctr: number;
+  conversion: number;
+  gmvDelta: number;
+  gmvDeltaRate: number;
+  ordersDelta: number;
+  ordersDeltaRate: number;
+  unitsDelta: number;
+  unitsDeltaRate: number;
+  exposureDelta: number;
+  exposureDeltaRate: number;
+  conversionDelta: number;
+};
+
 type AnalyticsAnalysis = {
   period: string;
   records: AnalyticsRecord[];
   activeCount: number;
   channelTotals: AnalyticsChannel[];
   kpis: AnalyticsKpis;
+  periodComparisons?: AnalyticsPeriodComparison[];
 };
 
 type AnalyticsFunnelStage = {
@@ -132,6 +165,7 @@ export type {
   AnalyticsDiagnosisTone,
   AnalyticsFunnelStage,
   AnalyticsKpis,
+  AnalyticsPeriodComparison,
   AnalyticsParsedRecord,
   AnalyticsParser,
   AnalyticsParseResult,

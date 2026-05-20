@@ -1545,7 +1545,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       void loadProducts();
     };
     const handleAccountsChanged = (event: Event) => {
-      const detail = (event as CustomEvent<{ source?: string; accounts?: string[] }>).detail || {};
+      const detail = (event as CustomEvent<{ source?: string; action?: string; oldAccount?: string; account?: string; accounts?: string[] }>).detail || {};
       if (detail.source === 'orders' || !readGlobalConfig()?.configText) return;
       if (Array.isArray(detail.accounts)) {
         const nextAccounts = uniqueAccounts(detail.accounts);
@@ -1553,6 +1553,14 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         setActiveAccount(current => current === '__all__' || nextAccounts.includes(current) ? current : '__all__');
         setCurrentPage(1);
       }
+      if (detail.action === 'rename' && detail.oldAccount && detail.account) {
+        const oldName = normalizeAccountName(detail.oldAccount);
+        const newName = normalizeAccountName(detail.account);
+        setOrders(previous => previous.map(order => (
+          normalizeAccountName(order['账号']) === oldName ? { ...order, '账号': newName } : order
+        )));
+      }
+      if (detail.action === 'reorder' || detail.action === 'upsert' || detail.action === 'rename' || detail.action === 'delete') return;
       void connectUsingGlobalConfig();
     };
     window.addEventListener('tk-firestore-config-changed', handleConnectionChange);
@@ -1751,6 +1759,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setPermissionBlocked(false);
     setSyncText('账号已保存到 Firestore 本地队列…');
     setSyncClass('saving');
+    notifyAccountsChanged({ action: 'upsert', account: name, accounts: nextAccounts });
     try {
       const result = await providerRef.current.pushChanges({
         accountUpserts: [name],
@@ -1759,7 +1768,6 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         assignSeq: false,
         waitForCommit: false
       });
-      notifyAccountsChanged({ action: 'upsert', account: name, accounts: nextAccounts });
       result?.commitPromise?.then(() => {
         setSyncText(`已同步 · ${orders.length} 条`);
         setSyncClass('saved');

@@ -170,6 +170,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
   const [accountDeleteOpen, setAccountDeleteOpen] = useState(false);
   const [deletingAccountName, setDeletingAccountName] = useState('');
   const [projectId, setProjectId] = useState('');
+  const activeRef = useRef(active);
   const providerRef = useRef(CollectionProviderFirestore.create({
     state: {},
     helpers: { nowIso: () => new Date().toISOString() }
@@ -223,6 +224,10 @@ function CollectionPage({ active = true }: { active?: boolean }) {
       }
     }));
   }, [projectId]);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
 
   useEffect(() => {
     if (activeAccount === ALL_ACCOUNTS_KEY) return;
@@ -299,9 +304,15 @@ function CollectionPage({ active = true }: { active?: boolean }) {
   useEffect(() => {
     if (!active) return undefined;
     void loadRemoteDatasets();
-    const handler = () => void loadRemoteDatasets();
+    return undefined;
+  }, [active, loadRemoteDatasets]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (activeRef.current) void loadRemoteDatasets();
+    };
     const handleAccountsChanged = (event: Event) => {
-      const detail = (event as CustomEvent<{ source?: string; accounts?: string[] }>).detail || {};
+      const detail = (event as CustomEvent<{ source?: string; action?: string; oldAccount?: string; account?: string; accounts?: string[] }>).detail || {};
       if (detail.source === 'collection') return;
       if (Array.isArray(detail.accounts)) {
         const nextAccounts = uniqueAccounts(detail.accounts);
@@ -309,7 +320,13 @@ function CollectionPage({ active = true }: { active?: boolean }) {
         setActiveAccount(current => current === ALL_ACCOUNTS_KEY || nextAccounts.includes(current) ? current : ALL_ACCOUNTS_KEY);
         setCurrentPage(1);
       }
-      void loadRemoteDatasets();
+      if (detail.action === 'rename' && detail.oldAccount && detail.account) {
+        const oldName = normalizeAccountName(detail.oldAccount);
+        const newName = normalizeAccountName(detail.account);
+        setDatasets(previous => renameDatasetsAccount(previous, oldName, newName));
+      }
+      if (detail.action === 'reorder' || detail.action === 'upsert' || detail.action === 'rename' || detail.action === 'delete') return;
+      if (activeRef.current) void loadRemoteDatasets();
     };
     window.addEventListener('tk-firestore-config-changed', handler);
     window.addEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
@@ -317,7 +334,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
       window.removeEventListener('tk-firestore-config-changed', handler);
       window.removeEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
     };
-  }, [active, loadRemoteDatasets]);
+  }, [loadRemoteDatasets]);
 
   async function refreshRemote() {
     const ok = await loadRemoteDatasets();
@@ -408,6 +425,10 @@ function CollectionPage({ active = true }: { active?: boolean }) {
     };
   }
 
+  function renameDatasetsAccount(previous: { records: CollectionDataset | null }, oldName: string, newName: string) {
+    return { records: renameDatasetAccount(previous.records, oldName, newName) };
+  }
+
   async function renameAccount() {
     const oldName = editingAccountName.trim();
     const newName = editingAccountValue.trim();
@@ -421,7 +442,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
       return;
     }
     const nextAccounts = allAccounts.map(account => account === oldName ? newName : account);
-    const nextDatasets = { records: renameDatasetAccount(datasets.records, oldName, newName) };
+    const nextDatasets = renameDatasetsAccount(datasets, oldName, newName);
     setAccounts(nextAccounts);
     setDatasets(nextDatasets);
     if (activeAccount === oldName) setActiveAccount(newName);

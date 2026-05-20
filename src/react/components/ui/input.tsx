@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from 'react';
+import { forwardRef, type InputHTMLAttributes } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
@@ -27,16 +27,20 @@ const inputVariants = cva(
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & VariantProps<typeof inputVariants>;
 
-function Input({ className, density = 'default', type = 'text', tone = 'default', ...props }: InputProps) {
+const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { className, density = 'default', type = 'text', tone = 'default', ...props },
+  ref
+) {
   return (
     <input
+      ref={ref}
       type={type}
       data-slot="input"
       className={cn(inputVariants({ density, tone }), className)}
       {...props}
     />
   );
-}
+});
 
 export { Input, inputVariants };
 export type { InputProps };

@@ -11,6 +11,12 @@ import type {
   FirebaseConfig,
   HydratedFirebaseConfig
 } from '../types/firestore.ts';
+import {
+  accountDocId,
+  deleteAccountLabel,
+  renameAccountAcrossModules,
+  uniqueAccounts
+} from '../accounts/firestore-account-actions.ts';
 
 type LooseRecord = Record<string, unknown>;
 type AnalyticsSnapshotDoc = {
@@ -39,6 +45,12 @@ type AnalyticsProviderCreateOptions = {
 type AnalyticsProviderSaveOptions = {
   accountName?: string;
   filename?: string;
+};
+type AnalyticsProviderWriteOptions = {
+  waitForCommit?: boolean;
+};
+type AnalyticsProviderAccountWriteOptions = AnalyticsProviderWriteOptions & {
+  sortIndex?: number;
 };
 type AnalyticsProviderSnapshot = {
   analysis: AnalyticsAnalysis;
@@ -256,6 +268,66 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       .map(row => row.name);
   }
 
+  function trackWritePromise(promise: Promise<unknown>, label: string, { waitForCommit = true }: AnalyticsProviderWriteOptions = {}): Promise<unknown> {
+    const commitPromise = Promise.resolve(promise);
+    if (!waitForCommit) commitPromise.catch(error => console.error(label, error));
+    return commitPromise;
+  }
+
+  async function upsertAccount(name: string, { sortIndex, waitForCommit = true }: AnalyticsProviderAccountWriteOptions = {}) {
+    const currentDb = await requireDb();
+    const normalized = String(name || '').trim();
+    if (!normalized) throw new Error('账号名称不能为空');
+    const updatedAt = nowIso();
+    const id = accountDocId(normalized);
+    const commitPromise = trackWritePromise(
+      currentDb.collection('order_accounts').doc(id).set({
+        id,
+        name: normalized,
+        ...(Number.isFinite(Number(sortIndex)) ? { sortIndex: Number(sortIndex) } : {}),
+        updatedAt,
+        deletedAt: null,
+        createdAt: updatedAt
+      }, { merge: true }),
+      'Firestore analytics account local queue write failed',
+      { waitForCommit }
+    );
+    if (waitForCommit) await commitPromise;
+    return waitForCommit ? normalized : { account: normalized, commitPromise };
+  }
+
+  async function saveAccountOrder(names: string[] = [], { waitForCommit = true }: AnalyticsProviderWriteOptions = {}) {
+    const currentDb = await requireDb();
+    const normalizedNames = uniqueAccounts(names);
+    if (!normalizedNames.length) return waitForCommit ? 0 : { count: 0, commitPromise: Promise.resolve() };
+    const updatedAt = nowIso();
+    const batch = currentDb.batch();
+    normalizedNames.forEach((name, index) => {
+      const id = accountDocId(name);
+      batch.set(currentDb.collection('order_accounts').doc(id), {
+        id,
+        name,
+        sortIndex: index,
+        updatedAt,
+        deletedAt: null,
+        createdAt: updatedAt
+      }, { merge: true });
+    });
+    const commitPromise = trackWritePromise(batch.commit(), 'Firestore analytics account order local queue write failed', { waitForCommit });
+    if (waitForCommit) await commitPromise;
+    return waitForCommit ? normalizedNames.length : { count: normalizedNames.length, commitPromise };
+  }
+
+  async function renameAccount(oldName: string, newName: string, options: AnalyticsProviderWriteOptions & { accountOrder?: string[] } = {}) {
+    const currentDb = await requireDb();
+    return renameAccountAcrossModules(currentDb, oldName, newName, nowIso, options);
+  }
+
+  async function deleteAccount(name: string, options: AnalyticsProviderWriteOptions & { accountOrder?: string[] } = {}) {
+    const currentDb = await requireDb();
+    return deleteAccountLabel(currentDb, name, nowIso, options);
+  }
+
   async function listSavedAnalyses(): Promise<AnalyticsProviderSnapshotSummary[]> {
     const currentDb = await requireDb();
     const snapshotsRef = currentDb.collection('analytics_snapshots').orderBy('updatedAt', 'desc');
@@ -292,6 +364,47 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       snapshotId: snapshotDoc.id,
       updatedAt: snapshotDoc.updatedAt
     };
+  }
+
+  async function pullAnalysesBySnapshots(snapshotIds: string[]): Promise<AnalyticsProviderSnapshot[]> {
+    const currentDb = await requireDb();
+    const ids = [...new Set(snapshotIds.map(id => String(id || '').trim()).filter(Boolean))];
+    if (!ids.length) return [];
+    const [snapshotDocs, recordsSnapshot] = await Promise.all([
+      Promise.all(ids.map(async id => {
+        const doc = await currentDb.collection('analytics_snapshots').doc(id).get();
+        return doc?.exists ? normalizeSnapshotDoc(doc.data(), doc.id || id) : null;
+      })),
+      currentDb.collection('analytics_records').orderBy('gmv', 'desc').get()
+    ]);
+    const recordsBySnapshot = new Map<string, AnalyticsRecord[]>();
+    recordsSnapshot.docs.forEach(doc => {
+      const data = doc.data() as LooseRecord;
+      const snapshotId = String(data.snapshotId || '').trim();
+      if (!ids.includes(snapshotId)) return;
+      const rows = recordsBySnapshot.get(snapshotId) || [];
+      rows.push(normalizeRecordDoc(data));
+      recordsBySnapshot.set(snapshotId, rows);
+    });
+    return snapshotDocs
+      .filter((doc): doc is AnalyticsSnapshotDoc => !!doc)
+      .map(snapshotDoc => {
+        const records = (recordsBySnapshot.get(snapshotDoc.id) || [])
+          .sort((a, b) => b.gmv - a.gmv || b.exposureTotal - a.exposureTotal);
+        return {
+          analysis: {
+            period: snapshotDoc.period,
+            records,
+            activeCount: snapshotDoc.activeCount,
+            channelTotals: snapshotDoc.channelTotals,
+            kpis: snapshotDoc.kpis
+          },
+          accountName: snapshotDoc.accountName,
+          filename: snapshotDoc.filename,
+          snapshotId: snapshotDoc.id,
+          updatedAt: snapshotDoc.updatedAt
+        };
+      });
   }
 
   async function pullLatestAnalysis(): Promise<AnalyticsProviderSnapshot | null> {
@@ -338,8 +451,13 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     listSavedAnalyses,
     pullAccounts,
     pullAnalysisBySnapshot,
+    pullAnalysesBySnapshots,
     pullLatestAnalysis,
-    saveAnalysis
+    saveAnalysis,
+    upsertAccount,
+    saveAccountOrder,
+    renameAccount,
+    deleteAccount
   };
 }
 

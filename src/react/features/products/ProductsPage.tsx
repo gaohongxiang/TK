@@ -1048,7 +1048,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       });
     };
     const handleAccountsChanged = (event: Event) => {
-      const detail = (event as CustomEvent<{ source?: string; accounts?: string[] }>).detail || {};
+      const detail = (event as CustomEvent<{ source?: string; action?: string; oldAccount?: string; account?: string; accounts?: string[] }>).detail || {};
       if (detail.source === 'products' || !readGlobalConfig()?.configText) return;
       if (Array.isArray(detail.accounts)) {
         const nextAccounts = uniqueAccounts(detail.accounts);
@@ -1056,6 +1056,14 @@ function ProductsPage({ active = true }: { active?: boolean }) {
         setActiveAccount(current => current === '__all__' || nextAccounts.includes(current) ? current : '__all__');
         setCurrentPage(1);
       }
+      if (detail.action === 'rename' && detail.oldAccount && detail.account) {
+        const oldName = normalizeAccountName(detail.oldAccount);
+        const newName = normalizeAccountName(detail.account);
+        setProducts(previous => previous.map(product => (
+          normalizeAccountName(product.accountName) === oldName ? { ...product, accountName: newName } : product
+        )));
+      }
+      if (detail.action === 'reorder' || detail.action === 'upsert' || detail.action === 'rename' || detail.action === 'delete') return;
       void loadProducts().catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
       });

@@ -84,7 +84,7 @@ assert.match(
 
 assert.match(
   analyticsSource,
-  /formatFirestoreRulesUpdateMessage\('analytics'[\s\S]*notifyRulesUpdateNeeded\(message\)[\s\S]*listSavedAnalyses\(\)[\s\S]*saveAnalysis\(next,\s*\{\s*accountName,\s*filename\s*\}\)/,
+  /formatFirestoreRulesUpdateMessage\('analytics'[\s\S]*notifyRulesUpdateNeeded\(message\)[\s\S]*listSavedAnalyses\(\)[\s\S]*saveAnalysis\(next,\s*\{\s*accountName:\s*normalizedAccountName,\s*filename\s*\}\)/,
   '数据分析需要用真实读取和保存失败触发统一规则不足弹窗'
 );
 

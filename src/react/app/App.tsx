@@ -97,6 +97,7 @@ function AnalyticsPane({ active }: { active: boolean }) {
   const [Route, setRoute] = useState<null | ComponentType>(null);
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [retryKey, setRetryKey] = useState(0);
+  const [loadedOnce, setLoadedOnce] = useState(false);
 
   useEffect(() => {
     if (!active || Route) return undefined;
@@ -107,6 +108,7 @@ function AnalyticsPane({ active }: { active: boolean }) {
         if (cancelled) return;
         setRoute(() => module.AnalyticsRoute);
         setState('ready');
+        setLoadedOnce(true);
       })
       .catch(error => {
         console.error(error);
@@ -117,7 +119,7 @@ function AnalyticsPane({ active }: { active: boolean }) {
     };
   }, [active, Route, retryKey]);
 
-  if (!active) return null;
+  if (!active && !loadedOnce) return null;
   if (Route) return <Route />;
   return (
     <AnalyticsStatus

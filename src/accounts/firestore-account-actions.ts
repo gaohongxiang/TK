@@ -193,6 +193,26 @@ async function renameCollectionAccounts(
   });
 }
 
+async function renameAnalyticsAccounts(
+  db: FirebaseCompatFirestore,
+  oldName: string,
+  newName: string,
+  updatedAt: string,
+  mutations: Array<(batch: FirebaseCompatWriteBatch) => void>
+) {
+  const snapshot = await db.collection('analytics_snapshots').get();
+  snapshot.docs.forEach(doc => {
+    const data = toPlainObject(doc.data());
+    if (normalizeAccountName(data.accountName) !== oldName) return;
+    const id = docId(doc, data.id as string);
+    if (!id) return;
+    mutations.push(batch => batch.set(db.collection('analytics_snapshots').doc(id), {
+      accountName: newName,
+      updatedAt
+    }, { merge: true }));
+  });
+}
+
 async function renameAccountAcrossModules(
   db: FirebaseCompatFirestore,
   oldValue: string,
@@ -221,7 +241,8 @@ async function renameAccountAcrossModules(
   await Promise.all([
     renameProductAccounts(db, oldName, newName, updatedAt, mutations),
     renameOrderAccounts(db, oldName, newName, updatedAt, mutations),
-    renameCollectionAccounts(db, oldName, newName, updatedAt, mutations)
+    renameCollectionAccounts(db, oldName, newName, updatedAt, mutations),
+    renameAnalyticsAccounts(db, oldName, newName, updatedAt, mutations)
   ]);
 
   const commitPromise = commitMutations(db, mutations, { waitForCommit });

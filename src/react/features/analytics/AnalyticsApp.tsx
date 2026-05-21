@@ -4,7 +4,7 @@ import type { EChartsCoreOption, EChartsType } from 'echarts/core';
 import { FunnelChart, PieChart, ScatterChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TitleComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { HelpCircle, RefreshCw, Upload } from 'lucide-react';
+import { FileDown, HelpCircle, RefreshCw, Upload } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,10 +19,11 @@ import { ModuleListState } from '@/components/ui/module-list-state';
 import { AccountDeleteDialog, AccountEditDialog } from '@/components/ui/account-manage-dialogs';
 import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
 import { AddAccountDialog } from '@/components/ui/add-account-dialog';
-import { refreshButtonClass, statusStripClass, statusStripLeftClass, storageHelpButtonClass, syncStatusClass } from '@/components/ui/status-strip';
+import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, storageHelpButtonClass, syncStatusClass } from '@/components/ui/status-strip';
 import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsPeriodComparison, AnalyticsRecord, AnalyticsXlsx } from '../../../analytics/types';
 import { AnalyticsProviderFirestore, type AnalyticsProviderSnapshotSummary } from '../../../analytics/provider-firestore.ts';
 import { aggregateAnalyses } from '../../../analytics/aggregate.ts';
+import { buildActionPlan } from '../../../analytics/action-plan.ts';
 import { TKFirestoreConnection } from '../../../firestore-connection.ts';
 import { normalizeAccountName, uniqueAccounts } from '../../../products/accounts.ts';
 import {
@@ -100,19 +101,16 @@ type AnalyticsAppProps = {
 
 const analyticsShellClass = 'analytics-react-shell grid gap-3.5';
 const analyticsControlCardClass = 'analytics-control-card mb-2 grid gap-3 border-[color-mix(in_srgb,var(--accent2)_24%,var(--border))] p-4';
-const analyticsUploadRowClass = 'analytics-upload-card analytics-react-upload-card grid grid-cols-[minmax(0,1fr)_minmax(240px,320px)] items-center gap-3.5 max-[860px]:grid-cols-1 max-[640px]:gap-3';
-const uploadSummaryClass = 'analytics-upload-summary flex min-w-0 flex-wrap items-center gap-2.5';
-const uploadCopyTitleClass = 'mb-0 mr-1 text-[13px] font-semibold uppercase tracking-[.3px] text-[var(--muted)]';
-const uploadToolsClass = 'analytics-upload-tools ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 max-[860px]:ml-0 max-[860px]:justify-start max-[640px]:w-full';
+const analyticsUploadRowClass = 'analytics-upload-card analytics-react-upload-card flex min-w-0 items-center justify-between gap-3.5 max-[760px]:grid max-[760px]:grid-cols-1';
+const periodControlClass = 'analytics-period-control flex min-w-0 flex-1 items-center gap-2.5 max-[760px]:grid max-[760px]:grid-cols-1';
 const analyticsChipClass = 'analytics-chip inline-flex min-h-[26px] items-center whitespace-nowrap rounded-full border border-[color-mix(in_srgb,var(--border)_82%,transparent)] bg-[color-mix(in_srgb,var(--panel2)_80%,transparent)] px-2.5 text-xs font-semibold text-[var(--muted)]';
-const privacyPrimaryChipClass = cn(analyticsChipClass, 'border-[color-mix(in_srgb,var(--accent2)_42%,var(--border))] bg-[color-mix(in_srgb,var(--accent2)_13%,var(--panel))] text-[color-mix(in_srgb,var(--accent2)_72%,var(--text))]');
-const uploadActionClass = 'analytics-upload-action relative grid min-w-0 gap-1.5 max-[640px]:w-full';
-const filePickerClass = 'analytics-file-picker inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-[9px] rounded-xl border border-[color-mix(in_srgb,var(--accent)_54%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_13%,var(--panel))] px-4 text-[13px] font-bold text-[color-mix(in_srgb,var(--accent)_76%,white)] transition-[transform,border-color,background-color] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--accent)_72%,white)] hover:bg-[color-mix(in_srgb,var(--accent)_18%,var(--panel))]';
+const uploadActionClass = 'analytics-upload-action relative flex min-w-[220px] justify-end max-[980px]:justify-start max-[640px]:min-w-0';
+const filePickerClass = 'analytics-file-picker inline-flex min-h-11 w-full max-w-[300px] cursor-pointer items-center justify-center gap-[9px] rounded-xl border border-[color-mix(in_srgb,var(--accent)_54%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_13%,var(--panel))] px-4 text-[13px] font-bold text-[color-mix(in_srgb,var(--accent)_76%,white)] transition-[transform,border-color,background-color] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--accent)_72%,white)] hover:bg-[color-mix(in_srgb,var(--accent)_18%,var(--panel))] max-[760px]:max-w-none';
 const filePickerDisabledClass = 'pointer-events-none cursor-not-allowed opacity-55 saturate-50 hover:translate-y-0';
 const fileIconClass = 'analytics-file-icon inline-flex h-[18px] w-[18px] [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:fill-none [&_svg]:stroke-current';
 const fileInputClass = 'pointer-events-none absolute h-px w-px overflow-hidden opacity-0';
-const fileMetaClass = 'analytics-file-meta min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-center text-xs text-[var(--muted)]';
-const snapshotSelectClass = 'analytics-snapshot-select h-8 min-h-8 w-[240px] max-w-full rounded-full bg-[rgba(255,255,255,.035)] py-1 pl-3 pr-8 text-xs max-[640px]:w-full';
+const fileMetaClass = 'analytics-file-meta min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs text-[var(--muted)]';
+const snapshotSelectClass = 'analytics-snapshot-select h-10 min-h-10 w-[280px] max-w-full rounded-xl bg-[rgba(255,255,255,.035)] py-2 pl-3 pr-8 text-sm max-[760px]:w-full';
 const emptyCardClass = 'analytics-empty analytics-react-empty grid min-h-[180px] place-items-center border-dashed bg-[color-mix(in_srgb,var(--panel2)_38%,transparent)]';
 const analyticsMainClass = 'analytics-main analytics-react-main grid gap-4';
 const kpiGridClass = 'analytics-kpi-grid grid grid-cols-4 gap-3 max-[860px]:grid-cols-2 max-[640px]:grid-cols-1';
@@ -120,8 +118,9 @@ const kpiCardClass = 'analytics-kpi-card min-h-28 rounded-xl border border-[colo
 const kpiLabelClass = 'analytics-kpi-label text-[11.5px] font-bold uppercase tracking-[.08em] text-[var(--muted)]';
 const kpiValueClass = 'analytics-kpi-value mt-[9px] text-[clamp(20px,2.1vw,25px)] font-bold leading-[1.12] text-[var(--text)]';
 const kpiMetaClass = 'analytics-kpi-meta mt-2 text-xs text-[var(--muted)]';
-const analyticsInsightLayoutClass = 'analytics-insight-layout analytics-react-insight-layout grid grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] gap-4 max-[860px]:grid-cols-1';
-const analyticsLayoutClass = 'analytics-layout grid grid-cols-2 gap-4 max-[860px]:grid-cols-1';
+const analyticsTwoColumnClass = 'grid grid-cols-2 items-stretch gap-4 max-[860px]:grid-cols-1';
+const analyticsInsightLayoutClass = cn('analytics-insight-layout analytics-react-insight-layout', analyticsTwoColumnClass);
+const analyticsLayoutClass = cn('analytics-layout analytics-summary-layout', analyticsTwoColumnClass);
 const analyticsCardClass = 'analytics-chart-card min-w-0';
 const analyticsTableCardClass = 'analytics-table-card min-w-0';
 const sectionHeadClass = 'analytics-section-head mb-3.5 flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-start max-[640px]:gap-2';
@@ -136,9 +135,9 @@ const funnelTextWrapClass = 'grid min-w-0 gap-0.5';
 const funnelLabelClass = 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-bold not-italic text-[var(--text)]';
 const funnelValueClass = 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] font-bold text-[var(--muted)]';
 const funnelRateClass = 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] font-bold not-italic text-[color-mix(in_srgb,var(--accent2)_74%,var(--text))]';
-const scatterWrapClass = 'analytics-react-scatter-wrap min-h-[324px] max-[640px]:min-h-[260px]';
-const scatterChartClass = cn(chartSlotClass, 'analytics-react-scatter h-[324px] rounded-xl border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_32%,transparent),transparent),color-mix(in_srgb,var(--panel2)_18%,transparent)] max-[640px]:h-[260px] max-[640px]:min-h-[220px]');
-const scatterLegendClass = 'analytics-react-legend mt-2.5 flex flex-wrap gap-2';
+const scatterWrapClass = 'analytics-react-scatter-wrap min-w-0';
+const scatterChartClass = cn(chartSlotClass, 'analytics-react-scatter h-[332px] rounded-xl border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_32%,transparent),transparent),color-mix(in_srgb,var(--panel2)_18%,transparent)] px-1.5 pb-1 pt-2.5 max-[640px]:h-[250px]');
+const scatterLegendClass = 'analytics-react-legend mt-4 flex flex-wrap gap-2';
 const scatterLegendItemClass = 'inline-flex min-h-6 items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--border)_76%,transparent)] bg-[color-mix(in_srgb,var(--panel2)_28%,transparent)] px-[9px] text-[11.5px] font-bold text-[var(--muted)]';
 const scatterLegendDotClass = 'h-2 w-2 rounded-full bg-[var(--legend-color)]';
 const readableSummaryClass = 'analytics-react-readable-summary sr-only';
@@ -151,24 +150,40 @@ const rankTrackClass = 'analytics-rank-track mt-[7px] h-[7px] overflow-hidden ro
 const rankTrackBarClass = 'block h-full rounded-[inherit] bg-[linear-gradient(90deg,#13c2a3,#ffd166)]';
 const rankValueClass = 'analytics-rank-value grid justify-items-end gap-0.5 text-xs text-[var(--muted)] max-[640px]:col-start-2 max-[640px]:flex max-[640px]:items-center max-[640px]:gap-2 max-[640px]:justify-items-start';
 const rankValueStrongClass = 'text-[12.5px] text-[var(--text)]';
-const diagnosticsClass = 'analytics-diagnostics grid gap-3';
-const diagnosisHeadClass = 'analytics-diagnosis-head flex items-center justify-between gap-3';
-const diagnosisTitleClass = 'text-[13px] font-bold text-[var(--text)]';
-const diagnosisCountClass = 'text-[13px] text-[var(--muted)]';
-const diagnosisCopyClass = 'm-0 text-xs leading-[1.55] text-[var(--muted)]';
-const diagnosisProductsClass = 'analytics-diagnosis-products flex flex-wrap gap-1.5';
-const diagnosisProductPillClass = 'inline-flex min-h-6 max-w-full items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-[7px] bg-[color-mix(in_srgb,var(--panel)_76%,transparent)] px-2 text-[11.5px] text-[color-mix(in_srgb,var(--text)_78%,var(--muted))]';
+const summaryCardClass = cn(analyticsCardClass, 'analytics-summary-card h-full');
+const portfolioSummaryClass = 'analytics-portfolio-summary grid gap-2.5';
+const portfolioMetricClass = 'analytics-portfolio-metric flex items-start justify-between gap-3 border-b border-[color-mix(in_srgb,var(--border)_58%,transparent)] py-2.5 last:border-b-0';
+const portfolioMetricLabelClass = 'text-xs font-bold text-[var(--muted)]';
+const portfolioMetricValueClass = 'whitespace-nowrap text-[15px] font-bold text-[var(--text)]';
+const portfolioMetricMetaClass = 'mt-1 text-[11.5px] text-[var(--muted)]';
+const portfolioSignalsClass = 'mt-1.5 flex flex-wrap gap-1.5';
+const portfolioSignalClass = 'inline-flex min-h-6 items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--border)_76%,transparent)] bg-[color-mix(in_srgb,var(--panel2)_30%,transparent)] px-2 text-[11.5px] font-bold text-[var(--muted)]';
+const portfolioNextClass = 'analytics-portfolio-next mt-1 grid content-start gap-2';
+const portfolioNextItemClass = 'rounded-[9px] border border-[color-mix(in_srgb,var(--accent2)_26%,var(--border))] bg-[color-mix(in_srgb,var(--panel2)_38%,transparent)] px-3 py-2';
+const portfolioNextLabelClass = 'mb-1 text-[11.5px] font-bold text-[color-mix(in_srgb,var(--accent2)_72%,var(--text))]';
+const portfolioNextCopyClass = 'm-0 text-xs leading-[1.55] text-[var(--text)]';
+const actionPlanClass = 'analytics-action-plan grid grid-cols-2 gap-2.5 max-[980px]:grid-cols-1';
+const actionItemClass = 'analytics-action-item grid gap-2 rounded-[10px] border-l-[3px] bg-[color-mix(in_srgb,var(--panel2)_48%,transparent)] px-3 py-[11px]';
+const actionHeadClass = 'analytics-action-head flex items-center justify-between gap-2';
+const actionTitleClass = 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-bold text-[var(--text)]';
+const actionProductClass = 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-semibold text-[var(--muted)]';
+const actionCopyClass = 'm-0 text-xs leading-[1.55] text-[var(--muted)]';
+const actionStrongCopyClass = 'm-0 text-xs font-semibold leading-[1.55] text-[var(--text)]';
+const actionMetricClass = 'flex flex-wrap gap-1.5';
 const tableWrapClass = 'analytics-table-wrap max-h-[620px] overflow-auto';
-const comparisonTableWrapClass = 'analytics-period-table-wrap max-h-[360px] overflow-auto';
+const comparisonTableWrapClass = 'analytics-period-table-wrap !max-h-[256px] !overflow-y-auto overflow-x-auto';
 const detailTableClass = 'analytics-detail-table mt-1.5 w-full border-collapse text-sm max-[640px]:text-[13px]';
 const detailHeadClass = 'px-2.5 py-[11px] text-[11.5px] max-[640px]:px-1.5 max-[640px]:py-[9px] max-[640px]:text-[10.5px]';
 const detailFirstHeadClass = cn(detailHeadClass, 'min-w-[260px] text-left max-[640px]:min-w-[220px]');
 const detailNumericHeadClass = cn(detailHeadClass, 'whitespace-nowrap text-right');
+const comparisonNumericHeadClass = cn(detailHeadClass, 'whitespace-nowrap text-center');
+const comparisonStickyHeadClass = 'sticky top-0 z-10 bg-[var(--panel)] shadow-[0_1px_0_var(--border)]';
 const detailCellClass = 'px-2.5 py-[11px] align-middle max-[640px]:px-1.5 max-[640px]:py-[9px]';
 const detailFirstCellClass = cn(detailCellClass, 'min-w-[260px] text-left max-[640px]:min-w-[220px]');
 const detailNumericCellClass = cn(detailCellClass, 'whitespace-nowrap text-right');
-const comparisonPeriodHeadClass = cn(detailHeadClass, 'min-w-[172px] text-left max-[640px]:min-w-[150px]');
-const comparisonPeriodCellClass = cn(detailCellClass, 'min-w-[172px] text-left font-semibold text-[var(--text)] max-[640px]:min-w-[150px]');
+const comparisonNumericCellClass = cn(detailCellClass, 'whitespace-nowrap text-center');
+const comparisonPeriodHeadClass = cn(detailHeadClass, 'min-w-[172px] text-center max-[640px]:min-w-[150px]');
+const comparisonPeriodCellClass = cn(detailCellClass, 'min-w-[172px] text-center font-semibold text-[var(--text)] max-[640px]:min-w-[150px]');
 const deltaTextClass = 'mt-1 block text-[11px] font-semibold';
 const deltaPositiveClass = 'text-[color-mix(in_srgb,var(--accent2)_76%,var(--text))]';
 const deltaNegativeClass = 'text-[color-mix(in_srgb,var(--danger)_76%,var(--text))]';
@@ -179,7 +194,19 @@ const ALL_ACCOUNTS_KEY = '__all__';
 const ACCOUNT_UPDATED_EVENT = 'tk-accounts-changed';
 const ALL_PERIODS_KEY = '__all_periods__';
 
-function diagnosisCardClass(tone: string) {
+function actionToneForKind(kind: string) {
+  return {
+    scale: 'hero',
+    traffic: 'scale',
+    creative: 'creative',
+    conversion: 'detail',
+    pause: 'watch',
+    watch: 'normal'
+  }[kind] || 'normal';
+}
+
+function actionCardClass(kind: string) {
+  const tone = actionToneForKind(kind);
   const toneClass = {
     hero: 'border-l-[#13c2a3]',
     scale: 'border-l-[#3b82f6]',
@@ -188,7 +215,7 @@ function diagnosisCardClass(tone: string) {
     watch: 'border-l-[#8b93c2]',
     normal: 'border-l-[color-mix(in_srgb,var(--accent)_64%,var(--border))]'
   }[tone] || 'border-l-[color-mix(in_srgb,var(--accent)_64%,var(--border))]';
-  return cn('analytics-diagnosis-card grid gap-[7px] rounded-[10px] border-l-[3px] bg-[color-mix(in_srgb,var(--panel2)_48%,transparent)] px-3 py-[11px]', `is-${tone}`, toneClass);
+  return cn(actionItemClass, `is-${tone}`, `is-${kind}`, toneClass);
 }
 
 function analyticsTagClass(tone: string) {
@@ -237,6 +264,90 @@ function formatPeriodOption(snapshot: AnalyticsProviderSnapshotSummary, showAcco
   const accountPrefix = showAccount && snapshot.accountName ? `${snapshot.accountName} · ` : '';
   const period = snapshot.period || '未知周期';
   return `${accountPrefix}${period} · ${snapshot.recordCount} 个商品`;
+}
+
+function periodStartKey(period: string) {
+  const match = String(period || '').match(/\d{4}[-/]\d{1,2}[-/]\d{1,2}/);
+  if (!match) return '';
+  const [year, month, day] = match[0].replace(/\//g, '-').split('-');
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+function compareSnapshotsByPeriodDesc(left: AnalyticsProviderSnapshotSummary, right: AnalyticsProviderSnapshotSummary) {
+  return periodStartKey(right.period).localeCompare(periodStartKey(left.period))
+    || String(right.updatedAt || '').localeCompare(String(left.updatedAt || ''));
+}
+
+function comparePeriodRowsDesc(left: AnalyticsPeriodComparison, right: AnalyticsPeriodComparison) {
+  return periodStartKey(right.period).localeCompare(periodStartKey(left.period))
+    || String(right.updatedAt || '').localeCompare(String(left.updatedAt || ''));
+}
+
+function csvEscape(value: unknown) {
+  const text = String(value ?? '');
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function getAnalysisActions(analysis: AnalyticsAnalysis) {
+  return analysis.actionPlan?.length ? analysis.actionPlan : buildActionPlan(analysis);
+}
+
+function buildAnalyticsExportCsv(analysis: AnalyticsAnalysis) {
+  const actionsByProduct = new Map(
+    getAnalysisActions(analysis).map(item => [item.productId || item.productName, item])
+  );
+  const headers = [
+    '周期',
+    '商品ID',
+    '商品名称',
+    '状态',
+    'GMV',
+    '订单',
+    '件数',
+    '总曝光',
+    '总浏览',
+    '成交客户',
+    '点击率',
+    '转化率',
+    '覆盖周期数',
+    '最近周期',
+    'GMV趋势',
+    '诊断',
+    '动作优先级',
+    '动作类型',
+    '动作建议'
+  ];
+  const rows = analysis.records.map(record => {
+    const action = actionsByProduct.get(record.id || record.name);
+    return [
+      analysis.period,
+      record.id,
+      record.name,
+      record.status,
+      record.gmv,
+      record.orders,
+      record.units,
+      record.exposureTotal,
+      record.pageViewsTotal,
+      record.customersTotal,
+      formatPercent(record.overallCtr),
+      formatPercent(record.overallConversion),
+      record.periodCount || 1,
+      record.latestPeriod || analysis.period,
+      record.gmvTrend ?? '',
+      record.diagnosis.label,
+      action?.priority || '',
+      action?.title || '',
+      action?.action || ''
+    ];
+  });
+  return `\uFEFF${[headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\n')}`;
+}
+
+function buildAnalyticsExportFilename(analysis: AnalyticsAnalysis, activeAccount: string) {
+  const account = activeAccount === ALL_ACCOUNTS_KEY ? '全部账号' : activeAccount;
+  const period = String(analysis.period || '数据分析').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '');
+  return `数据分析_${account}_${period}.csv`;
 }
 
 function filterSnapshotsByAccount(snapshots: AnalyticsProviderSnapshotSummary[], activeAccount: string) {
@@ -311,7 +422,7 @@ function MetricWithDelta({
 }
 
 function PeriodComparisonTable({ rows }: { rows: AnalyticsPeriodComparison[] }) {
-  const sorted = useMemo(() => [...rows].sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))), [rows]);
+  const sorted = useMemo(() => [...rows].sort(comparePeriodRowsDesc), [rows]);
   if (!sorted.length) return null;
   return (
     <Card className={analyticsTableCardClass}>
@@ -323,16 +434,16 @@ function PeriodComparisonTable({ rows }: { rows: AnalyticsPeriodComparison[] }) 
         <Table className={detailTableClass}>
           <TableHeader>
             <TableRow>
-              <TableHead className={comparisonPeriodHeadClass}>周期</TableHead>
-              <TableHead className={detailNumericHeadClass}>GMV</TableHead>
-              <TableHead className={detailNumericHeadClass}>订单</TableHead>
-              <TableHead className={detailNumericHeadClass}>件数</TableHead>
-              <TableHead className={detailNumericHeadClass}>曝光</TableHead>
-              <TableHead className={detailNumericHeadClass}>浏览</TableHead>
-              <TableHead className={detailNumericHeadClass}>成交客户</TableHead>
-              <TableHead className={detailNumericHeadClass}>CTR</TableHead>
-              <TableHead className={detailNumericHeadClass}>转化率</TableHead>
-              <TableHead className={detailNumericHeadClass}>客单价</TableHead>
+              <TableHead className={cn(comparisonPeriodHeadClass, comparisonStickyHeadClass)}>周期</TableHead>
+              <TableHead className={cn(comparisonNumericHeadClass, comparisonStickyHeadClass)}>GMV</TableHead>
+              <TableHead className={cn(comparisonNumericHeadClass, comparisonStickyHeadClass)}>订单</TableHead>
+              <TableHead className={cn(comparisonNumericHeadClass, comparisonStickyHeadClass)}>件数</TableHead>
+              <TableHead className={cn(comparisonNumericHeadClass, comparisonStickyHeadClass)}>曝光</TableHead>
+              <TableHead className={cn(comparisonNumericHeadClass, comparisonStickyHeadClass)}>浏览</TableHead>
+              <TableHead className={cn(comparisonNumericHeadClass, comparisonStickyHeadClass)}>成交客户</TableHead>
+              <TableHead className={cn(comparisonNumericHeadClass, comparisonStickyHeadClass)}>点击率</TableHead>
+              <TableHead className={cn(comparisonNumericHeadClass, comparisonStickyHeadClass)}>转化率</TableHead>
+              <TableHead className={cn(comparisonNumericHeadClass, comparisonStickyHeadClass)}>客单价</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -342,26 +453,26 @@ function PeriodComparisonTable({ rows }: { rows: AnalyticsPeriodComparison[] }) 
                   {row.period}
                   <span className="mt-1 block text-[11px] font-normal text-[var(--muted)]">{formatInteger(row.snapshotCount)} 张表 · {formatInteger(row.productCount)} 个商品 · {formatInteger(row.soldProducts)} 个动销</span>
                 </TableCell>
-                <TableCell className={detailNumericCellClass}>
+                <TableCell className={comparisonNumericCellClass}>
                   <MetricWithDelta value={formatYen(row.totalGmv)} delta={row.gmvDelta} deltaRate={row.gmvDeltaRate} formatter={formatSignedYen} />
                 </TableCell>
-                <TableCell className={detailNumericCellClass}>
+                <TableCell className={comparisonNumericCellClass}>
                   <MetricWithDelta value={formatInteger(row.totalOrders)} delta={row.ordersDelta} deltaRate={row.ordersDeltaRate} formatter={formatSignedInteger} />
                 </TableCell>
-                <TableCell className={detailNumericCellClass}>
+                <TableCell className={comparisonNumericCellClass}>
                   <MetricWithDelta value={formatInteger(row.totalUnits)} delta={row.unitsDelta} deltaRate={row.unitsDeltaRate} formatter={formatSignedInteger} />
                 </TableCell>
-                <TableCell className={detailNumericCellClass}>
+                <TableCell className={comparisonNumericCellClass}>
                   <MetricWithDelta value={formatInteger(row.totalExposure)} delta={row.exposureDelta} deltaRate={row.exposureDeltaRate} formatter={formatSignedInteger} />
                 </TableCell>
-                <TableCell className={detailNumericCellClass}>{formatInteger(row.totalPageViews)}</TableCell>
-                <TableCell className={detailNumericCellClass}>{formatInteger(row.totalCustomers)}</TableCell>
-                <TableCell className={detailNumericCellClass}>{formatPercent(row.ctr)}</TableCell>
-                <TableCell className={detailNumericCellClass}>
+                <TableCell className={comparisonNumericCellClass}>{formatInteger(row.totalPageViews)}</TableCell>
+                <TableCell className={comparisonNumericCellClass}>{formatInteger(row.totalCustomers)}</TableCell>
+                <TableCell className={comparisonNumericCellClass}>{formatPercent(row.ctr)}</TableCell>
+                <TableCell className={comparisonNumericCellClass}>
                   <span>{formatPercent(row.conversion)}</span>
                   {row.conversionDelta ? <span className={deltaClass(row.conversionDelta)}>{formatSignedPercent(row.conversionDelta)}</span> : <span className={deltaClass(0)}>持平</span>}
                 </TableCell>
-                <TableCell className={detailNumericCellClass}>{formatYen(row.aov)}</TableCell>
+                <TableCell className={comparisonNumericCellClass}>{formatYen(row.aov)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -398,32 +509,105 @@ function TopProducts({ records }: { records: AnalyticsRecord[] }) {
   );
 }
 
-function DiagnosisCards({ records }: { records: AnalyticsRecord[] }) {
-  const groups = records.reduce<Record<string, AnalyticsRecord[]>>((acc, record) => {
-    const key = record.diagnosis.tone;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(record);
+function PortfolioSummary({ analysis }: { analysis: AnalyticsAnalysis }) {
+  const actions = useMemo(() => getAnalysisActions(analysis), [analysis]);
+  const topRows = useMemo(() => [...analysis.records].sort((a, b) => b.gmv - a.gmv).slice(0, 3), [analysis.records]);
+  const topGmv = topRows.reduce((total, record) => total + record.gmv, 0);
+  const topShare = analysis.kpis.totalGmv ? topGmv / analysis.kpis.totalGmv : 0;
+  const activeCount = analysis.activeCount || analysis.records.filter(record => record.status !== 'Inactive').length;
+  const activeSellThrough = activeCount ? analysis.kpis.soldProducts / activeCount : 0;
+  const actionCounts = actions.reduce<Record<string, number>>((acc, item) => {
+    acc[item.title] = (acc[item.title] || 0) + 1;
     return acc;
   }, {});
-  const priority = ['hero', 'scale', 'creative', 'detail', 'watch', 'normal'];
+  const topAction = Object.entries(actionCounts).sort((left, right) => right[1] - left[1])[0];
+  const ctr = analysis.kpis.totalExposure
+    ? analysis.records.reduce((total, record) => total + record.pageViewsTotal, 0) / analysis.kpis.totalExposure
+    : 0;
+  const conversion = analysis.records.reduce((total, record) => total + record.customersTotal, 0)
+    ? analysis.kpis.totalUnits / analysis.records.reduce((total, record) => total + record.customersTotal, 0)
+    : 0;
+  const nextSteps = [
+    {
+      label: '库存 / 素材',
+      copy: topShare >= 0.5 ? '头部商品占比高，先保证 Top3 库存和素材迭代。' : '头部不过度集中，按动作优先级分配素材资源。'
+    },
+    {
+      label: '补流量候选',
+      copy: activeSellThrough < 0.12 ? '动销面偏窄，优先从 P1/P2 里挑 2-3 个商品补曝光。' : '动销面可用，补流量前先确认利润和库存。'
+    },
+    {
+      label: '承接检查',
+      copy: conversion < 0.35 ? '转化偏弱，检查价格、评价、规格和详情首屏。' : '转化表现可继续放大，重点观察点击率是否拖后腿。'
+    }
+  ];
   return (
-    <div id="analytics-diagnostics" className={diagnosticsClass}>
-      {priority.filter(key => groups[key]?.length).map(key => {
-        const sample = groups[key].slice(0, 2);
-        const first = sample[0];
-        return (
-          <div className={diagnosisCardClass(key)} key={key}>
-            <div className={diagnosisHeadClass}>
-              <span className={diagnosisTitleClass}>{first.diagnosis.label}</span>
-              <strong className={diagnosisCountClass}>{groups[key].length}</strong>
-            </div>
-            <p className={diagnosisCopyClass}>{first.diagnosis.action}</p>
-            <div className={diagnosisProductsClass}>
-              {sample.map(record => <span className={diagnosisProductPillClass} key={record.id || record.name} title={record.name}>{shortenText(record.name, 24)}</span>)}
-            </div>
+    <div id="analytics-portfolio-summary" className={portfolioSummaryClass}>
+      <div className={portfolioMetricClass}>
+        <div>
+          <div className={portfolioMetricLabelClass}>Top3 GMV 占比</div>
+          <div className={portfolioMetricMetaClass}>{formatYen(topGmv)} / {formatYen(analysis.kpis.totalGmv)}</div>
+        </div>
+        <strong className={portfolioMetricValueClass}>{formatPercent(topShare, 1)}</strong>
+      </div>
+      <div className={portfolioMetricClass}>
+        <div>
+          <div className={portfolioMetricLabelClass}>动销率</div>
+          <div className={portfolioMetricMetaClass}>{formatInteger(analysis.kpis.soldProducts)} 个动销 / {formatInteger(activeCount)} 个 Active</div>
+        </div>
+        <strong className={portfolioMetricValueClass}>{formatPercent(activeSellThrough, 1)}</strong>
+      </div>
+      <div className={portfolioMetricClass}>
+        <div>
+          <div className={portfolioMetricLabelClass}>流量承接</div>
+          <div className={portfolioMetricMetaClass}>点击率 {formatPercent(ctr)} · 转化率 {formatPercent(conversion)}</div>
+        </div>
+        <strong className={portfolioMetricValueClass}>{topAction ? topAction[0] : '观察'}</strong>
+      </div>
+      <div className={portfolioSignalsClass}>
+        {Object.entries(actionCounts).map(([label, count]) => (
+          <span className={portfolioSignalClass} key={label}>{label} {formatInteger(count)}</span>
+        ))}
+      </div>
+      <div className={portfolioNextClass}>
+        {nextSteps.map(step => (
+          <div className={portfolioNextItemClass} key={step.label}>
+            <div className={portfolioNextLabelClass}>{step.label}</div>
+            <p className={portfolioNextCopyClass}>{step.copy}</p>
           </div>
-        );
-      })}
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ActionPlan({ analysis }: { analysis: AnalyticsAnalysis }) {
+  const items = useMemo(() => getAnalysisActions(analysis), [analysis]);
+  if (!items.length) {
+    return (
+      <div id="analytics-action-plan" className={actionPlanClass}>
+        <p className={actionCopyClass}>当前数据不足，先补齐商品流量表后再判断动作优先级。</p>
+      </div>
+    );
+  }
+  return (
+    <div id="analytics-action-plan" className={actionPlanClass}>
+      {items.map(item => (
+        <div className={actionCardClass(item.kind)} data-action-kind={item.kind} key={`${item.kind}-${item.productId || item.productName}`}>
+          <div className={actionHeadClass}>
+            <span className={actionTitleClass}>{item.title}</span>
+            <Badge className={analyticsTagClass(actionToneForKind(item.kind))}>{item.priority}</Badge>
+          </div>
+          <div className={actionProductClass} title={item.productName}>{shortenText(item.productName, 42)}</div>
+          <p className={actionCopyClass}>{item.reason}</p>
+          <p className={actionStrongCopyClass}>{item.action}</p>
+          <div className={actionMetricClass}>
+            <Badge className={mutedChipClass}>GMV {formatYen(item.metrics.gmv)}</Badge>
+            <Badge className={mutedChipClass}>{formatInteger(item.metrics.orders)} 单</Badge>
+            <Badge className={mutedChipClass}>点击率 {formatPercent(item.metrics.ctr)}</Badge>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -526,7 +710,9 @@ function AnalyticsHelpDialog({ open, onOpenChange }: { open: boolean; onOpenChan
       <DialogContent className="max-w-[560px]">
         <DialogTitle id="analytics-help-title">数据分析说明</DialogTitle>
         <HelpStack>
-          <HelpItem label="导入">选择 TikTok Shop 导出的商品流量详情 Excel。原始 Excel 只在浏览器本地解析，不上传到本站服务器。</HelpItem>
+          <HelpItem label="Excel 来源">在 TikTok Shop 商家中心进入“数据分析 / 商品数据分析”，打开商品列表的“详细信息”并导出 Excel。</HelpItem>
+          <HelpItem label="指标配置">后台自定义指标最多选择 10 个。建议选择 GMV，以及商城页、视频、商品卡各自的曝光次数、点击率、转化率。</HelpItem>
+          <HelpItem label="导入">原始 Excel 只在浏览器本地解析，不上传到本站服务器。</HelpItem>
           <HelpItem label="保存">解析后的分析快照和商品明细会按所选账号保存到你自己的 Firestore。上传时会先选择账号，不能落在“全部”。</HelpItem>
           <HelpItem label="多周数据">每次导入都会生成一个新的分析快照。周期选择默认“全部周期”并聚合同账号下多张表，也可以切回单个周期。</HelpItem>
           <HelpItem label="权限">如果 Firestore 规则没有发布到最新版本，页面会弹出统一规则提示，可直接复制最新规则。</HelpItem>
@@ -572,21 +758,28 @@ function AnalyticsDashboard({ analysis, periodMode = 'single' }: { analysis: Ana
         </Card>
       </div>
       <div className={analyticsLayoutClass}>
-        <Card className={analyticsCardClass}>
+        <Card className={summaryCardClass}>
           <div className={sectionHeadClass}>
             <CardTitle className="mb-0">Top 商品 GMV</CardTitle>
             <Badge className={mutedChipClass}>前 10</Badge>
           </div>
           <TopProducts records={analysis.records} />
         </Card>
-        <Card className={analyticsCardClass}>
+        <Card className={summaryCardClass}>
           <div className={sectionHeadClass}>
-            <CardTitle className="mb-0">商品诊断</CardTitle>
-            <Badge className={mutedChipClass}>运营动作</Badge>
+            <CardTitle className="mb-0">运营摘要</CardTitle>
+            <Badge className={mutedChipClass}>集中度 / 动销 / 承接</Badge>
           </div>
-          <DiagnosisCards records={analysis.records} />
+          <PortfolioSummary analysis={analysis} />
         </Card>
       </div>
+      <Card className={analyticsCardClass}>
+        <div className={sectionHeadClass}>
+          <CardTitle className="mb-0">动作优先级</CardTitle>
+          <Badge className={mutedChipClass}>先做前 6 项</Badge>
+        </div>
+        <ActionPlan analysis={analysis} />
+      </Card>
       <Card className={analyticsTableCardClass}>
         <div className={sectionHeadClass}>
           <CardTitle className="mb-0">商品明细</CardTitle>
@@ -628,7 +821,7 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
     helpers: { nowIso: () => new Date().toISOString() }
   }));
   const allAccounts = accounts;
-  const scopedSnapshots = useMemo(() => filterSnapshotsByAccount(savedSnapshots, activeAccount), [activeAccount, savedSnapshots]);
+  const scopedSnapshots = useMemo(() => filterSnapshotsByAccount(savedSnapshots, activeAccount).sort(compareSnapshotsByPeriodDesc), [activeAccount, savedSnapshots]);
   const accountTabItems = useMemo(() => allAccounts.map(account => ({
     key: account,
     label: account,
@@ -1125,6 +1318,24 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
     window.setTimeout(() => fileInputRef.current?.click(), 0);
   }
 
+  function exportActiveAnalysis() {
+    if (!analysis?.records.length) {
+      onToast?.('当前没有可导出的数据分析', 'error');
+      return;
+    }
+    const csv = buildAnalyticsExportCsv(analysis);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = buildAnalyticsExportFilename(analysis, activeAccount);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    onToast?.('CSV 已开始导出', 'ok');
+  }
+
   return (
     <div className={analyticsShellClass} id="analytics-react-root">
       <PageHero
@@ -1163,6 +1374,14 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
               <HelpCircle size={14} strokeWidth={2} aria-hidden="true" />
             </Button>
           </div>
+          <div className={statusStripRightClass}>
+            {connected ? (
+              <>
+                <Button id="analytics-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={exportActiveAnalysis}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
+                <Button id="analytics-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
+              </>
+            ) : null}
+          </div>
         </div>
         {connected ? (
           <AccountTabsBar
@@ -1184,42 +1403,38 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
         ) : null}
         {connected && !permissionBlocked ? (
           <div className={analyticsUploadRowClass}>
-            <div className={uploadSummaryClass}>
-              <CardTitle className={uploadCopyTitleClass}>导入商品流量表</CardTitle>
-              <span className={privacyPrimaryChipClass}>本地解析</span>
-              <span className={analyticsChipClass}>原始 Excel 不上传</span>
-	              <div className={uploadToolsClass}>
-	                <Select
-	                  id="analytics-snapshot-select"
-	                  className={snapshotSelectClass}
-	                  value={selectedPeriodKey}
-	                  disabled={!scopedSnapshots.length || syncTone === 'saving'}
-	                  title="选择周期"
-	                  onChange={event => {
-	                    const key = event.currentTarget.value || ALL_PERIODS_KEY;
-	                    setSelectedPeriodKey(key);
-	                    void loadPeriodAnalysis(key, scopedSnapshots);
-	                  }}
-	                >
-	                  {scopedSnapshots.length ? (
-	                    <>
-	                      <option value={ALL_PERIODS_KEY}>全部周期 · {scopedSnapshots.length} 张表</option>
-	                      {scopedSnapshots.map(snapshot => (
-	                        <option value={snapshot.snapshotId} key={snapshot.snapshotId}>{formatPeriodOption(snapshot, activeAccount === ALL_ACCOUNTS_KEY)}</option>
-	                      ))}
-	                    </>
-	                  ) : <option value="">暂无已保存分析</option>}
-	                </Select>
-	              </div>
-	            </div>
-	            <div className={uploadActionClass}>
-	              <button type="button" className={cn(filePickerClass, !canUploadAnalysis && filePickerDisabledClass)} disabled={!canUploadAnalysis} aria-disabled={!canUploadAnalysis ? 'true' : undefined} onClick={openUploadAccountDialog}>
-	                <span className={fileIconClass} aria-hidden="true"><Upload size={18} strokeWidth={2} /></span>
-	                <span>选择 Excel 文件</span>
-	              </button>
-	              <input ref={fileInputRef} id="analytics-file-input" className={fileInputClass} type="file" accept=".xlsx,.xls" disabled={!canUploadAnalysis} onChange={event => void handleFile(event.currentTarget.files?.[0] || null)} />
-	              <div id="analytics-file-meta" className={fileMetaClass}>{canUploadAnalysis ? meta : '先添加账号，再导入商品流量表'}</div>
-	            </div>
+            <div className={periodControlClass}>
+              <Select
+                id="analytics-snapshot-select"
+                className={snapshotSelectClass}
+                value={selectedPeriodKey}
+                disabled={!scopedSnapshots.length || syncTone === 'saving'}
+                title="选择周期"
+                aria-label="选择数据分析周期"
+                onChange={event => {
+                  const key = event.currentTarget.value || ALL_PERIODS_KEY;
+                  setSelectedPeriodKey(key);
+                  void loadPeriodAnalysis(key, scopedSnapshots);
+                }}
+              >
+                {scopedSnapshots.length ? (
+                  <>
+                    <option value={ALL_PERIODS_KEY}>全部周期 · {scopedSnapshots.length} 张表</option>
+                    {scopedSnapshots.map(snapshot => (
+                      <option value={snapshot.snapshotId} key={snapshot.snapshotId}>{formatPeriodOption(snapshot, activeAccount === ALL_ACCOUNTS_KEY)}</option>
+                    ))}
+                  </>
+                ) : <option value="">暂无已保存分析</option>}
+              </Select>
+              <div id="analytics-file-meta" className={fileMetaClass}>{canUploadAnalysis ? meta : '先添加账号，再导入商品流量表'}</div>
+            </div>
+            <div className={uploadActionClass}>
+              <button type="button" className={cn(filePickerClass, !canUploadAnalysis && filePickerDisabledClass)} disabled={!canUploadAnalysis} aria-disabled={!canUploadAnalysis ? 'true' : undefined} onClick={openUploadAccountDialog}>
+                <span className={fileIconClass} aria-hidden="true"><Upload size={18} strokeWidth={2} /></span>
+                <span>导入商品流量表</span>
+              </button>
+              <input ref={fileInputRef} id="analytics-file-input" className={fileInputClass} type="file" accept=".xlsx,.xls" disabled={!canUploadAnalysis} onChange={event => void handleFile(event.currentTarget.files?.[0] || null)} />
+            </div>
           </div>
         ) : null}
       </Card>
@@ -1267,7 +1482,7 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
           </Select>
           <DialogActions>
             <Button onClick={() => setUploadAccountOpen(false)}>取消</Button>
-            <Button variant="primary" onClick={confirmUploadAccount}>选择文件</Button>
+            <Button variant="primary" onClick={confirmUploadAccount}>选择 Excel 文件</Button>
           </DialogActions>
         </DialogContent>
       </Dialog>

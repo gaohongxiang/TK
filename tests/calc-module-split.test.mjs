@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 const formulasSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'calc', 'formulas.ts'), 'utf8');
 const reactCalculatorSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'features', 'calculator', 'CalculatorApp.tsx'), 'utf8');
+const numberInputSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'components', 'ui', 'number-input.tsx'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
@@ -84,7 +85,10 @@ assert.doesNotMatch(
 (async () => {
   assert.match(reactCalculatorSource, /rateNew:\s*23\.5[\s\S]*calcTab:\s*'pricingNew'/, 'React 利润计算器需要保留原默认汇率和默认新定价 tab');
 
-  assert.match(reactCalculatorSource, /function normalizeDecimalText\([\s\S]*\.replace\(\s*\/\[。．｡，\]\/g,\s*'\.'/, 'React 利润计算器需要保留小数符号归一化');
+  assert.match(reactCalculatorSource, /from '@\/components\/ui\/number-input'[\s\S]*DecimalInput[\s\S]*DecimalListInput/, 'React 利润计算器需要使用共享数字输入组件');
+  assert.match(numberInputSource, /function normalizeDecimalText\([\s\S]*\.replace\(\s*\/\[。．｡，\]\/g,\s*'\.'[\s\S]*function normalizeDecimalInput[\s\S]*seenDot/, '共享数字输入需要统一小数符号归一化和单小数点规则');
+  assert.match(numberInputSource, /const DecimalListInput[\s\S]*normalizeDecimalListInput[\s\S]*setSelectionRange/, '共享数字列表输入需要维护光标');
+  assert.match(numberInputSource, /const DecimalListInput[\s\S]*onValuesChange\?\.\(values\)/, '共享数字列表输入需要回传有效数值列表');
   assert.match(reactCalculatorSource, /function parseDiscounts\([\s\S]*endsWith\('%'\)[\s\S]*DEFAULTS\.discountsNew/, 'React 利润计算器需要保留折扣档位解析和兜底');
   assert.match(reactCalculatorSource, /function formatCny\([\s\S]*-¥[\s\S]*function formatWeight/, 'React 利润计算器需要保留人民币和重量格式化');
 

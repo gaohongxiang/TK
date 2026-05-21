@@ -32,6 +32,29 @@ type AnalyticsDiagnosis = {
   action: string;
 };
 
+type AnalyticsActionKind = 'scale' | 'traffic' | 'creative' | 'conversion' | 'pause' | 'watch';
+
+type AnalyticsActionItem = {
+  kind: AnalyticsActionKind;
+  priority: 'P0' | 'P1' | 'P2';
+  title: string;
+  productId: string;
+  productName: string;
+  reason: string;
+  action: string;
+  score: number;
+  metrics: {
+    gmv: number;
+    orders: number;
+    exposure: number;
+    pageViews: number;
+    ctr: number;
+    conversion: number;
+    gmvTrend: number;
+    periodCount: number;
+  };
+};
+
 type AnalyticsParsedRecord = {
   id: string;
   name: string;
@@ -101,6 +124,7 @@ type AnalyticsAnalysis = {
   activeCount: number;
   channelTotals: AnalyticsChannel[];
   kpis: AnalyticsKpis;
+  actionPlan?: AnalyticsActionItem[];
   periodComparisons?: AnalyticsPeriodComparison[];
 };
 
@@ -157,6 +181,8 @@ type AnalyticsXlsx = {
 export type {
   AnalyticsAnalysis,
   AnalyticsAnalyzer,
+  AnalyticsActionItem,
+  AnalyticsActionKind,
   AnalyticsChannel,
   AnalyticsChannelColumnMap,
   AnalyticsChannelKey,

@@ -1,4 +1,5 @@
 import { CHANNELS } from './parser.ts';
+import { buildActionPlan } from './action-plan.ts';
 import type {
   AnalyticsAnalysis,
   AnalyticsChannel,
@@ -75,7 +76,7 @@ function analyze(records: AnalyticsParsedRecord[], period: string): AnalyticsAna
     ...record,
     diagnosis: diagnoseProduct(record, thresholds)
   }));
-  return {
+  const analysis = {
     period,
     records: enriched,
     activeCount: activeRecords.length,
@@ -91,9 +92,14 @@ function analyze(records: AnalyticsParsedRecord[], period: string): AnalyticsAna
       unitPrice: totalUnits ? totalGmv / totalUnits : 0
     }
   };
+  return {
+    ...analysis,
+    actionPlan: buildActionPlan(analysis)
+  };
 }
 
 const TKAnalyticsAnalyzer = {
+  buildActionPlan,
   buildChannelTotals,
   diagnoseProduct,
   analyze
@@ -102,6 +108,7 @@ const TKAnalyticsAnalyzer = {
 export {
   TKAnalyticsAnalyzer,
   analyze,
+  buildActionPlan,
   buildChannelTotals,
   diagnoseProduct
 };

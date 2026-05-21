@@ -41,6 +41,8 @@ const ruleNeedLabels: Record<FirestoreRuleNeed, string> = {
   'order_accounts.write': '保存账号标签',
   'sync_state.read': '读取同步状态',
   'sync_state.write': '保存同步状态',
+  'finance_records.read': '读取收支记录',
+  'finance_records.write': '保存收支记录',
   'collection_records.read': '读取采编记录',
   'collection_records.write': '保存采编记录和店小秘采集/编辑状态',
   'collection_excluded_products.read': '读取拒绝品记录',
@@ -89,6 +91,15 @@ function getFirestoreRulesModule(moduleKey: FirestoreRulesModuleKey) {
       { collectionName: 'order_accounts', readNeed: 'order_accounts.read', writeNeed: 'order_accounts.write' },
       { collectionName: 'sync_state', readNeed: 'sync_state.read', writeNeed: 'sync_state.write' },
       { collectionName: 'products', readNeed: 'products.read' }
+    ]
+  },
+  {
+    key: 'finance',
+    issueSummary: '收支管理保存不可用',
+    targets: [
+      { collectionName: 'finance_records', readNeed: 'finance_records.read', writeNeed: 'finance_records.write' },
+      { collectionName: 'orders', readNeed: 'orders.read' },
+      { collectionName: 'order_accounts', readNeed: 'order_accounts.read' }
     ]
   },
   {

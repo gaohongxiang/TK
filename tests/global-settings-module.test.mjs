@@ -31,6 +31,24 @@ assert.match(
   '全局设置模块需要统一保存汇率、运费倍率和贴单费'
 );
 
+assert.match(
+  srcSource,
+  /function subscribe\([\s\S]*listeners\.add\(listener\)[\s\S]*listeners\.delete\(listener\)/,
+  '全局设置模块需要支持订阅参数变化，订单和商品运费才能实时使用同一口径'
+);
+
+assert.match(
+  srcSource,
+  /SETTINGS_CHANGED_EVENT[\s\S]*dispatchChangedEvent[\s\S]*window\.dispatchEvent\(new CustomEvent\(SETTINGS_CHANGED_EVENT/,
+  '全局设置模块需要派发浏览器事件，订单编辑弹窗才能稳定接收跨模块参数变更'
+);
+
+assert.match(
+  srcSource,
+  /window\.addEventListener\('storage'[\s\S]*event\.key !== storageKey[\s\S]*notify\(\{ broadcast: true \}\)/,
+  '全局设置模块需要监听 storage 变化，跨标签页参数变更也要同步'
+);
+
 assert.doesNotMatch(
   srcSource,
   /tk\.profit\.v1|LEGACY_PROFIT_STORAGE_KEY|legacyProfitStorageKey|readLegacyProfitState/,
@@ -123,6 +141,18 @@ assert.doesNotMatch(
     );
     esmStore.setExchangeRate(24.12567);
     assert.equal(esmStore.getExchangeRate(), 24.1257, '全局设置 ESM 模块需要按同样精度保存汇率');
+    esmStore.setPricingContext({ exchangeRate: 22.33333, shippingMultiplier: 1.25, labelFee: 2 });
+    let notifiedState = null;
+    const unsubscribe = esmStore.subscribe(state => {
+      notifiedState = state;
+    });
+    esmStore.setPricingContext({ exchangeRate: 22.5, shippingMultiplier: 1.1, labelFee: 1.2 });
+    unsubscribe();
+    assert.deepEqual(
+      notifiedState,
+      { exchangeRate: 22.5, shippingMultiplier: 1.1, labelFee: 1.2 },
+      '全局设置 ESM 模块参数变化时需要通知订阅者'
+    );
     esmStore.setPricingContext({ exchangeRate: 22.33333, shippingMultiplier: 1.25, labelFee: 2 });
     assert.deepEqual(
       esmStore.getPricingContext(),

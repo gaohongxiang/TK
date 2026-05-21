@@ -9,6 +9,7 @@ const fallbackModules: ModuleItem[] = [
   { key: 'calc', label: '利润计算器' },
   { key: 'products', label: '商品管理' },
   { key: 'orders', label: '订单管理' },
+  { key: 'finance', label: '收支管理' },
   { key: 'collection', label: '商品采编' },
   { key: 'analytics', label: '数据分析' }
 ];

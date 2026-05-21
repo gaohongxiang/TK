@@ -9,6 +9,7 @@ import { FormField, FormRow } from '@/components/ui/form';
 import { HelpItem, HelpStack } from '@/components/ui/help-stack';
 import { InlineToken } from '@/components/ui/inline-token';
 import { Input } from '@/components/ui/input';
+import { DecimalInput, DecimalListInput, normalizeDecimalListInput, normalizeDecimalText } from '@/components/ui/number-input';
 import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -56,50 +57,6 @@ const DEFAULTS = {
 type CalcState = typeof DEFAULTS;
 type CargoType = 'general' | 'special';
 
-function normalizeDecimalText(value: unknown) {
-  return String(value ?? '')
-    .replace(/[。．｡，]/g, '.')
-    .replace(/[﹣－–—]/g, '-')
-    .replace(/[＋]/g, '+')
-    .replace(/\s+/g, '');
-}
-
-function normalizeDecimalInput(value: unknown) {
-  const text = normalizeDecimalText(value);
-  let seenDot = false;
-  return Array.from(text).filter(char => {
-    if (char !== '.') return true;
-    if (seenDot) return false;
-    seenDot = true;
-    return true;
-  }).join('');
-}
-
-function restoreInputSelection(input: HTMLInputElement, start: number, end = start) {
-  window.requestAnimationFrame(() => {
-    if (document.activeElement !== input) return;
-    const length = input.value.length;
-    input.setSelectionRange(Math.min(start, length), Math.min(end, length));
-  });
-}
-
-function normalizeDiscountSegment(value: string) {
-  return value
-    .replace(/\.{2,}/g, '.')
-    .replace(/(\d*\.\d+)(?=(?:0|1)\.)/g, '$1,');
-}
-
-function normalizeDiscountInput(value: unknown) {
-  return String(value ?? '')
-    .replace(/[。．｡]/g, '.')
-    .replace(/，/g, ',')
-    .replace(/[﹣－–—]/g, '-')
-    .replace(/[＋]/g, '+')
-    .split(/([,\s]+)/)
-    .map(part => (/^[,\s]+$/.test(part) ? part : normalizeDiscountSegment(part)))
-    .join('');
-}
-
 function toNumber(value: unknown) {
   const parsed = Number.parseFloat(normalizeDecimalText(value));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -143,11 +100,11 @@ function parseDiscounts(value: string) {
 }
 
 function parseDiscountTokens(value: string) {
-  return normalizeDiscountInput(value)
+  return normalizeDecimalListInput(value)
     .split(/[,，\s]+/)
     .filter(Boolean)
     .map(item => {
-      const normalized = normalizeDecimalInput(item.trim());
+      const normalized = normalizeDecimalText(item.trim());
       if (normalized.endsWith('%')) return Number.parseFloat(normalized) / 100;
       const number = Number.parseFloat(normalized);
       return number > 1 ? number / 100 : number;
@@ -250,106 +207,17 @@ function Field({
   inputClassName?: string;
   readOnly?: boolean;
 }) {
-  const displayValue = String(value ?? '');
-  const [draftValue, setDraftValue] = useState(displayValue);
-  const [editing, setEditing] = useState(false);
-
-  useEffect(() => {
-    if (!editing) setDraftValue(displayValue);
-  }, [displayValue, editing]);
-
-  function handleBlur() {
-    setEditing(false);
-    if (readOnly) return;
-    const normalized = normalizeDecimalInput(draftValue);
-    const parsed = Number.parseFloat(normalized);
-    const nextValue = Number.isFinite(parsed) ? String(parsed) : '';
-    setDraftValue(nextValue);
-    onChange?.(nextValue);
-  }
-
   return (
     <FormField htmlFor={id} label={label} hint={hint} className={className} labelClassName={labelClassName}>
-      <Input
+      <DecimalInput
         id={id}
-        inputMode="decimal"
-        autoComplete="off"
         tone={inputToneForField(className, readOnly)}
         className={inputClassName}
-        value={draftValue}
+        value={value}
         readOnly={readOnly}
-        onFocus={() => {
-          if (!readOnly) setEditing(true);
-        }}
-        onBlur={handleBlur}
-        onChange={event => {
-          const input = event.currentTarget;
-          const rawValue = input.value;
-          const selectionStart = input.selectionStart ?? rawValue.length;
-          const selectionEnd = input.selectionEnd ?? selectionStart;
-          const nextValue = normalizeDecimalInput(rawValue);
-          const nextSelectionStart = normalizeDecimalInput(rawValue.slice(0, selectionStart)).length;
-          const nextSelectionEnd = normalizeDecimalInput(rawValue.slice(0, selectionEnd)).length;
-          setDraftValue(nextValue);
-          onChange?.(nextValue);
-          restoreInputSelection(input, nextSelectionStart, nextSelectionEnd);
-        }}
+        onChange={nextValue => onChange?.(nextValue)}
       />
     </FormField>
-  );
-}
-
-function DiscountsInput({
-  discounts,
-  id,
-  onDiscountsChange
-}: {
-  discounts: number[];
-  id: string;
-  onDiscountsChange: (discounts: number[]) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [editing, setEditing] = useState(false);
-
-  useEffect(() => {
-    if (editing || !inputRef.current) return;
-    inputRef.current.value = formatDiscountInput(discounts.length ? discounts : DEFAULTS.discountsNew);
-  }, [discounts, editing]);
-
-  function handleChange(event: { currentTarget: HTMLInputElement }) {
-    const input = event.currentTarget;
-    const rawValue = input.value;
-    const selectionStart = input.selectionStart ?? rawValue.length;
-    const selectionEnd = input.selectionEnd ?? selectionStart;
-    const normalized = normalizeDiscountInput(rawValue);
-    const nextSelectionStart = normalizeDiscountInput(rawValue.slice(0, selectionStart)).length;
-    const nextSelectionEnd = normalizeDiscountInput(rawValue.slice(0, selectionEnd)).length;
-
-    if (input.value !== normalized) input.value = normalized;
-    input.setSelectionRange(Math.min(nextSelectionStart, input.value.length), Math.min(nextSelectionEnd, input.value.length));
-
-    const parsed = parseDiscountTokens(normalized);
-    if (parsed.length) onDiscountsChange(parsed);
-  }
-
-  function handleBlur(event: { currentTarget: HTMLInputElement }) {
-    const input = event.currentTarget;
-    const parsed = parseDiscountTokens(input.value);
-    const nextDiscounts = parsed.length ? parsed : discounts.length ? discounts : DEFAULTS.discountsNew;
-    input.value = formatDiscountInput(nextDiscounts);
-    if (parsed.length) onDiscountsChange(parsed);
-    setEditing(false);
-  }
-
-  return (
-    <Input
-      id={id}
-      ref={inputRef}
-      defaultValue={formatDiscountInput(discounts.length ? discounts : DEFAULTS.discountsNew)}
-      onFocus={() => setEditing(true)}
-      onChange={handleChange}
-      onBlur={handleBlur}
-    />
   );
 }
 
@@ -586,7 +454,14 @@ function PricingNewPanel({
               </FormField>
               <Field id="targetMarginNew" label="目标利润率（倍）" value={state.targetMarginNew} hint="总费用倍数" onChange={value => updateNumber('targetMarginNew', value)} />
               <FormField htmlFor="discountsNew" label="折扣档位（逗号分隔）" hint="支持 0.38 或 38%；档位可增删">
-                <DiscountsInput id="discountsNew" discounts={discounts} onDiscountsChange={updateDiscounts} />
+                <DecimalListInput
+                  id="discountsNew"
+                  defaultValue={formatDiscountInput(discounts)}
+                  fallbackValue={formatDiscountInput(DEFAULTS.discountsNew)}
+                  formatValues={formatDiscountInput}
+                  parseValues={parseDiscountTokens}
+                  onValuesChange={updateDiscounts}
+                />
               </FormField>
             </FormRow>
           </div>

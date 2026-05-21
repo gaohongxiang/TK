@@ -16,6 +16,7 @@ const rulesSource = fs.readFileSync(path.join(__dirname, '..', 'docs', 'public',
   assert.match(source, /match \/order_accounts\/\{accountId\}/, `${label} 需要开放 order_accounts 集合规则`);
   assert.match(source, /match \/sync_state\/\{scope\}/, `${label} 需要开放 sync_state 集合规则`);
   assert.match(source, /match \/products\/\{productId\}/, `${label} 需要开放 products 集合规则`);
+  assert.match(source, /match \/finance_records\/\{recordId\}/, `${label} 需要开放 finance_records 集合规则`);
   assert.match(source, /match \/collection_records\/\{productKey\}/, `${label} 需要开放 collection_records 集合规则`);
   assert.match(source, /match \/collection_excluded_products\/\{productKey\}/, `${label} 需要开放 collection_excluded_products 集合规则`);
   assert.match(source, /match \/analytics_snapshots\/\{snapshotId\}/, `${label} 需要开放 analytics_snapshots 集合规则`);

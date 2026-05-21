@@ -409,6 +409,53 @@ test.describe('release browser smoke', () => {
     await page.locator('#overseasShippingNew').fill('5');
     await expect(page.locator('#totalCostNew')).toHaveValue('25.00');
     await expect(page.locator('#tbodyNew')).toContainText('4折');
+    await page.locator('#shippingMultiplierNew').fill('');
+    await page.keyboard.type('1。1');
+    await expect(page.locator('#shippingMultiplierNew')).toHaveValue('1.1');
+    await page.locator('#shippingMultiplierNew').fill('');
+    await page.keyboard.type('1..1');
+    await expect(page.locator('#shippingMultiplierNew')).toHaveValue('1.1');
+    await expect(page.locator('#shipFeeFormulaNew')).toContainText('运费倍率 1.10');
+    const discountsInput = page.locator('#discountsNew');
+    await discountsInput.fill('');
+    await discountsInput.focus();
+    const emptyDiscountSteps = [];
+    for (const key of ['0', '.', '3', '5']) {
+      await page.keyboard.type(key);
+      emptyDiscountSteps.push(await discountsInput.evaluate(input => ({
+        value: (input as HTMLInputElement).value,
+        start: (input as HTMLInputElement).selectionStart,
+        end: (input as HTMLInputElement).selectionEnd
+      })));
+    }
+    expect(emptyDiscountSteps).toEqual([
+      { value: '0', start: 1, end: 1 },
+      { value: '0.', start: 2, end: 2 },
+      { value: '0.3', start: 3, end: 3 },
+      { value: '0.35', start: 4, end: 4 }
+    ]);
+    await discountsInput.fill('0.38,0.4,0.42');
+    await discountsInput.evaluate(input => {
+      const element = input as HTMLInputElement;
+      element.focus();
+      element.setSelectionRange(0, 0);
+    });
+    const prefixDiscountSteps = [];
+    for (const key of ['0', '.', '3', '5']) {
+      await page.keyboard.type(key);
+      prefixDiscountSteps.push(await discountsInput.evaluate(input => ({
+        value: (input as HTMLInputElement).value,
+        start: (input as HTMLInputElement).selectionStart,
+        end: (input as HTMLInputElement).selectionEnd
+      })));
+    }
+    expect(prefixDiscountSteps).toEqual([
+      { value: '00.38,0.4,0.42', start: 1, end: 1 },
+      { value: '0.,0.38,0.4,0.42', start: 2, end: 2 },
+      { value: '0.3,0.38,0.4,0.42', start: 3, end: 3 },
+      { value: '0.35,0.38,0.4,0.42', start: 4, end: 4 }
+    ]);
+    expect(prefixDiscountSteps.at(-1)).toEqual({ value: '0.35,0.38,0.4,0.42', start: 4, end: 4 });
     const calcVisualState = await page.evaluate(() => {
       const cost = document.querySelector<HTMLInputElement>('#costNew');
       const total = document.querySelector<HTMLInputElement>('#totalCostNew');
@@ -470,9 +517,10 @@ test.describe('release browser smoke', () => {
     await page.locator('#pl-account-select').selectOption('Test-Account');
     await page.locator('#pl-form [name="tkId"]').fill('TK-E2E-001');
     await page.locator('#pl-form [name="name"]').fill('E2E 测试雨衣');
-    await page.locator('#pl-batch-weight').fill('320');
-    await page.locator('#pl-batch-size').fill('20x15x10');
+    await page.locator('#pl-batch-weight').fill('150');
+    await page.locator('#pl-batch-size').fill('30x25x15');
     await page.locator('#pl-sku-list [data-sku-field="skuName"]').fill('白 / S');
+    await expect(page.locator('#pl-sku-list [data-sku-estimated-fee]').first()).toHaveText('¥ 34.81');
     await page.locator('#pl-form button[type="submit"]').click();
     await expect(page.locator('#pl-modal')).not.toBeVisible();
     await expect(page.locator('#pl-table-container')).toContainText('TK-E2E-001');
@@ -506,11 +554,14 @@ test.describe('release browser smoke', () => {
     await itemRow.locator('[data-item-role="product-combobox"] [data-option-value="TK-E2E-001"]').click();
     await itemRow.locator('[data-item-role="sku-combobox"] [data-role="trigger"]').click();
     await itemRow.locator('[data-item-role="sku-combobox"] [data-option-value]').filter({ hasText: '白 / S' }).click();
-    await itemRow.locator('[data-item-field="quantity"]').fill('2');
+    await itemRow.locator('[data-item-field="quantity"]').fill('02件');
+    await expect(itemRow.locator('[data-item-field="quantity"]')).toHaveValue('2');
     await itemRow.locator('[data-item-field="trackingNo"]').fill('SF123456789CN');
-    await page.locator('#ot-total-sale').fill('5000');
+    await page.locator('#ot-total-sale').fill('5000。5');
+    await expect(page.locator('#ot-total-sale')).toHaveValue('5000.5');
     await page.locator('#ot-total-purchase').fill('40');
-    await page.locator('#ot-form [name="预估运费"]').fill('12');
+    await expect(page.locator('#ot-form [name="预估运费"]')).toHaveValue('34.81');
+    await expect(page.locator('#ot-shipping-rule-preview')).toContainText('贴单 1.2');
     await page.locator('#ot-form button[type="submit"]').click();
     await expect(page.locator('#ot-table-container')).toContainText('ORDER-E2E-001');
     await expect(page.locator('#ot-table-container')).toContainText('顺丰快递');
@@ -520,6 +571,8 @@ test.describe('release browser smoke', () => {
 
     await page.locator('#ot-table-container button[data-edit]').first().click();
     await expect(page.locator('#ot-modal-title')).toHaveText('编辑订单');
+    await expect(page.locator('#ot-form [name="预估运费"]')).toHaveValue('34.81');
+    await expect(page.locator('#ot-shipping-rule-preview')).toContainText('贴单 1.2');
     await page.locator('#ot-form select[name="订单状态"]').selectOption('已采购');
     await page.locator('#ot-form button[type="submit"]').click();
     await expect(page.locator('#ot-table-container')).toContainText('已采购');
@@ -547,7 +600,7 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#analytics-upload-account-modal')).toBeVisible();
     await expect(page.locator('#analytics-upload-account-select')).toHaveValue('Test-Account');
     const analyticsFileChooser = page.waitForEvent('filechooser');
-    await page.locator('#analytics-upload-account-modal').getByRole('button', { name: '选择文件' }).click();
+    await page.locator('#analytics-upload-account-modal').getByRole('button', { name: '选择 Excel 文件' }).click();
     await (await analyticsFileChooser).setFiles({
       name: 'traffic.xlsx',
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -563,7 +616,7 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#analytics-funnel')).toContainText('成交件数');
     await expect(page.locator('#analytics-bubble-chart canvas')).toHaveCount(1);
     await expect(page.locator('#analytics-channel-share')).toContainText('视频');
-    await expect(page.locator('#analytics-diagnostics')).toContainText('爆品放大');
+    await expect(page.locator('#analytics-action-plan')).toContainText('优先放大');
     await expect(page.evaluate(() => Object.keys(window.__tkE2eFirestoreStore.analytics_snapshots || {}).length)).resolves.toBeGreaterThan(0);
     await expect(page.evaluate(() => Object.keys(window.__tkE2eFirestoreStore.analytics_records || {}).length)).resolves.toBeGreaterThan(0);
     await expect(page.evaluate(() => Object.values(window.__tkE2eFirestoreStore.analytics_snapshots || {}).every((snapshot: any) => snapshot.accountName === 'Test-Account'))).resolves.toBe(true);

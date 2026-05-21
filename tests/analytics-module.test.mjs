@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename);
 const root = path.join(__dirname, '..');
 const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'parser.ts'), 'utf8');
 const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'analyzer.ts'), 'utf8');
+const srcActionPlanSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'action-plan.ts'), 'utf8');
 const srcAggregateSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'aggregate.ts'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
@@ -92,13 +93,13 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /analyticsLayoutClass = 'analytics-layout grid grid-cols-2[\s\S]*max-\[860px\]:grid-cols-1/,
-  '数据分析页需要提供图表布局样式'
+  /analyticsTwoColumnClass = 'grid grid-cols-2 items-stretch gap-4 max-\[860px\]:grid-cols-1'[\s\S]*analyticsInsightLayoutClass = cn\('analytics-insight-layout analytics-react-insight-layout', analyticsTwoColumnClass\)[\s\S]*analyticsLayoutClass = cn\('analytics-layout analytics-summary-layout', analyticsTwoColumnClass\)[\s\S]*summaryCardClass = cn\(analyticsCardClass, 'analytics-summary-card h-full'\)[\s\S]*portfolioSummaryClass = 'analytics-portfolio-summary grid gap-2\.5'[\s\S]*portfolioNextClass = 'analytics-portfolio-next/,
+  '数据分析 Top GMV 和运营摘要需要同高展示，并保持卡片内部标题和内容起点对齐'
 );
 
 assert.match(
   reactAnalyticsSource,
-  /analyticsInsightLayoutClass = 'analytics-insight-layout analytics-react-insight-layout grid grid-cols-\[minmax\(0,1\.05fr\)_minmax\(0,\.95fr\)\][\s\S]*overviewChartWrapClass = 'analytics-react-overview-chart[\s\S]*scatterWrapClass = 'analytics-react-scatter-wrap/,
+  /analyticsInsightLayoutClass = cn\('analytics-insight-layout analytics-react-insight-layout', analyticsTwoColumnClass\)[\s\S]*overviewChartWrapClass = 'analytics-react-overview-chart[\s\S]*scatterWrapClass = 'analytics-react-scatter-wrap/,
   '数据分析页需要提供 ECharts 图表布局样式'
 );
 
@@ -140,8 +141,14 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /analytics-react-scatter h-\[324px\]/,
+  /scatterChartClass = cn\(chartSlotClass, 'analytics-react-scatter h-\[332px\][\s\S]*px-1\.5 pb-1 pt-2\.5[\s\S]*scatterLegendClass = 'analytics-react-legend mt-4/,
   'React 数据分析页需要提供稳定的散点图画布高度'
+);
+
+assert.match(
+  reactChartOptionsSource,
+  /grid:\s*\{\s*left:\s*58,\s*right:\s*58,\s*top:\s*42,\s*bottom:\s*56,\s*containLabel:\s*true\s*\}[\s\S]*name:\s*useRankAxis \? 'GMV 排名' : '曝光'[\s\S]*nameGap:\s*18[\s\S]*axisLabel:\s*\{ color:\s*sharedMutedColor\(\),\s*fontSize:\s*10,\s*margin:\s*10[\s\S]*name:\s*'转化率'[\s\S]*nameGap:\s*18[\s\S]*axisLabel:\s*\{ color:\s*sharedMutedColor\(\),\s*fontSize:\s*10,\s*margin:\s*10/,
+  '商品机会散点图需要给坐标轴标题和刻度保留足够边距，避免贴边'
 );
 
 assert.match(
@@ -347,8 +354,44 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /function PeriodComparisonTable[\s\S]*周期对比[\s\S]*GMV[\s\S]*订单[\s\S]*CTR[\s\S]*转化率[\s\S]*analysis\.periodComparisons/,
+  /function PeriodComparisonTable[\s\S]*周期对比[\s\S]*GMV[\s\S]*订单[\s\S]*点击率[\s\S]*转化率[\s\S]*analysis\.periodComparisons/,
   '数据分析全部周期模式需要展示多周期对比表'
+);
+
+assert.match(
+  srcActionPlanSource,
+  /ACTION_LABELS[\s\S]*优先放大[\s\S]*补流量测试[\s\S]*换素材[\s\S]*改详情\/价格[\s\S]*暂停观察[\s\S]*function buildActionPlan/,
+  '数据分析需要生成可执行的商品动作优先级，而不是只展示诊断标签'
+);
+
+assert.match(
+  srcAnalyzerSource,
+  /import \{ buildActionPlan \}[\s\S]*actionPlan:\s*buildActionPlan\(analysis\)[\s\S]*TKAnalyticsAnalyzer = \{[\s\S]*buildActionPlan/,
+  '数据分析 analyzer 需要把动作优先级并入分析结果，并保留命名空间导出'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /function PortfolioSummary[\s\S]*nextSteps = \[[\s\S]*库存 \/ 素材[\s\S]*补流量候选[\s\S]*承接检查[\s\S]*Top3 GMV 占比[\s\S]*动销率[\s\S]*流量承接[\s\S]*<PortfolioSummary analysis=\{analysis\}/,
+  '数据分析页需要用运营摘要填补 Top GMV 旁边的决策信息'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /actionPlanClass = 'analytics-action-plan grid grid-cols-2[\s\S]*function ActionPlan[\s\S]*id="analytics-action-plan"[\s\S]*动作优先级[\s\S]*ActionPlan analysis=\{analysis\}/,
+  '数据分析页需要把动作优先级做成全宽两列面板'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /buildAnalyticsExportCsv[\s\S]*动作优先级[\s\S]*动作类型[\s\S]*动作建议/,
+  '数据分析 CSV 导出需要带上动作建议'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /comparisonTableWrapClass = 'analytics-period-table-wrap !max-h-\[256px\] !overflow-y-auto overflow-x-auto'[\s\S]*comparisonStickyHeadClass = 'sticky top-0[\s\S]*<TableHead className=\{cn\(comparisonPeriodHeadClass, comparisonStickyHeadClass\)\}/,
+  '周期对比表需要固定表头，并只露出约 3 个周期后滚动显示'
 );
 
 assert.match(
@@ -395,14 +438,20 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /import \{ refreshButtonClass, statusStripClass, statusStripLeftClass, storageHelpButtonClass, syncStatusClass \} from '@\/components\/ui\/status-strip';[\s\S]*<div className=\{statusStripLeftClass\}>[\s\S]*id="analytics-user"[\s\S]*id="analytics-sync-status"[\s\S]*id="analytics-refresh"[\s\S]*id="analytics-help"[\s\S]*<\/div>\s*<\/div>\s*\{connected \? \(/,
-  '数据分析刷新和说明入口需要紧跟连接和同步状态，不能放到状态栏最右侧'
+  /import \{ refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, storageHelpButtonClass, syncStatusClass \} from '@\/components\/ui\/status-strip';[\s\S]*<div className=\{statusStripLeftClass\}>[\s\S]*id="analytics-user"[\s\S]*id="analytics-sync-status"[\s\S]*id="analytics-refresh"[\s\S]*id="analytics-help"[\s\S]*<div className=\{statusStripRightClass\}>[\s\S]*id="analytics-export"[\s\S]*导出 CSV[\s\S]*id="analytics-disconnect-firestore"[\s\S]*退出数据库[\s\S]*id="analytics-snapshot-select"[\s\S]*className=\{uploadActionClass\}/,
+  '数据分析控制卡片需要保留状态栏、账号标签和导入区布局，并在右侧提供导出和退出数据库'
 );
 
 assert.match(
   reactAnalyticsSource,
   /function AnalyticsHelpDialog[\s\S]*<Dialog id="analytics-help-modal"[\s\S]*<HelpStack>[\s\S]*<DialogActions>/,
   '数据分析说明需要使用共享 Dialog 和 HelpStack primitives'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /TikTok Shop 商家中心[\s\S]*数据分析 \/ 商品数据分析[\s\S]*详细信息[\s\S]*后台自定义指标最多选择 10 个[\s\S]*商城页、视频、商品卡各自的曝光次数、点击率、转化率[\s\S]*选择 Excel 文件/,
+  '数据分析说明和导入弹窗需要写清楚后台来源、指标配置和 Excel 文件选择文案'
 );
 
 assert.match(
@@ -557,7 +606,17 @@ const rows = [
     analysisByModule.records.some(record => record.diagnosis.label === '爆品放大'),
     '需要给高 GMV 商品生成运营诊断'
   );
+  assert.ok(Array.isArray(analysisByModule.actionPlan), '分析结果需要包含动作优先级列表');
+  assert.ok(
+    analysisByModule.actionPlan.some(item => item.title === '优先放大' && item.productName.includes('雨衣')),
+    '高 GMV 高成交商品需要进入优先放大动作'
+  );
+  assert.ok(
+    analysisByModule.actionPlan.some(item => ['换素材', '改详情/价格', '暂停观察'].includes(item.title)),
+    '低点击或低转化商品需要进入具体优化动作'
+  );
   assert.strictEqual(typeof analyzerModule.TKAnalyticsAnalyzer.diagnoseProduct, 'function', 'analytics analyzer ESM 模块需要保留命名空间导出');
+  assert.strictEqual(typeof analyzerModule.TKAnalyticsAnalyzer.buildActionPlan, 'function', 'analytics analyzer ESM 模块需要暴露动作优先级生成器');
 
   const nextRows = JSON.parse(JSON.stringify(rows));
   nextRows[0][0] = '2026-05-04 ~ 2026-05-10';
@@ -596,10 +655,23 @@ const rows = [
   assert.strictEqual(aggregatedRaincoat.channels.mall.ctr, 300 / 2500, '聚合后渠道点击率需要按总量重新计算，不能平均');
   assert.strictEqual(aggregated.periodComparisons.length, 2, '全部周期需要生成周期对比行');
   assert.strictEqual(aggregated.periodComparisons[1].period, '2026-05-04 ~ 2026-05-10', '周期对比需要按时间顺序保留周期');
+  assert.ok(aggregated.actionPlan.length, '全部周期聚合后也需要生成动作优先级');
   assert.strictEqual(aggregated.periodComparisons[1].totalGmv, analysisNext.kpis.totalGmv, '周期对比 GMV 需要来自单周期快照');
   assert.strictEqual(aggregated.periodComparisons[1].gmvDelta, analysisNext.kpis.totalGmv - analysisByModule.kpis.totalGmv, '周期对比需要计算 GMV 环比差异');
   assert.strictEqual(aggregated.periodComparisons[1].ctr, 622 / 12500, '周期对比 CTR 需要按周期总浏览/总曝光重算');
   assert.strictEqual(aggregated.periodComparisons[1].conversionDelta, aggregated.periodComparisons[1].conversion - aggregated.periodComparisons[0].conversion, '周期对比转化率需要计算百分点变化');
+  const olderRows = JSON.parse(JSON.stringify(rows));
+  olderRows[0][0] = '2026-04-20 ~ 2026-04-26';
+  const olderAnalysis = analyzerModule.analyze(parserModule.parseRows(olderRows).records, '2026-04-20 ~ 2026-04-26');
+  const periodSorted = aggregateModule.buildPeriodComparisons([
+    { analysis: analysisNext, snapshotId: 'newer-saved-first', period: analysisNext.period, updatedAt: '2026-05-01T00:00:00.000Z' },
+    { analysis: olderAnalysis, snapshotId: 'older-saved-later', period: olderAnalysis.period, updatedAt: '2026-06-01T00:00:00.000Z' }
+  ]);
+  assert.deepStrictEqual(
+    periodSorted.map(row => row.period),
+    ['2026-04-20 ~ 2026-04-26', '2026-05-04 ~ 2026-05-10'],
+    '周期对比环比计算需要按周期时间排序，不能按上传时间排序'
+  );
   const samePeriodComparisons = aggregateModule.buildPeriodComparisons([
     {
       analysis: analysisByModule,

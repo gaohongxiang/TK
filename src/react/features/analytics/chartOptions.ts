@@ -240,7 +240,7 @@ function buildOpportunityScatterOption(analysis: AnalyticsAnalysis): EChartsCore
     record
   }));
   return {
-    grid: { left: 46, right: 20, top: 24, bottom: 42 },
+    grid: { left: 58, right: 58, top: 42, bottom: 56, containLabel: true },
     tooltip: {
       trigger: 'item',
       formatter: params => {
@@ -259,16 +259,18 @@ function buildOpportunityScatterOption(analysis: AnalyticsAnalysis): EChartsCore
     xAxis: {
       type: useRankAxis ? 'value' : 'log',
       name: useRankAxis ? 'GMV 排名' : '曝光',
-      nameTextStyle: { color: sharedMutedColor(), fontSize: 11 },
-      axisLabel: { color: sharedMutedColor(), fontSize: 10 },
+      nameGap: 18,
+      nameTextStyle: { color: sharedMutedColor(), fontSize: 11, padding: [8, 0, 0, 0] },
+      axisLabel: { color: sharedMutedColor(), fontSize: 10, margin: 10 },
       axisLine: { lineStyle: { color: 'rgba(139,147,194,.35)' } },
       splitLine: { lineStyle: { color: 'rgba(139,147,194,.14)', type: 'dashed' } }
     },
     yAxis: {
       type: 'value',
       name: '转化率',
-      nameTextStyle: { color: sharedMutedColor(), fontSize: 11 },
-      axisLabel: { color: sharedMutedColor(), fontSize: 10, formatter: value => `${Number(value) * 100}%` },
+      nameGap: 18,
+      nameTextStyle: { color: sharedMutedColor(), fontSize: 11, padding: [0, 0, 8, 0] },
+      axisLabel: { color: sharedMutedColor(), fontSize: 10, margin: 10, formatter: value => `${Number(value) * 100}%` },
       axisLine: { lineStyle: { color: 'rgba(139,147,194,.35)' } },
       splitLine: { lineStyle: { color: 'rgba(139,147,194,.14)', type: 'dashed' } }
     },

@@ -10,6 +10,7 @@ import { ExportOptions } from '@/components/ui/export-options';
 import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ModuleListState } from '@/components/ui/module-list-state';
+import { IntegerInput } from '@/components/ui/number-input';
 import { PageHero } from '@/components/ui/page-hero';
 import { SearchHelpButton } from '@/components/ui/search-help';
 import { Select } from '@/components/ui/select';
@@ -225,6 +226,7 @@ function ProductsTableView({
   pageSize,
   currentPage,
   expandedTkIds,
+  pricingContext,
   onSearchChange,
   onSearchHelpOpenChange,
   onPageSizeChange,
@@ -243,6 +245,7 @@ function ProductsTableView({
   pageSize: number;
   currentPage: number;
   expandedTkIds: Record<string, boolean>;
+  pricingContext: ReturnType<ReturnType<typeof ensureGlobalSettingsStore>['getPricingContext']>;
   onSearchChange: (value: string) => void;
   onSearchHelpOpenChange: (open: boolean) => void;
   onPageSizeChange: (value: number) => void;
@@ -429,13 +432,18 @@ function ProductsTableView({
                                 <TableBody>
                                   {skus.map((sku, skuIndex) => {
                                     const merged = ProductLibraryTable.mergeProductSku(product, sku);
+                                    const snapshot = buildEstimatedShippingSnapshot({
+                                      shippingCore: TKShippingCore,
+                                      pricingContext,
+                                      product: merged
+                                    });
                                     const cellClass = cn(productSkuExpandedCellClass, skuIndex === skus.length - 1 ? 'border-b-0' : '');
                                     return (
                                       <TableRow key={String(sku.skuId || sku.skuName)}>
                                         <TableCell className={cellClass}><div className={productSkuExpandedSkuMainClass}>{ProductLibraryTable.formatSkuLabel(sku)}</div></TableCell>
                                         <TableCell className={cellClass}>{ProductLibraryTable.formatWeight(merged?.weightG)}</TableCell>
                                         <TableCell className={cellClass}>{ProductLibraryTable.formatSize(merged)}</TableCell>
-                                        <TableCell className={cellClass}>{ProductLibraryTable.formatSkuShippingFee(product, sku)}</TableCell>
+                                        <TableCell className={cellClass}>{ProductLibraryTable.formatMoney(snapshot.estimatedShippingFee || merged?.estimatedShippingFee)}</TableCell>
                                       </TableRow>
                                     );
                                   })}
@@ -482,6 +490,7 @@ function ProductModal({
   editingTkId,
   invalid,
   batchOpen,
+  pricingContext,
   onOpenChange,
   onDraftChange,
   onBatchOpenChange,
@@ -496,6 +505,7 @@ function ProductModal({
   editingTkId: string;
   invalid: Set<string>;
   batchOpen: boolean;
+  pricingContext: ReturnType<ReturnType<typeof ensureGlobalSettingsStore>['getPricingContext']>;
   onOpenChange: (open: boolean) => void;
   onDraftChange: (draft: ProductFormDraft) => void;
   onBatchOpenChange: (open: boolean) => void;
@@ -627,15 +637,14 @@ function ProductModal({
                   </FormRow>
                   <FormRow className={productSkuBatchRowClass}>
                     <FormField label="重量(g)">
-                      <Input
-                        type="number"
+                      <IntegerInput
                         min="0"
                         step="1"
                         id="pl-batch-weight"
                         value={draft.defaultWeightG}
                         className={invalid.has('defaultWeightG') ? 'is-invalid' : ''}
                         placeholder="例如 320"
-                        onChange={event => updateField('defaultWeightG', event.target.value)}
+                        onChange={value => updateField('defaultWeightG', value)}
                       />
                     </FormField>
                     <FormField label="尺寸(cm)">
@@ -651,7 +660,7 @@ function ProductModal({
                 </div>
               </div>
             </div>
-            <SkuEditorList draft={draft} invalid={invalid} onSkuChange={updateSku} onRemoveSku={onRemoveSku} />
+            <SkuEditorList draft={draft} invalid={invalid} pricingContext={pricingContext} onSkuChange={updateSku} onRemoveSku={onRemoveSku} />
           </div>
           <DialogActions>
             <Button id="pl-cancel" onClick={() => onOpenChange(false)}>取消</Button>
@@ -666,11 +675,13 @@ function ProductModal({
 function SkuEditorList({
   draft,
   invalid,
+  pricingContext,
   onSkuChange,
   onRemoveSku
 }: {
   draft: ProductFormDraft;
   invalid: Set<string>;
+  pricingContext: ReturnType<ReturnType<typeof ensureGlobalSettingsStore>['getPricingContext']>;
   onSkuChange: (index: number, patch: Partial<ProductDraftSku>) => void;
   onRemoveSku: (index: number) => void;
 }) {
@@ -683,8 +694,6 @@ function SkuEditorList({
       ...dimensions
     };
   }, [draft.cargoType, draft.defaultSizeText, draft.defaultWeightG]);
-  const pricingContext = useMemo(() => ensureGlobalSettingsStore().getPricingContext(), []);
-
   if (!draft.skus.length) {
     return <div className={productSkuListClass} id="pl-sku-list"><div className={productSkuEmptyClass}>请先添加 SKU；每个 SKU 单独维护重量、尺寸和预估运费。</div></div>;
   }
@@ -743,15 +752,14 @@ function SkuEditorList({
                     />
                   </TableCell>
                   <TableCell className={skuCellClass}>
-                    <Input
-                      type="number"
+                    <IntegerInput
                       min="0"
                       step="1"
                       density="skuInline"
                       className={invalid.has(`sku.${index}.weightG`) ? 'is-invalid' : ''}
                       data-sku-field="weightG"
                       value={weightG}
-                      onChange={event => onSkuChange(index, { weightG: event.target.value, useProductDefaults: false })}
+                      onChange={value => onSkuChange(index, { weightG: value, useProductDefaults: false })}
                     />
                   </TableCell>
                   <TableCell className={skuCellClass}>
@@ -893,6 +901,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
   const [exportOpen, setExportOpen] = useState(false);
   const [exportSelected, setExportSelected] = useState<Set<string>>(new Set());
   const [searchHelpOpen, setSearchHelpOpen] = useState(false);
+  const [pricingContext, setPricingContext] = useState(() => ensureGlobalSettingsStore().getPricingContext());
 
   const allAccounts = accounts;
 
@@ -1019,6 +1028,14 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       setSyncClass('');
     });
   }, [connectUsingGlobalConfig, formatFirestoreError]);
+
+  useEffect(() => {
+    const store = ensureGlobalSettingsStore();
+    setPricingContext(store.getPricingContext());
+    return store.subscribe(() => {
+      setPricingContext(store.getPricingContext());
+    });
+  }, []);
 
   useEffect(() => {
     const handleConnectionChange = (event: Event) => {
@@ -1178,7 +1195,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       ...dimensions,
       ...buildEstimatedShippingSnapshot({
         shippingCore: TKShippingCore,
-        pricingContext: ensureGlobalSettingsStore().getPricingContext(),
+        pricingContext,
         product: {
           cargoType: draft.cargoType,
           weightG: draft.defaultWeightG,
@@ -1228,7 +1245,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       const dimensions = resolveProductDimensions({ ...sku, sizeText: useDefaults ? defaultSnapshot.sizeText : sizeText });
       const snapshot = buildEstimatedShippingSnapshot({
         shippingCore: TKShippingCore,
-        pricingContext: ensureGlobalSettingsStore().getPricingContext(),
+        pricingContext,
         product: {
           cargoType: draft.cargoType,
           weightG: useDefaults ? defaultSnapshot.weightG : weightG,
@@ -1612,6 +1629,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
               pageSize={pageSize}
               currentPage={currentPage}
               expandedTkIds={expandedTkIds}
+              pricingContext={pricingContext}
               onSearchChange={value => { setSearchQuery(value); setCurrentPage(1); }}
               onSearchHelpOpenChange={setSearchHelpOpen}
               onPageSizeChange={value => { setPageSize(Math.max(1, Number(value) || 50)); setCurrentPage(1); }}
@@ -1633,6 +1651,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
         editingTkId={editingTkId}
         invalid={invalid}
         batchOpen={batchOpen}
+        pricingContext={pricingContext}
         onOpenChange={open => { setModalOpen(open); if (!open) setEditingTkId(''); }}
         onDraftChange={applyDraftChange}
         onBatchOpenChange={setBatchOpen}

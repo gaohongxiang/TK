@@ -1,4 +1,5 @@
 const DEFAULT_STORAGE_KEY = 'tk.global-settings.v1';
+const SETTINGS_CHANGED_EVENT = 'tk-global-settings-changed';
 const DEFAULT_PRICING_CONTEXT = {
   exchangeRate: null,
   shippingMultiplier: 1.1,
@@ -21,6 +22,8 @@ type PricingContextInput = Partial<GlobalSettingsState> & {
 type GlobalSettingsCreateOptions = {
   storageKey?: string;
 };
+
+type GlobalSettingsListener = (state: GlobalSettingsState) => void;
 
 function toPlainObject(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -49,6 +52,8 @@ function normalizeState(raw: unknown = {}): GlobalSettingsState {
 }
 
 function create({ storageKey = DEFAULT_STORAGE_KEY }: GlobalSettingsCreateOptions = {}) {
+  const listeners = new Set<GlobalSettingsListener>();
+
   function readJson(key: string): unknown {
     try {
       return typeof localStorage !== 'undefined'
@@ -71,6 +76,17 @@ function create({ storageKey = DEFAULT_STORAGE_KEY }: GlobalSettingsCreateOption
 
   let state = loadState();
 
+  function dispatchChangedEvent(snapshot: GlobalSettingsState) {
+    if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+    window.dispatchEvent(new CustomEvent(SETTINGS_CHANGED_EVENT, { detail: snapshot }));
+  }
+
+  function notify({ broadcast = true }: { broadcast?: boolean } = {}) {
+    const snapshot = getState();
+    listeners.forEach(listener => listener(snapshot));
+    if (broadcast) dispatchChangedEvent(snapshot);
+  }
+
   function getExchangeRate() {
     return parseExchangeRate(state.exchangeRate);
   }
@@ -78,6 +94,7 @@ function create({ storageKey = DEFAULT_STORAGE_KEY }: GlobalSettingsCreateOption
   function setExchangeRate(value: unknown) {
     state = normalizeState({ ...state, exchangeRate: value });
     writeJson(storageKey, state);
+    notify();
     return state.exchangeRate;
   }
 
@@ -89,6 +106,7 @@ function create({ storageKey = DEFAULT_STORAGE_KEY }: GlobalSettingsCreateOption
       labelFee: next.labelFee ?? state.labelFee
     });
     writeJson(storageKey, state);
+    notify();
     return getPricingContext();
   }
 
@@ -104,17 +122,34 @@ function create({ storageKey = DEFAULT_STORAGE_KEY }: GlobalSettingsCreateOption
     };
   }
 
+  function subscribe(listener: GlobalSettingsListener) {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }
+
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('storage', event => {
+      if (event.key !== storageKey) return;
+      state = loadState();
+      notify({ broadcast: true });
+    });
+  }
+
   return {
     getExchangeRate,
     setExchangeRate,
     setPricingContext,
     getState,
-    getPricingContext
+    getPricingContext,
+    subscribe
   };
 }
 
 const TKGlobalSettings = {
   DEFAULT_STORAGE_KEY,
+  SETTINGS_CHANGED_EVENT,
   create
 };
 
@@ -127,6 +162,7 @@ function ensureGlobalSettingsStore() {
 
 export {
   DEFAULT_STORAGE_KEY,
+  SETTINGS_CHANGED_EVENT,
   TKGlobalSettings,
   create,
   ensureGlobalSettingsStore,

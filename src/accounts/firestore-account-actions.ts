@@ -213,6 +213,26 @@ async function renameAnalyticsAccounts(
   });
 }
 
+async function renameFinanceAccounts(
+  db: FirebaseCompatFirestore,
+  oldName: string,
+  newName: string,
+  updatedAt: string,
+  mutations: Array<(batch: FirebaseCompatWriteBatch) => void>
+) {
+  const snapshot = await db.collection('finance_records').get();
+  snapshot.docs.forEach(doc => {
+    const data = toPlainObject(doc.data());
+    if (normalizeAccountName(data.accountName) !== oldName) return;
+    const id = docId(doc, data.id as string);
+    if (!id) return;
+    mutations.push(batch => batch.set(db.collection('finance_records').doc(id), {
+      accountName: newName,
+      updatedAt
+    }, { merge: true }));
+  });
+}
+
 async function renameAccountAcrossModules(
   db: FirebaseCompatFirestore,
   oldValue: string,
@@ -242,7 +262,8 @@ async function renameAccountAcrossModules(
     renameProductAccounts(db, oldName, newName, updatedAt, mutations),
     renameOrderAccounts(db, oldName, newName, updatedAt, mutations),
     renameCollectionAccounts(db, oldName, newName, updatedAt, mutations),
-    renameAnalyticsAccounts(db, oldName, newName, updatedAt, mutations)
+    renameAnalyticsAccounts(db, oldName, newName, updatedAt, mutations),
+    renameFinanceAccounts(db, oldName, newName, updatedAt, mutations)
   ]);
 
   const commitPromise = commitMutations(db, mutations, { waitForCommit });
@@ -282,6 +303,7 @@ export {
   deleteAccountLabel,
   normalizeAccountName,
   renameAccountAcrossModules,
+  renameFinanceAccounts,
   uniqueAccounts
 };
 export type {

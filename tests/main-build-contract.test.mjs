@@ -185,7 +185,7 @@ assert.match(
 
 assert.match(
   reactAppSource,
-  /<main id="main-content" className=\{appMainClass\}[\s\S]*id="view-calc"[\s\S]*id="view-orders"[\s\S]*id="view-products"[\s\S]*id="view-collection"[\s\S]*id="view-analytics"[\s\S]*<\/main>[\s\S]*<footer(?:\s+className=\{appFooterClass\})?>/,
+  /<main id="main-content" className=\{appMainClass\}[\s\S]*id="view-calc"[\s\S]*id="view-orders"[\s\S]*id="view-products"[\s\S]*id="view-finance"[\s\S]*id="view-collection"[\s\S]*id="view-analytics"[\s\S]*<\/main>[\s\S]*<footer(?:\s+className=\{appFooterClass\})?>/,
   '主站核心工具视图需要由 React 放在 main landmark 内，footer 需要留在 main 之后'
 );
 

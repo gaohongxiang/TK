@@ -45,7 +45,7 @@ assert.match(
 
 assert.match(
   srcConfigSource,
-  /key:\s*'calc'[\s\S]*key:\s*'products'[\s\S]*key:\s*'orders'[\s\S]*key:\s*'analytics'/,
+  /key:\s*'calc'[\s\S]*key:\s*'products'[\s\S]*key:\s*'orders'[\s\S]*key:\s*'finance'[\s\S]*key:\s*'analytics'/,
   '项目配置需要列出主站模块'
 );
 
@@ -87,7 +87,7 @@ assert.doesNotMatch(
   assert.strictEqual(module.TKAppConfig.storesUserBusinessData, false, '本站不应保存用户业务数据');
   assert.deepStrictEqual(
     Array.from(module.TKAppConfig.modules, item => item.key),
-    ['calc', 'products', 'orders', 'collection', 'analytics'],
+    ['calc', 'products', 'orders', 'finance', 'collection', 'analytics'],
     '模块顺序需要和导航一致'
   );
   assert.match(reactMainSource, /getElementById\('root'\)[\s\S]*<App \/>/, 'React 主入口需要只挂载单一 SPA root');

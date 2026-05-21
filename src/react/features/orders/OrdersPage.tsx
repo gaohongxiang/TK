@@ -12,6 +12,7 @@ import { HelpItem, HelpStack } from '@/components/ui/help-stack';
 import { InlineToken } from '@/components/ui/inline-token';
 import { Input } from '@/components/ui/input';
 import { ModuleListState } from '@/components/ui/module-list-state';
+import { DecimalInput, IntegerInput } from '@/components/ui/number-input';
 import { PageHero } from '@/components/ui/page-hero';
 import { SearchHelpButton } from '@/components/ui/search-help';
 import { Select } from '@/components/ui/select';
@@ -58,7 +59,7 @@ import {
   getProfitCellToneClass,
   isCreatorOrder
 } from '../../../orders/table.ts';
-import { ensureGlobalSettingsStore } from '../../../global-settings.ts';
+import { SETTINGS_CHANGED_EVENT, ensureGlobalSettingsStore } from '../../../global-settings.ts';
 import { TKShippingCore } from '../../../shipping-core.ts';
 import { cn } from '@/lib/utils';
 import {
@@ -69,6 +70,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  RotateCcw,
   Trash2,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
@@ -98,10 +100,13 @@ type OrderDraft = {
   manualWeightText: boolean;
   sizeText: string;
   manualSizeText: boolean;
+  shippingFeeMode: 'auto' | 'manual';
   manualEstimatedShippingFee: boolean;
   note: string;
   items: OrderItemDraft[];
 };
+
+type PricingContext = ReturnType<ReturnType<typeof ensureGlobalSettingsStore>['getPricingContext']>;
 
 const LS_KEY = 'tk.orders.runtime.v1';
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
@@ -170,10 +175,56 @@ function clampPage(currentPage: number, pageSize: number, totalItems: number) {
   return { currentPage: nextCurrentPage, totalPages, pageSize: safePageSize };
 }
 
+function mergeAssignedOrders(localOrders: OrderRecord[], assignedOrders: OrderRecord[] = []) {
+  const assignedById = new Map(
+    assignedOrders
+      .map(order => [String(order?.id || '').trim(), order] as const)
+      .filter(([id]) => id)
+  );
+  if (!assignedById.size) return localOrders;
+  let changed = false;
+  const merged = localOrders.map(order => {
+    const assigned = assignedById.get(String(order?.id || '').trim());
+    if (!assigned) return order;
+    changed = true;
+    return normalizeOrderRecord({ ...order, ...assigned });
+  });
+  return changed ? merged : localOrders;
+}
+
+function getOrderPageForId({
+  orders,
+  activeAccount,
+  searchQuery,
+  sortOrder,
+  pageSize,
+  orderId
+}: {
+  orders: OrderRecord[];
+  activeAccount: string;
+  searchQuery: string;
+  sortOrder: string;
+  pageSize: number;
+  orderId: unknown;
+}) {
+  const id = String(orderId || '').trim();
+  if (!id) return null;
+  const { sorted } = deriveDisplayedOrders({ orders, activeAccount, searchQuery, sortOrder });
+  const index = sorted.findIndex(order => String(order?.id || '').trim() === id);
+  if (index < 0) return null;
+  return Math.floor(index / Math.max(1, Number(pageSize) || 50)) + 1;
+}
+
 function formatNumericValue(value: unknown) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '';
   return number.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function isSameMoneyValue(left: unknown, right: unknown) {
+  const leftNumber = parseOrderMoneyValue(left);
+  const rightNumber = parseOrderMoneyValue(right);
+  return leftNumber !== null && rightNumber !== null && Math.abs(leftNumber - rightNumber) < 0.005;
 }
 
 function isPositiveIntegerText(value: unknown) {
@@ -331,6 +382,9 @@ function getOrderItemsFromOrder(order: OrderRecord | null): OrderItemDraft[] {
 function buildDraftFromOrder(order: OrderRecord | null, activeAccount: string, accounts: string[]): OrderDraft {
   const orderedAt = String(order?.['下单时间'] || todayStr());
   const status = String(order?.['订单状态'] || '').trim();
+  const savedEstimatedShippingFee = String(order?.['预估运费'] || '');
+  const preserveSavedShippingFee = !!order && !!savedEstimatedShippingFee.trim();
+  const shippingFeeMode = preserveSavedShippingFee || String(order?.estimatedShippingFeeMode || '').trim() === 'manual' ? 'manual' : 'auto';
   return {
     accountName: String(order?.['账号'] || (activeAccount !== '__all__' ? activeAccount : accounts[0] || '')),
     orderNo: String(order?.['订单号'] || ''),
@@ -341,7 +395,7 @@ function buildDraftFromOrder(order: OrderRecord | null, activeAccount: string, a
     isRefunded: String(order?.['是否退款'] || '').trim() === '1',
     salePrice: String(order?.['售价'] || ''),
     purchasePrice: String(order?.['采购价格'] || ''),
-    estimatedShippingFee: String(order?.['预估运费'] || ''),
+    estimatedShippingFee: savedEstimatedShippingFee,
     estimatedProfit: String(order?.['预估利润'] || ''),
     creatorCommissionRate: String(order?.['达人佣金率'] || ''),
     creatorCommission: String(order?.['达人佣金'] || ''),
@@ -350,7 +404,8 @@ function buildDraftFromOrder(order: OrderRecord | null, activeAccount: string, a
     manualWeightText: !!String(order?.['重量'] || '').trim(),
     sizeText: String(order?.['尺寸'] || ''),
     manualSizeText: !!String(order?.['尺寸'] || '').trim(),
-    manualEstimatedShippingFee: !!String(order?.['预估运费'] || '').trim(),
+    shippingFeeMode,
+    manualEstimatedShippingFee: shippingFeeMode === 'manual',
     note: String(order?.['备注'] || order?.note || ''),
     items: getOrderItemsFromOrder(order)
   };
@@ -381,8 +436,11 @@ function findProduct(products: ProductRecord[], accountName: string, tkId: strin
   )) || products.find(product => String(product.tkId || '').trim() === normalizedTkId) || null;
 }
 
-function computeEstimatedShipping(draft: OrderDraft, products: ProductRecord[]) {
-  const pricingContext = ensureGlobalSettingsStore().getPricingContext();
+function computeEstimatedShippingWithContext(
+  draft: OrderDraft,
+  products: ProductRecord[],
+  pricingContext: PricingContext
+) {
   if (!pricingContext?.rate) return '';
   const actualWeight = parseOrderMoneyValue(draft.weightText);
   if (actualWeight === null || actualWeight <= 0) return '';
@@ -412,7 +470,11 @@ function computeEstimatedShipping(draft: OrderDraft, products: ProductRecord[]) 
   return finalFee === null ? '' : formatNumericValue(finalFee);
 }
 
-function computeAutoFields(draft: OrderDraft, products: ProductRecord[]) {
+function computeAutoFieldsWithContext(
+  draft: OrderDraft,
+  products: ProductRecord[],
+  pricingContext: PricingContext
+) {
   const items = draft.items.map(normalizeDraftItem);
   const totals = computeItemTotals(items);
   const latestWarehouseAt = draft.orderedAt ? addDays(draft.orderedAt, 6) : '';
@@ -421,14 +483,14 @@ function computeAutoFields(draft: OrderDraft, products: ProductRecord[]) {
   const sizeText = draft.manualSizeText ? draft.sizeText : (singleSize || draft.sizeText);
   const estimatedShippingFee = draft.manualEstimatedShippingFee
     ? draft.estimatedShippingFee
-    : computeEstimatedShipping({ ...draft, items, weightText, sizeText }, products);
+    : computeEstimatedShippingWithContext({ ...draft, items, weightText, sizeText }, products, pricingContext);
   const tempOrder = {
     '下单时间': draft.orderedAt,
     '最晚到仓时间': latestWarehouseAt,
     '订单状态': draft.orderStatus
   };
   const warningText = computeWarning(tempOrder).text;
-  const exchangeRate = ensureGlobalSettingsStore().getExchangeRate();
+  const exchangeRate = pricingContext.rate;
   const commission = computeOrderCreatorCommission({
     '售价': draft.salePrice,
     '达人佣金率': draft.creatorCommissionRate,
@@ -454,6 +516,53 @@ function computeAutoFields(draft: OrderDraft, products: ProductRecord[]) {
     creatorCommission: commission === null ? '' : formatNumericValue(commission),
     estimatedProfit: profit === null ? '' : formatNumericValue(profit)
   };
+}
+
+function computeShippingRuleDraft(
+  draft: OrderDraft,
+  products: ProductRecord[],
+  pricingContext: PricingContext
+) {
+  return computeAutoFieldsWithContext({
+    ...draft,
+    shippingFeeMode: 'auto',
+    manualEstimatedShippingFee: false
+  }, products, pricingContext);
+}
+
+function shouldRefreshShippingFee(draft: OrderDraft, ruleDraft: OrderDraft) {
+  return !!ruleDraft.estimatedShippingFee && !isSameMoneyValue(draft.estimatedShippingFee, ruleDraft.estimatedShippingFee);
+}
+
+function shouldPreserveCurrentShippingFee(
+  draft: OrderDraft,
+  products: ProductRecord[],
+  pricingContext: PricingContext
+) {
+  return draft.manualEstimatedShippingFee || shouldRefreshShippingFee(draft, computeShippingRuleDraft(draft, products, pricingContext));
+}
+
+function preserveEstimatedShippingFee(draft: OrderDraft) {
+  return {
+    ...draft,
+    shippingFeeMode: 'manual' as const,
+    manualEstimatedShippingFee: true
+  };
+}
+
+function applyShippingRefreshPolicy(
+  nextDraft: OrderDraft,
+  currentDraft: OrderDraft,
+  products: ProductRecord[],
+  pricingContext: PricingContext,
+  resetShipping = false
+) {
+  if (nextDraft.manualEstimatedShippingFee || shouldPreserveCurrentShippingFee(currentDraft, products, pricingContext)) {
+    return preserveEstimatedShippingFee(nextDraft);
+  }
+  return resetShipping
+    ? { ...nextDraft, shippingFeeMode: 'auto' as const, manualEstimatedShippingFee: false }
+    : nextDraft;
 }
 
 function ProductCombo({
@@ -548,8 +657,13 @@ const orderItemSelectClass = '!h-10 !min-h-10 rounded-[10px] border-[color-mix(i
 const orderItemInlineActionsClass = 'ot-item-inline-actions ml-1.5 inline-flex items-center gap-1.5';
 const orderItemInlineButtonClass = 'ot-item-inline-btn ot-item-copy-btn inline-flex h-4 w-4 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[var(--accent)] hover:text-[color-mix(in_srgb,var(--accent)_82%,black)] [&_svg]:h-3.5 [&_svg]:w-3.5';
 const orderInlineHintClass = 'ot-inline-hint ml-1.5 inline whitespace-nowrap text-[11px] font-medium text-[var(--muted)]';
-const orderMoneyRowClass = 'quint ot-money-row-top mt-[18px] !grid-cols-[minmax(72px,84px)_repeat(4,minmax(0,1fr))] max-[768px]:mt-3';
+const orderMoneyRowClass = 'quint ot-money-row-top mt-[18px] !grid-cols-[70px_minmax(88px,.72fr)_minmax(88px,.72fr)_minmax(116px,.9fr)_minmax(170px,1.15fr)_minmax(118px,.9fr)] gap-[10px] max-[1100px]:!grid-cols-3 max-[768px]:!grid-cols-1 max-[768px]:mt-3';
 const orderMetaRowClass = 'quad ot-meta-row mt-[18px] !grid-cols-4 max-[768px]:mt-3';
+const orderShippingRuleClass = 'ot-shipping-rule flex min-h-[42px] min-w-0 items-center rounded-xl border border-[var(--border)] bg-[var(--panel2)] px-3 py-1 text-[12px] leading-tight text-[var(--muted)] shadow-[inset_0_0_0_1px_rgba(255,255,255,.18)]';
+const orderShippingRuleTextClass = 'min-w-0 flex-1 truncate whitespace-nowrap';
+const orderShippingRuleButtonClass = 'ml-1 inline-flex h-[20px] rounded-md px-1.5 py-0 align-[-3px] text-[10px] font-medium tracking-normal';
+const orderShippingHelpButtonClass = '-ml-0.5 inline-flex h-[17px] w-[17px] rounded-full border border-[color-mix(in_srgb,var(--accent)_28%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_8%,var(--panel))] p-0 text-[var(--accent)] hover:bg-[color-mix(in_srgb,var(--accent)_14%,var(--panel))] [&_svg]:h-3 [&_svg]:w-3';
+const orderProfitLabelClass = '!flex-nowrap';
 const orderRefundToggleClass = 'ot-refund-toggle flex min-h-10 w-[76px] cursor-pointer items-center justify-start bg-transparent p-0';
 const orderRefundInputClass = 'absolute opacity-0 pointer-events-none';
 const orderRefundKnobClass = 'ot-refund-toggle-knob relative h-10 w-[76px] flex-none rounded-full bg-[color-mix(in_srgb,var(--panel2)_84%,white_16%)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--line)_88%,white_12%)] transition-[background-color,box-shadow,transform] after:absolute after:left-1 after:top-1 after:h-8 after:w-8 after:rounded-full after:bg-white after:shadow-[0_1px_4px_rgba(15,23,42,.18)] after:transition-[left] group-hover:bg-[color-mix(in_srgb,var(--panel2)_74%,white_26%)]';
@@ -640,10 +754,12 @@ function SaleCell({ order }: { order: OrderRecord }) {
 function OrderItemsEditor({
   draft,
   products,
+  pricingContext,
   onDraftChange
 }: {
   draft: OrderDraft;
   products: ProductRecord[];
+  pricingContext: PricingContext;
   onDraftChange: (draft: OrderDraft) => void;
 }) {
   function updateItem(
@@ -654,13 +770,17 @@ function OrderItemsEditor({
     const nextItems = draft.items.map((item, currentIndex) => (
       currentIndex === index ? normalizeDraftItem({ ...item, ...patch }) : item
     ));
-    onDraftChange(computeAutoFields({
+    const nextDraft = {
       ...draft,
       manualWeightText: resetAuto.weight ? false : draft.manualWeightText,
       manualSizeText: resetAuto.size ? false : draft.manualSizeText,
-      manualEstimatedShippingFee: resetAuto.shipping ? false : draft.manualEstimatedShippingFee,
       items: nextItems
-    }, products));
+    };
+    onDraftChange(computeAutoFieldsWithContext(
+      applyShippingRefreshPolicy(nextDraft, draft, products, pricingContext, !!resetAuto.shipping),
+      products,
+      pricingContext
+    ));
   }
 
   function handleProductChange(index: number, productTkId: string) {
@@ -701,13 +821,17 @@ function OrderItemsEditor({
               title="删除明细"
               onClick={() => {
                 const nextItems = draft.items.filter((_, currentIndex) => currentIndex !== index);
-                onDraftChange(computeAutoFields({
+                const nextDraft = {
                   ...draft,
                   manualWeightText: false,
                   manualSizeText: false,
-                  manualEstimatedShippingFee: false,
                   items: nextItems.length ? nextItems : [createEmptyOrderItem()]
-                }, products));
+                };
+                onDraftChange(computeAutoFieldsWithContext(
+                  applyShippingRefreshPolicy(nextDraft, draft, products, pricingContext, true),
+                  products,
+                  pricingContext
+                ));
               }}
             >
               ×
@@ -728,17 +852,15 @@ function OrderItemsEditor({
               </Select>
             </FormField>
             <FormField label="数量" labelClassName={orderItemLabelClass} className={orderItemFieldClass}>
-              <Input
+              <IntegerInput
                 density="skuInline"
-                type="text"
-                inputMode="numeric"
                 pattern="[1-9][0-9]*"
                 className={orderItemInputClass}
                 data-item-field="quantity"
                 required
                 value={item.quantity}
-                onChange={event => {
-                  const quantity = normalizeQuantityInput(event.target.value);
+                onChange={value => {
+                  const quantity = normalizeQuantityInput(value);
                   if (quantity === null) return;
                   updateItem(index, { quantity }, { weight: true, shipping: true });
                 }}
@@ -1156,6 +1278,7 @@ function OrderModal({
   draft,
   accounts,
   products,
+  pricingContext,
   editingId,
   onOpenChange,
   onDraftChange,
@@ -1166,18 +1289,30 @@ function OrderModal({
   draft: OrderDraft;
   accounts: string[];
   products: ProductRecord[];
+  pricingContext: PricingContext;
   editingId: string;
   onOpenChange: (open: boolean) => void;
   onDraftChange: (draft: OrderDraft) => void;
   onSubmit: () => void;
   onAddAccount: () => void;
 }) {
+  const [shippingHelpOpen, setShippingHelpOpen] = useState(false);
+  const ruleDraft = useMemo(() => computeShippingRuleDraft(draft, products, pricingContext), [draft, products, pricingContext]);
+  const showRefreshShippingFee = shouldRefreshShippingFee(draft, ruleDraft);
+  const pricingRuleText = pricingContext.rate
+    ? `汇率 ${formatNumericValue(pricingContext.rate)} / 倍率 ${formatNumericValue(pricingContext.shippingMultiplier)} / 贴单 ${formatNumericValue(pricingContext.labelFee)}`
+    : '请先在利润计算器填写汇率';
+
   function updateDraft(patch: Partial<OrderDraft>, auto = true) {
     const next = { ...draft, ...patch };
-    onDraftChange(auto ? computeAutoFields(next, products) : next);
+    onDraftChange(auto ? computeAutoFieldsWithContext(
+      applyShippingRefreshPolicy(next, draft, products, pricingContext),
+      products,
+      pricingContext
+    ) : next);
   }
 
-  return (
+  const orderDialog = (
     <Dialog id="ot-modal" open={open} onOpenChange={onOpenChange} titleId="ot-modal-title">
       <DialogContent className="max-w-[880px]">
         <DialogTitle id="ot-modal-title">{editingId ? '编辑订单' : '新增订单'}</DialogTitle>
@@ -1219,18 +1354,24 @@ function OrderModal({
               </div>
               <Button
                 id="ot-add-item-btn"
-                onClick={() => onDraftChange(computeAutoFields({
-                  ...draft,
-                  manualWeightText: false,
-                  manualSizeText: false,
-                  manualEstimatedShippingFee: false,
-                  items: [...draft.items, createEmptyOrderItem()]
-                }, products))}
+                onClick={() => {
+                  const nextDraft = {
+                    ...draft,
+                    manualWeightText: false,
+                    manualSizeText: false,
+                    items: [...draft.items, createEmptyOrderItem()]
+                  };
+                  onDraftChange(computeAutoFieldsWithContext(
+                    applyShippingRefreshPolicy(nextDraft, draft, products, pricingContext, true),
+                    products,
+                    pricingContext
+                  ));
+                }}
               >
                 + 添加明细
               </Button>
             </div>
-            <OrderItemsEditor draft={draft} products={products} onDraftChange={onDraftChange} />
+            <OrderItemsEditor draft={draft} products={products} pricingContext={pricingContext} onDraftChange={onDraftChange} />
             <input type="hidden" name="商品TK ID" id="ot-product-select" value={draft.items.length === 1 ? draft.items[0].productTkId : ''} readOnly />
             <input type="hidden" name="商品SKU ID" id="ot-sku-select" value={draft.items.length === 1 ? draft.items[0].productSkuId : ''} readOnly />
             <input type="hidden" name="商品SKU名称" id="ot-sku-name" value={draft.items.length === 1 ? draft.items[0].productSkuName : ''} readOnly />
@@ -1242,10 +1383,10 @@ function OrderModal({
               <Input id="ot-total-quantity" readOnly value={computeItemTotals(draft.items).quantity || ''} />
             </FormField>
             <FormField label={<>总重量(g) <span className={orderInlineHintClass} id="ot-weight-hint">{computeItemTotals(draft.items).quantity > 1 ? '已按各 SKU 单件重量 × 数量汇总' : ''}</span></>}>
-              <Input name="重量" value={draft.weightText} onChange={event => updateDraft({ weightText: event.target.value, manualWeightText: true, manualEstimatedShippingFee: false })} />
+              <Input name="重量" value={draft.weightText} onChange={event => updateDraft({ weightText: event.target.value, manualWeightText: true })} />
             </FormField>
             <FormField label={<>总尺寸(cm) <span className={orderInlineHintClass}>多个订单明细时请自行调整尺寸</span></>}>
-              <Input name="尺寸" value={draft.sizeText} onChange={event => updateDraft({ sizeText: event.target.value, manualSizeText: true, manualEstimatedShippingFee: false })} />
+              <Input name="尺寸" value={draft.sizeText} onChange={event => updateDraft({ sizeText: event.target.value, manualSizeText: true })} />
             </FormField>
           </FormRow>
           <FormRow columns={5} className={orderMoneyRowClass}>
@@ -1255,31 +1396,76 @@ function OrderModal({
                 <span className={cn(orderRefundKnobClass, draft.isRefunded ? orderRefundKnobCheckedClass : '')} aria-hidden="true"></span>
               </label>
             </FormField>
-            <FormField label="总售价（日元）" className={cn(orderSaleFieldClass, draft.isRefunded ? 'is-refunded' : '')}>
+            <FormField label="总售价（円）" className={cn(orderSaleFieldClass, draft.isRefunded ? 'is-refunded' : '')}>
               <div className={orderSaleInputWrapClass}>
-                <Input className={draft.isRefunded ? 'opacity-0 pointer-events-none' : ''} type="number" id="ot-total-sale" name="售价" min="0" step="0.01" readOnly={draft.isRefunded} value={draft.salePrice} onChange={event => updateDraft({ salePrice: event.target.value })} />
+                <DecimalInput className={draft.isRefunded ? 'opacity-0 pointer-events-none' : ''} id="ot-total-sale" name="售价" min="0" step="0.01" readOnly={draft.isRefunded} value={draft.salePrice} onChange={value => updateDraft({ salePrice: value })} />
                 <div className={cn(orderSaleInputRefundClass, draft.isRefunded ? 'flex' : '')} aria-hidden="true">
                   <span className={orderSaleInputOriginalClass}>{draft.salePrice || '-'}</span>
                   <span className={orderSaleInputZeroClass}>0</span>
                 </div>
               </div>
             </FormField>
-            <FormField label="总采购额（元）">
-              <Input type="number" id="ot-total-purchase" name="采购价格" min="0" step="0.01" value={draft.purchasePrice} onChange={event => updateDraft({ purchasePrice: event.target.value })} />
+            <FormField label="总采购额（¥）">
+              <DecimalInput id="ot-total-purchase" name="采购价格" min="0" step="0.01" value={draft.purchasePrice} onChange={value => updateDraft({ purchasePrice: value })} />
             </FormField>
-            <FormField label="预估总海外运费（元）">
-              <Input type="number" name="预估运费" min="0" step="0.01" value={draft.estimatedShippingFee} onChange={event => updateDraft({ estimatedShippingFee: event.target.value, manualEstimatedShippingFee: true })} />
+            <FormField
+              label={(
+                <>
+                  预估总海外运费（¥）
+                  <Button
+                    variant="plain"
+                    className={orderShippingHelpButtonClass}
+                    aria-controls="ot-shipping-rule-help-modal"
+                    aria-haspopup="dialog"
+                    aria-label="预估海外运费规则说明"
+                    title="预估海外运费规则说明"
+                    onClick={() => setShippingHelpOpen(true)}
+                  >
+                    <HelpCircle size={12} strokeWidth={2} aria-hidden="true" />
+                  </Button>
+                </>
+              )}
+            >
+              <DecimalInput name="预估运费" min="0" step="0.01" value={draft.estimatedShippingFee} onChange={value => updateDraft({ estimatedShippingFee: value, shippingFeeMode: 'manual', manualEstimatedShippingFee: true })} />
             </FormField>
-            <FormField label={<>预估利润（人民币） <InlineToken>自动</InlineToken></>}>
-              <Input type="number" name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
+            <FormField
+              label={(
+                <>
+                  参数
+                  {showRefreshShippingFee ? (
+                    <Button
+                      size="none"
+                      variant="accentSoft"
+                      className={orderShippingRuleButtonClass}
+                      title="根据当前参数刷新运费"
+                      aria-label="根据当前参数刷新运费"
+                      onClick={event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onDraftChange(ruleDraft);
+                      }}
+                    >
+                      <RotateCcw size={12} strokeWidth={2} aria-hidden="true" />
+                      根据当前参数刷新运费
+                    </Button>
+                  ) : null}
+                </>
+              )}
+            >
+              <div className={orderShippingRuleClass} id="ot-shipping-rule-preview">
+                <span className={orderShippingRuleTextClass}>{pricingRuleText}</span>
+              </div>
+            </FormField>
+            <FormField label={<>预估利润（¥） <InlineToken>自动</InlineToken></>} labelClassName={orderProfitLabelClass}>
+              <DecimalInput name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
             </FormField>
           </FormRow>
           <FormRow columns={4} className={orderMetaRowClass}>
             <FormField label="达人佣金率（%）">
-              <Input type="number" name="达人佣金率" min="0" step="0.01" value={draft.creatorCommissionRate} onChange={event => updateDraft({ creatorCommissionRate: event.target.value })} />
+              <DecimalInput name="达人佣金率" min="0" step="0.01" value={draft.creatorCommissionRate} onChange={value => updateDraft({ creatorCommissionRate: value })} />
             </FormField>
-            <FormField label={<>达人佣金（元） <InlineToken>自动</InlineToken></>}>
-              <Input type="number" name="达人佣金" step="0.01" readOnly value={draft.creatorCommission} />
+            <FormField label={<>达人佣金（¥） <InlineToken>自动</InlineToken></>}>
+              <DecimalInput name="达人佣金" step="0.01" readOnly value={draft.creatorCommission} />
             </FormField>
             <FormField label="订单状态">
               <Select name="订单状态" value={draft.orderStatus} onChange={event => updateDraft({ orderStatus: event.target.value })}>
@@ -1309,6 +1495,34 @@ function OrderModal({
         </form>
       </DialogContent>
     </Dialog>
+  );
+  const shippingRuleHelpDialog = (
+    <Dialog
+      id="ot-shipping-rule-help-modal"
+      open={shippingHelpOpen}
+      onOpenChange={setShippingHelpOpen}
+      titleId="ot-shipping-rule-help-title"
+    >
+      <DialogContent className="max-w-[540px]">
+        <DialogTitle id="ot-shipping-rule-help-title">预估海外运费规则</DialogTitle>
+        <HelpStack>
+          <HelpItem label="计算输入">使用订单总重量、总尺寸和货物类型匹配海外运费规则；多明细订单的总尺寸需要手动确认。</HelpItem>
+          <HelpItem label="计费重量">规则会在实重和体积重之间取用于计费的重量，具体卡区、普货/特货费用由运费规则表决定。</HelpItem>
+          <HelpItem label="金额换算">规则金额按当前汇率、运费倍率和贴单费计算为人民币，参数来自利润计算器。</HelpItem>
+          <HelpItem label="订单处理">已有预估运费的订单会保留原值；新增订单默认按当前参数计算。参数变化或手动改过运费后，金额不一致时显示刷新按钮。</HelpItem>
+          <HelpItem label="刷新按钮">点击“根据当前参数刷新运费”后，才会用当前汇率、倍率和贴单费覆盖订单里的预估运费。</HelpItem>
+        </HelpStack>
+        <DialogActions>
+          <Button variant="primary" onClick={() => setShippingHelpOpen(false)}>知道了</Button>
+        </DialogActions>
+      </DialogContent>
+    </Dialog>
+  );
+  return (
+    <>
+      {orderDialog}
+      {shippingRuleHelpDialog}
+    </>
   );
 }
 
@@ -1413,7 +1627,8 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   const [searchHelpOpen, setSearchHelpOpen] = useState(false);
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const [copyingRules, setCopyingRules] = useState(false);
-  const exchangeRate = ensureGlobalSettingsStore().getExchangeRate();
+  const [pricingContext, setPricingContext] = useState(() => ensureGlobalSettingsStore().getPricingContext());
+  const exchangeRate = pricingContext.rate;
 
   const allAccounts = accounts;
   const exportOptions = useMemo(() => getExportAccountOptions({ accounts: allAccounts, orders, constants: { UNASSIGNED_ACCOUNT_SLOT } }).map(option => ({
@@ -1527,6 +1742,20 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   }, [connectUsingGlobalConfig]);
 
   useEffect(() => {
+    const store = ensureGlobalSettingsStore();
+    setPricingContext(store.getPricingContext());
+    const refreshPricingContext = () => {
+      setPricingContext(store.getPricingContext());
+    };
+    const unsubscribe = store.subscribe(refreshPricingContext);
+    window.addEventListener(SETTINGS_CHANGED_EVENT, refreshPricingContext);
+    return () => {
+      unsubscribe();
+      window.removeEventListener(SETTINGS_CHANGED_EVENT, refreshPricingContext);
+    };
+  }, [modalOpen, products]);
+
+  useEffect(() => {
     const handleConnectionChange = (event: Event) => {
       const detail = (event as CustomEvent<{ connected?: boolean }>).detail || {};
       if (detail.connected === false || !readGlobalConfig()?.configText) {
@@ -1599,49 +1828,24 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   function openOrderModal(id = '') {
     const order = id ? orders.find(item => String(item.id) === id) || null : null;
     setEditingId(id);
-    setDraft(computeAutoFields(buildDraftFromOrder(order, activeAccount, allAccounts), products));
+    setDraft(computeAutoFieldsWithContext(buildDraftFromOrder(order, activeAccount, allAccounts), products, pricingContext));
     setModalOpen(true);
     void loadProducts();
   }
 
-  async function persistOrders(nextOrders: OrderRecord[], nextAccounts = allAccounts, statusText = '已保存到 Firestore 本地队列…') {
+  async function persistOrderUpsert(payload: OrderRecord, nextOrders: OrderRecord[], nextAccounts = allAccounts) {
     setOrders(nextOrders);
     setAccounts(nextAccounts);
-    setSyncText(statusText);
+    setSyncText('已保存到 Firestore 本地队列…');
     setSyncClass('saving');
     const cfg = readGlobalConfig();
     if (!cfg?.configText) return;
-    let remote: { orders: OrderRecord[]; accounts: string[] };
-    try {
-      remote = await providerRef.current.pullSnapshot({ cursor: '' });
-    } catch (error) {
-      if (isPermissionDenied(error)) {
-        markPermissionBlocked();
-        showToast(formatFirestoreError(error, '写入失败'), 'error');
-        return;
-      }
-      remote = { orders: [], accounts: [] };
-    }
-    const remoteMap = new Map((remote.orders || []).map((order: OrderRecord) => [String(order.id), order]));
-    const nextMap = new Map(nextOrders.map(order => [String(order.id), order]));
-    const upserts = nextOrders.filter(order => JSON.stringify(order) !== JSON.stringify(remoteMap.get(String(order.id)) || null));
-    const deletions = (remote.orders || []).filter((order: OrderRecord) => !nextMap.has(String(order.id))).map((order: OrderRecord) => ({
-      id: order.id,
-      accountName: order['账号'] || '',
-      deletedAt: nowIso()
-    }));
-    const nextAccountSet = new Set(nextAccounts);
-    const remoteAccountSet = new Set(remote.accounts || []);
-    const accountUpserts = nextAccounts.filter(account => !remoteAccountSet.has(account));
-    const accountDeletions = (remote.accounts || []).filter((account: string) => !nextAccountSet.has(account));
+    const accountName = normalizeAccountName(payload['账号']);
     let result: Awaited<ReturnType<typeof providerRef.current.pushChanges>>;
     try {
       result = await providerRef.current.pushChanges({
-        upserts,
-        deletions,
-        accountUpserts,
-        accountDeletions,
-        accountSortOrder: nextAccounts,
+        upserts: [payload],
+        accountUpserts: accountName ? [accountName] : [],
         clientId: '',
         assignSeq: true,
         waitForCommit: false
@@ -1655,8 +1859,19 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       throw error;
     }
     setPermissionBlocked(false);
+    const displayedOrders = mergeAssignedOrders(nextOrders, result?.assignedOrders || []);
+    setOrders(displayedOrders);
+    const focusedPage = getOrderPageForId({
+      orders: displayedOrders,
+      activeAccount,
+      searchQuery,
+      sortOrder,
+      pageSize,
+      orderId: payload.id
+    });
+    if (focusedPage !== null) setCurrentPage(focusedPage);
     result?.commitPromise?.then(() => {
-      setSyncText(`已同步 · ${nextOrders.length} 条`);
+      setSyncText(`已同步 · ${displayedOrders.length} 条`);
       setSyncClass('saved');
       setPermissionBlocked(false);
     }).catch(error => {
@@ -1667,8 +1882,52 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     });
   }
 
+  async function persistOrderDeletion(deletedOrder: OrderRecord | null, nextOrders: OrderRecord[]) {
+    const deletedId = String(deletedOrder?.id || '').trim();
+    if (!deletedId) return;
+    setOrders(nextOrders);
+    setSyncText('已删除，本地已更新，等待同步…');
+    setSyncClass('saving');
+    const cfg = readGlobalConfig();
+    if (!cfg?.configText) return;
+    let result: Awaited<ReturnType<typeof providerRef.current.pushChanges>>;
+    try {
+      result = await providerRef.current.pushChanges({
+        deletions: [{
+          id: deletedId,
+          accountName: deletedOrder?.['账号'] || '',
+          deletedAt: nowIso()
+        }],
+        clientId: '',
+        assignSeq: false,
+        waitForCommit: false
+      });
+    } catch (error) {
+      if (isPermissionDenied(error)) {
+        markPermissionBlocked();
+        showToast(formatFirestoreError(error, '删除失败'), 'error');
+        return;
+      }
+      throw error;
+    }
+    setPermissionBlocked(false);
+    result?.commitPromise?.then(() => {
+      setSyncText(`已同步 · ${nextOrders.length} 条`);
+      setSyncClass('saved');
+      setPermissionBlocked(false);
+    }).catch(error => {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      setSyncText('Firestore 删除失败，已保留本地视图');
+      setSyncClass('error');
+      showToast(formatFirestoreError(error, '删除失败'), 'error');
+    });
+  }
+
   async function submitOrder() {
-    const autoDraft = computeAutoFields(draft, products);
+    const ruleDraft = computeShippingRuleDraft(draft, products, pricingContext);
+    const shouldPreserveShippingFee = shouldRefreshShippingFee(draft, ruleDraft);
+    const draftForSubmit = shouldPreserveShippingFee ? preserveEstimatedShippingFee(draft) : draft;
+    const autoDraft = computeAutoFieldsWithContext(draftForSubmit, products, pricingContext);
     if (!autoDraft.items.length) {
       showToast('请至少添加一条订单明细', 'error');
       return;
@@ -1717,6 +1976,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       '采购价格': autoDraft.purchasePrice,
       '售价': autoDraft.salePrice,
       '预估运费': autoDraft.estimatedShippingFee,
+      estimatedShippingFeeMode: autoDraft.shippingFeeMode,
       '预估利润': autoDraft.estimatedProfit,
       '重量': autoDraft.weightText,
       '尺寸': autoDraft.sizeText,
@@ -1731,14 +1991,15 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       : [payload, ...orders];
     setModalOpen(false);
     setEditingId('');
-    await persistOrders(nextOrders, allAccounts, '已保存到 Firestore 本地队列…');
+    await persistOrderUpsert(payload, nextOrders, allAccounts);
     showToast('已保存到本地');
   }
 
   async function deleteOrder(id: string) {
     if (!window.confirm('确定删除这条订单？删除后如需恢复，需要从你的 Firestore 历史记录或备份手动恢复。')) return;
+    const deletedOrder = orders.find(order => String(order.id) === id) || null;
     const nextOrders = orders.filter(order => String(order.id) !== id);
-    await persistOrders(nextOrders, allAccounts, '已删除，本地已更新，等待同步…');
+    await persistOrderDeletion(deletedOrder, nextOrders);
     showToast('已删除');
   }
 
@@ -2039,6 +2300,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         draft={draft}
         accounts={allAccounts}
         products={products}
+        pricingContext={pricingContext}
         editingId={editingId}
         onOpenChange={open => { setModalOpen(open); if (!open) setEditingId(''); }}
         onDraftChange={setDraft}

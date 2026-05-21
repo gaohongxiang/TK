@@ -11,6 +11,7 @@ const compatibilitySource = fs.readFileSync(path.join(root, 'src', 'firestore-ru
 const appRuntimeSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'AppRuntime.tsx'), 'utf8');
 const productsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const ordersSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8');
+const financeSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'finance', 'FinancePage.tsx'), 'utf8');
 const collectionSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'collection', 'CollectionPage.tsx'), 'utf8');
 const analyticsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'analytics', 'AnalyticsApp.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
@@ -78,6 +79,18 @@ assert.match(
 
 assert.match(
   compatibilitySource,
+  /key:\s*'finance'[\s\S]*issueSummary:\s*'收支管理保存不可用'[\s\S]*finance_records[\s\S]*orders[\s\S]*order_accounts/,
+  '收支管理需要注册自己的 Firestore 规则兼容检查目标'
+);
+
+assert.match(
+  financeSource,
+  /formatFirestoreRulesUpdateMessage\('finance'[\s\S]*setSyncText\(''\)[\s\S]*permissionBlocked[\s\S]*收支管理保存不可用/,
+  '收支管理需要用真实读取失败触发列表区权限不足提示'
+);
+
+assert.match(
+  compatibilitySource,
   /key:\s*'analytics'[\s\S]*issueSummary:\s*'数据分析保存不可用'[\s\S]*analytics_snapshots[\s\S]*analytics_records/,
   '数据分析需要注册自己的 Firestore 规则兼容检查目标'
 );
@@ -89,19 +102,19 @@ assert.match(
 );
 
 assert.match(
-  productsSource + ordersSource + collectionSource,
-  /permissionBlocked \? null : <Badge id="pl-sync"[\s\S]*permissionBlocked \? null : <Badge id="ot-sync"[\s\S]*permissionBlocked \? null : <Badge id="collection-sync"/,
+  productsSource + ordersSource + financeSource + collectionSource,
+  /permissionBlocked \? null : <Badge id="pl-sync"[\s\S]*permissionBlocked \? null : <Badge id="ot-sync"[\s\S]*permissionBlocked \? null : <Badge id="finance-sync"[\s\S]*permissionBlocked \? null : <Badge id="collection-sync"/,
   '权限不足时顶部状态条只保留连接状态，不应重复显示规则更新文案'
 );
 
 assert.doesNotMatch(
-  productsSource + ordersSource + collectionSource,
+  productsSource + ordersSource + financeSource + collectionSource,
   /checkFirestoreRulesCompatibility|notifyRulesUpdateNeeded/,
   '页面进入模块不应跑额外预检查，也不应把模块权限错误弹成全局规则弹窗'
 );
 
 assert.match(
-  productsSource + ordersSource + collectionSource,
+  productsSource + ordersSource + financeSource + collectionSource,
   /tone="connect"[\s\S]*tone="permission"[\s\S]*tone="empty"/,
   '商品、订单和采集列表区需要共用连接、权限不足、无数据三种状态组件，有数据时才显示表格'
 );
@@ -138,7 +151,7 @@ assert.doesNotMatch(
 
 assert.match(
   databaseDoc,
-  /商品管理、订单管理、数据采集和数据分析都依赖你自己的 `Firebase Firestore` 项目[\s\S]*网站如何判断规则是否最新[\s\S]*用户进入数据分析，就读取最近一次分析快照[\s\S]*不会为了检查权限额外写入[\s\S]*新增模块[\s\S]*自己的真实读取和写入失败处接入/,
+  /商品管理、订单管理、收支管理、数据采集和数据分析都依赖你自己的 `Firebase Firestore` 项目[\s\S]*网站如何判断规则是否最新[\s\S]*用户进入收支管理，就读取收支记录、订单和账号标签[\s\S]*用户进入数据分析，就读取最近一次分析快照[\s\S]*不会为了检查权限额外写入[\s\S]*新增模块[\s\S]*自己的真实读取和写入失败处接入/,
   '数据库文档需要说明数据分析使用用户自己的 Firestore，并说明真实读取、动态新增模块和探针边界'
 );
 

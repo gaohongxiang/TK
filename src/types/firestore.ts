@@ -56,6 +56,7 @@ type FirebaseCompatApp = {
   firestore: () => FirebaseCompatFirestore;
   __tkProductsFirestoreConfigured?: boolean;
   __tkOrdersFirestoreConfigured?: boolean;
+  __tkFinanceFirestoreConfigured?: boolean;
   __tkCollectionFirestoreConfigured?: boolean;
   __tkAnalyticsFirestoreConfigured?: boolean;
   __tkRulesCheckFirestoreConfigured?: boolean;

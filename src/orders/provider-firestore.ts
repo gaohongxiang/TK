@@ -149,6 +149,10 @@ function toBoolean(value: unknown): boolean {
   return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'y';
 }
 
+function normalizeShippingFeeMode(value: unknown): 'auto' | 'manual' {
+  return String(value ?? '').trim() === 'manual' ? 'manual' : 'auto';
+}
+
 function toIsoString(value: unknown, fallback = ''): string {
   if (!value && fallback) return fallback;
   if (!value) return '';
@@ -363,6 +367,7 @@ function normalizePulledOrder(raw: unknown, options: { nowIso?: () => string } =
     '采购价格': totalPurchase == null || totalPurchase === '' ? '' : String(totalPurchase),
     '售价': totalSale == null || totalSale === '' ? '' : String(totalSale),
     '预估运费': data?.estimatedShippingFee == null ? '' : String(data.estimatedShippingFee),
+    estimatedShippingFeeMode: normalizeShippingFeeMode(data?.estimatedShippingFeeMode),
     '预估利润': data?.estimatedProfit == null ? '' : String(data.estimatedProfit),
     '重量': String(data?.weightText || ''),
     '尺寸': String(data?.sizeText || ''),
@@ -405,6 +410,7 @@ function buildOrderDoc(order: OrderRecord, options: { nowIso?: () => string } = 
     purchasePrice: topLevelPurchase ?? (items.length ? Number(totals.purchase.toFixed(2)) : null),
     salePrice: topLevelSale ?? (items.length ? Number(totals.sale.toFixed(2)) : null),
     estimatedShippingFee: toNullableDecimal(order?.['预估运费']),
+    estimatedShippingFeeMode: normalizeShippingFeeMode(order?.estimatedShippingFeeMode),
     estimatedProfit: toNullableDecimal(order?.['预估利润']),
     weightText: topLevelWeight || (items.length && totals.weight ? Number(totals.weight.toFixed(2)).toString() : null),
     sizeText: topLevelSize || (items.length === 1 ? toNullableText(items[0]?.unitSizeText || '') : null),
@@ -789,6 +795,7 @@ export {
   getDisplayName,
   hydrateConfig,
   latestIso,
+  normalizeShippingFeeMode,
   normalizeConfigText,
   normalizeOrderItems,
   normalizePulledOrder,

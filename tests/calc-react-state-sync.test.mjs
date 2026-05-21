@@ -20,7 +20,7 @@ assert.match(
 
 assert.match(
   calculatorSource,
-  /<Field id="costNew"[\s\S]*value=\{state\.costNew\}[\s\S]*updateNumber\('costNew', value\)/,
+  /<DecimalInput[\s\S]*value=\{value\}[\s\S]*onChange=\{nextValue => onChange\?\.\(nextValue\)\}[\s\S]*<Field id="costNew"[\s\S]*value=\{state\.costNew\}[\s\S]*updateNumber\('costNew', value\)/,
   '定价新采购价输入需要直接写入共享 costNew 状态'
 );
 

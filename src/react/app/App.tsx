@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { AppRuntime } from './AppRuntime';
 import { CalculatorApp } from '../features/calculator/CalculatorApp';
 import { CollectionPage } from '../features/collection/CollectionPage';
+import { FinancePage } from '../features/finance/FinancePage';
 import { OrdersPage } from '../features/orders/OrdersPage';
 import { ProductsPage } from '../features/products/ProductsPage';
 import { AppShell } from '../layouts/AppShell';
@@ -20,6 +21,7 @@ const fallbackModules = Object.freeze([
   Object.freeze({ key: 'calc', label: '利润计算器' }),
   Object.freeze({ key: 'products', label: '商品管理' }),
   Object.freeze({ key: 'orders', label: '订单管理' }),
+  Object.freeze({ key: 'finance', label: '收支管理' }),
   Object.freeze({ key: 'collection', label: '商品采编' }),
   Object.freeze({ key: 'analytics', label: '数据分析' })
 ]) as readonly ModuleItem[];
@@ -166,6 +168,9 @@ function App({
           </div>
           <div id="view-products" className={viewClass(active, 'products')}>
             <ProductsPage active={active === 'products'} />
+          </div>
+          <div id="view-finance" className={viewClass(active, 'finance')}>
+            <FinancePage active={active === 'finance'} />
           </div>
           <div id="view-collection" className={viewClass(active, 'collection')}>
             <CollectionPage active={active === 'collection'} />

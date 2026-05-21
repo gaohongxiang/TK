@@ -75,8 +75,8 @@ assert.match(
 
 assert.match(
   analytics,
-  /不上传到 Cloudflare[\s\S]*分析快照会写入你的 Firestore[\s\S]*商品诊断标签[\s\S]*不把分析结果发送到第三方接口/,
-  '数据分析文档需要说明本地解析、Firestore 快照、诊断标签和不上传边界'
+  /不上传到 Cloudflare[\s\S]*分析快照会写入你的 Firestore[\s\S]*动作优先级[\s\S]*不把分析结果发送到第三方接口/,
+  '数据分析文档需要说明本地解析、Firestore 快照、动作优先级和不上传边界'
 );
 
 assert.match(

@@ -56,7 +56,7 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /function normalizeQuantityInput\(value: unknown\)[\s\S]*if \(!\/\^\\d\+\$\/\.test\(text\)\) return null[\s\S]*text\.replace\(\/\^0\+\/, ''\)[\s\S]*inputMode="numeric"[\s\S]*pattern="\[1-9\]\[0-9\]\*"[\s\S]*data-item-field="quantity"[\s\S]*if \(quantity === null\) return/,
+  /function normalizeQuantityInput\(value: unknown\)[\s\S]*if \(!\/\^\\d\+\$\/\.test\(text\)\) return null[\s\S]*text\.replace\(\/\^0\+\/, ''\)[\s\S]*<IntegerInput[\s\S]*pattern="\[1-9\]\[0-9\]\*"[\s\S]*data-item-field="quantity"[\s\S]*if \(quantity === null\) return/,
   'React 订单明细数量输入需要允许临时清空，但只接受大于等于 1 的整数'
 );
 
@@ -68,26 +68,74 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /manualSizeText: !!String\(order\?\.\['尺寸'\][\s\S]*const sizeText = draft\.manualSizeText \? draft\.sizeText : \(singleSize \|\| draft\.sizeText\)[\s\S]*updateDraft\(\{ sizeText: event\.target\.value, manualSizeText: true, manualEstimatedShippingFee: false \}\)/,
-  'React 订单总尺寸需要支持手动编辑，不应被自动 SKU 尺寸覆盖'
+  /manualSizeText: !!String\(order\?\.\['尺寸'\][\s\S]*const sizeText = draft\.manualSizeText \? draft\.sizeText : \(singleSize \|\| draft\.sizeText\)[\s\S]*updateDraft\(\{ sizeText: event\.target\.value, manualSizeText: true \}\)/,
+  'React 订单总尺寸需要支持手动编辑，且不应直接覆盖当前运费'
 );
 
 assert.match(
   ordersPageSource,
-  /manualWeightText: !!String\(order\?\.\['重量'\][\s\S]*const weightText = draft\.manualWeightText \? draft\.weightText : \(totals\.weight \? formatNumericValue\(totals\.weight\) : draft\.weightText\)[\s\S]*updateDraft\(\{ weightText: event\.target\.value, manualWeightText: true, manualEstimatedShippingFee: false \}\)/,
-  'React 订单总重量需要支持手动编辑，不应被订单明细汇总覆盖'
+  /manualWeightText: !!String\(order\?\.\['重量'\][\s\S]*const weightText = draft\.manualWeightText \? draft\.weightText : \(totals\.weight \? formatNumericValue\(totals\.weight\) : draft\.weightText\)[\s\S]*updateDraft\(\{ weightText: event\.target\.value, manualWeightText: true \}\)/,
+  'React 订单总重量需要支持手动编辑，且不应直接覆盖当前运费'
 );
 
 assert.match(
   ordersPageSource,
-  /manualEstimatedShippingFee: !!String\(order\?\.\['预估运费'\][\s\S]*const estimatedShippingFee = draft\.manualEstimatedShippingFee[\s\S]*computeEstimatedShipping\(\{ \.\.\.draft, items, weightText, sizeText \}, products\)[\s\S]*updateDraft\(\{ estimatedShippingFee: event\.target\.value, manualEstimatedShippingFee: true \}\)/,
-  'React 订单预估运费需要按重量和尺寸自动重算，同时保留用户手动输入'
+  /const savedEstimatedShippingFee = String\(order\?\.\['预估运费'\][\s\S]*const preserveSavedShippingFee = !!order && !!savedEstimatedShippingFee\.trim\(\)[\s\S]*preserveSavedShippingFee[\s\S]*shippingFeeMode === 'manual'[\s\S]*<DecimalInput name="预估运费"[\s\S]*updateDraft\(\{ estimatedShippingFee: value, shippingFeeMode: 'manual', manualEstimatedShippingFee: true \}\)/,
+  'React 订单预估运费需要保留老订单已保存运费，用户手动输入后也保留用户值'
 );
 
 assert.match(
   ordersPageSource,
-  /computeAutoFields\(\{[\s\S]*manualWeightText: false,[\s\S]*manualSizeText: false,[\s\S]*manualEstimatedShippingFee: false,[\s\S]*items: nextItems[\s\S]*computeAutoFields\(\{[\s\S]*manualWeightText: false,[\s\S]*manualSizeText: false,[\s\S]*manualEstimatedShippingFee: false,[\s\S]*items: \[\.\.\.draft\.items, createEmptyOrderItem\(\)\]/,
-  'React 订单明细结构变化后需要恢复总尺寸自动汇总'
+  /const refreshPricingContext = \(\) => \{[\s\S]*setPricingContext\(store\.getPricingContext\(\)\)[\s\S]*store\.subscribe\(refreshPricingContext\)[\s\S]*window\.addEventListener\(SETTINGS_CHANGED_EVENT, refreshPricingContext\)/,
+  'React 订单页需要订阅全局定价参数和事件，但参数变化不应直接覆盖当前运费'
+);
+
+assert.match(
+  ordersPageSource,
+  /const ruleDraft = useMemo\(\(\) => computeShippingRuleDraft\(draft, products, pricingContext\)[\s\S]*const showRefreshShippingFee = shouldRefreshShippingFee\(draft, ruleDraft\)[\s\S]*预估总海外运费（¥）[\s\S]*预估海外运费规则说明[\s\S]*参数[\s\S]*title="根据当前参数刷新运费"[\s\S]*onDraftChange\(ruleDraft\)[\s\S]*根据当前参数刷新运费[\s\S]*<div className=\{orderShippingRuleClass\} id="ot-shipping-rule-preview"[\s\S]*pricingRuleText/,
+  'React 订单预估运费需要展示参数、说明按钮，并在标题旁允许按当前参数刷新运费'
+);
+
+assert.match(
+  ordersPageSource,
+  /\{showRefreshShippingFee \? \([\s\S]*title="根据当前参数刷新运费"[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);[\s\S]*onDraftChange\(ruleDraft\)/,
+  'React 订单参数标题旁的刷新按钮应只在当前运费与规则值不一致时显示并写回规则草稿'
+);
+
+assert.match(
+  ordersPageSource,
+  /orderMoneyRowClass = 'quint[\s\S]*70px_minmax\(88px,\.72fr\)_minmax\(88px,\.72fr\)_minmax\(116px,\.9fr\)_minmax\(170px,1\.15fr\)_minmax\(118px,\.9fr\)[\s\S]*orderShippingRuleClass = 'ot-shipping-rule flex min-h-\[42px\][\s\S]*orderShippingRuleButtonClass = 'ml-1 inline-flex h-\[20px\][\s\S]*orderShippingHelpButtonClass[\s\S]*orderProfitLabelClass = '!flex-nowrap'/,
+  'React 订单金额行需要让金额输入、参数和预估利润对齐并填满行宽'
+);
+
+assert.match(
+  ordersPageSource,
+  /id="ot-shipping-rule-help-modal"[\s\S]*<DialogTitle id="ot-shipping-rule-help-title">预估海外运费规则<\/DialogTitle>[\s\S]*<HelpItem label="计算输入">[\s\S]*<HelpItem label="计费重量">[\s\S]*<HelpItem label="金额换算">[\s\S]*<HelpItem label="订单处理">[\s\S]*<HelpItem label="刷新按钮">/,
+  'React 订单预估运费说明按钮需要打开规则说明弹窗，并说明新老订单的刷新规则'
+);
+
+assert.match(
+  ordersPageSource,
+  /label="总售价（円）"[\s\S]*label="总采购额（¥）"[\s\S]*预估总海外运费（¥）[\s\S]*预估利润（¥）[\s\S]*达人佣金（¥）/,
+  'React 订单金额字段单位需要统一使用符号'
+);
+
+assert.doesNotMatch(
+  ordersPageSource,
+  /当前规则计算|预估总海外运费（计入利润）|总售价（日元）|总采购额（元）|预估利润（人民币）/,
+  'React 订单金额区需要使用短文案，避免挤出弹窗'
+);
+
+assert.doesNotMatch(
+  ordersPageSource,
+  /切回自动运费|draft\.manualEstimatedShippingFee \? '手动' : '自动'/,
+  'React 订单预估运费不应把内部手动/自动状态直接暴露给用户'
+);
+
+assert.match(
+  ordersPageSource,
+  /applyShippingRefreshPolicy\(nextDraft, draft, products, pricingContext, !!resetAuto\.shipping\)[\s\S]*applyShippingRefreshPolicy\(nextDraft, draft, products, pricingContext, true\)[\s\S]*items: \[\.\.\.draft\.items, createEmptyOrderItem\(\)\]/,
+  'React 订单明细结构变化后需要恢复总尺寸自动汇总，但不应直接覆盖当前运费'
 );
 
 (async () => {

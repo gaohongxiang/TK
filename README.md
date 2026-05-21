@@ -8,7 +8,7 @@
 - 商品管理：连接用户自己的 Firebase Firestore，管理商品和 SKU。
 - 订单管理：连接用户自己的 Firebase Firestore，管理订单、利润、物流单号和同步状态。
 - 数据采集：通过 Codex skill 和当前授权采集窗口按账号筛选商品，并把采集表、店小秘状态和拒绝品去重记录同步到用户自己的 Firebase Firestore。
-- 数据分析：本地导入 TikTok Shop 商品流量 Excel，生成渠道表现、Top 商品排行、流量漏斗和商品诊断。
+- 数据分析：本地导入 TikTok Shop 商品流量 Excel，生成渠道表现、Top 商品排行、流量漏斗和动作优先级。
 - 文档站：使用 VitePress 单独维护使用说明和运营文档。
 
 ## 当前架构

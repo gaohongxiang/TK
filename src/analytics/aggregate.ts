@@ -143,6 +143,25 @@ function rateDelta(current: number, previous: number) {
   return (current - previous) / previous;
 }
 
+function periodStartKey(period: string) {
+  const match = String(period || '').match(/\d{4}[-/]\d{1,2}[-/]\d{1,2}/);
+  if (!match) return '';
+  const [year, month, day] = match[0].replace(/\//g, '-').split('-');
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+function compareSnapshotsByPeriodAsc(left: AnalyticsSnapshotForAggregation, right: AnalyticsSnapshotForAggregation) {
+  const leftKey = periodStartKey(left.period || left.analysis.period);
+  const rightKey = periodStartKey(right.period || right.analysis.period);
+  return leftKey.localeCompare(rightKey)
+    || String(left.updatedAt || '').localeCompare(String(right.updatedAt || ''));
+}
+
+function comparePeriodsAsc(left: PeriodAccumulator, right: PeriodAccumulator) {
+  return periodStartKey(left.period).localeCompare(periodStartKey(right.period))
+    || String(left.updatedAt || '').localeCompare(String(right.updatedAt || ''));
+}
+
 function makePeriodAccumulator(snapshot: AnalyticsSnapshotForAggregation): PeriodAccumulator {
   return {
     period: snapshot.period || snapshot.analysis.period || '未知周期',
@@ -221,7 +240,7 @@ function buildPeriodComparisons(snapshots: AnalyticsSnapshotForAggregation[]): A
     byPeriod.set(period, existing);
   });
   return [...byPeriod.values()]
-    .sort((a, b) => String(a.updatedAt || '').localeCompare(String(b.updatedAt || '')))
+    .sort(comparePeriodsAsc)
     .reduce<AnalyticsPeriodComparison[]>((rows, acc) => {
       const previous = rows[rows.length - 1];
       rows.push(makePeriodComparison(acc, previous));
@@ -230,7 +249,7 @@ function buildPeriodComparisons(snapshots: AnalyticsSnapshotForAggregation[]): A
 }
 
 function aggregateAnalyses(snapshots: AnalyticsSnapshotForAggregation[]): AnalyticsAnalysis {
-  const ordered = [...snapshots].sort((a, b) => String(a.updatedAt || '').localeCompare(String(b.updatedAt || '')));
+  const ordered = [...snapshots].sort(compareSnapshotsByPeriodAsc);
   const byProduct = new Map<string, ProductAccumulator>();
 
   ordered.forEach(snapshot => {

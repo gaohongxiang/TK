@@ -17,6 +17,10 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /finance_records/{recordId} {
+      allow read, write: if true;
+    }
+
     match /collection_records/{productKey} {
       allow read, write: if true;
     }

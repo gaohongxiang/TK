@@ -51,6 +51,7 @@ type OrderRecord = {
   salePrice?: string | number | null;
   purchasePrice?: string | number | null;
   estimatedShippingFee?: string | number | null;
+  estimatedShippingFeeMode?: 'auto' | 'manual' | string | null;
   estimatedProfit?: string | number | null;
   creatorCommissionRate?: string | number | null;
   creatorCommission?: string | number | null;
@@ -333,6 +334,7 @@ type OrderFirestoreDoc = {
   purchasePrice: number | null;
   salePrice: number | null;
   estimatedShippingFee: number | null;
+  estimatedShippingFeeMode: 'auto' | 'manual';
   estimatedProfit: number | null;
   weightText: string | null;
   sizeText: string | null;

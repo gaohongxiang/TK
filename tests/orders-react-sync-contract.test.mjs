@@ -28,14 +28,32 @@ assert.doesNotMatch(
 
 assert.match(
   ordersPageSource,
-  /providerRef\.current\.pullSnapshot\(\{ cursor: '' \}\)[\s\S]*remoteMap[\s\S]*upserts[\s\S]*deletions[\s\S]*providerRef\.current\.pushChanges\(\{/,
-  'React 订单页保存时需要直接拉取远端快照、计算 upserts/deletions 并写入 Firestore provider'
+  /async function persistOrderUpsert\([\s\S]*upserts:\s*\[payload\][\s\S]*accountUpserts:\s*accountName \? \[accountName\] : \[\][\s\S]*assignSeq:\s*true[\s\S]*waitForCommit:\s*false/,
+  'React 订单页保存时只能 upsert 当前订单，不能用本地列表缺失推导远端删除'
+);
+
+assert.doesNotMatch(
+  ordersPageSource,
+  /async function persistOrderUpsert\([\s\S]*pullSnapshot\(\{ cursor: '' \}\)[\s\S]*deletions/,
+  'React 订单页保存单条订单时不应拉全量远端并生成 deletions'
+);
+
+assert.match(
+  ordersPageSource,
+  /async function persistOrderDeletion\([\s\S]*deletions:\s*\[\{[\s\S]*id:\s*deletedId[\s\S]*assignSeq:\s*false[\s\S]*waitForCommit:\s*false/,
+  'React 订单页只有明确删除当前订单时才写入该订单 tombstone'
 );
 
 assert.match(
   ordersPageSource,
   /assignSeq:\s*true[\s\S]*waitForCommit:\s*false[\s\S]*result\?\.commitPromise\?\.then/,
   'React 订单页需要保持 Firestore 本地队列写入，不等待云端提交后再更新界面'
+);
+
+assert.match(
+  ordersPageSource,
+  /function mergeAssignedOrders\([\s\S]*result\?\.assignedOrders[\s\S]*setOrders\(displayedOrders\)[\s\S]*getOrderPageForId\([\s\S]*setCurrentPage\(focusedPage\)/,
+  'React 订单页保存后需要用 Firestore 分配的 seq 回填本地列表，并自动定位到该订单所在页'
 );
 
 assert.match(

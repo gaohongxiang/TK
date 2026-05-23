@@ -71,6 +71,24 @@ assert.match(
   '全局 Firestore 连接模块需要广播配置变化事件'
 );
 
+assert.match(
+  source,
+  /const COMPACT_CONNECTION_PREFIX = 'c1~'[\s\S]*function createCompactConnectionString[\s\S]*function decodeConnectionPayload/,
+  '全局 Firestore 连接模块需要使用紧凑成员连接 payload'
+);
+
+assert.doesNotMatch(
+  source,
+  /tk_config|decodeBase64Url|encodeBase64Url|\^#\(\?:connect\|tk_config\)=/,
+  '成员连接链接不再兼容旧 tk_config/#connect/base64 格式'
+);
+
+assert.match(
+  source,
+  /function applyConnectionLinkFromLocation[\s\S]*function createConnectionLink\([\s\S]*#login\?connect=/,
+  '全局 Firestore 连接模块需要生成打开登录页并导入配置的成员连接链接'
+);
+
 assert.doesNotMatch(
   source,
   /window\.TKFirestoreConnection|globalThis\.window\.TKFirestoreConnection/,
@@ -86,6 +104,7 @@ assert.doesNotMatch(
   assert.equal(typeof module.TKFirestoreConnection.registerUI, 'function', 'Firestore 连接模块需要暴露 React UI 注册入口');
   assert.equal(typeof module.TKFirestoreConnection.notifyRulesUpdateNeeded, 'function', 'Firestore 连接模块需要暴露 notifyRulesUpdateNeeded');
   assert.equal(typeof module.TKFirestoreConnection.closeDisconnectConfirm, 'function', 'Firestore 连接模块需要暴露关闭退出确认弹层的方法');
+  assert.equal(typeof module.TKFirestoreConnection.createConnectionLink, 'function', 'Firestore 连接模块需要暴露成员连接链接生成入口');
   assert.equal(typeof module.parseConfigInput, 'function', 'Firestore 连接模块需要导出 parseConfigInput 供测试和后续迁移复用');
 
   const parsed = module.TKFirestoreConnection.parseConfigInput(`const firebaseConfig = {
@@ -97,6 +116,10 @@ assert.doesNotMatch(
 
   assert.equal(parsed.projectId, 'demo', 'Firestore 连接模块应能解析 projectId');
   assert.equal(module.normalizeConfigText({ apiKey: 'key', projectId: 'p', appId: 'app' }).includes('"authDomain": "p.firebaseapp.com"'), true, 'Firestore 连接模块需要补齐默认 authDomain');
+  const link = module.TKFirestoreConnection.createConnectionLink(parsed, 'https://example.com/tool');
+  assert.match(link, /^https:\/\/example\.com\/tool\/#login\?connect=c1~/, '成员连接链接应打开登录页并使用紧凑 payload');
+  assert.equal(module.TKFirestoreConnection.parseConfigInput(module.TKFirestoreConnection.decodeConnectionPayload(link.split('connect=')[1])).projectId, 'demo', '成员连接链接需要可还原 config');
+  assert.equal(module.TKFirestoreConnection.decodeConnectionPayload(module.TKFirestoreConnection.encodeConnectionPayload(parsed)).includes('"projectId": "demo"'), true, '连接配置需要可编码和解码');
 
   console.log('firestore connection module ok');
 })().catch(error => {

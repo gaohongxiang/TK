@@ -60,6 +60,7 @@ import {
   isCreatorOrder
 } from '../../../orders/table.ts';
 import { SETTINGS_CHANGED_EVENT, ensureGlobalSettingsStore } from '../../../global-settings.ts';
+import { buildFirestoreSyncStatus } from '../../../firestore-sync-status.ts';
 import { TKShippingCore } from '../../../shipping-core.ts';
 import { cn } from '@/lib/utils';
 import {
@@ -657,6 +658,12 @@ const orderItemSelectClass = '!h-10 !min-h-10 rounded-[10px] border-[color-mix(i
 const orderItemInlineActionsClass = 'ot-item-inline-actions ml-1.5 inline-flex items-center gap-1.5';
 const orderItemInlineButtonClass = 'ot-item-inline-btn ot-item-copy-btn inline-flex h-4 w-4 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-[var(--accent)] hover:text-[color-mix(in_srgb,var(--accent)_82%,black)] [&_svg]:h-3.5 [&_svg]:w-3.5';
 const orderInlineHintClass = 'ot-inline-hint ml-1.5 inline whitespace-nowrap text-[11px] font-medium text-[var(--muted)]';
+const orderTrashListClass = 'orders-trash-list grid max-h-[420px] gap-2 overflow-auto pr-1';
+const orderTrashItemClass = 'orders-trash-item grid gap-2 rounded-xl border border-[color-mix(in_srgb,var(--border)_82%,transparent)] bg-[color-mix(in_srgb,var(--panel2)_34%,transparent)] p-3';
+const orderTrashItemHeadClass = 'flex items-start justify-between gap-3';
+const orderTrashItemTitleClass = 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-[var(--text)]';
+const orderTrashItemMetaClass = 'flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--muted)]';
+const orderTrashActionsClass = 'flex shrink-0 flex-wrap items-center justify-end gap-2';
 const orderMoneyRowClass = 'quint ot-money-row-top mt-[18px] !grid-cols-[70px_minmax(88px,.72fr)_minmax(88px,.72fr)_minmax(116px,.9fr)_minmax(170px,1.15fr)_minmax(118px,.9fr)] gap-[10px] max-[1100px]:!grid-cols-3 max-[768px]:!grid-cols-1 max-[768px]:mt-3';
 const orderMetaRowClass = 'quad ot-meta-row mt-[18px] !grid-cols-4 max-[768px]:mt-3';
 const orderShippingRuleClass = 'ot-shipping-rule flex min-h-[42px] min-w-0 items-center rounded-xl border border-[var(--border)] bg-[var(--panel2)] px-3 py-1 text-[12px] leading-tight text-[var(--muted)] shadow-[inset_0_0_0_1px_rgba(255,255,255,.18)]';
@@ -1566,6 +1573,68 @@ function ExportModal({
   );
 }
 
+function OrderTrashModal({
+  open,
+  orders,
+  onOpenChange,
+  onRestore,
+  onPermanentlyDelete
+}: {
+  open: boolean;
+  orders: OrderRecord[];
+  onOpenChange: (open: boolean) => void;
+  onRestore: (id: string) => void;
+  onPermanentlyDelete: (id: string) => void;
+}) {
+  return (
+    <Dialog id="ot-trash-modal" open={open} titleId="ot-trash-title" onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[680px]">
+        <DialogTitle id="ot-trash-title">已删除订单</DialogTitle>
+        <Alert variant="info" className={modalCopyClass}>
+          <AlertDescription>这里显示被标记删除的订单。恢复只会清除当前订单的删除标记；彻底删除会从 Firestore 删除文档，不能从这里恢复。</AlertDescription>
+        </Alert>
+        {!orders.length ? (
+          <ModuleListState tone="empty" title="没有已删除订单" description="被删除的订单会在这里显示，可直接恢复。" />
+        ) : (
+          <div id="ot-trash-list" className={orderTrashListClass}>
+            {orders.map(order => {
+              const id = String(order.id || '').trim();
+              return (
+                <div className={orderTrashItemClass} key={id || String(order.deletedAt)}>
+                  <div className={orderTrashItemHeadClass}>
+                    <div className="min-w-0">
+                      <div className={orderTrashItemTitleClass} title={String(order['产品名称'] || order['订单号'] || id)}>
+                        {formatTableCellValue(order['产品名称']) || formatTableCellValue(order['订单号']) || id}
+                      </div>
+                      <div className={orderTrashItemMetaClass}>
+                        <span>账号：{formatTableCellValue(order['账号'])}</span>
+                        <span>订单号：{formatTableCellValue(order['订单号'])}</span>
+                        <span>下单：{formatTableCellValue(order['下单时间'])}</span>
+                        <span>删除：{formatTableCellValue(order.deletedAt)}</span>
+                      </div>
+                    </div>
+                    <div className={orderTrashActionsClass}>
+                      <Button size="sm" variant="primary" disabled={!id} onClick={() => onRestore(id)}>
+                        <RotateCcw size={14} strokeWidth={2} aria-hidden="true" />恢复
+                      </Button>
+                      <Button size="sm" variant="danger" disabled={!id} onClick={() => onPermanentlyDelete(id)}>
+                        <Trash2 size={14} strokeWidth={2} aria-hidden="true" />彻底删除
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <DialogActions>
+          <Button id="ot-trash-close" onClick={() => onOpenChange(false)}>关闭</Button>
+        </DialogActions>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function StorageHelpModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog id="ot-storage-help-modal" open={open} titleId="ot-storage-help-title" onOpenChange={onOpenChange}>
@@ -1598,12 +1667,14 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     state: {},
     helpers: { nowIso }
   }));
+  const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [syncText, setSyncText] = useState('未连接');
   const [syncClass, setSyncClass] = useState('');
   const [projectId, setProjectId] = useState('');
   const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [deletedOrders, setDeletedOrders] = useState<OrderRecord[]>([]);
   const [accounts, setAccounts] = useState<string[]>([]);
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [activeAccount, setActiveAccount] = useState('__all__');
@@ -1623,6 +1694,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   const [deletingAccountName, setDeletingAccountName] = useState('');
   const [exportOpen, setExportOpen] = useState(false);
   const [exportSelected, setExportSelected] = useState<Set<string>>(new Set());
+  const [trashOpen, setTrashOpen] = useState(false);
   const [storageHelpOpen, setStorageHelpOpen] = useState(false);
   const [searchHelpOpen, setSearchHelpOpen] = useState(false);
   const [permissionBlocked, setPermissionBlocked] = useState(false);
@@ -1662,9 +1734,14 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   }, []);
 
   const markPermissionBlocked = useCallback(() => {
+    if (unsubscribeSnapshotRef.current) {
+      unsubscribeSnapshotRef.current();
+      unsubscribeSnapshotRef.current = null;
+    }
     setConnected(true);
     setPermissionBlocked(true);
     setOrders([]);
+    setDeletedOrders([]);
     setAccounts([]);
     setProducts([]);
     setSyncText('');
@@ -1694,15 +1771,21 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   const connectUsingGlobalConfig = useCallback(async () => {
     const cfg = readGlobalConfig();
     if (!cfg?.configText) {
+      if (unsubscribeSnapshotRef.current) {
+        unsubscribeSnapshotRef.current();
+        unsubscribeSnapshotRef.current = null;
+      }
       setConnected(false);
       setPermissionBlocked(false);
-      setSyncText('未连接');
-      setSyncClass('');
+      const status = buildFirestoreSyncStatus('unconnected');
+      setSyncText(status.text);
+      setSyncClass(status.className);
       return false;
     }
     setLoading(true);
-    setSyncText('正在刷新云端数据…');
-    setSyncClass('saving');
+    const refreshingStatus = buildFirestoreSyncStatus('refreshing');
+    setSyncText(refreshingStatus.text);
+    setSyncClass(refreshingStatus.className);
     try {
       await providerRef.current.init({ configText: cfg.configText });
       const [snapshot] = await Promise.all([
@@ -1710,12 +1793,44 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         loadProducts()
       ]);
       setOrders(snapshot.orders || []);
+      setDeletedOrders(snapshot.deletedOrders || []);
       setAccounts(snapshot.accounts || []);
       setProjectId(cfg.projectId || '');
       setConnected(true);
       setPermissionBlocked(false);
-      setSyncText(`已同步 · ${(snapshot.orders || []).length} 条`);
-      setSyncClass('saved');
+      const status = buildFirestoreSyncStatus(snapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
+        action: '订单更改',
+        count: (snapshot.orders || []).length,
+        unit: '条'
+      });
+      setSyncText(status.text);
+      setSyncClass(status.className);
+      if (unsubscribeSnapshotRef.current) unsubscribeSnapshotRef.current();
+      unsubscribeSnapshotRef.current = providerRef.current.subscribeSnapshot(nextSnapshot => {
+        setOrders(nextSnapshot.orders || []);
+        setDeletedOrders(nextSnapshot.deletedOrders || []);
+        setAccounts(nextSnapshot.accounts || []);
+        setConnected(true);
+        setPermissionBlocked(false);
+        const nextStatus = buildFirestoreSyncStatus(nextSnapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
+          action: '订单更改',
+          count: (nextSnapshot.orders || []).length,
+          unit: '条'
+        });
+        setSyncText(nextStatus.text);
+        setSyncClass(nextStatus.className);
+      }, error => {
+        if (isPermissionDenied(error)) {
+          markPermissionBlocked();
+          return;
+        }
+        const failedStatus = buildFirestoreSyncStatus('failed', {
+          error: formatFirestoreError(error, '订单实时同步失败')
+        });
+        setSyncText(failedStatus.text);
+        setSyncClass(failedStatus.className);
+        showToast(formatFirestoreError(error, '订单实时同步失败'), 'error');
+      });
       return true;
     } catch (error) {
       if (isPermissionDenied(error)) {
@@ -1759,13 +1874,19 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     const handleConnectionChange = (event: Event) => {
       const detail = (event as CustomEvent<{ connected?: boolean }>).detail || {};
       if (detail.connected === false || !readGlobalConfig()?.configText) {
+        if (unsubscribeSnapshotRef.current) {
+          unsubscribeSnapshotRef.current();
+          unsubscribeSnapshotRef.current = null;
+        }
         setConnected(false);
         setPermissionBlocked(false);
         setOrders([]);
+        setDeletedOrders([]);
         setProducts([]);
         setProjectId('');
-        setSyncText('未连接');
-        setSyncClass('');
+        const status = buildFirestoreSyncStatus('unconnected');
+        setSyncText(status.text);
+        setSyncClass(status.className);
         return;
       }
       void connectUsingGlobalConfig();
@@ -1796,6 +1917,10 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     window.addEventListener('tk-products-changed', handleProductsChanged);
     window.addEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
     return () => {
+      if (unsubscribeSnapshotRef.current) {
+        unsubscribeSnapshotRef.current();
+        unsubscribeSnapshotRef.current = null;
+      }
       window.removeEventListener('tk-firestore-config-changed', handleConnectionChange);
       window.removeEventListener('tk-products-changed', handleProductsChanged);
       window.removeEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
@@ -1836,8 +1961,9 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   async function persistOrderUpsert(payload: OrderRecord, nextOrders: OrderRecord[], nextAccounts = allAccounts) {
     setOrders(nextOrders);
     setAccounts(nextAccounts);
-    setSyncText('已保存到 Firestore 本地队列…');
-    setSyncClass('saving');
+    const queueStatus = buildFirestoreSyncStatus('queueing', { action: '订单保存' });
+    setSyncText(queueStatus.text);
+    setSyncClass(queueStatus.className);
     const cfg = readGlobalConfig();
     if (!cfg?.configText) return;
     const accountName = normalizeAccountName(payload['账号']);
@@ -1871,13 +1997,12 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     });
     if (focusedPage !== null) setCurrentPage(focusedPage);
     result?.commitPromise?.then(() => {
-      setSyncText(`已同步 · ${displayedOrders.length} 条`);
-      setSyncClass('saved');
       setPermissionBlocked(false);
     }).catch(error => {
       if (isPermissionDenied(error)) markPermissionBlocked();
-      setSyncText('Firestore 写入失败，已保留本地视图');
-      setSyncClass('error');
+      const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 写入失败，已保留本地视图' });
+      setSyncText(failedStatus.text);
+      setSyncClass(failedStatus.className);
       showToast(formatFirestoreError(error, '写入失败'), 'error');
     });
   }
@@ -1885,9 +2010,16 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   async function persistOrderDeletion(deletedOrder: OrderRecord | null, nextOrders: OrderRecord[]) {
     const deletedId = String(deletedOrder?.id || '').trim();
     if (!deletedId) return;
+    const deletedAt = nowIso();
+    const nextDeletedOrders = [
+      normalizeOrderRecord({ ...deletedOrder, deletedAt, updatedAt: deletedAt }),
+      ...deletedOrders.filter(order => String(order.id) !== deletedId)
+    ];
     setOrders(nextOrders);
-    setSyncText('已删除，本地已更新，等待同步…');
-    setSyncClass('saving');
+    setDeletedOrders(nextDeletedOrders);
+    const queueStatus = buildFirestoreSyncStatus('queueing', { action: '订单删除' });
+    setSyncText(queueStatus.text);
+    setSyncClass(queueStatus.className);
     const cfg = readGlobalConfig();
     if (!cfg?.configText) return;
     let result: Awaited<ReturnType<typeof providerRef.current.pushChanges>>;
@@ -1896,7 +2028,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         deletions: [{
           id: deletedId,
           accountName: deletedOrder?.['账号'] || '',
-          deletedAt: nowIso()
+          deletedAt
         }],
         clientId: '',
         assignSeq: false,
@@ -1912,13 +2044,12 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     }
     setPermissionBlocked(false);
     result?.commitPromise?.then(() => {
-      setSyncText(`已同步 · ${nextOrders.length} 条`);
-      setSyncClass('saved');
       setPermissionBlocked(false);
     }).catch(error => {
       if (isPermissionDenied(error)) markPermissionBlocked();
-      setSyncText('Firestore 删除失败，已保留本地视图');
-      setSyncClass('error');
+      const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 删除失败，已保留本地视图' });
+      setSyncText(failedStatus.text);
+      setSyncClass(failedStatus.className);
       showToast(formatFirestoreError(error, '删除失败'), 'error');
     });
   }
@@ -1996,11 +2127,107 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   }
 
   async function deleteOrder(id: string) {
-    if (!window.confirm('确定删除这条订单？删除后如需恢复，需要从你的 Firestore 历史记录或备份手动恢复。')) return;
+    if (!window.confirm('确定删除这条订单？删除后会进入“已删除订单”，可以在列表里恢复。')) return;
     const deletedOrder = orders.find(order => String(order.id) === id) || null;
     const nextOrders = orders.filter(order => String(order.id) !== id);
     await persistOrderDeletion(deletedOrder, nextOrders);
     showToast('已删除');
+  }
+
+  async function restoreOrder(id: string) {
+    const restored = deletedOrders.find(order => String(order.id) === id) || null;
+    if (!restored) return;
+    const payload = normalizeOrderRecord({
+      ...restored,
+      deletedAt: '',
+      updatedAt: nowIso()
+    });
+    const nextDeletedOrders = deletedOrders.filter(order => String(order.id) !== id);
+    const nextOrders = [payload, ...orders.filter(order => String(order.id) !== id)];
+    setDeletedOrders(nextDeletedOrders);
+    setOrders(nextOrders);
+    const queueStatus = buildFirestoreSyncStatus('queueing', { action: '订单恢复' });
+    setSyncText(queueStatus.text);
+    setSyncClass(queueStatus.className);
+    const cfg = readGlobalConfig();
+    if (!cfg?.configText) return;
+    let result: Awaited<ReturnType<typeof providerRef.current.pushChanges>>;
+    try {
+      result = await providerRef.current.pushChanges({
+        upserts: [payload],
+        clientId: '',
+        assignSeq: false,
+        waitForCommit: false
+      });
+    } catch (error) {
+      if (isPermissionDenied(error)) {
+        markPermissionBlocked();
+        showToast(formatFirestoreError(error, '恢复失败'), 'error');
+        return;
+      }
+      throw error;
+    }
+    setPermissionBlocked(false);
+    const focusedPage = getOrderPageForId({
+      orders: nextOrders,
+      activeAccount,
+      searchQuery,
+      sortOrder,
+      pageSize,
+      orderId: id
+    });
+    if (focusedPage !== null) setCurrentPage(focusedPage);
+    result?.commitPromise?.then(() => {
+      setPermissionBlocked(false);
+    }).catch(error => {
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 恢复失败，已保留本地视图' });
+      setSyncText(failedStatus.text);
+      setSyncClass(failedStatus.className);
+      showToast(formatFirestoreError(error, '恢复失败'), 'error');
+    });
+    setTrashOpen(false);
+    showToast('订单已恢复');
+  }
+
+  async function permanentlyDeleteOrder(id: string) {
+    const deletedOrder = deletedOrders.find(order => String(order.id) === id) || null;
+    if (!deletedOrder) return;
+    if (!window.confirm('确定彻底删除这条订单？此操作会从 Firestore 删除文档，删除后不能从“已删除订单”恢复。')) return;
+    const nextDeletedOrders = deletedOrders.filter(order => String(order.id) !== id);
+    setDeletedOrders(nextDeletedOrders);
+    const queueStatus = buildFirestoreSyncStatus('queueing', { action: '订单彻底删除' });
+    setSyncText(queueStatus.text);
+    setSyncClass(queueStatus.className);
+    const cfg = readGlobalConfig();
+    if (!cfg?.configText) {
+      showToast('已从本地已删除列表移除');
+      return;
+    }
+    let result: Awaited<ReturnType<typeof providerRef.current.permanentlyDeleteOrder>>;
+    try {
+      result = await providerRef.current.permanentlyDeleteOrder(id, { waitForCommit: false });
+    } catch (error) {
+      setDeletedOrders(previous => previous.some(order => String(order.id) === id) ? previous : [deletedOrder, ...previous]);
+      if (isPermissionDenied(error)) {
+        markPermissionBlocked();
+        showToast(formatFirestoreError(error, '彻底删除失败'), 'error');
+        return;
+      }
+      throw error;
+    }
+    setPermissionBlocked(false);
+    result?.commitPromise?.then(() => {
+      setPermissionBlocked(false);
+    }).catch(error => {
+      setDeletedOrders(previous => previous.some(order => String(order.id) === id) ? previous : [deletedOrder, ...previous]);
+      if (isPermissionDenied(error)) markPermissionBlocked();
+      const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 彻底删除失败，已恢复到已删除列表' });
+      setSyncText(failedStatus.text);
+      setSyncClass(failedStatus.className);
+      showToast(formatFirestoreError(error, '彻底删除失败'), 'error');
+    });
+    showToast('已提交彻底删除');
   }
 
   async function addAccount() {
@@ -2018,8 +2245,9 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setNewAccountName('');
     setAccountModalOpen(false);
     setPermissionBlocked(false);
-    setSyncText('账号已保存到 Firestore 本地队列…');
-    setSyncClass('saving');
+    const queueStatus = buildFirestoreSyncStatus('queueing', { action: '账号保存' });
+    setSyncText(queueStatus.text);
+    setSyncClass(queueStatus.className);
     notifyAccountsChanged({ action: 'upsert', account: name, accounts: nextAccounts });
     try {
       const result = await providerRef.current.pushChanges({
@@ -2030,14 +2258,13 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         waitForCommit: false
       });
       result?.commitPromise?.then(() => {
-        setSyncText(`已同步 · ${orders.length} 条`);
-        setSyncClass('saved');
         setPermissionBlocked(false);
         notifyAccountsChanged({ action: 'commit', account: name, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
-        setSyncText('Firestore 写入失败，已保留本地视图');
-        setSyncClass('error');
+        const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 写入失败，已保留本地视图' });
+        setSyncText(failedStatus.text);
+        setSyncClass(failedStatus.className);
         showToast(formatFirestoreError(error, '账号保存失败'), 'error');
       });
       showToast('账号已添加');
@@ -2104,20 +2331,20 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setEditingAccountName('');
     setEditingAccountValue('');
     setPermissionBlocked(false);
-    setSyncText('账号名已保存到 Firestore 本地队列…');
-    setSyncClass('saving');
+    const queueStatus = buildFirestoreSyncStatus('queueing', { action: '账号名保存' });
+    setSyncText(queueStatus.text);
+    setSyncClass(queueStatus.className);
     notifyAccountsChanged({ action: 'rename', oldAccount: oldName, account: newName, accounts: nextAccounts });
     try {
       const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
-        setSyncText(`已同步 · ${nextOrders.length} 条`);
-        setSyncClass('saved');
         setPermissionBlocked(false);
         notifyAccountsChanged({ action: 'commit', account: newName, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
-        setSyncText('Firestore 写入失败，已保留本地视图');
-        setSyncClass('error');
+        const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 写入失败，已保留本地视图' });
+        setSyncText(failedStatus.text);
+        setSyncClass(failedStatus.className);
         showToast(formatFirestoreError(error, '账号名保存失败'), 'error');
       });
       showToast('账号名已更新');
@@ -2137,20 +2364,20 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setAccountDeleteOpen(false);
     setDeletingAccountName('');
     setPermissionBlocked(false);
-    setSyncText('账号名已删除，数据保留在全部…');
-    setSyncClass('saving');
+    const queueStatus = buildFirestoreSyncStatus('queueing', { action: '账号名删除' });
+    setSyncText(queueStatus.text);
+    setSyncClass(queueStatus.className);
     notifyAccountsChanged({ action: 'delete', account: name, accounts: nextAccounts });
     try {
       const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
-        setSyncText(`已同步 · ${orders.length} 条`);
-        setSyncClass('saved');
         setPermissionBlocked(false);
         notifyAccountsChanged({ action: 'commit-delete', account: name, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
-        setSyncText('Firestore 写入失败，已保留本地视图');
-        setSyncClass('error');
+        const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 写入失败，已保留本地视图' });
+        setSyncText(failedStatus.text);
+        setSyncClass(failedStatus.className);
         showToast(formatFirestoreError(error, '账号名删除失败'), 'error');
       });
       showToast('账号名已删除，数据仍在全部里');
@@ -2271,7 +2498,12 @@ function OrdersPage({ active = true }: { active?: boolean }) {
                 onReorder={reorderAccounts}
                 actionsId="ot-acc-actions"
                 onChange={account => { setActiveAccount(account); setCurrentPage(1); }}
-                actions={<Button id="ot-add" variant="primary" onClick={() => openOrderModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增订单</Button>}
+                actions={(
+                  <>
+                    <Button id="ot-trash" onClick={() => setTrashOpen(true)}><RotateCcw size={14} strokeWidth={2} aria-hidden="true" />已删除订单列表{deletedOrders.length ? ` ${deletedOrders.length}` : ''}</Button>
+                    <Button id="ot-add" variant="primary" onClick={() => openOrderModal()}><Plus size={14} strokeWidth={2} aria-hidden="true" />新增订单</Button>
+                  </>
+                )}
               />
             </div>
             <OrdersTable
@@ -2336,6 +2568,13 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         onConfirm={deleteAccount}
       />
       <ExportModal open={exportOpen} options={exportOptions} selected={exportSelected} onSelectedChange={setExportSelected} onOpenChange={setExportOpen} onConfirm={confirmExport} />
+      <OrderTrashModal
+        open={trashOpen}
+        orders={deletedOrders}
+        onOpenChange={setTrashOpen}
+        onRestore={id => void restoreOrder(id)}
+        onPermanentlyDelete={id => void permanentlyDeleteOrder(id)}
+      />
       <StorageHelpModal open={storageHelpOpen} onOpenChange={setStorageHelpOpen} />
     </>
   );

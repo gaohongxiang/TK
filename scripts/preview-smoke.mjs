@@ -63,7 +63,7 @@ async function assertText(pathname, pattern, expectedStatus = 200) {
 try {
   await waitForServer();
 
-  await assertText('/', /<title>TK 电商工具箱<\/title>[\s\S]*<div id="root"><\/div>[\s\S]*firebase-firestore-compat\.js[\s\S]*xlsx\.full\.min\.js/);
+  await assertText('/', /<title>TK 电商工具箱<\/title>[\s\S]*<div id="root"><\/div>[\s\S]*firebase-auth-compat\.js[\s\S]*firebase-firestore-compat\.js[\s\S]*xlsx\.full\.min\.js/);
   await assertText('/privacy.html', /隐私与数据边界[\s\S]*你自己的 Firebase Firestore[\s\S]*当前浏览器内存/);
   await assertText('/terms.html', /使用条款与免责声明[\s\S]*工具结果仅供参考[\s\S]*用户自有数据责任/);
   await assertText('/404.html', /页面不存在[\s\S]*返回工具首页/);

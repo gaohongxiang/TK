@@ -7,13 +7,15 @@ import type {
   ProductProviderApi,
   ProductProviderAccountWriteOptions,
   ProductProviderCreateOptions,
+  ProductProviderPullResult,
   ProductProviderWriteOptions,
   ProductRecord,
   ProductSku,
   ProductSkuDoc
 } from './types.ts';
 import { deleteAccountLabel, renameAccountAcrossModules } from '../accounts/firestore-account-actions.ts';
-import type { FirebaseCompatApp, FirebaseCompatFirestore } from '../types/firestore.ts';
+import { initSharedFirebaseApp } from '../firebase-app.ts';
+import type { FirebaseCompatApp, FirebaseCompatFirestore, FirebaseCompatQuerySnapshot } from '../types/firestore.ts';
 
 type LooseRecord = Record<string, unknown>;
 
@@ -230,44 +232,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return raw ? encodeURIComponent(raw) : '__unassigned__';
   }
 
-  async function init(rawConfig: unknown = state): Promise<ProductHydratedFirestoreConfig> {
-    const next = hydrateConfig(rawConfig);
-    if (!next.config) throw new Error('请先填写有效的 firebaseConfig');
-
-    const firebaseNs = rootWindow?.firebase || null;
-    if (!firebaseNs?.initializeApp) throw new Error('Firebase SDK 尚未加载');
-
-    const appName = `tk-products-${next.projectId}`;
-    app = (firebaseNs.apps || []).find(item => item.name === appName) || firebaseNs.initializeApp(next.config, appName);
-    db = app.firestore();
-    if (!app.__tkProductsFirestoreConfigured) {
-      if (typeof db.settings === 'function') {
-        try {
-          db.settings({ ignoreUndefinedProperties: true });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error || '');
-          if (!/settings can no longer be changed|already been started/i.test(message)) throw error;
-        }
-      }
-      if (typeof db.enablePersistence === 'function') {
-        try {
-          await db.enablePersistence({ synchronizeTabs: true });
-        } catch (error) {}
-      }
-      app.__tkProductsFirestoreConfigured = true;
-    }
-    state.firestoreConfigText = next.configText;
-    state.firestoreProjectId = next.projectId;
-    state.user = next.user;
-    return next;
-  }
-
-  async function pullProducts() {
-    const currentDb = await requireDb();
-    const [snapshot, accountsSnapshot] = await Promise.all([
-      currentDb.collection('products').orderBy('updatedAt', 'desc').get(),
-      currentDb.collection('order_accounts').get()
-    ]);
+  function buildProductSnapshot(snapshot: FirebaseCompatQuerySnapshot, accountsSnapshot: FirebaseCompatQuerySnapshot): ProductProviderPullResult {
     const accounts = accountsSnapshot.docs
       .map((doc, index) => ({ data: doc.data() || {}, fallbackIndex: index }))
       .filter(row => !row.data.deletedAt)
@@ -287,7 +252,87 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return {
       products: snapshot.docs.map(doc => normalizePulledProduct(doc.data())),
       accounts,
-      lastRemoteUpdatedAt
+      lastRemoteUpdatedAt,
+      hasPendingWrites: !!(snapshot.metadata?.hasPendingWrites || accountsSnapshot.metadata?.hasPendingWrites),
+      fromCache: !!(snapshot.metadata?.fromCache || accountsSnapshot.metadata?.fromCache)
+    };
+  }
+
+  async function init(rawConfig: unknown = state): Promise<ProductHydratedFirestoreConfig> {
+    const next = hydrateConfig(rawConfig);
+    if (!next.config) throw new Error('请先填写有效的 firebaseConfig');
+
+    const firebaseNs = rootWindow?.firebase || null;
+    if (!firebaseNs?.initializeApp) throw new Error('Firebase SDK 尚未加载');
+
+    const shared = initSharedFirebaseApp(next.config, rootWindow, '__tkProductsFirestoreConfigured');
+    app = shared.app;
+    db = shared.db;
+    state.firestoreConfigText = next.configText;
+    state.firestoreProjectId = next.projectId;
+    state.user = next.user;
+    return next;
+  }
+
+  async function pullProducts() {
+    const currentDb = await requireDb();
+    const [snapshot, accountsSnapshot] = await Promise.all([
+      currentDb.collection('products').orderBy('updatedAt', 'desc').get(),
+      currentDb.collection('order_accounts').get()
+    ]);
+    return buildProductSnapshot(snapshot, accountsSnapshot);
+  }
+
+  function subscribeSnapshot(onNext: (snapshot: ProductProviderPullResult) => void, onError: (error: unknown) => void = () => {}) {
+    let active = true;
+    let productsSnap: FirebaseCompatQuerySnapshot | null = null;
+    let accountsSnap: FirebaseCompatQuerySnapshot | null = null;
+    let timer = 0;
+    let unsubscribeProducts: (() => void) | null = null;
+    let unsubscribeAccounts: (() => void) | null = null;
+
+    const emit = () => {
+      if (!active || !productsSnap || !accountsSnap) return;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (!active || !productsSnap || !accountsSnap) return;
+        onNext(buildProductSnapshot(productsSnap, accountsSnap));
+      }, 0);
+    };
+
+    requireDb().then(currentDb => {
+      if (!active) return;
+      const productsQuery = currentDb.collection('products').orderBy('updatedAt', 'desc');
+      const accountsQuery = currentDb.collection('order_accounts');
+      if (!productsQuery.onSnapshot || !accountsQuery.onSnapshot) {
+        void pullProducts().then(snapshot => {
+          if (active) onNext(snapshot);
+        }).catch(onError);
+        return;
+      }
+      unsubscribeProducts = productsQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          productsSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+      unsubscribeAccounts = accountsQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          accountsSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+    }).catch(onError);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+      if (unsubscribeProducts) unsubscribeProducts();
+      if (unsubscribeAccounts) unsubscribeAccounts();
     };
   }
 
@@ -389,6 +434,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     getDisplayName: (config = state) => getDisplayName(config),
     init,
     pullProducts,
+    subscribeSnapshot,
     upsertProduct,
     deleteProduct,
     upsertAccount,

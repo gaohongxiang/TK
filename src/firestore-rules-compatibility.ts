@@ -1,4 +1,5 @@
 import { parseConfigInput } from './firestore-connection.ts';
+import { initSharedFirebaseApp } from './firebase-app.ts';
 import type { FirebaseCompatFirestore, FirebaseCompatNamespace } from './types/firestore.ts';
 
 type FirestoreRulesModuleKey = string;
@@ -152,21 +153,7 @@ function formatFirestoreRulesUpdateMessage(moduleKey: FirestoreRulesModuleKey, m
 async function initRulesCheckDb(rawConfig: unknown, options: FirestoreRulesCheckOptions = {}): Promise<FirebaseCompatFirestore> {
   const config = parseConfigInput(rawConfig);
   if (!config?.projectId) throw new Error('请先填写有效的 firebaseConfig');
-  const firebaseNs = getWindowRef(options)?.firebase || null;
-  if (!firebaseNs?.initializeApp) throw new Error('Firebase SDK 尚未加载');
-  const appName = `tk-rules-check-${config.projectId}`;
-  const app = (firebaseNs.apps || []).find(item => item.name === appName) || firebaseNs.initializeApp(config, appName);
-  const db = app.firestore();
-  if (!app.__tkRulesCheckFirestoreConfigured && typeof db.settings === 'function') {
-    try {
-      db.settings({ ignoreUndefinedProperties: true });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error || '');
-      if (!/settings can no longer be changed|already been started/i.test(message)) throw error;
-    }
-    app.__tkRulesCheckFirestoreConfigured = true;
-  }
-  return db;
+  return initSharedFirebaseApp(config, getWindowRef(options), '__tkRulesCheckFirestoreConfigured').db;
 }
 
 async function recordPermissionIssue(missing: Set<FirestoreRuleNeed>, need: FirestoreRuleNeed, operation: () => Promise<unknown>) {

@@ -10,6 +10,7 @@ type StoredFirestoreConfig = {
 };
 type FirestoreConfigChangedDetail = Partial<StoredFirestoreConfig> & {
   connected?: boolean;
+  source?: string;
 };
 type FirestoreUiController = {
   showToast?: (message: string, type?: string) => void;
@@ -17,12 +18,15 @@ type FirestoreUiController = {
   close?: () => void;
   closeRulesNotice?: () => void;
   notifyRulesUpdateNeeded?: (message?: string) => void;
+  openMembers?: () => void;
   closeDisconnectConfirm?: () => void;
   requestDisconnect?: (options?: DisconnectOptions) => boolean;
 };
 type DisconnectOptions = {
   closeModal?: boolean;
 };
+type FirebaseConsoleSection = 'auth' | 'rules' | 'firestore';
+const COMPACT_CONNECTION_PREFIX = 'c1~';
 
 function getWindowRef() {
   if (typeof window !== 'undefined') return window;
@@ -147,6 +151,95 @@ function clearConfig() {
   dispatchConfigChanged({ connected: false, configText: '', projectId: '' });
 }
 
+function createCompactConnectionConfig(raw: unknown) {
+  const parsed = parseConfigInput(raw);
+  if (!parsed?.projectId) throw new Error('请先填写有效的 firebaseConfig');
+  const defaultAuthDomain = `${parsed.projectId}.firebaseapp.com`;
+  const compact: unknown[] = [
+    2,
+    parsed.apiKey,
+    parsed.projectId,
+    parsed.appId,
+    parsed.authDomain && parsed.authDomain !== defaultAuthDomain ? parsed.authDomain : '',
+    parsed.storageBucket || '',
+    parsed.messagingSenderId || '',
+    parsed.measurementId || ''
+  ];
+  while (compact.length > 4 && !compact[compact.length - 1]) compact.pop();
+  return compact;
+}
+
+function encodeConnectionPart(value: unknown) {
+  return encodeURIComponent(String(value || '')).replace(/%3A/gi, ':');
+}
+
+function decodeConnectionPart(value: unknown) {
+  return decodeURIComponent(String(value || ''));
+}
+
+function createCompactConnectionString(raw: unknown) {
+  return `${COMPACT_CONNECTION_PREFIX}${createCompactConnectionConfig(raw).slice(1).map(encodeConnectionPart).join('~')}`;
+}
+
+function expandCompactConnectionConfig(value: unknown): string {
+  if (!Array.isArray(value) || value[0] !== 2) return '';
+  const config = {
+    apiKey: String(value[1] || ''),
+    projectId: String(value[2] || ''),
+    appId: String(value[3] || ''),
+    authDomain: String(value[4] || ''),
+    storageBucket: String(value[5] || ''),
+    messagingSenderId: String(value[6] || ''),
+    measurementId: String(value[7] || '')
+  };
+  return normalizeConfigText(config);
+}
+
+function expandCompactConnectionString(payload: string): string {
+  if (!payload.startsWith(COMPACT_CONNECTION_PREFIX)) return '';
+  const parts = payload.slice(COMPACT_CONNECTION_PREFIX.length).split('~').map(decodeConnectionPart);
+  return expandCompactConnectionConfig([2, ...parts]);
+}
+
+function encodeConnectionPayload(raw: unknown): string {
+  return createCompactConnectionString(raw);
+}
+
+function decodeConnectionPayload(payload: string): string {
+  return expandCompactConnectionString(String(payload || '').trim());
+}
+
+function getConnectionPayloadFromLocation(locationRef: Location | { hash?: string; search?: string } = getWindowRef().location) {
+  const rawHash = String(locationRef?.hash || '');
+  const rawSearch = String(locationRef?.search || '');
+  let query = rawSearch.replace(/^\?/, '');
+  if (rawHash.includes('?')) {
+    query = rawHash.slice(rawHash.indexOf('?') + 1);
+  }
+  const params = new URLSearchParams(query);
+  return params.get('connect') || '';
+}
+
+function applyConnectionPayload(payload: string): StoredFirestoreConfig | null {
+  const text = decodeConnectionPayload(payload);
+  if (!text) return null;
+  const next = saveConfig(text);
+  dispatchConfigChanged({ connected: true, source: 'connect-link', ...next });
+  return next;
+}
+
+function applyConnectionLinkFromLocation(locationRef: Location | { hash?: string; search?: string } = getWindowRef().location) {
+  const payload = getConnectionPayloadFromLocation(locationRef);
+  if (!payload) return null;
+  return applyConnectionPayload(payload);
+}
+
+function createConnectionLink(raw: unknown = getConfig()?.configText || '', baseUrl = getWindowRef()?.location?.origin || '') {
+  const payload = encodeConnectionPayload(raw);
+  const base = String(baseUrl || '').replace(/#.*$/, '').replace(/\?.*$/, '').replace(/\/$/, '');
+  return `${base || ''}/#login?connect=${payload}`;
+}
+
 function getRulesSource() {
   const embedded = String(ORDER_TRACKER_FIRESTORE_RULES || '').trim();
   if (embedded) return embedded;
@@ -213,8 +306,20 @@ function notifyRulesUpdateNeeded(message = '') {
   uiController?.notifyRulesUpdateNeeded?.(message);
 }
 
-function openConsole() {
-  getWindowRef()?.open?.('https://console.firebase.google.com/', '_blank', 'noopener,noreferrer');
+function getConsoleUrl(section?: FirebaseConsoleSection) {
+  const projectId = getConfig()?.projectId || '';
+  if (projectId && section === 'auth') return `https://console.firebase.google.com/project/${projectId}/authentication/providers`;
+  if (projectId && section === 'rules') return `https://console.firebase.google.com/project/${projectId}/firestore/rules`;
+  if (projectId && section === 'firestore') return `https://console.firebase.google.com/project/${projectId}/firestore`;
+  return 'https://console.firebase.google.com/';
+}
+
+function openConsole(section?: FirebaseConsoleSection) {
+  getWindowRef()?.open?.(getConsoleUrl(section), '_blank', 'noopener,noreferrer');
+}
+
+function openMembers() {
+  uiController?.openMembers?.();
 }
 
 function copyRules() {
@@ -245,9 +350,17 @@ const TKFirestoreConnection = {
   getConfig,
   saveConfig,
   clearConfig,
+  createConnectionLink,
+  applyConnectionLinkFromLocation,
+  applyConnectionPayload,
+  decodeConnectionPayload,
+  encodeConnectionPayload,
   dispatchConfigChanged,
+  getConsoleUrl,
+  getRulesSource,
   registerUI,
   open,
+  openMembers,
   openConsole,
   copyText,
   copyRules,
@@ -266,9 +379,17 @@ export {
   getConfig,
   saveConfig,
   clearConfig,
+  getConsoleUrl,
+  getRulesSource,
+  createConnectionLink,
+  applyConnectionLinkFromLocation,
+  applyConnectionPayload,
+  decodeConnectionPayload,
+  encodeConnectionPayload,
   dispatchConfigChanged,
   registerUI,
   open,
+  openMembers,
   openConsole,
   copyText,
   copyRules,

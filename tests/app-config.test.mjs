@@ -63,13 +63,13 @@ assert.doesNotMatch(
 
 assert.match(
   reactAppSource,
-  /function getModules\(config = TKAppConfig\)[\s\S]*config\.modules[\s\S]*function getModuleMap\(config = TKAppConfig\)[\s\S]*Object\.fromEntries\(getModules\(config\)/,
-  'React SPA 路由模块列表需要从项目配置生成'
+  /loginModule[\s\S]*projectSettingsModule[\s\S]*accountModule[\s\S]*permissionModule[\s\S]*function getModules\(config = TKAppConfig\)[\s\S]*config\.modules[\s\S]*function getModuleMap\(config = TKAppConfig\)[\s\S]*Object\.fromEntries\(\[\.\.\.getModules\(config\), loginModule, projectSettingsModule, accountModule, permissionModule\]/,
+  'React SPA 路由模块列表需要从项目配置生成，并提供项目登录、项目设置、账号管理和权限管理路由'
 );
 
 assert.match(
   reactAppSource,
-  /<AppShell modules=\{modules\} active=\{active\} docsUrl=\{config\.docsUrl\}/,
+  /<AppShell[\s\S]*modules=\{visibleModules\}[\s\S]*active=\{renderedActive\}[\s\S]*docsUrl=\{config\.docsUrl\}/,
   'React SPA 文档链接需要接入项目配置'
 );
 

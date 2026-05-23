@@ -60,8 +60,8 @@ assert.match(
 
 assert.match(
   rulesSource,
-  /match \/finance_records\/\{recordId\}[\s\S]*allow read, write: if true/,
-  '最新 Firestore 规则需要包含 finance_records 集合'
+  /match \/finance_records\/\{recordId\}[\s\S]*allow read, write: if canUse\('finance'\)/,
+  '最新 Firestore 规则需要用 finance 权限保护 finance_records 集合'
 );
 
 assert.match(

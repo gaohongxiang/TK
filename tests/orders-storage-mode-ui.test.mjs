@@ -267,6 +267,12 @@ assert.match(
 
 assert.match(
   indexSource,
+  /<script src="https:\/\/www\.gstatic\.com\/firebasejs\/12\.6\.0\/firebase-auth-compat\.js" defer><\/script>/,
+  '页面需要加载 Firebase Auth compat 脚本'
+);
+
+assert.match(
+  indexSource,
   /<script src="https:\/\/www\.gstatic\.com\/firebasejs\/12\.6\.0\/firebase-firestore-compat\.js" defer><\/script>/,
   '页面需要加载 Firestore compat 脚本'
 );

@@ -24,7 +24,17 @@ type FirebaseCompatDocSnapshot<TData extends Record<string, unknown> = Record<st
 
 type FirebaseCompatQuerySnapshot<TData extends Record<string, unknown> = Record<string, unknown>> = {
   docs: Array<FirebaseCompatDocSnapshot<TData>>;
+  metadata?: {
+    hasPendingWrites?: boolean;
+    fromCache?: boolean;
+  };
 };
+
+type FirebaseCompatSnapshotOptions = {
+  includeMetadataChanges?: boolean;
+};
+
+type FirebaseCompatSnapshotErrorHandler = (error: unknown) => void;
 
 type FirebaseCompatDocRef = {
   get: (options?: unknown) => Promise<FirebaseCompatDocSnapshot>;
@@ -37,10 +47,16 @@ type FirebaseCompatCollectionRef = {
   limit?: (count: number) => FirebaseCompatCollectionRef;
   get: (options?: unknown) => Promise<FirebaseCompatQuerySnapshot>;
   doc: (id: string) => FirebaseCompatDocRef;
+  onSnapshot?: (
+    optionsOrObserver: FirebaseCompatSnapshotOptions | ((snapshot: FirebaseCompatQuerySnapshot) => void),
+    observerOrError?: ((snapshot: FirebaseCompatQuerySnapshot) => void) | FirebaseCompatSnapshotErrorHandler,
+    errorHandler?: FirebaseCompatSnapshotErrorHandler
+  ) => () => void;
 };
 
 type FirebaseCompatWriteBatch = {
   set: (docRef: FirebaseCompatDocRef, data: unknown, options?: unknown) => void;
+  delete: (docRef: FirebaseCompatDocRef) => void;
   commit: () => Promise<unknown>;
 };
 
@@ -51,9 +67,26 @@ type FirebaseCompatFirestore = {
   batch: () => FirebaseCompatWriteBatch;
 };
 
+type FirebaseCompatUser = {
+  uid: string;
+  email?: string | null;
+  displayName?: string | null;
+};
+
+type FirebaseCompatAuth = {
+  currentUser: FirebaseCompatUser | null;
+  onAuthStateChanged: (callback: (user: FirebaseCompatUser | null) => void) => () => void;
+  signInWithEmailAndPassword: (email: string, password: string) => Promise<unknown>;
+  createUserWithEmailAndPassword: (email: string, password: string) => Promise<unknown>;
+  sendPasswordResetEmail: (email: string) => Promise<unknown>;
+  signOut: () => Promise<unknown>;
+};
+
 type FirebaseCompatApp = {
   name: string;
   firestore: () => FirebaseCompatFirestore;
+  auth?: () => FirebaseCompatAuth;
+  delete?: () => Promise<unknown>;
   __tkProductsFirestoreConfigured?: boolean;
   __tkOrdersFirestoreConfigured?: boolean;
   __tkFinanceFirestoreConfigured?: boolean;
@@ -79,6 +112,10 @@ export type {
   FirebaseCompatFirestore,
   FirebaseCompatNamespace,
   FirebaseCompatQuerySnapshot,
+  FirebaseCompatSnapshotErrorHandler,
+  FirebaseCompatSnapshotOptions,
+  FirebaseCompatAuth,
+  FirebaseCompatUser,
   FirebaseCompatWriteBatch,
   FirebaseConfig,
   FirebaseWindow,

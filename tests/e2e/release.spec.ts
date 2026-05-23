@@ -500,7 +500,7 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#pl-main')).toBeVisible();
     await expect(page.locator('nav.modules a[data-view="products"]')).toHaveAttribute('aria-current', 'page');
     await expect(page.locator('nav.modules a[data-view="calc"]')).not.toHaveAttribute('aria-current', 'page');
-    await expect(page.locator('#pl-sync')).toContainText('已同步');
+    await expect(page.locator('#pl-sync')).toContainText('云端已同步');
     await expect(page.locator('#pl-main .ot-header-status-row .left #pl-user')).toBeVisible();
     await expect(page.locator('#pl-main .ot-header-status-row .left #pl-sync')).toBeVisible();
     await expect(page.locator('#pl-main .ot-header-status-row .left #pl-refresh')).toBeVisible();
@@ -543,7 +543,7 @@ test.describe('release browser smoke', () => {
     await page.locator('nav.modules a[data-view="orders"]').click();
     await expect(page.locator('#ot-main')).toBeVisible();
     await expect(page.locator('#ot-main')).toHaveCSS('background-color', productMainBackground);
-    await expect(page.locator('#ot-sync')).toContainText('已同步');
+    await expect(page.locator('#ot-sync')).toContainText('云端已同步');
     await page.locator('#ot-add').click();
     await expect(page.locator('#ot-modal')).toBeVisible();
     await page.locator('#ot-acc-select').selectOption('Test-Account');
@@ -638,7 +638,7 @@ test.describe('release browser smoke', () => {
 
     await page.goto('/#orders');
     await expect(page.locator('#ot-main')).toBeVisible();
-    await expect(page.locator('#ot-sync')).toContainText('已同步');
+    await expect(page.locator('#ot-sync')).toContainText('云端已同步');
 
     await page.locator('#ot-disconnect-firestore').click();
     await expect(page.locator('#app-firestore-disconnect-modal')).toBeVisible();

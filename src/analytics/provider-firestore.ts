@@ -17,6 +17,7 @@ import {
   renameAccountAcrossModules,
   uniqueAccounts
 } from '../accounts/firestore-account-actions.ts';
+import { initSharedFirebaseApp } from '../firebase-app.ts';
 
 type LooseRecord = Record<string, unknown>;
 type AnalyticsSnapshotDoc = {
@@ -228,25 +229,9 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     const firebaseNs = (rootWindow as { firebase?: FirebaseCompatNamespace } | undefined)?.firebase || null;
     if (!firebaseNs?.initializeApp) throw new Error('Firebase SDK 尚未加载');
 
-    const appName = `tk-analytics-${next.projectId}`;
-    app = (firebaseNs.apps || []).find(item => item.name === appName) || firebaseNs.initializeApp(next.config, appName);
-    db = app.firestore();
-    if (!app.__tkAnalyticsFirestoreConfigured) {
-      if (typeof db.settings === 'function') {
-        try {
-          db.settings({ ignoreUndefinedProperties: true });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error || '');
-          if (!/settings can no longer be changed|already been started/i.test(message)) throw error;
-        }
-      }
-      if (typeof db.enablePersistence === 'function') {
-        try {
-          await db.enablePersistence({ synchronizeTabs: true });
-        } catch (error) {}
-      }
-      app.__tkAnalyticsFirestoreConfigured = true;
-    }
+    const shared = initSharedFirebaseApp(next.config, rootWindow, '__tkAnalyticsFirestoreConfigured');
+    app = shared.app;
+    db = shared.db;
     state.firestoreConfigText = next.configText;
     state.firestoreProjectId = next.projectId;
     state.user = next.user;

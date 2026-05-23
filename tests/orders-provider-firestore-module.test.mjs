@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 const esmPath = path.join(__dirname, '..', 'src', 'orders', 'provider-firestore.ts');
 const esmSource = fs.readFileSync(esmPath, 'utf8');
 const htmlSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const sharedFirebaseSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'firebase-app.ts'), 'utf8');
 
 assert.match(
   esmSource,
@@ -43,14 +44,14 @@ assert.doesNotMatch(
 
 assert.match(
   esmSource,
-  /firebase\.initializeApp/,
-  'Firestore provider 需要创建 Firebase app'
+  /initSharedFirebaseApp\(next\.config, rootWindow, '__tkOrdersFirestoreConfigured'\)/,
+  'Firestore provider 需要复用共享 Firebase app'
 );
 
 assert.match(
-  esmSource,
+  sharedFirebaseSource,
   /enablePersistence/,
-  'Firestore provider 需要启用 Firestore 自带离线缓存'
+  '共享 Firebase app 需要启用 Firestore 自带离线缓存'
 );
 
 assert.match(
@@ -67,8 +68,20 @@ assert.match(
 
 assert.match(
   esmSource,
+  /subscribeSnapshot[\s\S]*hasPendingWrites[\s\S]*onSnapshot|subscribeSnapshot[\s\S]*onSnapshot[\s\S]*hasPendingWrites/,
+  'Firestore provider 需要暴露实时订阅，并用 hasPendingWrites 区分本机待上传和云端确认'
+);
+
+assert.match(
+  esmSource,
   /pushChanges/,
   'Firestore provider 需要暴露 pushChanges'
+);
+
+assert.match(
+  esmSource,
+  /permanentlyDeleteOrder/,
+  'Firestore provider 需要暴露订单彻底删除入口'
 );
 
 assert.match(
@@ -187,6 +200,7 @@ const sandbox = {
               batch() {
                 return {
                   set() {},
+                  delete() {},
                   commit: async () => {}
                 };
               }
@@ -234,7 +248,9 @@ const configText = `const firebaseConfig = {
     assert.equal(provider.key, 'firestore', 'ESM Firestore provider 需要暴露 firestore key');
     assert.equal(typeof provider.init, 'function', 'ESM Firestore provider 需要暴露 init');
     assert.equal(typeof provider.pullSnapshot, 'function', 'ESM Firestore provider 需要暴露 pullSnapshot');
+    assert.equal(typeof provider.subscribeSnapshot, 'function', 'ESM Firestore provider 需要暴露实时订阅入口');
     assert.equal(typeof provider.pushChanges, 'function', 'ESM Firestore provider 需要暴露 pushChanges');
+    assert.equal(typeof provider.permanentlyDeleteOrder, 'function', 'ESM Firestore provider 需要暴露订单彻底删除入口');
     assert.equal(typeof provider.parseConfigInput, 'function', 'ESM Firestore provider 需要暴露 firebaseConfig 解析工具');
     await provider.init({ configText });
     await provider.init({ configText });

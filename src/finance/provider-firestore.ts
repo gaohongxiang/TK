@@ -2,6 +2,7 @@ import {
   normalizeConfigText,
   parseConfigInput
 } from '../firestore-connection.ts';
+import { initSharedFirebaseApp } from '../firebase-app.ts';
 import {
   accountDocId,
   deleteAccountLabel,
@@ -138,27 +139,9 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     if (!next.config || !next.projectId) throw new Error('请粘贴完整的 firebaseConfig');
     if (!rootWindow?.firebase?.initializeApp) throw new Error('Firebase 浏览器客户端未加载');
 
-    const appName = `tk-finance-${next.projectId}`;
-    app = rootWindow.firebase.apps.find(item => item.name === appName) || rootWindow.firebase.initializeApp(next.config, appName);
-    db = app.firestore();
-    if (!app.__tkFinanceFirestoreConfigured) {
-      if (typeof db.settings === 'function') {
-        try {
-          db.settings({ ignoreUndefinedProperties: true });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error || '');
-          if (!/settings can no longer be changed|already been started/i.test(message)) throw error;
-        }
-      }
-
-      if (typeof db.enablePersistence === 'function') {
-        try {
-          await db.enablePersistence({ synchronizeTabs: true });
-        } catch (error) {}
-      }
-
-      app.__tkFinanceFirestoreConfigured = true;
-    }
+    const shared = initSharedFirebaseApp(next.config, rootWindow, '__tkFinanceFirestoreConfigured');
+    app = shared.app;
+    db = shared.db;
 
     state.firestoreConfigText = next.configText;
     state.firestoreProjectId = next.projectId;

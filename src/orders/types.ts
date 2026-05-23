@@ -247,12 +247,15 @@ type SerializedOrderProviderConfig = {
 
 type OrderProviderSnapshot = {
   orders: OrderRecord[];
+  deletedOrders: OrderRecord[];
   accounts: string[];
   changedOrders: OrderRecord[];
   changedAccounts: Array<{ name: string; updatedAt: string; deletedAt: string }>;
   updatedAt: string;
   accountsUpdatedAt: string;
   remoteCursor: string;
+  hasPendingWrites?: boolean;
+  fromCache?: boolean;
 };
 
 type OrderProviderPushChangesOptions = {
@@ -287,6 +290,10 @@ type OrderProviderApi = {
   isConnected: () => boolean;
   signOut: () => Promise<void>;
   pullSnapshot: (options?: { cursor?: string }) => Promise<OrderProviderSnapshot>;
+  subscribeSnapshot: (
+    onNext: (snapshot: OrderProviderSnapshot) => void,
+    onError?: (error: unknown) => void
+  ) => () => void;
   pushChanges: (options?: OrderProviderPushChangesOptions) => Promise<OrderProviderPushResult>;
   renameAccount: (
     oldName: string,
@@ -297,6 +304,10 @@ type OrderProviderApi = {
     name: string,
     options?: { accountOrder?: string[]; waitForCommit?: boolean }
   ) => Promise<{ accounts: string[]; commitPromise?: Promise<unknown[]> }>;
+  permanentlyDeleteOrder: (
+    id: string,
+    options?: { waitForCommit?: boolean }
+  ) => Promise<{ id: string; commitPromise?: Promise<unknown[]> }>;
 };
 
 type OrderItemDoc = {

@@ -76,6 +76,8 @@ type ProductProviderPullResult = {
   products: ProductRecord[];
   accounts: string[];
   lastRemoteUpdatedAt: string;
+  hasPendingWrites?: boolean;
+  fromCache?: boolean;
 };
 
 type ProductProviderWriteOptions = {
@@ -104,6 +106,10 @@ type ProductProviderApi = {
   getDisplayName: (config?: unknown) => string;
   init: (rawConfig?: unknown) => Promise<HydratedFirebaseConfig>;
   pullProducts: () => Promise<ProductProviderPullResult>;
+  subscribeSnapshot: (
+    onNext: (snapshot: ProductProviderPullResult) => void,
+    onError?: (error: unknown) => void
+  ) => () => void;
   upsertProduct: (
     product: ProductRecord,
     options?: ProductProviderWriteOptions

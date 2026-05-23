@@ -41,6 +41,7 @@ import {
 } from '../../../products/form-utils.ts';
 import { ProductLibraryTable } from '../../../products/table.ts';
 import { ensureGlobalSettingsStore } from '../../../global-settings.ts';
+import { buildFirestoreSyncStatus } from '../../../firestore-sync-status.ts';
 import { TKShippingCore } from '../../../shipping-core.ts';
 import {
   Copy,
@@ -870,6 +871,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     state: {},
     helpers: { nowIso: () => new Date().toISOString() }
   }));
+  const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
   const [connected, setConnected] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -976,11 +978,20 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     setAccounts(Array.isArray(result.accounts) ? result.accounts : []);
     setLoaded(true);
     setPermissionBlocked(false);
-    setSyncText(`已同步 · ${(result.products || []).length} 个商品`);
-    setSyncClass('saved');
+    const status = buildFirestoreSyncStatus(result.hasPendingWrites ? 'queueing' : 'confirmed', {
+      action: '商品更改',
+      count: (result.products || []).length,
+      unit: '个商品'
+    });
+    setSyncText(status.text);
+    setSyncClass(status.className);
   }, []);
 
   const markPermissionBlocked = useCallback(() => {
+    if (unsubscribeSnapshotRef.current) {
+      unsubscribeSnapshotRef.current();
+      unsubscribeSnapshotRef.current = null;
+    }
     setLoaded(true);
     setConnected(true);
     setPermissionBlocked(true);
@@ -993,21 +1004,64 @@ function ProductsPage({ active = true }: { active?: boolean }) {
   const connectUsingGlobalConfig = useCallback(async () => {
     const cfg = readGlobalConfig();
     if (!cfg?.configText) {
+      if (unsubscribeSnapshotRef.current) {
+        unsubscribeSnapshotRef.current();
+        unsubscribeSnapshotRef.current = null;
+      }
       setConnected(false);
       setLoaded(false);
       setPermissionBlocked(false);
-      setSyncText('未连接');
-      setSyncClass('');
+      const status = buildFirestoreSyncStatus('unconnected');
+      setSyncText(status.text);
+      setSyncClass(status.className);
       return false;
     }
     setLoading(true);
-    setSyncText('正在刷新云端数据…');
-    setSyncClass('saving');
+    const refreshingStatus = buildFirestoreSyncStatus('refreshing');
+    setSyncText(refreshingStatus.text);
+    setSyncClass(refreshingStatus.className);
     try {
       const next = await providerRef.current.init({ firestoreConfigText: cfg.configText });
       setProjectId(next.projectId);
       setConnected(true);
-      await loadProducts();
+      const result = await providerRef.current.pullProducts();
+      setProducts(result.products || []);
+      setAccounts(Array.isArray(result.accounts) ? result.accounts : []);
+      setLoaded(true);
+      setPermissionBlocked(false);
+      const status = buildFirestoreSyncStatus(result.hasPendingWrites ? 'queueing' : 'confirmed', {
+        action: '商品更改',
+        count: (result.products || []).length,
+        unit: '个商品'
+      });
+      setSyncText(status.text);
+      setSyncClass(status.className);
+      if (unsubscribeSnapshotRef.current) unsubscribeSnapshotRef.current();
+      unsubscribeSnapshotRef.current = providerRef.current.subscribeSnapshot(snapshot => {
+        setProducts(snapshot.products || []);
+        setAccounts(Array.isArray(snapshot.accounts) ? snapshot.accounts : []);
+        setLoaded(true);
+        setConnected(true);
+        setPermissionBlocked(false);
+        const nextStatus = buildFirestoreSyncStatus(snapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
+          action: '商品更改',
+          count: (snapshot.products || []).length,
+          unit: '个商品'
+        });
+        setSyncText(nextStatus.text);
+        setSyncClass(nextStatus.className);
+      }, error => {
+        if (isPermissionDenied(error)) {
+          markPermissionBlocked();
+          return;
+        }
+        const failedStatus = buildFirestoreSyncStatus('failed', {
+          error: formatFirestoreError(error, '商品实时同步失败')
+        });
+        setSyncText(failedStatus.text);
+        setSyncClass(failedStatus.className);
+        showToast(formatFirestoreError(error, '商品实时同步失败'), 'error');
+      });
       return true;
     } catch (error) {
       if (isPermissionDenied(error)) {
@@ -1018,14 +1072,15 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     } finally {
       setLoading(false);
     }
-  }, [loadProducts, markPermissionBlocked]);
+  }, [formatFirestoreError, markPermissionBlocked]);
 
   useEffect(() => {
     void connectUsingGlobalConfig().catch(error => {
       showToast(formatFirestoreError(error, '连接商品管理失败'), 'error');
       setConnected(false);
-      setSyncText('未连接');
-      setSyncClass('');
+      const status = buildFirestoreSyncStatus('unconnected');
+      setSyncText(status.text);
+      setSyncClass(status.className);
     });
   }, [connectUsingGlobalConfig, formatFirestoreError]);
 
@@ -1052,16 +1107,22 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       setEditingTkId('');
       setPermissionBlocked(false);
       if (!nextConnected) {
+        if (unsubscribeSnapshotRef.current) {
+          unsubscribeSnapshotRef.current();
+          unsubscribeSnapshotRef.current = null;
+        }
         setConnected(false);
-        setSyncText('未连接');
-        setSyncClass('');
+        const status = buildFirestoreSyncStatus('unconnected');
+        setSyncText(status.text);
+        setSyncClass(status.className);
         return;
       }
       void connectUsingGlobalConfig().catch(error => {
         showToast(formatFirestoreError(error, '连接商品管理失败'), 'error');
         setConnected(false);
-        setSyncText('未连接');
-        setSyncClass('');
+        const status = buildFirestoreSyncStatus('unconnected');
+        setSyncText(status.text);
+        setSyncClass(status.className);
       });
     };
     const handleAccountsChanged = (event: Event) => {
@@ -1088,6 +1149,10 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     window.addEventListener('tk-firestore-config-changed', handleConnectionChange);
     window.addEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
     return () => {
+      if (unsubscribeSnapshotRef.current) {
+        unsubscribeSnapshotRef.current();
+        unsubscribeSnapshotRef.current = null;
+      }
       window.removeEventListener('tk-firestore-config-changed', handleConnectionChange);
       window.removeEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
     };
@@ -1302,6 +1367,9 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     const current = editingTkId ? products.find(item => item.tkId === editingTkId) : null;
     const defaultSnapshot = buildProductDefaultsSnapshot();
     try {
+      const queueStatus = buildFirestoreSyncStatus('queueing', { action: '商品保存' });
+      setSyncText(queueStatus.text);
+      setSyncClass(queueStatus.className);
       const result = await providerRef.current.upsertProduct({
         ...current,
         ...payload,
@@ -1328,6 +1396,9 @@ function ProductsPage({ active = true }: { active?: boolean }) {
         notifyProductsChanged({ action: 'commit', tkId: saved?.tkId || payload.tkId });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
+        const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 写入失败，已保留本地视图' });
+        setSyncText(failedStatus.text);
+        setSyncClass(failedStatus.className);
         showToast(formatFirestoreError(error, '商品保存失败'), 'error');
       });
       setModalOpen(false);
@@ -1343,6 +1414,9 @@ function ProductsPage({ active = true }: { active?: boolean }) {
   async function deleteProduct(tkId: string) {
     if (!window.confirm('确定删除这个商品？')) return;
     try {
+      const queueStatus = buildFirestoreSyncStatus('queueing', { action: '商品删除' });
+      setSyncText(queueStatus.text);
+      setSyncClass(queueStatus.className);
       const result = await providerRef.current.deleteProduct(tkId, { waitForCommit: false });
       setProducts(previous => previous.filter(item => item.tkId !== tkId));
       notifyProductsChanged({ action: 'delete', tkId });
@@ -1350,6 +1424,9 @@ function ProductsPage({ active = true }: { active?: boolean }) {
         notifyProductsChanged({ action: 'commit', tkId });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
+        const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 删除失败，已保留本地视图' });
+        setSyncText(failedStatus.text);
+        setSyncClass(failedStatus.className);
         showToast(formatFirestoreError(error, '商品删除失败'), 'error');
       });
       setPermissionBlocked(false);
@@ -1377,15 +1454,17 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       setNewAccountName('');
       setAccountModalOpen(false);
       setPermissionBlocked(false);
-      setSyncText('账号已保存到 Firestore 本地队列…');
-      setSyncClass('saving');
+      const queueStatus = buildFirestoreSyncStatus('queueing', { action: '账号保存' });
+      setSyncText(queueStatus.text);
+      setSyncClass(queueStatus.className);
       notifyAccountsChanged({ action: 'upsert', account: name, accounts: nextAccounts });
       if (typeof result === 'object' && result?.commitPromise) result.commitPromise.then(() => {
-        setSyncText(`已同步 · ${products.length} 个商品`);
-        setSyncClass('saved');
         notifyAccountsChanged({ action: 'commit', account: name, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
+        const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 写入失败，已保留本地视图' });
+        setSyncText(failedStatus.text);
+        setSyncClass(failedStatus.className);
         showToast(formatFirestoreError(error, '账号保存失败'), 'error');
       });
       showToast('账号已添加');
@@ -1446,18 +1525,20 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     setAccountEditOpen(false);
     setEditingAccountName('');
     setEditingAccountValue('');
-    setSyncText('账号名已保存到 Firestore 本地队列…');
-    setSyncClass('saving');
+    const queueStatus = buildFirestoreSyncStatus('queueing', { action: '账号名保存' });
+    setSyncText(queueStatus.text);
+    setSyncClass(queueStatus.className);
     notifyAccountsChanged({ action: 'rename', oldAccount: oldName, account: newName, accounts: nextAccounts });
     notifyProductsChanged({ action: 'rename-account', oldAccount: oldName, account: newName });
     try {
       const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
-        setSyncText(`已同步 · ${nextProducts.length} 个商品`);
-        setSyncClass('saved');
         notifyAccountsChanged({ action: 'commit', account: newName, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
+        const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 写入失败，已保留本地视图' });
+        setSyncText(failedStatus.text);
+        setSyncClass(failedStatus.className);
         showToast(formatFirestoreError(error, '账号名保存失败'), 'error');
       });
       showToast('账号名已更新');
@@ -1476,17 +1557,19 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     setCurrentPage(1);
     setAccountDeleteOpen(false);
     setDeletingAccountName('');
-    setSyncText('账号名已删除，数据保留在全部…');
-    setSyncClass('saving');
+    const queueStatus = buildFirestoreSyncStatus('queueing', { action: '账号名删除' });
+    setSyncText(queueStatus.text);
+    setSyncClass(queueStatus.className);
     notifyAccountsChanged({ action: 'delete', account: name, accounts: nextAccounts });
     try {
       const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
-        setSyncText(`已同步 · ${products.length} 个商品`);
-        setSyncClass('saved');
         notifyAccountsChanged({ action: 'commit-delete', account: name, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
+        const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 写入失败，已保留本地视图' });
+        setSyncText(failedStatus.text);
+        setSyncClass(failedStatus.className);
         showToast(formatFirestoreError(error, '账号名删除失败'), 'error');
       });
       showToast('账号名已删除，数据仍在全部里');

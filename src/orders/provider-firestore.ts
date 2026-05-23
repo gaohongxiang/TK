@@ -2,6 +2,7 @@ import {
   normalizeOrderItems as normalizeSharedOrderItems
 } from './shared.ts';
 import { deleteAccountLabel, renameAccountAcrossModules } from '../accounts/firestore-account-actions.ts';
+import { initSharedFirebaseApp } from '../firebase-app.ts';
 import type {
   OrderFirestoreConfig,
   OrderFirestoreDoc,
@@ -567,27 +568,9 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     if (!next.config || !next.projectId) throw new Error('请粘贴完整的 firebaseConfig');
     if (!rootWindow?.firebase?.initializeApp) throw new Error('Firebase 浏览器客户端未加载');
 
-    const appName = `tk-orders-${next.projectId}`;
-    app = rootWindow.firebase.apps.find(item => item.name === appName) || rootWindow.firebase.initializeApp(next.config, appName);
-    db = app.firestore();
-    if (!app.__tkOrdersFirestoreConfigured) {
-      if (typeof db.settings === 'function') {
-        try {
-          db.settings({ ignoreUndefinedProperties: true });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error || '');
-          if (!/settings can no longer be changed|already been started/i.test(message)) throw error;
-        }
-      }
-
-      if (typeof db.enablePersistence === 'function') {
-        try {
-          await db.enablePersistence({ synchronizeTabs: true });
-        } catch (error) {}
-      }
-
-      app.__tkOrdersFirestoreConfigured = true;
-    }
+    const shared = initSharedFirebaseApp(next.config, rootWindow, '__tkOrdersFirestoreConfigured');
+    app = shared.app;
+    db = shared.db;
 
     state.firestoreConfigText = next.configText;
     state.firestoreProjectId = next.projectId;
@@ -618,6 +601,11 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       allOrderRecords
         .filter(order => !order.deletedAt)
         .sort((left, right) => (parseSeq(left.seq) || Number.MAX_SAFE_INTEGER) - (parseSeq(right.seq) || Number.MAX_SAFE_INTEGER))
+    );
+    const deletedOrders = normalizeOrderList(
+      allOrderRecords
+        .filter(order => order.deletedAt)
+        .sort((left, right) => String(right.deletedAt || '').localeCompare(String(left.deletedAt || '')))
     );
     const changedOrders = normalizeOrderList(
       allOrderRecords.filter(order => {
@@ -655,12 +643,107 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
 
     return {
       orders: activeOrders,
+      deletedOrders,
       accounts: activeAccounts,
       changedOrders,
       changedAccounts,
       updatedAt: remoteCursor,
       accountsUpdatedAt: accountUpdatedAt,
-      remoteCursor
+      remoteCursor,
+      hasPendingWrites: !!(ordersSnap.metadata?.hasPendingWrites || accountsSnap.metadata?.hasPendingWrites),
+      fromCache: !!(ordersSnap.metadata?.fromCache || accountsSnap.metadata?.fromCache)
+    };
+  }
+
+  function subscribeSnapshot(onNext: (snapshot: OrderProviderSnapshot) => void, onError: (error: unknown) => void = () => {}) {
+    let active = true;
+    let ordersSnap: FirebaseCompatQuerySnapshot | null = null;
+    let accountsSnap: FirebaseCompatQuerySnapshot | null = null;
+    let timer = 0;
+    let unsubscribeOrders: (() => void) | null = null;
+    let unsubscribeAccounts: (() => void) | null = null;
+
+    const emit = () => {
+      if (!active || !ordersSnap || !accountsSnap) return;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (!active || !ordersSnap || !accountsSnap) return;
+        const allOrderRecords = ordersSnap.docs.map(doc => normalizePulledOrder(doc.data() || {}, { nowIso }));
+        const activeOrders = normalizeOrderList(
+          allOrderRecords
+            .filter(order => !order.deletedAt)
+            .sort((left, right) => (parseSeq(left.seq) || Number.MAX_SAFE_INTEGER) - (parseSeq(right.seq) || Number.MAX_SAFE_INTEGER))
+        );
+        const deletedOrders = normalizeOrderList(
+          allOrderRecords
+            .filter(order => order.deletedAt)
+            .sort((left, right) => String(right.deletedAt || '').localeCompare(String(left.deletedAt || '')))
+        );
+        const accountRows = accountsSnap.docs.map((doc, index) => {
+          const data = doc.data() || {};
+          return {
+            name: String(data?.name || '').trim(),
+            sortIndex: toSortIndex(data?.sortIndex, index),
+            updatedAt: toIsoString(data?.updatedAt || ''),
+            deletedAt: toIsoString(data?.deletedAt || '')
+          };
+        });
+        const activeAccounts = uniqueAccounts(accountRows
+          .filter(row => !row.deletedAt)
+          .sort((left, right) => left.sortIndex - right.sortIndex || left.name.localeCompare(right.name))
+          .map(row => row.name));
+        const remoteCursor = latestIso([
+          ...allOrderRecords.map(order => order.deletedAt || order.updatedAt || ''),
+          ...accountRows.map(account => account.deletedAt || account.updatedAt || '')
+        ]);
+        onNext({
+          orders: activeOrders,
+          deletedOrders,
+          accounts: activeAccounts,
+          changedOrders: activeOrders,
+          changedAccounts: [],
+          updatedAt: remoteCursor,
+          accountsUpdatedAt: latestIso(accountRows.filter(row => !row.deletedAt).map(row => row.updatedAt)),
+          remoteCursor,
+          hasPendingWrites: !!(ordersSnap.metadata?.hasPendingWrites || accountsSnap.metadata?.hasPendingWrites),
+          fromCache: !!(ordersSnap.metadata?.fromCache || accountsSnap.metadata?.fromCache)
+        });
+      }, 0);
+    };
+
+    requireDb().then(currentDb => {
+      if (!active) return;
+      const ordersQuery = currentDb.collection('orders').orderBy('updatedAt', 'desc');
+      const accountsQuery = currentDb.collection('order_accounts');
+      if (!ordersQuery.onSnapshot || !accountsQuery.onSnapshot) {
+        void pullSnapshot({ cursor: '' }).then(snapshot => {
+          if (active) onNext(snapshot);
+        }).catch(onError);
+        return;
+      }
+      unsubscribeOrders = ordersQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          ordersSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+      unsubscribeAccounts = accountsQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          accountsSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+    }).catch(onError);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+      if (unsubscribeOrders) unsubscribeOrders();
+      if (unsubscribeAccounts) unsubscribeAccounts();
     };
   }
 
@@ -761,6 +844,20 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return deleteAccountLabel(currentDb, name, nowIso, options);
   }
 
+  async function permanentlyDeleteOrder(id: string, { waitForCommit = true }: { waitForCommit?: boolean } = {}) {
+    const currentDb = await requireDb();
+    const normalizedId = String(id || '').trim();
+    if (!normalizedId) throw new Error('订单 ID 不能为空');
+    const commitPromise = commitMutations(currentDb, [
+      batch => batch.delete(orderRef(currentDb, normalizedId))
+    ], { waitForCommit });
+    if (waitForCommit) await commitPromise;
+    return {
+      id: normalizedId,
+      commitPromise
+    };
+  }
+
   return {
     key: 'firestore',
     label: 'Firebase Firestore',
@@ -775,9 +872,11 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     isConnected,
     signOut,
     pullSnapshot,
+    subscribeSnapshot,
     pushChanges,
     renameAccount,
-    deleteAccount
+    deleteAccount,
+    permanentlyDeleteOrder
   };
 }
 

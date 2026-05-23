@@ -119,8 +119,8 @@ assert.match(
 
 assert.match(
   smokeScript,
-  /<div id="root"><\\\/div>[\s\S]*firebase-firestore-compat\\\.js[\s\S]*xlsx\\\.full\\\.min\\\.js/,
-  '完整 React SPA 重建后 smoke 首页检查应按单根 React 入口和第三方运行时脚本校验'
+  /<div id="root"><\\\/div>[\s\S]*firebase-auth-compat\\\.js[\s\S]*firebase-firestore-compat\\\.js[\s\S]*xlsx\\\.full\\\.min\\\.js/,
+  '完整 React SPA 重建后 smoke 首页检查应按单根 React 入口、Auth/Firestore 和第三方运行时脚本校验'
 );
 
 assert.match(
@@ -173,7 +173,7 @@ assert.match(
 
 assert.match(
   reactAppSource,
-  /skipLinkClass = 'skip-link[\s\S]*appWrapClass = 'wrap[\s\S]*appMainClass = 'app-main[\s\S]*<a className=\{skipLinkClass\} href="#main-content">跳到主要内容<\/a>[\s\S]*<AppShell modules=\{modules\} active=\{active\} docsUrl=\{config\.docsUrl\} \/>[\s\S]*<main id="main-content" className=\{appMainClass\} tabIndex=\{-1\}>/,
+  /skipLinkClass = 'skip-link[\s\S]*appWrapClass = 'wrap[\s\S]*appMainClass = 'app-main[\s\S]*<a className=\{skipLinkClass\} href="#main-content">跳到主要内容<\/a>[\s\S]*<AppShell[\s\S]*modules=\{visibleModules\}[\s\S]*active=\{renderedActive\}[\s\S]*docsUrl=\{config\.docsUrl\}[\s\S]*authEmail=\{authSession\.user\?\.email \|\| authSession\.user\?\.uid \|\| ''\}[\s\S]*<main id="main-content" className=\{appMainClass\} tabIndex=\{-1\}>/,
   '主站需要由 React App 提供跳转主内容链接、AppShell 和 main landmark'
 );
 
@@ -185,7 +185,7 @@ assert.match(
 
 assert.match(
   reactAppSource,
-  /<main id="main-content" className=\{appMainClass\}[\s\S]*id="view-calc"[\s\S]*id="view-orders"[\s\S]*id="view-products"[\s\S]*id="view-finance"[\s\S]*id="view-collection"[\s\S]*id="view-analytics"[\s\S]*<\/main>[\s\S]*<footer(?:\s+className=\{appFooterClass\})?>/,
+  /<main id="main-content" className=\{appMainClass\}[\s\S]*id="view-calc"[\s\S]*id="view-login"[\s\S]*id="view-orders"[\s\S]*id="view-products"[\s\S]*id="view-finance"[\s\S]*id="view-collection"[\s\S]*id="view-analytics"[\s\S]*<\/main>[\s\S]*<footer(?:\s+className=\{appFooterClass\})?>/,
   '主站核心工具视图需要由 React 放在 main landmark 内，footer 需要留在 main 之后'
 );
 

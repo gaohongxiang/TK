@@ -23,7 +23,8 @@ if (typeof document !== 'undefined') {
   if (document.readyState === 'complete') {
     start();
   } else {
-    document.addEventListener('DOMContentLoaded', start, { once: true });
+    document.addEventListener('DOMContentLoaded', () => {}, { once: true });
+    window.addEventListener('load', start, { once: true });
   }
 }
 

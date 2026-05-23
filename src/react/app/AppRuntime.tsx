@@ -5,6 +5,12 @@ import { FormField, FormRow } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Toast } from '@/components/ui/toast';
 import { useEffect, useState } from 'react';
+import {
+  initializeAuthSession,
+  signOutAuthSession,
+  subscribeAuthSession,
+  type AuthSessionState
+} from '../../auth-permissions.ts';
 import { TKFirestoreConnection } from '../../firestore-connection.ts';
 
 type ToastType = 'ok' | 'error';
@@ -29,6 +35,16 @@ function AppRuntime() {
   const [disconnectProject, setDisconnectProject] = useState('-');
   const [disconnectOptions, setDisconnectOptions] = useState<DisconnectOptions>({});
   const [configText, setConfigText] = useState('');
+  const [authState, setAuthState] = useState<AuthSessionState>(() => ({
+    ready: false,
+    connected: false,
+    projectId: '',
+    user: null,
+    member: null,
+    isOwner: false,
+    error: ''
+  }));
+  const [connectionLink, setConnectionLink] = useState('');
   const [copyingRules, setCopyingRules] = useState(false);
   const [toast, setToast] = useState<ToastState>({ message: '', type: 'ok', visible: false });
 
@@ -50,7 +66,8 @@ function AppRuntime() {
       await TKFirestoreConnection.copyRules();
       showToast('规则已复制');
     } catch (error) {
-      showToast(error instanceof Error ? error.message : '复制失败', 'error');
+      const message = error instanceof Error ? error.message : '复制失败';
+      showToast(message, 'error');
     } finally {
       setCopyingRules(false);
     }
@@ -60,6 +77,7 @@ function AppRuntime() {
     try {
       const next = TKFirestoreConnection.saveConfig(configText);
       TKFirestoreConnection.dispatchConfigChanged({ connected: true, ...next });
+      initializeAuthSession(next.configText);
       setConnectionOpen(false);
       showToast('已连接 Firebase');
     } catch (error) {
@@ -69,8 +87,37 @@ function AppRuntime() {
 
   function applyDisconnect() {
     TKFirestoreConnection.clearConfig();
+    void signOutAuthSession();
+    initializeAuthSession('');
     setDisconnectOpen(false);
     if (disconnectOptions.closeModal) setConnectionOpen(false);
+  }
+
+  async function copyConnectionLink() {
+    try {
+      const link = TKFirestoreConnection.createConnectionLink();
+      await TKFirestoreConnection.copyText(link);
+      setConnectionLink(link);
+      showToast('成员连接链接已复制');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '生成连接链接失败', 'error');
+    }
+  }
+
+  function applyConnectionLinkFromCurrentUrl() {
+    try {
+      const imported = TKFirestoreConnection.applyConnectionLinkFromLocation();
+      if (!imported?.configText) return;
+      refreshConfigText();
+      initializeAuthSession(imported.configText);
+      if (/connect=/.test(window.location.href)) {
+        window.history.replaceState(null, '', '#login');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
+      showToast('已导入连接配置');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : '连接链接无效', 'error');
+    }
   }
 
   useEffect(() => {
@@ -81,6 +128,9 @@ function AppRuntime() {
       open: () => {
         refreshConfigText();
         setConnectionOpen(true);
+      },
+      openMembers: () => {
+        window.location.hash = '#permissions';
       },
       notifyRulesUpdateNeeded: message => {
         setRulesMessage(String(message || '').trim() || '当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则。');
@@ -97,10 +147,22 @@ function AppRuntime() {
       showToast
     });
     refreshConfigText();
+    applyConnectionLinkFromCurrentUrl();
+    initializeAuthSession(TKFirestoreConnection.getConfig()?.configText || '');
+    window.addEventListener('hashchange', applyConnectionLinkFromCurrentUrl);
+    const unsubscribe = subscribeAuthSession(setAuthState);
     return () => {
+      unsubscribe();
+      window.removeEventListener('hashchange', applyConnectionLinkFromCurrentUrl);
       TKFirestoreConnection.registerUI(null);
       window.clearTimeout(toastTimer);
     };
+  }, []);
+
+  useEffect(() => {
+    const handler = () => initializeAuthSession(TKFirestoreConnection.getConfig()?.configText || '');
+    window.addEventListener('tk-firestore-config-changed', handler);
+    return () => window.removeEventListener('tk-firestore-config-changed', handler);
   }, []);
 
   return (
@@ -137,6 +199,17 @@ function AppRuntime() {
               {copyingRules ? '复制中…' : '复制 Firestore 规则'}
             </Button>
           </div>
+          {TKFirestoreConnection.getConfig()?.projectId ? (
+            <Alert variant="info" className={`${modalCopyClass} mt-[12px]`}>
+              <AlertDescription>
+                成员第一次用连接链接导入配置，之后直接打开工具箱即可；模块访问由登录账号和 Firestore 规则决定。
+              </AlertDescription>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <Button size="sm" onClick={() => void copyConnectionLink()}>生成成员连接链接</Button>
+                {connectionLink ? <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--muted)]">{connectionLink}</span> : null}
+              </div>
+            </Alert>
+          ) : null}
           <DialogActions>
             <Button id="app-close-firestore-modal" onClick={() => setConnectionOpen(false)}>取消</Button>
             {TKFirestoreConnection.getConfig()?.projectId ? (

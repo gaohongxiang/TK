@@ -42,6 +42,12 @@ assert.match(
 
 assert.match(
   srcSource,
+  /initSharedFirebaseApp\(next\.config, rootWindow, '__tkProductsFirestoreConfigured'\)/,
+  '商品库 Firestore provider ESM 需要复用共享 Firebase app'
+);
+
+assert.match(
+  srcSource,
   /function normalizeProductDefaults\(|defaults:\s*buildProductDefaultsDoc|defaults:\s*normalizeProductDefaults/,
   '商品库 Firestore provider ESM 需要把商品默认物流参数收进 defaults 结构'
 );
@@ -68,6 +74,12 @@ assert.match(
   srcSource,
   /commitPromise/,
   '商品库 Firestore provider ESM 保存时应返回 Firestore 本地队列写入 Promise'
+);
+
+assert.match(
+  srcSource,
+  /buildProductSnapshot[\s\S]*hasPendingWrites[\s\S]*function subscribeSnapshot[\s\S]*onSnapshot/,
+  '商品库 Firestore provider ESM 需要提供实时订阅，并用 hasPendingWrites 区分本机待上传和云端确认'
 );
 
 const sandbox = {
@@ -145,6 +157,7 @@ const configText = `const firebaseConfig = {
   assert.equal(esmProvider.key, 'firestore', '商品 provider ESM 需要暴露 firestore key');
   assert.equal(typeof esmProvider.init, 'function', '商品 provider ESM 需要暴露 init');
   assert.equal(typeof esmProvider.pullProducts, 'function', '商品 provider ESM 需要暴露 pullProducts');
+  assert.equal(typeof esmProvider.subscribeSnapshot, 'function', '商品 provider ESM 需要暴露实时订阅入口');
   assert.equal(typeof esmProvider.upsertProduct, 'function', '商品 provider ESM 需要暴露 upsertProduct');
   assert.equal(typeof esmProvider.deleteProduct, 'function', '商品 provider ESM 需要暴露 deleteProduct');
   await esmProvider.init({ configText });

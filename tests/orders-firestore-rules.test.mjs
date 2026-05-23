@@ -22,7 +22,13 @@ const rulesSource = fs.readFileSync(path.join(__dirname, '..', 'docs', 'public',
   assert.match(source, /match \/analytics_snapshots\/\{snapshotId\}/, `${label} 需要开放 analytics_snapshots 集合规则`);
   assert.match(source, /match \/analytics_records\/\{recordId\}/, `${label} 需要开放 analytics_records 集合规则`);
   assert.match(source, /match \/_tk_probe\/\{probeId\}/, `${label} 需要开放规则检查探针集合`);
-  assert.match(source, /allow read, write: if true;/, `${label} 需要提供最省事的直连规则`);
+  assert.match(source, /match \/members\/\{email\}/, `${label} 需要提供成员权限集合`);
+  assert.match(source, /function isOwner\(\)[\s\S]*function canUse\(moduleKey\)/, `${label} 需要通过成员角色判断模块权限`);
+  assert.match(source, /match \/_tk_config\/\{docId\}[\s\S]*allow create: if signedIn\(\) && docId == 'owner' && request\.resource\.data\.email == request\.auth\.token\.email\.lower\(\)[\s\S]*allow update: if signedIn\(\)[\s\S]*request\.resource\.data\.email == resource\.data\.email/, `${label} 管理员初始化配置需要允许本人幂等创建和重试`);
+  assert.match(source, /match \/_tk_config\/\{docId\}[\s\S]*allow read: if docId == 'project' \|\| signedIn\(\)[\s\S]*allow create, update: if docId == 'project' && isOwner\(\) && request\.resource\.data\.initialized == true/, `${label} 项目初始化标记需要允许公开读取，并只允许管理员写入`);
+  assert.match(source, /match \/members\/\{email\}[\s\S]*allow update: if isOwner\(\) \|\| \([\s\S]*resource\.data\.role == 'owner'[\s\S]*request\.resource\.data\.role == 'owner'/, `${label} 管理员成员文档需要允许本人初始化重试`);
+  assert.match(source, /match \/finance_records\/\{recordId\}[\s\S]*allow read, write: if canUse\('finance'\)/, `${label} 收支记录必须由 finance 权限控制`);
+  assert.doesNotMatch(source, /allow read, write: if true;/, `${label} 不应再使用公开直连规则`);
 });
 
 (async () => {

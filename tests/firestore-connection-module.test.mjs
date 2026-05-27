@@ -49,14 +49,14 @@ assert.match(
 
 assert.match(
   source,
-  /function requestDisconnect\([\s\S]*uiController\?\.requestDisconnect\?\.\(options\)[\s\S]*clearConfig\(\)/,
-  '退出数据库需要优先交给 React 站内确认弹层，再兜底清除本地连接配置'
+  /function requestDisconnect\([\s\S]*uiController\?\.requestDisconnect\?\.\(options\)[\s\S]*项目连接不会在日常使用中断开[\s\S]*return false/,
+  '项目连接不应在日常 UI 中断开，旧 requestDisconnect 调用也不能清除本地连接配置'
 );
 
-assert.match(
+assert.doesNotMatch(
   appRuntimeSource,
-  /function applyDisconnect\([\s\S]*TKFirestoreConnection\.clearConfig\(\)[\s\S]*setDisconnectOpen\(false\)/,
-  '确认退出数据库后需要清除本地连接配置并关闭站内确认弹层'
+  /function applyDisconnect|app-firestore-disconnect-modal|TKFirestoreConnection\.clearConfig\(\)/,
+  '全局运行层不应再提供断开项目连接弹层或清除本地连接配置'
 );
 
 assert.doesNotMatch(
@@ -74,19 +74,19 @@ assert.match(
 assert.match(
   source,
   /const COMPACT_CONNECTION_PREFIX = 'c1~'[\s\S]*function createCompactConnectionString[\s\S]*function decodeConnectionPayload/,
-  '全局 Firestore 连接模块需要使用紧凑成员连接 payload'
+  '全局 Firestore 连接模块需要使用紧凑项目连接 payload'
 );
 
 assert.doesNotMatch(
   source,
   /tk_config|decodeBase64Url|encodeBase64Url|\^#\(\?:connect\|tk_config\)=/,
-  '成员连接链接不再兼容旧 tk_config/#connect/base64 格式'
+  '项目连接链接不再兼容旧 tk_config/#connect/base64 格式'
 );
 
 assert.match(
   source,
   /function applyConnectionLinkFromLocation[\s\S]*function createConnectionLink\([\s\S]*#login\?connect=/,
-  '全局 Firestore 连接模块需要生成打开登录页并导入配置的成员连接链接'
+  '全局 Firestore 连接模块需要生成打开登录页并导入配置的项目连接链接'
 );
 
 assert.doesNotMatch(
@@ -103,8 +103,8 @@ assert.doesNotMatch(
   assert.equal(typeof module.TKFirestoreConnection.clearConfig, 'function', 'Firestore 连接模块需要暴露 clearConfig');
   assert.equal(typeof module.TKFirestoreConnection.registerUI, 'function', 'Firestore 连接模块需要暴露 React UI 注册入口');
   assert.equal(typeof module.TKFirestoreConnection.notifyRulesUpdateNeeded, 'function', 'Firestore 连接模块需要暴露 notifyRulesUpdateNeeded');
-  assert.equal(typeof module.TKFirestoreConnection.closeDisconnectConfirm, 'function', 'Firestore 连接模块需要暴露关闭退出确认弹层的方法');
-  assert.equal(typeof module.TKFirestoreConnection.createConnectionLink, 'function', 'Firestore 连接模块需要暴露成员连接链接生成入口');
+  assert.equal(typeof module.TKFirestoreConnection.closeDisconnectConfirm, 'function', 'Firestore 连接模块需要保留关闭旧弹层兼容入口');
+  assert.equal(typeof module.TKFirestoreConnection.createConnectionLink, 'function', 'Firestore 连接模块需要暴露项目连接链接生成入口');
   assert.equal(typeof module.parseConfigInput, 'function', 'Firestore 连接模块需要导出 parseConfigInput 供测试和后续迁移复用');
 
   const parsed = module.TKFirestoreConnection.parseConfigInput(`const firebaseConfig = {
@@ -117,8 +117,8 @@ assert.doesNotMatch(
   assert.equal(parsed.projectId, 'demo', 'Firestore 连接模块应能解析 projectId');
   assert.equal(module.normalizeConfigText({ apiKey: 'key', projectId: 'p', appId: 'app' }).includes('"authDomain": "p.firebaseapp.com"'), true, 'Firestore 连接模块需要补齐默认 authDomain');
   const link = module.TKFirestoreConnection.createConnectionLink(parsed, 'https://example.com/tool');
-  assert.match(link, /^https:\/\/example\.com\/tool\/#login\?connect=c1~/, '成员连接链接应打开登录页并使用紧凑 payload');
-  assert.equal(module.TKFirestoreConnection.parseConfigInput(module.TKFirestoreConnection.decodeConnectionPayload(link.split('connect=')[1])).projectId, 'demo', '成员连接链接需要可还原 config');
+  assert.match(link, /^https:\/\/example\.com\/tool\/#login\?connect=c1~/, '项目连接链接应打开登录页并使用紧凑 payload');
+  assert.equal(module.TKFirestoreConnection.parseConfigInput(module.TKFirestoreConnection.decodeConnectionPayload(link.split('connect=')[1])).projectId, 'demo', '项目连接链接需要可还原 config');
   assert.equal(module.TKFirestoreConnection.decodeConnectionPayload(module.TKFirestoreConnection.encodeConnectionPayload(parsed)).includes('"projectId": "demo"'), true, '连接配置需要可编码和解码');
 
   console.log('firestore connection module ok');

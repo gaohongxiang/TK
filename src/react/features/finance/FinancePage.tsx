@@ -5,7 +5,7 @@ import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/
 import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ModuleListState } from '@/components/ui/module-list-state';
-import { PageHero } from '@/components/ui/page-hero';
+import { ModuleHeader, ModuleWorkspace } from '@/components/ui/module-workspace';
 import { Select } from '@/components/ui/select';
 import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, syncStatusClass } from '@/components/ui/status-strip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,6 +15,7 @@ import { showAppToast } from '@/app/toast';
 import { cn } from '@/lib/utils';
 import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
 import { TKFirestoreConnection } from '../../../firestore-connection.ts';
+import { buildFirestoreSyncStatus } from '../../../firestore-sync-status.ts';
 import {
   formatFirestoreRulesUpdateMessage,
   isPermissionDenied
@@ -228,8 +229,9 @@ function FinanceSummaryView({
     month,
     query,
     exchangeRate,
+    platformFeeRate: pricingContext.platformFeeRate,
     labelFee: pricingContext.labelFee
-  }), [activeAccount, exchangeRate, month, orders, pricingContext.labelFee, query, records]);
+  }), [activeAccount, exchangeRate, month, orders, pricingContext.labelFee, pricingContext.platformFeeRate, query, records]);
   const rangeText = query.trim() ? '按搜索筛选' : '全部月份';
   const [includeDeposit, setIncludeDeposit] = useState(false);
   const estimatedNetValue = includeDeposit
@@ -613,6 +615,7 @@ function FinancePage({ active = true }: { active?: boolean }) {
     state: {},
     helpers: { nowIso, todayStr }
   }));
+  const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [syncText, setSyncText] = useState('未连接');
@@ -670,7 +673,14 @@ function FinancePage({ active = true }: { active?: boolean }) {
     return message || fallback;
   }, []);
 
+  const stopSnapshot = useCallback(() => {
+    if (!unsubscribeSnapshotRef.current) return;
+    unsubscribeSnapshotRef.current();
+    unsubscribeSnapshotRef.current = null;
+  }, []);
+
   const markPermissionBlocked = useCallback(() => {
+    stopSnapshot();
     setConnected(true);
     setPermissionBlocked(true);
     setRecords([]);
@@ -678,31 +688,54 @@ function FinancePage({ active = true }: { active?: boolean }) {
     setAccounts([]);
     setSyncText('');
     setSyncClass('error');
-  }, []);
+  }, [stopSnapshot]);
 
   const connectUsingGlobalConfig = useCallback(async () => {
     const cfg = readGlobalConfig();
     if (!cfg?.configText) {
+      stopSnapshot();
       setConnected(false);
       setPermissionBlocked(false);
-      setSyncText('未连接');
-      setSyncClass('');
+      const status = buildFirestoreSyncStatus('unconnected');
+      setSyncText(status.text);
+      setSyncClass(status.className);
       return false;
     }
     setLoading(true);
-    setSyncText('正在刷新云端数据…');
-    setSyncClass('saving');
+    const refreshingStatus = buildFirestoreSyncStatus('refreshing');
+    setSyncText(refreshingStatus.text);
+    setSyncClass(refreshingStatus.className);
     try {
       await providerRef.current.init({ configText: cfg.configText });
-      const snapshot = await providerRef.current.pullSnapshot();
-      setRecords(snapshot.records || []);
-      setOrders(snapshot.orders || []);
-      setAccounts(snapshot.accounts || []);
       setProjectId(cfg.projectId || '');
       setConnected(true);
-      setPermissionBlocked(false);
-      setSyncText(`已同步 · ${(snapshot.records || []).length} 条`);
-      setSyncClass('saved');
+      stopSnapshot();
+      unsubscribeSnapshotRef.current = providerRef.current.subscribeSnapshot(snapshot => {
+        setRecords(snapshot.records || []);
+        setOrders(snapshot.orders || []);
+        setAccounts(snapshot.accounts || []);
+        setConnected(true);
+        setPermissionBlocked(false);
+        setLoading(false);
+        const status = buildFirestoreSyncStatus(snapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
+          action: '收支更改',
+          count: (snapshot.records || []).length,
+          unit: '条'
+        });
+        setSyncText(status.text);
+        setSyncClass(status.className);
+      }, error => {
+        setLoading(false);
+        if (isPermissionDenied(error)) {
+          setProjectId(cfg.projectId || '');
+          markPermissionBlocked();
+          return;
+        }
+        const status = buildFirestoreSyncStatus('failed', { error: formatFirestoreError(error, '收支实时同步失败') });
+        setSyncText(status.text);
+        setSyncClass(status.className);
+        showToast(status.text, 'error');
+      });
       return true;
     } catch (error) {
       if (isPermissionDenied(error)) {
@@ -711,14 +744,15 @@ function FinancePage({ active = true }: { active?: boolean }) {
         return false;
       }
       setConnected(false);
-      setSyncText('加载失败');
-      setSyncClass('error');
-      showToast(formatFirestoreError(error, '恢复连接失败'), 'error');
+      const status = buildFirestoreSyncStatus('failed', { error: formatFirestoreError(error, '恢复连接失败') });
+      setSyncText(status.text);
+      setSyncClass(status.className);
+      showToast(status.text, 'error');
       return false;
     } finally {
-      setLoading(false);
+      if (!unsubscribeSnapshotRef.current) setLoading(false);
     }
-  }, [formatFirestoreError, markPermissionBlocked]);
+  }, [formatFirestoreError, markPermissionBlocked, stopSnapshot]);
 
   useEffect(() => {
     try {
@@ -744,14 +778,16 @@ function FinancePage({ active = true }: { active?: boolean }) {
     const handleConnectionChange = (event: Event) => {
       const detail = (event as CustomEvent<{ connected?: boolean }>).detail || {};
       if (detail.connected === false || !readGlobalConfig()?.configText) {
+        stopSnapshot();
         setConnected(false);
         setPermissionBlocked(false);
         setRecords([]);
         setOrders([]);
         setAccounts([]);
         setProjectId('');
-        setSyncText('未连接');
-        setSyncClass('');
+        const status = buildFirestoreSyncStatus('unconnected');
+        setSyncText(status.text);
+        setSyncClass(status.className);
         return;
       }
       void connectUsingGlobalConfig();
@@ -784,12 +820,14 @@ function FinancePage({ active = true }: { active?: boolean }) {
       window.removeEventListener('tk-firestore-config-changed', handleConnectionChange);
       window.removeEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
     };
-  }, [connectUsingGlobalConfig]);
+  }, [connectUsingGlobalConfig, stopSnapshot]);
 
   useEffect(() => {
-    if (!active || !connected || !readGlobalConfig()?.configText) return;
+    if (!active || !readGlobalConfig()?.configText || unsubscribeSnapshotRef.current) return;
     void connectUsingGlobalConfig();
-  }, [active, connected, connectUsingGlobalConfig]);
+  }, [active, connectUsingGlobalConfig]);
+
+  useEffect(() => () => stopSnapshot(), [stopSnapshot]);
 
   useEffect(() => {
     if (activeAccount === '__all__' || activeAccount === PUBLIC_ACCOUNT_KEY || allAccounts.includes(activeAccount)) return;
@@ -919,19 +957,16 @@ function FinancePage({ active = true }: { active?: boolean }) {
 
   return (
     <>
-      <PageHero
-        variant="finance"
-        title="收支管理"
-        kicker="预估利润 / 成本 / 押金 / 回款"
-        description="把订单利润作为预估收入，单独记录 TK 提现回款、成本支出和押金占用，避免回款滞后影响订单口径。"
-        data-react-finance-page-ready="true"
-      />
+      <ModuleWorkspace className="finance-page" data-react-finance-page-ready="true">
+        <ModuleHeader
+          title="收支管理"
+          description="把订单预估利润和实际回款分开看，单独记录运营成本、押金占用和押金扣除，方便判断现金口径。"
+        />
 
-      <Card id="finance-main" className={!connected ? financeSetupCardClass : undefined}>
+        <Card id="finance-main" className={!connected ? financeSetupCardClass : undefined}>
         <div className={statusStripClass}>
           <div className={statusStripLeftClass}>
-            <Badge id="finance-user" className="min-h-[30px] text-[var(--text)] font-semibold">{connected ? `已连接 · ${projectId || 'Firebase Firestore'}` : '未连接 Firebase'}</Badge>
-            {permissionBlocked ? null : <Badge id="finance-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge>}
+            {connected && !permissionBlocked ? <Badge id="finance-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge> : null}
             <Button id="finance-refresh" variant="plain" className={refreshButtonClass(loading)} aria-label="刷新收支数据" title="刷新收支数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void connectUsingGlobalConfig()}>
               <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
             </Button>
@@ -941,10 +976,7 @@ function FinancePage({ active = true }: { active?: boolean }) {
           </div>
           <div className={statusStripRightClass}>
             {connected ? (
-              <>
-                <Button id="finance-export" size="sm" onClick={exportRecordsCsv}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-                <Button id="finance-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
-              </>
+              <Button id="finance-export" size="sm" onClick={exportRecordsCsv}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
             ) : null}
           </div>
         </div>
@@ -1007,7 +1039,8 @@ function FinancePage({ active = true }: { active?: boolean }) {
             />
           </div>
         )}
-      </Card>
+        </Card>
+      </ModuleWorkspace>
 
       <RecordDialog
         accounts={allAccounts}

@@ -159,14 +159,11 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
 
   async function signOut(): Promise<void> {}
 
-  async function pullSnapshot(): Promise<FinanceProviderSnapshot> {
-    const currentDb = await requireDb();
-    const [recordsSnap, ordersSnap, accountsSnap] = await Promise.all([
-      getQuerySnapshot(currentDb.collection('finance_records').orderBy('occurredAt', 'desc')),
-      getQuerySnapshot(currentDb.collection('orders')),
-      getQuerySnapshot(currentDb.collection('order_accounts'))
-    ]);
-
+  function buildSnapshotFromQuerySnapshots(
+    recordsSnap: FirebaseCompatQuerySnapshot,
+    ordersSnap: FirebaseCompatQuerySnapshot,
+    accountsSnap: FirebaseCompatQuerySnapshot
+  ): FinanceProviderSnapshot {
     const records = recordsSnap.docs
       .map(doc => normalizePulledFinanceRecord({ ...(doc.data() || {}), id: String(doc.data()?.id || doc.id || '') }, { nowIso, todayStr }))
       .filter(record => !record.deletedAt);
@@ -192,7 +189,85 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
         ...records.map(record => record.updatedAt),
         ...orders.map(order => order.updatedAt),
         ...accountsSnap.docs.map(doc => String(doc.data()?.updatedAt || ''))
-      ])
+      ]),
+      hasPendingWrites: !!(recordsSnap.metadata?.hasPendingWrites || ordersSnap.metadata?.hasPendingWrites || accountsSnap.metadata?.hasPendingWrites),
+      fromCache: !!(recordsSnap.metadata?.fromCache || ordersSnap.metadata?.fromCache || accountsSnap.metadata?.fromCache)
+    };
+  }
+
+  async function pullSnapshot(): Promise<FinanceProviderSnapshot> {
+    const currentDb = await requireDb();
+    const [recordsSnap, ordersSnap, accountsSnap] = await Promise.all([
+      getQuerySnapshot(currentDb.collection('finance_records').orderBy('occurredAt', 'desc')),
+      getQuerySnapshot(currentDb.collection('orders')),
+      getQuerySnapshot(currentDb.collection('order_accounts'))
+    ]);
+
+    return buildSnapshotFromQuerySnapshots(recordsSnap, ordersSnap, accountsSnap);
+  }
+
+  function subscribeSnapshot(onNext: (snapshot: FinanceProviderSnapshot) => void, onError: (error: unknown) => void = () => {}) {
+    let active = true;
+    let recordsSnap: FirebaseCompatQuerySnapshot | null = null;
+    let ordersSnap: FirebaseCompatQuerySnapshot | null = null;
+    let accountsSnap: FirebaseCompatQuerySnapshot | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let unsubscribeRecords: (() => void) | null = null;
+    let unsubscribeOrders: (() => void) | null = null;
+    let unsubscribeAccounts: (() => void) | null = null;
+
+    const emit = () => {
+      if (!active || !recordsSnap || !ordersSnap || !accountsSnap) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!active || !recordsSnap || !ordersSnap || !accountsSnap) return;
+        onNext(buildSnapshotFromQuerySnapshots(recordsSnap, ordersSnap, accountsSnap));
+      }, 0);
+    };
+
+    requireDb().then(currentDb => {
+      if (!active) return;
+      const recordsQuery = currentDb.collection('finance_records').orderBy('occurredAt', 'desc');
+      const ordersQuery = currentDb.collection('orders');
+      const accountsQuery = currentDb.collection('order_accounts');
+      if (!recordsQuery.onSnapshot || !ordersQuery.onSnapshot || !accountsQuery.onSnapshot) {
+        void pullSnapshot().then(snapshot => {
+          if (active) onNext(snapshot);
+        }).catch(onError);
+        return;
+      }
+      unsubscribeRecords = recordsQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          recordsSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+      unsubscribeOrders = ordersQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          ordersSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+      unsubscribeAccounts = accountsQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          accountsSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+    }).catch(onError);
+
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      if (unsubscribeRecords) unsubscribeRecords();
+      if (unsubscribeOrders) unsubscribeOrders();
+      if (unsubscribeAccounts) unsubscribeAccounts();
     };
   }
 
@@ -258,6 +333,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     isConnected,
     signOut,
     pullSnapshot,
+    subscribeSnapshot,
     upsertRecord,
     deleteRecord,
     renameAccount,

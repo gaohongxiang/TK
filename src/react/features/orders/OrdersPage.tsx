@@ -13,7 +13,14 @@ import { InlineToken } from '@/components/ui/inline-token';
 import { Input } from '@/components/ui/input';
 import { ModuleListState } from '@/components/ui/module-list-state';
 import { DecimalInput, IntegerInput } from '@/components/ui/number-input';
-import { PageHero } from '@/components/ui/page-hero';
+import {
+  ModuleAccountTabs,
+  ModuleHeader,
+  ModuleStatusBar,
+  ModuleTableShell,
+  ModuleToolbar,
+  ModuleWorkspace
+} from '@/components/ui/module-workspace';
 import { SearchHelpButton } from '@/components/ui/search-help';
 import { Select } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -34,6 +41,7 @@ import {
   buildOrderItemsSummary,
   computeOrderCreatorCommission,
   computeOrderEstimatedProfit,
+  computeOrderPlatformFee,
   computeWarning,
   detectCourierCompany,
   isOrderRefunded,
@@ -491,19 +499,18 @@ function computeAutoFieldsWithContext(
     '订单状态': draft.orderStatus
   };
   const warningText = computeWarning(tempOrder).text;
-  const exchangeRate = pricingContext.rate;
   const commission = computeOrderCreatorCommission({
     '售价': draft.salePrice,
     '达人佣金率': draft.creatorCommissionRate,
     '是否退款': draft.isRefunded ? '1' : ''
-  }, exchangeRate);
+  }, pricingContext);
   const profit = computeOrderEstimatedProfit({
     '售价': draft.salePrice,
     '采购价格': draft.purchasePrice || (totals.purchase ? formatNumericValue(totals.purchase) : ''),
     '预估运费': estimatedShippingFee,
     '达人佣金率': draft.creatorCommissionRate,
     '是否退款': draft.isRefunded ? '1' : ''
-  }, exchangeRate);
+  }, pricingContext);
   return {
     ...draft,
     items,
@@ -558,12 +565,16 @@ function applyShippingRefreshPolicy(
   pricingContext: PricingContext,
   resetShipping = false
 ) {
-  if (nextDraft.manualEstimatedShippingFee || shouldPreserveCurrentShippingFee(currentDraft, products, pricingContext)) {
+  if (nextDraft.manualEstimatedShippingFee) {
     return preserveEstimatedShippingFee(nextDraft);
   }
-  return resetShipping
-    ? { ...nextDraft, shippingFeeMode: 'auto' as const, manualEstimatedShippingFee: false }
-    : nextDraft;
+  if (resetShipping) {
+    return { ...nextDraft, shippingFeeMode: 'auto' as const, manualEstimatedShippingFee: false };
+  }
+  if (shouldPreserveCurrentShippingFee(currentDraft, products, pricingContext)) {
+    return preserveEstimatedShippingFee(nextDraft);
+  }
+  return nextDraft;
 }
 
 function ProductCombo({
@@ -956,14 +967,14 @@ function OrdersSummary({
   activeAccount,
   searchQuery,
   sortOrder,
-  exchangeRate,
+  pricingContext,
   accounts
 }: {
   orders: OrderRecord[];
   activeAccount: string;
   searchQuery: string;
   sortOrder: string;
-  exchangeRate: number | null;
+  pricingContext: PricingContext;
   accounts: string[];
 }) {
   const summary = derivePurchaseSummary({
@@ -971,20 +982,26 @@ function OrdersSummary({
     activeAccount,
     searchQuery,
     sortOrder,
-    exchangeRate,
+    exchangeRate: pricingContext,
+    computeOrderPlatformFee,
     computeOrderCreatorCommission,
     computeOrderEstimatedProfit
   });
-  const expenseValue = (summary.filteredTotal || 0) + (summary.filteredShippingTotal || 0) + (summary.filteredCreatorCommissionTotal || 0);
-  const allExpenseValue = (summary.allTotal || 0) + (summary.allShippingTotal || 0) + (summary.allCreatorCommissionTotal || 0);
+  const expenseValue = (summary.filteredTotal || 0) + (summary.filteredShippingTotal || 0) + (summary.filteredPlatformFeeTotal || 0) + (summary.filteredCreatorCommissionTotal || 0);
+  const allExpenseValue = (summary.allTotal || 0) + (summary.allShippingTotal || 0) + (summary.allPlatformFeeTotal || 0) + (summary.allCreatorCommissionTotal || 0);
 
   function buildIncomeNote(grossMetric: OrderSummaryMetric, refundMetric: OrderSummaryMetric) {
     if (!refundMetric?.count) return `销售 ${formatSummaryMetric(grossMetric)}`;
     return `销售 ${formatSummaryMetric(grossMetric)} - 退款 ${formatSummaryMetric(refundMetric)}`;
   }
 
-  function buildExpenseNote(purchaseMetric: OrderSummaryMetric, shippingMetric: OrderSummaryMetric, creatorCommissionMetric: OrderSummaryMetric) {
-    return `采购 ${formatSummaryMetric(purchaseMetric)} + 运费 ${formatSummaryMetric(shippingMetric)} + 达人 ${formatSummaryMetric(creatorCommissionMetric)}`;
+  function buildExpenseNote(
+    purchaseMetric: OrderSummaryMetric,
+    shippingMetric: OrderSummaryMetric,
+    platformFeeMetric: OrderSummaryMetric,
+    creatorCommissionMetric: OrderSummaryMetric
+  ) {
+    return `采购 ${formatSummaryMetric(purchaseMetric)} + 运费 ${formatSummaryMetric(shippingMetric)} + 平台 ${formatSummaryMetric(platformFeeMetric)} + 达人 ${formatSummaryMetric(creatorCommissionMetric)}`;
   }
 
   function buildSummaryMeta(prefix: string, count: number, refundMetric: OrderSummaryMetric) {
@@ -999,6 +1016,7 @@ function OrdersSummary({
     refundMetric: OrderSummaryMetric,
     purchaseMetric: OrderSummaryMetric,
     shippingMetric: OrderSummaryMetric,
+    platformFeeMetric: OrderSummaryMetric,
     creatorCommissionMetric: OrderSummaryMetric,
     expenseTotal: number,
     count: number,
@@ -1023,7 +1041,7 @@ function OrdersSummary({
           <div className={orderSummaryLedgerExpenseClass}>
             <span className={orderSummaryLedgerLabelClass}>支出</span>
             <strong className={orderSummaryLedgerExpenseValueClass}>{count ? `¥ ${expenseTotal.toFixed(2)}` : '-'}</strong>
-            <span className={orderSummaryLedgerNoteClass}>{buildExpenseNote(purchaseMetric, shippingMetric, creatorCommissionMetric)}</span>
+            <span className={orderSummaryLedgerNoteClass}>{buildExpenseNote(purchaseMetric, shippingMetric, platformFeeMetric, creatorCommissionMetric)}</span>
           </div>
         </div>
       </section>
@@ -1041,6 +1059,7 @@ function OrdersSummary({
           summary.filteredRefundMetric,
           summary.filteredPurchaseMetric,
           summary.filteredShippingMetric,
+          summary.filteredPlatformFeeMetric,
           summary.filteredCreatorCommissionMetric,
           expenseValue,
           summary.filteredCount,
@@ -1054,6 +1073,7 @@ function OrdersSummary({
           summary.allRefundMetric,
           summary.allPurchaseMetric,
           summary.allShippingMetric,
+          summary.allPlatformFeeMetric,
           summary.allCreatorCommissionMetric,
           allExpenseValue,
           summary.allCount,
@@ -1072,7 +1092,7 @@ function OrdersTable({
   sortOrder,
   pageSize,
   currentPage,
-  exchangeRate,
+  pricingContext,
   onSearchChange,
   onSearchHelpOpenChange,
   onPageSizeChange,
@@ -1088,7 +1108,7 @@ function OrdersTable({
   sortOrder: string;
   pageSize: number;
   currentPage: number;
-  exchangeRate: number | null;
+  pricingContext: PricingContext;
   onSearchChange: (value: string) => void;
   onSearchHelpOpenChange: (open: boolean) => void;
   onPageSizeChange: (value: number) => void;
@@ -1185,7 +1205,7 @@ function OrdersTable({
                     const absoluteIndex = startIndex + index;
                     const seqNum = sortOrder === 'asc' ? absoluteIndex + 1 : sorted.length - absoluteIndex;
                     const warn = computeWarning(order);
-                    const profit = computeOrderEstimatedProfit(order, exchangeRate);
+                    const profit = computeOrderEstimatedProfit(order, pricingContext);
                     const courierSummary = buildOrderCourierSummary(order, 'company', 'full');
                     const trackingSummary = buildOrderCourierSummary(order, 'tracking', 'full');
                     const warningTone = badgeToneMap[(warn.cls || 'muted') as keyof typeof badgeToneMap] || 'default';
@@ -1516,8 +1536,8 @@ function OrderModal({
           <HelpItem label="计算输入">使用订单总重量、总尺寸和货物类型匹配海外运费规则；多明细订单的总尺寸需要手动确认。</HelpItem>
           <HelpItem label="计费重量">规则会在实重和体积重之间取用于计费的重量，具体卡区、普货/特货费用由运费规则表决定。</HelpItem>
           <HelpItem label="金额换算">规则金额按当前汇率、运费倍率和贴单费计算为人民币，参数来自利润计算器。</HelpItem>
-          <HelpItem label="订单处理">已有预估运费的订单会保留原值；新增订单默认按当前参数计算。参数变化或手动改过运费后，金额不一致时显示刷新按钮。</HelpItem>
-          <HelpItem label="刷新按钮">点击“根据当前参数刷新运费”后，才会用当前汇率、倍率和贴单费覆盖订单里的预估运费。</HelpItem>
+          <HelpItem label="订单处理">自动运费会随当前汇率、倍率和贴单费刷新；已有保存运费的老订单和手动改过运费的订单会保留原值。</HelpItem>
+          <HelpItem label="刷新按钮">手动或老订单的金额不一致时，可点击“根据当前参数刷新运费”改回规则值。</HelpItem>
         </HelpStack>
         <DialogActions>
           <Button variant="primary" onClick={() => setShippingHelpOpen(false)}>知道了</Button>
@@ -1869,6 +1889,11 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       window.removeEventListener(SETTINGS_CHANGED_EVENT, refreshPricingContext);
     };
   }, [modalOpen, products]);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+    setDraft(previous => computeAutoFieldsWithContext(previous, products, pricingContext));
+  }, [modalOpen, pricingContext, products]);
 
   useEffect(() => {
     const handleConnectionChange = (event: Event) => {
@@ -2410,7 +2435,13 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       showToast('当前选择下没有可导出的订单数据', 'error');
       return;
     }
-    const rows = buildExportRows({ orders: rowsSource, exchangeRate, computeOrderCreatorCommissionFn: computeOrderCreatorCommission, computeOrderEstimatedProfitFn: computeOrderEstimatedProfit });
+    const rows = buildExportRows({
+      orders: rowsSource,
+      exchangeRate: pricingContext,
+      computeOrderPlatformFeeFn: computeOrderPlatformFee,
+      computeOrderCreatorCommissionFn: computeOrderCreatorCommission,
+      computeOrderEstimatedProfitFn: computeOrderEstimatedProfit
+    });
     const csv = buildOrdersCsv({ rows, includeBom: true });
     const selectedOptions = exportOptions.filter(option => exportSelected.has(String(option.key)));
     const filename = buildExportFilename(selectedOptions);
@@ -2429,20 +2460,17 @@ function OrdersPage({ active = true }: { active?: boolean }) {
 
   return (
     <>
-      <PageHero
-        variant="orders"
-        title="订单管理"
-        kicker="采购 / 物流 / 入仓进度"
-        description="集中管理采购、物流和入仓进度，并汇总销售额、支出与预估利润。"
-        data-react-orders-page-ready="true"
-      />
+      <ModuleWorkspace className="orders-page" data-react-orders-page-ready="true">
+        <ModuleHeader
+          title="订单管理"
+          description="记录每笔订单的商品、采购、物流、售价和状态，按账号汇总收入、支出、退款和预估利润。"
+        />
 
-      <Card id="ot-main" className={!connected ? orderSetupCardClass : undefined}>
-        <div id="ot-header-status-row" className={cn(orderHeaderRowClass, 'ot-header-status-row')}>
-          <div className={statusStripClass}>
-            <div className={statusStripLeftClass}>
-              <Badge id="ot-user" className="min-h-[30px] text-[var(--text)] font-semibold">{connected ? `已连接 · ${projectId || 'Firebase Firestore'}` : '未连接 Firebase'}</Badge>
-              {permissionBlocked ? null : <Badge id="ot-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge>}
+        <Card id="ot-main" className={!connected ? orderSetupCardClass : undefined}>
+          <ModuleStatusBar id="ot-header-status-row" className={cn(orderHeaderRowClass, 'ot-header-status-row')}>
+            <div className={statusStripClass}>
+              <div className={statusStripLeftClass}>
+              {connected && !permissionBlocked ? <Badge id="ot-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge> : null}
               <Button id="ot-refresh" variant="plain" className={refreshButtonClass(loading)} aria-label="刷新订单数据" title="刷新订单数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void connectUsingGlobalConfig()}>
                 <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
               </Button>
@@ -2452,22 +2480,19 @@ function OrdersPage({ active = true }: { active?: boolean }) {
             </div>
             <div className={statusStripRightClass}>
               {connected ? (
-                <>
-                  <Button id="ot-export" size="sm" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-                  <Button id="ot-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
-                </>
+                <Button id="ot-export" size="sm" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
               ) : null}
             </div>
           </div>
-        </div>
-        {!connected ? (
+          </ModuleStatusBar>
+          {!connected ? (
           <ModuleListState
             tone="connect"
             title="连接数据库"
             description="订单管理和商品管理共用同一个 Firestore 项目。先连接一次，两个模块都会直接复用。"
             actions={[{ id: 'ot-open-connection', label: '连接 Firebase', variant: 'primary', onClick: () => TKFirestoreConnection.open() }]}
           />
-        ) : permissionBlocked ? (
+          ) : permissionBlocked ? (
           <ModuleListState
             tone="permission"
             title="数据库权限不足"
@@ -2477,14 +2502,14 @@ function OrdersPage({ active = true }: { active?: boolean }) {
               { label: copyingRules ? '复制中…' : '复制 Firestore 规则', variant: 'primary', disabled: copyingRules, onClick: () => void copyFirestoreRules() }
             ]}
           />
-        ) : (
-          <>
-            <div id="ot-header-summary-row" className={cn(orderHeaderRowClass, 'ot-header-summary-row')}>
+          ) : (
+            <>
+              <ModuleToolbar id="ot-header-summary-row" className={cn(orderHeaderRowClass, 'ot-header-summary-row')}>
               <div id="ot-summary-container" className={orderSummaryContainerClass}>
-                <OrdersSummary orders={orders} activeAccount={activeAccount} searchQuery={searchQuery} sortOrder={sortOrder} exchangeRate={exchangeRate} accounts={allAccounts} />
+                <OrdersSummary orders={orders} activeAccount={activeAccount} searchQuery={searchQuery} sortOrder={sortOrder} pricingContext={pricingContext} accounts={allAccounts} />
               </div>
-            </div>
-            <div id="ot-header-accounts-row" className={cn(orderHeaderRowClass, 'ot-header-accounts-row')}>
+              </ModuleToolbar>
+              <ModuleAccountTabs id="ot-header-accounts-row" className={cn(orderHeaderRowClass, 'ot-header-accounts-row')}>
               <AccountTabsBar
                 id="ot-acc-tabs"
                 activeKey={activeAccount}
@@ -2505,8 +2530,9 @@ function OrdersPage({ active = true }: { active?: boolean }) {
                   </>
                 )}
               />
-            </div>
-            <OrdersTable
+              </ModuleAccountTabs>
+              <ModuleTableShell>
+                <OrdersTable
               orders={orders}
               activeAccount={activeAccount}
               searchQuery={searchQuery}
@@ -2514,7 +2540,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
               sortOrder={sortOrder}
               pageSize={pageSize}
               currentPage={currentPage}
-              exchangeRate={exchangeRate}
+              pricingContext={pricingContext}
               onSearchChange={value => { setSearchQuery(value); setCurrentPage(1); }}
               onSearchHelpOpenChange={setSearchHelpOpen}
               onPageSizeChange={value => { setPageSize(Math.max(1, Number(value) || 50)); setCurrentPage(1); }}
@@ -2523,9 +2549,11 @@ function OrdersPage({ active = true }: { active?: boolean }) {
               onEdit={openOrderModal}
               onDelete={deleteOrder}
             />
-          </>
-        )}
-      </Card>
+              </ModuleTableShell>
+            </>
+          )}
+        </Card>
+      </ModuleWorkspace>
 
       <OrderModal
         open={modalOpen}

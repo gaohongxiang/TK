@@ -11,7 +11,10 @@ import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ModuleListState } from '@/components/ui/module-list-state';
 import { IntegerInput } from '@/components/ui/number-input';
-import { PageHero } from '@/components/ui/page-hero';
+import {
+  ModuleHeader,
+  ModuleWorkspace
+} from '@/components/ui/module-workspace';
 import { SearchHelpButton } from '@/components/ui/search-help';
 import { Select } from '@/components/ui/select';
 import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, syncStatusClass } from '@/components/ui/status-strip';
@@ -1618,21 +1621,16 @@ function ProductsPage({ active = true }: { active?: boolean }) {
   }
 
   return (
-    <section className="products-page" data-react-products-page-ready="true">
-      <PageHero
-        variant="products"
+    <ModuleWorkspace className="products-page" data-react-products-page-ready="true">
+      <ModuleHeader
         title="商品管理"
-        kicker="商品资料 / 预估运费 / 采购链接"
         description="沉淀商品资料、预估运费和采购链接，录一次基础资料，后续订单直接复用。"
       />
 
       <Card id="pl-main">
         <div className={cn('ot-header-status-row mb-3', statusStripClass)}>
           <div className={cn(statusStripLeftClass, 'min-w-0 flex-wrap')}>
-            <Badge className="min-h-[30px] min-w-0 max-w-full truncate text-[var(--text)] font-semibold" id="pl-user">
-              {connected ? (projectId ? `已连接 · ${projectId} · Firestore` : '已连接 · Firebase Firestore') : '未连接 Firebase'}
-            </Badge>
-            {permissionBlocked ? null : <Badge id="pl-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge>}
+            {connected && !permissionBlocked ? <Badge id="pl-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge> : null}
             <Button
               id="pl-refresh"
               variant="plain"
@@ -1657,10 +1655,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
           </div>
           <div className={statusStripRightClass}>
             {connected ? (
-              <>
-                <Button id="pl-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-                <Button id="pl-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
-              </>
+              <Button id="pl-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
             ) : null}
           </div>
         </div>
@@ -1783,7 +1778,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
         onOpenChange={setExportOpen}
         onConfirm={confirmExport}
       />
-    </section>
+    </ModuleWorkspace>
   );
 }
 

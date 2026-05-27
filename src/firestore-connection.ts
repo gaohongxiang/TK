@@ -335,9 +335,8 @@ function requestDisconnect(options: DisconnectOptions = {}) {
   if (!cfg?.projectId) return false;
   const handled = uiController?.requestDisconnect?.(options);
   if (handled) return true;
-  clearConfig();
-  if (options.closeModal) close();
-  return true;
+  showToast('项目连接不会在日常使用中断开。需要退出时请使用“退出登录”。', 'error');
+  return false;
 }
 
 function bind() {

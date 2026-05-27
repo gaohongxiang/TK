@@ -58,6 +58,8 @@ type FinanceProviderSnapshot = {
   orders: OrderRecord[];
   accounts: string[];
   updatedAt: string;
+  hasPendingWrites?: boolean;
+  fromCache?: boolean;
 };
 
 type FinanceProviderUpsertOptions = {
@@ -93,6 +95,10 @@ type FinanceProviderApi = {
   isConnected: () => boolean;
   signOut: () => Promise<void>;
   pullSnapshot: () => Promise<FinanceProviderSnapshot>;
+  subscribeSnapshot: (
+    onNext: (snapshot: FinanceProviderSnapshot) => void,
+    onError?: (error: unknown) => void
+  ) => () => void;
   upsertRecord: (record: Partial<FinanceRecord> | FinanceRecordDraft, options?: FinanceProviderUpsertOptions) => Promise<FinanceProviderUpsertResult>;
   deleteRecord: (id: string, options?: FinanceProviderDeleteOptions) => Promise<FinanceProviderDeleteResult>;
   renameAccount: (

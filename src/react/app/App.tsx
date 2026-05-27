@@ -1,6 +1,7 @@
-import { Copy, ExternalLink, LockKeyhole } from 'lucide-react';
-import { useEffect, useMemo, useState, type ComponentType, type FormEvent, type ReactNode } from 'react';
+import { Copy, Database, ExternalLink, LockKeyhole, LogOut, Settings, ShieldCheck, UserRound } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ComponentType, type FormEvent, type ReactNode } from 'react';
 import { AppRuntime } from './AppRuntime';
+import { TopbarActionsContext } from './TopbarActionsContext';
 import { CalculatorApp } from '../features/calculator/CalculatorApp';
 import { CollectionPage } from '../features/collection/CollectionPage';
 import { FinancePage } from '../features/finance/FinancePage';
@@ -49,7 +50,7 @@ const fallbackModules = Object.freeze([
   Object.freeze({ key: 'analytics', label: '数据分析' })
 ]) as readonly ModuleItem[];
 const loginModule = Object.freeze({ key: 'login', label: '项目登录' }) as ModuleItem;
-const projectSettingsModule = Object.freeze({ key: 'project-settings', label: '项目配置' }) as ModuleItem;
+const projectSettingsModule = Object.freeze({ key: 'project-settings', label: '数据库管理' }) as ModuleItem;
 const accountModule = Object.freeze({ key: 'accounts', label: '账号管理' }) as ModuleItem;
 const permissionModule = Object.freeze({ key: 'permissions', label: '权限管理' }) as ModuleItem;
 const protectedModuleKeys = new Set(ALL_PERMISSION_MODULES);
@@ -94,8 +95,28 @@ const appFooterLinksClass = 'inline-flex flex-wrap justify-center gap-2.5';
 const appFooterLinkClass = 'relative z-[3] inline-flex min-h-7 items-center font-bold text-[var(--accent)] hover:underline';
 const appFooterCopyrightClass = 'text-[11.5px]';
 const skipLinkClass = 'skip-link fixed left-2.5 top-2.5 z-[10000] -translate-y-[140%] rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-[var(--text)] shadow-[var(--shadow)] transition-transform focus:translate-y-0 focus:outline-[3px] focus:outline-[rgba(110,168,255,.35)] focus:outline-offset-2';
-const appWrapClass = 'wrap mx-auto max-w-[1180px] px-[18px] pb-20 max-[640px]:px-3.5 max-[640px]:pb-[60px]';
+const appWrapClass = 'app-layout-content min-w-0';
+const appWorkspaceClass = 'app-workspace';
 const appMainClass = 'app-main min-w-0 outline-none';
+const appTopbarClass = 'app-topbar -mx-[18px] mb-4 grid h-[74px] grid-cols-[minmax(0,460px)_minmax(360px,1fr)] items-center gap-12 overflow-visible border-b border-[color-mix(in_srgb,var(--border)_78%,transparent)] bg-white px-7 py-2 max-[1100px]:grid-cols-[minmax(0,1fr)_auto] max-[760px]:h-auto max-[760px]:min-h-[74px] max-[760px]:grid-cols-1 max-[760px]:gap-2 max-[760px]:px-5';
+const appTopbarLeftClass = 'grid min-w-0 content-center gap-1';
+const appTopbarTitleRowClass = 'flex min-w-0 flex-nowrap items-start gap-2 overflow-hidden';
+const appTopbarTitleClass = 'm-0 shrink-0 text-[17px] font-bold leading-[1.08] text-[var(--text)]';
+const appTopbarDescriptionClass = 'm-0 mt-0.5 max-w-[900px] truncate text-[11.5px] leading-[1.45] text-[var(--muted)]';
+const appTopbarActionsClass = 'app-topbar-actions flex min-w-0 flex-wrap items-center justify-end gap-2 max-[760px]:justify-start';
+const appTopbarRightClass = 'app-topbar-right relative flex min-w-0 items-center justify-end gap-2';
+const appGlobalStatusClass = 'app-global-status inline-flex min-w-0 max-w-[310px] items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel2)] px-3 py-2 text-[12px] font-semibold text-[var(--text)] shadow-[0_10px_24px_rgba(14,20,44,.06)]';
+const appGlobalStatusTextClass = 'min-w-0 truncate';
+const appAccountMenuClass = 'app-account-menu relative min-w-0';
+const appAccountButtonClass = 'app-account-button inline-flex max-w-[300px] items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel2)] px-2.5 py-1.5 text-left text-[12px] font-semibold text-[var(--text)] shadow-[0_10px_24px_rgba(14,20,44,.06)] hover:border-[color-mix(in_srgb,var(--accent)_42%,var(--border))]';
+const appAccountAvatarClass = 'grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--accent)_16%,white)] text-[var(--accent)]';
+const appAccountTextClass = 'grid min-w-0 leading-tight';
+const appAccountEmailClass = 'min-w-0 max-w-[190px] truncate';
+const appAccountRoleClass = 'text-[10.5px] text-[var(--muted)]';
+const appAccountDropdownClass = 'app-account-dropdown absolute right-0 top-[calc(100%+8px)] z-[130] grid min-w-[230px] gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-2 shadow-[var(--shadow)]';
+const appConnectionDropdownClass = 'app-account-dropdown absolute left-0 top-[calc(100%+8px)] z-[130] grid w-full min-w-full gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-2 shadow-[var(--shadow)]';
+const appAccountMenuButtonClass = 'inline-flex min-h-9 w-full items-center gap-2 rounded-xl border border-transparent bg-transparent px-3 text-left text-[12px] font-semibold text-[var(--text)] hover:border-[var(--border)] hover:bg-[var(--panel2)]';
+const appAccountDangerButtonClass = `${appAccountMenuButtonClass} text-[var(--danger)]`;
 const analyticsStatusClass = 'analytics-react-status mb-4 grid grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3.5 max-[640px]:grid-cols-[32px_minmax(0,1fr)]';
 const analyticsStatusMarkClass = 'analytics-react-status-mark h-[38px] w-[38px] rounded-xl border border-[color-mix(in_srgb,var(--accent2)_45%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent2)_56%,transparent),transparent),color-mix(in_srgb,var(--panel2)_48%,transparent)]';
 const analyticsStatusLoadingClass = '[&_.analytics-react-status-mark]:animate-pulse';
@@ -139,6 +160,39 @@ const setupConfigTextareaClass = 'min-h-[150px] font-mono text-[12px] leading-[1
 const setupStepFormClass = 'mt-3 grid gap-3';
 const setupStepFormGridClass = 'grid grid-cols-3 gap-3 max-[820px]:grid-cols-1';
 const setupStepHintClass = 'mt-2 rounded-[12px] border border-[color-mix(in_srgb,var(--accent)_22%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_6%,var(--panel))] px-3 py-2 text-[12px] leading-[1.6] text-[var(--muted)]';
+
+const moduleTopbarMeta: Record<string, { description?: string }> = {
+  calc: {
+    description: '根据各项参数统一测算售价、利润，以及确定售价复盘实际利润'
+  },
+  products: {
+    description: '沉淀商品资料、预估运费和采购链接，录一次基础资料，后续订单直接复用。'
+  },
+  orders: {
+    description: '集中管理采购、物流和入仓进度，并汇总销售额、支出与预估利润。'
+  },
+  finance: {
+    description: '把订单利润作为预估收入，单独记录 TK 提现回款、成本支出和押金占用，避免回款滞后影响订单口径。'
+  },
+  collection: {
+    description: '商品采编串联商品采集和商品编辑流程，集中查看采集、编辑判断和同步状态。'
+  },
+  analytics: {
+    description: '本地解析 TikTok Shop 商品流量导出表，生成渠道表现、商品排行和运营诊断；数据不上传到本站服务器。'
+  },
+  login: {
+    description: '登录后按账号权限显示订单、商品、收支、采编和数据分析模块。利润计算器不需要登录。'
+  },
+  'project-settings': {
+    description: '查看当前项目连接、项目连接链接和 Firestore 规则。'
+  },
+  accounts: {
+    description: '创建和维护项目成员账号。'
+  },
+  permissions: {
+    description: '按成员配置可访问的业务模块。'
+  }
+};
 
 function AnalyticsStatus({
   state,
@@ -212,7 +266,10 @@ function ModuleAccessGate({
   moduleLabel: string;
   state: AuthSessionState;
 }) {
-  const message = state.user
+  const isResolving = !!state.user && !state.ready && !state.member;
+  const message = isResolving
+    ? '正在读取当前账号权限，马上切换到可访问模块。'
+    : state.user
     ? getRestrictedModuleMessage(moduleLabel)
     : '请先在项目登录页登录账号。';
   return (
@@ -221,13 +278,12 @@ function ModuleAccessGate({
         <LockKeyhole size={20} strokeWidth={2} />
       </div>
       <div>
-        <CardTitle className="mb-2 text-base">{moduleLabel}需要权限</CardTitle>
+        <CardTitle className="mb-2 text-base">{isResolving ? '正在读取权限' : `${moduleLabel}需要权限`}</CardTitle>
         <p className={moduleAccessCopyClass}>{message}</p>
         {state.error ? <p className={moduleAccessErrorClass}>{state.error}</p> : null}
       </div>
       <div className={moduleAccessActionsClass}>
-        {!state.user ? <Button type="button" variant="primary" onClick={() => { window.location.hash = '#login'; }}>去登录</Button> : null}
-        <Button type="button" onClick={() => TKFirestoreConnection.open()}>连接设置</Button>
+        {!state.user ? <Button type="button" variant="primary" onClick={() => { window.location.hash = '#login'; }}>去项目登录</Button> : null}
       </div>
     </Card>
   );
@@ -273,7 +329,6 @@ function ProjectSetupGuide({
   onAuthSubmit,
   onConfigTextChange,
   onCopyRules,
-  onDisconnect,
   onEmailChange,
   onConfirmPasswordChange,
   onPasswordChange,
@@ -292,7 +347,6 @@ function ProjectSetupGuide({
   onAuthSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onConfigTextChange: (value: string) => void;
   onCopyRules: () => void;
-  onDisconnect: () => void;
   onEmailChange: (value: string) => void;
   onConfirmPasswordChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
@@ -304,7 +358,7 @@ function ProjectSetupGuide({
     <Card className={loginSetupCardClass}>
       <div className={loginSetupHeaderClass}>
         <CardTitle className={loginPageTitleClass}>项目管理员初始化</CardTitle>
-        <p className={loginPageCopyClass}>按顺序完成一次即可。以后成员只需要用连接链接导入项目，然后登录自己的账号。</p>
+        <p className={loginPageCopyClass}>初始化只需要做一次。已经做过的步骤可以跳过；后续管理员和员工都用项目连接链接登录。</p>
       </div>
       <div className={loginSetupBodyClass}>
         <SetupGuideStep mark="1" title="创建 Firestore 数据库">
@@ -325,7 +379,7 @@ function ProjectSetupGuide({
             </Button>
           </div>
         </SetupGuideStep>
-        <SetupGuideStep mark="3" title="连接 Firebase 项目" done={connected} project={connected ? authSession.projectId : ''}>
+        <SetupGuideStep mark="3" title="保存项目连接" done={connected} project={connected ? authSession.projectId : ''}>
           <span>在 Firebase 项目里添加“网页应用”，把 firebaseConfig 粘贴到这里。这个配置只用来找到你的项目。</span>
           <div className={setupStepActionsClass}>
             <Button size="sm" onClick={() => TKFirestoreConnection.openConsole()}>
@@ -348,11 +402,8 @@ function ProjectSetupGuide({
           />
           <div className={setupStepActionsClass}>
             <Button size="sm" variant="primary" disabled={savingConfig || !configText.trim()} onClick={onSaveConfig}>
-              {savingConfig ? '保存中…' : connected ? '更新连接' : '保存连接'}
+              {savingConfig ? '保存中…' : '保存项目连接'}
             </Button>
-            {connected ? (
-              <Button size="sm" variant="danger" onClick={onDisconnect}>退出连接</Button>
-            ) : null}
           </div>
         </SetupGuideStep>
         <SetupGuideStep mark="4" title="发布数据库规则">
@@ -410,20 +461,38 @@ function ProjectInitializedCard({
   authSession: AuthSessionState;
   onSignInMode: () => void;
 }) {
+  const [copiedLink, setCopiedLink] = useState('');
+
+  async function copyProjectConnectionLink() {
+    try {
+      const link = TKFirestoreConnection.createConnectionLink();
+      await TKFirestoreConnection.copyText(link);
+      setCopiedLink(link);
+      TKFirestoreConnection.showToast('项目连接链接已复制');
+    } catch (error) {
+      TKFirestoreConnection.showToast(error instanceof Error ? error.message : '项目连接链接复制失败', 'error');
+    }
+  }
+
   return (
     <Card className={loginInitializedCardClass}>
       <div className={loginPageHeaderClass}>
         <span className={loginInitializedBadgeClass}>已初始化</span>
         <CardTitle className={loginPageTitleClass}>项目管理员已设置</CardTitle>
         <p className={loginPageCopyClass}>
-          这个项目已经完成初始化。请返回登录入口，用管理员账号进入项目后台。
+          这个项目已经完成初始化。以后管理员换电脑、员工第一次使用，都打开同一个项目连接链接，再登录自己的账号。
         </p>
       </div>
+      <div className={setupStepHintClass}>
+        <strong>项目连接链接</strong>
+        <div className="mt-1 truncate text-[11.5px]">{copiedLink || '点击下方按钮复制。链接会把当前项目连接导入浏览器，不会自动登录账号。'}</div>
+      </div>
       <div className={loginPageActionsClass}>
+        <Button type="button" onClick={() => void copyProjectConnectionLink()}><Copy aria-hidden="true" />复制项目连接链接</Button>
         <Button type="button" onClick={onSignInMode}>返回登录</Button>
         {authSession.isOwner ? (
           <>
-            <Button type="button" onClick={() => { window.location.hash = '#project-settings'; }}>打开项目配置</Button>
+            <Button type="button" onClick={() => { window.location.hash = '#project-settings'; }}>打开数据库管理</Button>
             <Button type="button" onClick={() => { window.location.hash = '#accounts'; }}>打开账号管理</Button>
             <Button type="button" variant="primary" onClick={() => { window.location.hash = '#permissions'; }}>打开权限管理</Button>
           </>
@@ -606,8 +675,7 @@ function ProjectLoginPage({
           inlineError={displayedError}
           onAuthSubmit={submitAuth}
           onConfigTextChange={setConfigText}
-          onCopyRules={() => void copyRules()}
-          onDisconnect={() => TKFirestoreConnection.requestDisconnect()}
+                  onCopyRules={() => void copyRules()}
           onEmailChange={setEmail}
           onConfirmPasswordChange={setConfirmPassword}
           onPasswordChange={setPassword}
@@ -696,6 +764,110 @@ function ProjectLoginPage({
   );
 }
 
+function TopbarGlobalStatus({
+  authEmail,
+  connectionLabel,
+  connectionMenuOpen,
+  isConnected,
+  roleText,
+  accountMenuOpen,
+  onConnectionMenuOpenChange,
+  onAccountMenuOpenChange,
+  onOpenConnection,
+  onOpenProjectSettings,
+  onOpenAccounts,
+  onOpenPermissions,
+  onSignOut
+}: {
+  authEmail: string;
+  connectionLabel: string;
+  connectionMenuOpen: boolean;
+  isConnected: boolean;
+  roleText: string;
+  accountMenuOpen: boolean;
+  onConnectionMenuOpenChange: (next: boolean) => void;
+  onAccountMenuOpenChange: (next: boolean) => void;
+  onOpenConnection: () => void;
+  onOpenProjectSettings: () => void;
+  onOpenAccounts: () => void;
+  onOpenPermissions: () => void;
+  onSignOut: () => void;
+}) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!connectionMenuOpen && !accountMenuOpen) return undefined;
+    const handlePointerDown = (event: PointerEvent) => {
+      const root = rootRef.current;
+      if (root && event.target instanceof Node && root.contains(event.target)) return;
+      onConnectionMenuOpenChange(false);
+      onAccountMenuOpenChange(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [accountMenuOpen, connectionMenuOpen, onAccountMenuOpenChange, onConnectionMenuOpenChange]);
+
+  return (
+    <div className={appTopbarRightClass} ref={rootRef}>
+      <div className={appAccountMenuClass} data-app-topbar-connection>
+        <button
+          type="button"
+          className={appGlobalStatusClass}
+          title={connectionLabel}
+          aria-expanded={connectionMenuOpen}
+          aria-haspopup="menu"
+          onClick={() => onConnectionMenuOpenChange(!connectionMenuOpen)}
+        >
+          <Database size={15} strokeWidth={2} aria-hidden="true" />
+          <span className={appGlobalStatusTextClass}>{connectionLabel}</span>
+        </button>
+        {connectionMenuOpen ? (
+          <div className={appConnectionDropdownClass} role="menu">
+            {isConnected ? (
+              <button type="button" className={appAccountMenuButtonClass} onClick={onOpenProjectSettings}><Settings size={14} strokeWidth={2} aria-hidden="true" />数据库管理</button>
+            ) : (
+              <button type="button" className={appAccountMenuButtonClass} onClick={onOpenConnection}><Settings size={14} strokeWidth={2} aria-hidden="true" />项目登录</button>
+            )}
+          </div>
+        ) : null}
+      </div>
+      <div className={appAccountMenuClass} data-app-topbar-auth>
+        {authEmail ? (
+          <button
+            type="button"
+            className={appAccountButtonClass}
+            aria-expanded={accountMenuOpen}
+            aria-haspopup="menu"
+            onClick={() => onAccountMenuOpenChange(!accountMenuOpen)}
+          >
+            <span className={appAccountAvatarClass} aria-hidden="true"><UserRound size={15} strokeWidth={2} /></span>
+            <span className={appAccountTextClass}>
+              <span className={appAccountEmailClass}>{authEmail}</span>
+            </span>
+          </button>
+        ) : (
+          <a className={appAccountButtonClass} href="#login">
+            <span className={appAccountAvatarClass} aria-hidden="true"><UserRound size={15} strokeWidth={2} /></span>
+            <span className={appAccountTextClass}>
+              <span className={appAccountEmailClass}>未登录</span>
+            </span>
+          </a>
+        )}
+        {authEmail && accountMenuOpen ? (
+          <div className={appAccountDropdownClass} role="menu">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--panel2)] px-3 py-2 text-[12px] font-semibold text-[var(--text)]">
+              {roleText}
+            </div>
+            <button type="button" className={appAccountMenuButtonClass} onClick={onOpenAccounts}><UserRound size={14} strokeWidth={2} aria-hidden="true" />账号管理</button>
+            <button type="button" className={appAccountMenuButtonClass} onClick={onOpenPermissions}><ShieldCheck size={14} strokeWidth={2} aria-hidden="true" />权限管理</button>
+            <button type="button" className={appAccountDangerButtonClass} onClick={onSignOut}><LogOut size={14} strokeWidth={2} aria-hidden="true" />退出登录</button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function App({
   config = TKAppConfig,
   now = new Date()
@@ -706,14 +878,23 @@ function App({
   const modules = useMemo(() => getModules(config), [config]);
   const [active, setActive] = useState(() => getRouteKey(globalThis.location, config));
   const [authSession, setAuthSession] = useState<AuthSessionState>(() => getAuthSessionSnapshot());
+  const [shellCollapsed, setShellCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [connectionMenuOpen, setConnectionMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [topbarActions, setTopbarActions] = useState<ReactNode | null>(null);
   const year = now.getFullYear();
+  const connected = !!authSession.connected || !!TKFirestoreConnection.getConfig()?.projectId;
+  const calculatorModule = modules.find(module => module.key === 'calc') || (fallbackModules[0] as ModuleItem);
   const visibleModules = useMemo(() => {
-    if (!authSession.user || !authSession.member) {
-      return [modules.find(module => module.key === 'calc') || (fallbackModules[0] as ModuleItem), loginModule];
+    if (!authSession.user) {
+      return [calculatorModule, loginModule];
     }
+    if (!authSession.ready && !authSession.member) return modules;
+    if (!authSession.member) return [calculatorModule, loginModule];
     const allowedModules = modules.filter(module => module.key === 'calc' || canAccessModule(module.key, authSession));
     return authSession.isOwner ? [...allowedModules, projectSettingsModule, accountModule, permissionModule] : allowedModules;
-  }, [authSession, modules]);
+  }, [authSession, calculatorModule, modules]);
   const activeModuleLabel = active === 'login'
     ? loginModule.label
     : active === 'project-settings'
@@ -723,9 +904,19 @@ function App({
         : active === 'permissions'
           ? permissionModule.label
           : getModuleLabel(modules, active);
-  const isBlockedByPermission = (moduleKey: string) => !canAccessModule(moduleKey, authSession);
+  const isResolvingPermissions = connected && !!authSession.user && !authSession.ready && !authSession.member;
+  const isBlockedByPermission = (moduleKey: string) => isResolvingPermissions || (!authSession.ready && authSession.member ? !canAccessModule(moduleKey, authSession) : authSession.ready ? !canAccessModule(moduleKey, authSession) : false);
   const shouldShowLoginPage = active === 'login' || (!authSession.user && (protectedModuleKeys.has(active as ModulePermissionKey) || ownerOnlyModuleKeys.has(active)));
   const renderedActive = shouldShowLoginPage ? 'login' : active;
+  const renderedModuleLabel = getModuleLabel(visibleModules, renderedActive);
+  const renderedModuleMeta = moduleTopbarMeta[renderedActive] || {};
+  const connectionLabel = authSession.projectId
+    ? `已连接 · ${authSession.projectId}`
+    : TKFirestoreConnection.getConfig()?.projectId
+      ? `已连接 · ${TKFirestoreConnection.getConfig()?.projectId}`
+      : '未连接数据库';
+  const authEmail = authSession.user?.email || authSession.user?.uid || '';
+  const roleText = authSession.isOwner ? '管理员' : authSession.user ? '成员' : '未登录';
 
   useEffect(() => {
     const syncRoute = () => setActive(getRouteKey(window.location, config));
@@ -745,92 +936,159 @@ function App({
     };
   }, []);
 
+  useEffect(() => {
+    setConnectionMenuOpen(false);
+    setAccountMenuOpen(false);
+  }, [renderedActive, authEmail]);
+
   return (
     <>
       <a className={skipLinkClass} href="#main-content">跳到主要内容</a>
-      <div className={appWrapClass}>
+      <div className="app-layout" data-shell-collapsed={shellCollapsed ? 'true' : 'false'}>
         <AppShell
           modules={visibleModules}
           active={renderedActive}
           docsUrl={config.docsUrl}
-          authEmail={authSession.user?.email || authSession.user?.uid || ''}
+          authEmail={authEmail}
           authIsOwner={authSession.isOwner}
-          authRoleLabel={authSession.isOwner ? '管理员' : authSession.user ? '成员' : ''}
-          onSignOut={() => void signOutAuthSession()}
+          authRoleLabel={roleText}
+          collapsed={shellCollapsed}
+          mobileOpen={mobileNavOpen}
+          onCollapsedChange={setShellCollapsed}
+          onMobileOpenChange={setMobileNavOpen}
         />
-        <main id="main-content" className={appMainClass} tabIndex={-1}>
-          <div id="view-calc" className={viewClass(renderedActive, 'calc')}>
-            <CalculatorApp />
+        <div className={appWrapClass}>
+          <div className={appWorkspaceClass}>
+            <div className={appTopbarClass} data-app-topbar>
+              <div className={appTopbarLeftClass}>
+                <div className={appTopbarTitleRowClass}>
+                  <p className={appTopbarTitleClass}>{renderedModuleLabel}</p>
+                </div>
+                {renderedModuleMeta.description ? <p className={appTopbarDescriptionClass}>{renderedModuleMeta.description}</p> : null}
+              </div>
+              <div className={appTopbarActionsClass}>
+                {topbarActions}
+                <TopbarGlobalStatus
+                  authEmail={authEmail}
+                  connectionLabel={connectionLabel}
+                  connectionMenuOpen={connectionMenuOpen}
+                  isConnected={connected}
+                  roleText={roleText}
+                  accountMenuOpen={accountMenuOpen}
+                  onConnectionMenuOpenChange={next => {
+                    setConnectionMenuOpen(next);
+                    if (next) setAccountMenuOpen(false);
+                  }}
+                  onAccountMenuOpenChange={next => {
+                    setAccountMenuOpen(next);
+                    if (next) setConnectionMenuOpen(false);
+                  }}
+                  onOpenConnection={() => {
+                    setConnectionMenuOpen(false);
+                    setAccountMenuOpen(false);
+                    window.location.hash = '#login';
+                  }}
+                  onOpenProjectSettings={() => {
+                    setConnectionMenuOpen(false);
+                    setAccountMenuOpen(false);
+                    window.location.hash = '#project-settings';
+                  }}
+                  onOpenAccounts={() => {
+                    setConnectionMenuOpen(false);
+                    setAccountMenuOpen(false);
+                    window.location.hash = '#accounts';
+                  }}
+                  onOpenPermissions={() => {
+                    setConnectionMenuOpen(false);
+                    setAccountMenuOpen(false);
+                    window.location.hash = '#permissions';
+                  }}
+                  onSignOut={() => {
+                    setConnectionMenuOpen(false);
+                    setAccountMenuOpen(false);
+                    void signOutAuthSession();
+                    window.location.hash = '#login';
+                  }}
+                />
+              </div>
+            </div>
+            <TopbarActionsContext.Provider value={setTopbarActions}>
+              <main id="main-content" className={appMainClass} tabIndex={-1}>
+                <div id="view-calc" className={viewClass(renderedActive, 'calc')}>
+                  <CalculatorApp />
+                </div>
+              <div id="view-login" className={viewClass(renderedActive, 'login')}>
+                <ProjectLoginPage authSession={authSession} />
+              </div>
+              <div id="view-orders" className={viewClass(renderedActive, 'orders')}>
+                {isBlockedByPermission('orders') ? active === 'orders' ? (
+                  <ModuleAccessGate moduleLabel={activeModuleLabel} state={authSession} />
+                ) : null : (
+                  <OrdersPage active={active === 'orders'} />
+                )}
+              </div>
+              <div id="view-products" className={viewClass(renderedActive, 'products')}>
+                {isBlockedByPermission('products') ? active === 'products' ? (
+                  <ModuleAccessGate moduleLabel={activeModuleLabel} state={authSession} />
+                ) : null : (
+                  <ProductsPage active={active === 'products'} />
+                )}
+              </div>
+              <div id="view-finance" className={viewClass(renderedActive, 'finance')}>
+                {isBlockedByPermission('finance') ? active === 'finance' ? (
+                  <ModuleAccessGate moduleLabel={activeModuleLabel} state={authSession} />
+                ) : null : (
+                  <FinancePage active={active === 'finance'} />
+                )}
+              </div>
+              <div id="view-collection" className={viewClass(renderedActive, 'collection')}>
+                {isBlockedByPermission('collection') ? active === 'collection' ? (
+                  <ModuleAccessGate moduleLabel={activeModuleLabel} state={authSession} />
+                ) : null : (
+                  <CollectionPage active={active === 'collection'} />
+                )}
+              </div>
+              <div id="view-analytics" className={viewClass(renderedActive, 'analytics')}>
+                {isBlockedByPermission('analytics') ? active === 'analytics' ? (
+                  <ModuleAccessGate moduleLabel={activeModuleLabel} state={authSession} />
+                ) : null : (
+                  <AnalyticsPane active={active === 'analytics'} />
+                )}
+              </div>
+              <div id="view-project-settings" className={viewClass(renderedActive, 'project-settings')}>
+                {!authSession.isOwner ? active === 'project-settings' ? (
+                  <ModuleAccessGate moduleLabel="数据库管理" state={authSession} />
+                ) : null : (
+                  <ProjectSettingsPage active={active === 'project-settings'} />
+                )}
+              </div>
+              <div id="view-accounts" className={viewClass(renderedActive, 'accounts')}>
+                {!authSession.isOwner ? active === 'accounts' ? (
+                  <ModuleAccessGate moduleLabel="账号管理" state={authSession} />
+                ) : null : (
+                  <AccountManagementPage active={active === 'accounts'} />
+                )}
+              </div>
+              <div id="view-permissions" className={viewClass(renderedActive, 'permissions')}>
+                {!authSession.isOwner ? active === 'permissions' ? (
+                  <ModuleAccessGate moduleLabel="权限管理" state={authSession} />
+                ) : null : (
+                  <PermissionManagementPage active={active === 'permissions'} />
+                )}
+              </div>
+            </main>
+            </TopbarActionsContext.Provider>
+            <footer className={appFooterClass}>
+              <span className={appFooterCopyClass}>本地参数保存在浏览器（localStorage），订单与商品资料同步到你自己的 Firebase Firestore，并使用 Firestore 自带的离线缓存</span>
+              <span className={appFooterLinksClass}>
+                <a className={appFooterLinkClass} href="/privacy.html">隐私与数据边界</a>
+                <a className={appFooterLinkClass} href="/terms.html">使用条款</a>
+                <a className={appFooterLinkClass} href="https://tk-evu-docs.pages.dev/guide/database" target="_blank" rel="noopener">数据库说明</a>
+              </span>
+              <span className={appFooterCopyrightClass}>TK 电商工具箱 © <span id="yr">{year}</span></span>
+            </footer>
           </div>
-          <div id="view-login" className={viewClass(renderedActive, 'login')}>
-            <ProjectLoginPage authSession={authSession} />
-          </div>
-          <div id="view-orders" className={viewClass(renderedActive, 'orders')}>
-            {isBlockedByPermission('orders') ? active === 'orders' ? (
-              <ModuleAccessGate moduleLabel={activeModuleLabel} state={authSession} />
-            ) : null : (
-              <OrdersPage active={active === 'orders'} />
-            )}
-          </div>
-          <div id="view-products" className={viewClass(renderedActive, 'products')}>
-            {isBlockedByPermission('products') ? active === 'products' ? (
-              <ModuleAccessGate moduleLabel={activeModuleLabel} state={authSession} />
-            ) : null : (
-              <ProductsPage active={active === 'products'} />
-            )}
-          </div>
-          <div id="view-finance" className={viewClass(renderedActive, 'finance')}>
-            {isBlockedByPermission('finance') ? active === 'finance' ? (
-              <ModuleAccessGate moduleLabel={activeModuleLabel} state={authSession} />
-            ) : null : (
-              <FinancePage active={active === 'finance'} />
-            )}
-          </div>
-          <div id="view-collection" className={viewClass(renderedActive, 'collection')}>
-            {isBlockedByPermission('collection') ? active === 'collection' ? (
-              <ModuleAccessGate moduleLabel={activeModuleLabel} state={authSession} />
-            ) : null : (
-              <CollectionPage active={active === 'collection'} />
-            )}
-          </div>
-          <div id="view-analytics" className={viewClass(renderedActive, 'analytics')}>
-            {isBlockedByPermission('analytics') ? active === 'analytics' ? (
-              <ModuleAccessGate moduleLabel={activeModuleLabel} state={authSession} />
-            ) : null : (
-              <AnalyticsPane active={active === 'analytics'} />
-            )}
-          </div>
-          <div id="view-project-settings" className={viewClass(renderedActive, 'project-settings')}>
-            {!authSession.isOwner ? active === 'project-settings' ? (
-              <ModuleAccessGate moduleLabel="项目配置" state={authSession} />
-            ) : null : (
-              <ProjectSettingsPage active={active === 'project-settings'} />
-            )}
-          </div>
-          <div id="view-accounts" className={viewClass(renderedActive, 'accounts')}>
-            {!authSession.isOwner ? active === 'accounts' ? (
-              <ModuleAccessGate moduleLabel="账号管理" state={authSession} />
-            ) : null : (
-              <AccountManagementPage active={active === 'accounts'} />
-            )}
-          </div>
-          <div id="view-permissions" className={viewClass(renderedActive, 'permissions')}>
-            {!authSession.isOwner ? active === 'permissions' ? (
-              <ModuleAccessGate moduleLabel="权限管理" state={authSession} />
-            ) : null : (
-              <PermissionManagementPage active={active === 'permissions'} />
-            )}
-          </div>
-        </main>
-        <footer className={appFooterClass}>
-          <span className={appFooterCopyClass}>本地参数保存在浏览器（localStorage），订单与商品资料同步到你自己的 Firebase Firestore，并使用 Firestore 自带的离线缓存</span>
-          <span className={appFooterLinksClass}>
-            <a className={appFooterLinkClass} href="/privacy.html">隐私与数据边界</a>
-            <a className={appFooterLinkClass} href="/terms.html">使用条款</a>
-            <a className={appFooterLinkClass} href="https://tk-evu-docs.pages.dev/guide/database" target="_blank" rel="noopener">数据库说明</a>
-          </span>
-          <span className={appFooterCopyrightClass}>TK 电商工具箱 © <span id="yr">{year}</span></span>
-        </footer>
+        </div>
       </div>
       <AppRuntime />
     </>

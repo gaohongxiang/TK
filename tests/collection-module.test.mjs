@@ -59,14 +59,20 @@ assert.doesNotMatch(
 
 assert.match(
   collectionSource,
-  /statusStripClass[\s\S]*已连接 · \$\{projectId\}[\s\S]*syncStatusClass\(syncClass\)[\s\S]*refreshButtonClass\(loading\)[\s\S]*刷新采编记录/,
-  '商品采编页需要像订单管理一样在左侧展示连接状态、同步状态和刷新按钮'
+  /statusStripClass[\s\S]*syncStatusClass\(syncClass\)[\s\S]*refreshButtonClass\(loading\)[\s\S]*刷新采编记录/,
+  '商品采编页需要在左侧展示同步状态和刷新按钮，数据库连接入口交给顶部全局菜单'
 );
 
 assert.match(
   collectionSource,
-  /id="collection-export"[\s\S]*<FileDown[\s\S]*导出 CSV[\s\S]*id="collection-disconnect-firestore"[\s\S]*退出数据库/,
-  '商品采编页连接后右侧需要像商品和订单一样提供导出 CSV 和退出数据库按钮'
+  /id="collection-export"[\s\S]*<FileDown[\s\S]*导出 CSV/,
+  '商品采编页连接后右侧需要提供导出 CSV'
+);
+
+assert.doesNotMatch(
+  collectionSource,
+  /id="collection-user"|id="collection-disconnect-firestore"/,
+  '商品采编页不应重复展示数据库连接和退出数据库入口'
 );
 
 assert.doesNotMatch(
@@ -209,7 +215,7 @@ for (const [pattern, message] of [
   [/商品采集[\s\S]*商品编辑/, '商品采编页需要展示两个技能入口'],
   [/先采集[\s\S]*再编辑[\s\S]*看回写/, '商品采编页需要展示采集、编辑和回写三步流程'],
   [/<CardTitle className="mb-0"><ClipboardList[\s\S]*使用说明[\s\S]*<div className=\{skillGridClass\}[\s\S]*skillCards\.map[\s\S]*<div className=\{workflowGridClass\}[\s\S]*usageSteps\.map/, '使用说明需要先渲染技能入口，再渲染三步流程'],
-  [/<\/Card>[\s\S]*<div className=\{metricGridClass\}[\s\S]*collection-user[\s\S]*TableToolbar/, '使用说明结束后需要直接进入指标和采集工具条']
+  [/<\/Card>[\s\S]*<div className=\{metricGridClass\}[\s\S]*statusStripClass[\s\S]*TableToolbar/, '使用说明结束后需要直接进入指标和采集工具条，数据库连接入口不在模块内重复展示']
 ]) {
   assert.match(collectionSource, pattern, message);
 }
@@ -314,8 +320,8 @@ assert.match(
 
 assert.match(
   collectionProviderSource,
-  /pullAccounts[\s\S]*collection\('order_accounts'\)[\s\S]*filter\(row => !row\.data\.deletedAt\)/,
-  '商品采编 Firestore provider 需要单独读取共享账号集合，采编记录权限不足不应影响账号体系'
+  /function accountsFromSnapshot[\s\S]*filter\(row => !row\.data\.deletedAt\)[\s\S]*pullAccounts[\s\S]*collection\('order_accounts'\)[\s\S]*return accountsFromSnapshot\(snapshot\)/,
+  '商品采编 Firestore provider 需要通过共享账号集合生成账号标签，采编记录权限不足不应影响账号体系'
 );
 
 assert.match(
@@ -326,8 +332,8 @@ assert.match(
 
 assert.match(
   collectionSource,
-  /const \[accounts, setAccounts\][\s\S]*Promise\.all\(\[[\s\S]*pullAccounts\(\)[\s\S]*pullDatasets\(\{\s*includeRejects:\s*false\s*\}\)[\s\S]*setAccounts\(remoteAccounts\)[\s\S]*recordsPermissionBlocked[\s\S]*markPermissionBlocked\(\)[\s\S]*<AccountTabsBar[\s\S]*<ModuleListState[\s\S]*数据库权限不足/,
-  '商品采编页需要并行读取共享账号和采编记录，且记录权限不足时仍先显示共享账号标签'
+  /const \[accounts, setAccounts\][\s\S]*subscribeSnapshot\(snapshot =>[\s\S]*setAccounts\(snapshot\.accounts \|\| \[\]\)[\s\S]*setDatasets\(\{\s*records:\s*remoteRecords\s*\}\)[\s\S]*markPermissionBlocked\(\)[\s\S]*<AccountTabsBar[\s\S]*<ModuleListState[\s\S]*数据库权限不足/,
+  '商品采编页需要实时订阅共享账号和采编记录，且记录权限不足时走统一权限提示'
 );
 
 assert.match(
@@ -350,8 +356,8 @@ assert.match(
 
 assert.match(
   collectionSource,
-  /setDatasets\(\{\s*records:\s*remoteDatasets\.records\s*\}\)[\s\S]*setSyncText\(`已同步 · \$\{remoteDatasets\.records\?\.rows\.length \|\| 0\} 条`\)/,
-  '商品采编页刷新云端数据后必须把 records 写入 React 状态，不能只更新“已同步”计数'
+  /setDatasets\(\{\s*records:\s*remoteRecords\s*\}\)[\s\S]*buildFirestoreSyncStatus\(snapshot\.hasPendingWrites \? 'queueing' : 'confirmed'[\s\S]*count:\s*remoteRecords\?\.rows\.length \|\| 0/,
+  '商品采编页收到云端快照后必须把 records 写入 React 状态，并用共享同步状态显示记录数'
 );
 
 assert.doesNotMatch(

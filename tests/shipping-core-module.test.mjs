@@ -54,7 +54,7 @@ assert.doesNotMatch(htmlSource, /<script src="js\/shipping-core\.js" defer><\/sc
 
   assert.equal(esmQuote.band.range, '0 - 0.5 kg', '共享运费核心 ESM 模块需要命中正确价卡');
   assert.equal(esmQuote.chargeWeightKg, 0.375, '共享运费核心 ESM 模块需要按体积重计费');
-  assert.equal(esmQuote.jpyFee, 322.5, '共享运费核心 ESM 模块需要扣除用户承担金额');
+  assert.equal(esmQuote.jpyFee, 322.5, '共享运费核心 ESM 模块需要扣除买家支付运费');
   assert.equal(shippingModule.computeCalculatedShippingCost({ quote: esmQuote, multiplier: 1.1, labelFee: 1.2 }), 16.3, '共享运费核心 ESM 模块需要输出含倍率和贴单费的人民币运费');
   assert.equal(typeof shippingModule.TKShippingCore.getShippingBand, 'function', '共享运费核心 ESM 模块需要保留命名空间导出');
 

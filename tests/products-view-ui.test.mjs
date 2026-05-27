@@ -104,7 +104,7 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /<PageHero[\s\S]*title="商品管理"[\s\S]*kicker="商品资料 \/ 预估运费 \/ 采购链接"[\s\S]*description="沉淀商品资料、预估运费和采购链接，录一次基础资料，后续订单直接复用。"/,
+  /<ModuleWorkspace[\s\S]*<ModuleHeader[\s\S]*title="商品管理"[\s\S]*description="沉淀商品资料、预估运费和采购链接，录一次基础资料，后续订单直接复用。"/,
   '商品管理需要保留商品资料、预估运费和采购链接说明文案'
 );
 
@@ -122,8 +122,14 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /ot-header-status-row[\s\S]*statusStripClass[\s\S]*statusStripLeftClass[\s\S]*id="pl-user"[\s\S]*id="pl-sync"[\s\S]*id="pl-refresh"[\s\S]*statusStripRightClass[\s\S]*id="pl-export"[\s\S]*id="pl-disconnect-firestore"[\s\S]*<AccountTabsBar[\s\S]*id="pl-acc-tabs"[\s\S]*actionsId="pl-acc-actions"[\s\S]*id="pl-add"/,
-  'React 商品管理顶部需要和订单管理一致：连接、同步和图标刷新在左侧，账号栏和新增商品走 AccountTabsBar'
+  /ot-header-status-row[\s\S]*statusStripClass[\s\S]*statusStripLeftClass[\s\S]*id="pl-sync"[\s\S]*id="pl-refresh"[\s\S]*statusStripRightClass[\s\S]*id="pl-export"[\s\S]*<AccountTabsBar[\s\S]*id="pl-acc-tabs"[\s\S]*actionsId="pl-acc-actions"[\s\S]*id="pl-add"/,
+  'React 商品管理顶部需要保留同步和图标刷新，数据库连接入口交给顶部全局菜单'
+);
+
+assert.doesNotMatch(
+  reactProductsPageSource,
+  /id="pl-user"|id="pl-disconnect-firestore"/,
+  'React 商品管理不能在模块内重复展示数据库连接和退出数据库入口'
 );
 
 assert.match(

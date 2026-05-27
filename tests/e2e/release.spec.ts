@@ -137,6 +137,10 @@ async function installOfflineFixtures(page: Page) {
 
   await page.addInitScript(rows => {
     const now = '2026-05-05T00:00:00.000Z';
+    const currentUser = {
+      uid: 'tk-e2e-user',
+      email: 'tester@example.com'
+    };
     const firestoreConfig = {
       apiKey: 'e2e-api-key',
       authDomain: 'tk-e2e.firebaseapp.com',
@@ -167,6 +171,29 @@ async function installOfflineFixtures(page: Page) {
           scope: 'app',
           updatedAt: now,
           schemaVersion: 1
+        }
+      },
+      members: {
+        [currentUser.email]: {
+          uid: currentUser.uid,
+          email: currentUser.email,
+          role: 'owner',
+          modules: ['products', 'orders', 'finance', 'collection', 'analytics'],
+          createdAt: now,
+          updatedAt: now
+        }
+      },
+      _tk_config: {
+        project: {
+          initialized: true,
+          projectId: firestoreConfig.projectId,
+          updatedAt: now
+        },
+        owner: {
+          email: currentUser.email,
+          uid: currentUser.uid,
+          createdAt: now,
+          updatedAt: now
         }
       },
       collection_records: {
@@ -288,6 +315,25 @@ async function installOfflineFixtures(page: Page) {
         };
       }
     };
+    const auth = {
+      currentUser,
+      onAuthStateChanged(callback: (user: typeof currentUser | null) => void) {
+        setTimeout(() => callback(auth.currentUser), 0);
+        return () => {};
+      },
+      async signInWithEmailAndPassword() {
+        auth.currentUser = currentUser;
+        return { user: currentUser };
+      },
+      async createUserWithEmailAndPassword() {
+        auth.currentUser = currentUser;
+        return { user: currentUser };
+      },
+      async sendPasswordResetEmail() {},
+      async signOut() {
+        auth.currentUser = null;
+      }
+    };
 
     window.firebase = {
       apps: [],
@@ -297,7 +343,8 @@ async function installOfflineFixtures(page: Page) {
         const app = {
           name,
           options: config,
-          firestore: () => db
+          firestore: () => db,
+          auth: () => auth
         };
         this.apps.push(app);
         return app;
@@ -361,6 +408,30 @@ async function activateFooterRoute(page: Page, href: string, heading: string) {
   await expect(page.locator('h1')).toHaveText(heading);
 }
 
+async function openModule(page: Page, key: string) {
+  const desktopLink = page.locator(`.app-shell-sidebar:not([data-mobile-sidebar="true"]) .app-shell-link[data-view="${key}"]`);
+  if (await desktopLink.isVisible()) {
+    await desktopLink.click();
+    return;
+  }
+
+  await page.getByRole('button', { name: '打开导航' }).click();
+  const drawerLink = page.locator(`.app-shell-mobile-drawer .app-shell-link[data-view="${key}"]`);
+  await expect(drawerLink).toBeVisible();
+  await drawerLink.click();
+  await expect(page.locator('.app-shell-mobile-drawer')).toHaveCount(0);
+}
+
+async function expectActiveModule(page: Page, key: string, label: string) {
+  const visibleActiveLink = page.locator(`.app-shell-link[data-view="${key}"][aria-current="page"]:visible`);
+  if (await visibleActiveLink.count()) {
+    await expect(visibleActiveLink.first()).toContainText(label);
+    return;
+  }
+
+  await expect(page.locator('.app-shell-mobile-title')).toHaveText(label);
+}
+
 async function expectNoOverlap(page: Page, firstSelector: string, secondSelector: string, label: string) {
   const [firstBox, secondBox] = await Promise.all([
     page.locator(firstSelector).boundingBox(),
@@ -403,12 +474,11 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('main#main-content')).toBeVisible();
 
     await expect(page.locator('#view-calc')).toBeVisible();
-    await expect(page.locator('nav.modules a.active')).toHaveText('利润计算器');
-    await expect(page.locator('nav.modules a[data-view="calc"]')).toHaveAttribute('aria-current', 'page');
+    await expectActiveModule(page, 'calc', '利润计算器');
     await page.locator('#costNew').fill('20');
     await page.locator('#overseasShippingNew').fill('5');
     await expect(page.locator('#totalCostNew')).toHaveValue('25.00');
-    await expect(page.locator('#tbodyNew')).toContainText('4折');
+    await expect(page.locator('#tbodyV3')).toContainText('4折');
     await page.locator('#shippingMultiplierNew').fill('');
     await page.keyboard.type('1。1');
     await expect(page.locator('#shippingMultiplierNew')).toHaveValue('1.1');
@@ -461,14 +531,12 @@ test.describe('release browser smoke', () => {
       const total = document.querySelector<HTMLInputElement>('#totalCostNew');
       const cargo = document.querySelector<HTMLSelectElement>('#shipCargoTypeNew');
       const weight = document.querySelector<HTMLInputElement>('#shipActualWeightNew');
-      const firstTab = document.querySelector<HTMLElement>('[data-calc-tab="pricing"]');
-      const secondTab = document.querySelector<HTMLElement>('[data-calc-tab="pricingNew"]');
-      const tableCell = document.querySelector<HTMLElement>('#tbodyNew td');
-      if (!cost || !total || !cargo || !weight || !firstTab || !secondTab || !tableCell) return null;
+      const tabs = Array.from(document.querySelectorAll<HTMLElement>('.calc-tabs [data-calc-tab]'));
+      const tableCell = document.querySelector<HTMLElement>('#tbodyV3 td');
+      if (!cost || !total || !cargo || !weight || tabs.length < 2 || !tableCell) return null;
       const costStyle = getComputedStyle(cost);
       const totalStyle = getComputedStyle(total);
-      const firstTabBox = firstTab.getBoundingClientRect();
-      const secondTabBox = secondTab.getBoundingClientRect();
+      const tabBoxes = tabs.map(tab => tab.getBoundingClientRect());
       const cellStyle = getComputedStyle(tableCell);
       return {
         costBackground: costStyle.backgroundImage || costStyle.backgroundColor,
@@ -477,8 +545,12 @@ test.describe('release browser smoke', () => {
         totalHeight: total.getBoundingClientRect().height,
         cargoHeight: cargo.getBoundingClientRect().height,
         weightHeight: weight.getBoundingClientRect().height,
-        tabWidth: firstTabBox.width,
-        tabGap: Math.round(secondTabBox.left - firstTabBox.right),
+        maxTabWidth: Math.max(...tabBoxes.map(box => box.width)),
+        tabsSameLine: Math.max(...tabBoxes.map(box => Math.round(box.top))) === Math.min(...tabBoxes.map(box => Math.round(box.top))),
+        tabsDoNotOverlap: tabBoxes
+          .slice()
+          .sort((a, b) => a.left - b.left)
+          .every((box, index, boxes) => index === 0 || Math.round(box.left - boxes[index - 1].right) >= 0),
         tableCellBorderLeft: cellStyle.borderLeftWidth,
         tableCellBorderRight: cellStyle.borderRightWidth
       };
@@ -491,17 +563,18 @@ test.describe('release browser smoke', () => {
     expect(calcVisualState?.totalHeight).toBeGreaterThanOrEqual(46);
     expect(calcVisualState?.totalHeight).toBeLessThanOrEqual(50);
     expect(Math.abs((calcVisualState?.cargoHeight || 0) - (calcVisualState?.weightHeight || 0))).toBeLessThanOrEqual(1);
-    expect(calcVisualState?.tabWidth).toBeLessThan(140);
-    expect(calcVisualState?.tabGap).toBeGreaterThanOrEqual(0);
+    expect(calcVisualState?.maxTabWidth).toBeLessThan(140);
+    expect(calcVisualState?.tabsSameLine).toBe(true);
+    expect(calcVisualState?.tabsDoNotOverlap).toBe(true);
     expect(calcVisualState?.tableCellBorderLeft).toBe('0px');
     expect(calcVisualState?.tableCellBorderRight).toBe('0px');
 
-    await page.locator('nav.modules a[data-view="products"]').click();
+    await openModule(page, 'products');
     await expect(page.locator('#pl-main')).toBeVisible();
-    await expect(page.locator('nav.modules a[data-view="products"]')).toHaveAttribute('aria-current', 'page');
-    await expect(page.locator('nav.modules a[data-view="calc"]')).not.toHaveAttribute('aria-current', 'page');
+    await expectActiveModule(page, 'products', '商品管理');
+    await expect(page.locator('.app-shell-link[data-view="calc"][aria-current="page"]:visible')).toHaveCount(0);
     await expect(page.locator('#pl-sync')).toContainText('云端已同步');
-    await expect(page.locator('#pl-main .ot-header-status-row .left #pl-user')).toBeVisible();
+    await expect(page.locator('#pl-main .ot-header-status-row .left #pl-user')).toHaveCount(0);
     await expect(page.locator('#pl-main .ot-header-status-row .left #pl-sync')).toBeVisible();
     await expect(page.locator('#pl-main .ot-header-status-row .left #pl-refresh')).toBeVisible();
     await expect(page.locator('#pl-main .ot-header-status-row .right #pl-export')).toBeVisible();
@@ -509,7 +582,6 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#pl-refresh')).toHaveAttribute('aria-label', '刷新商品数据');
     await expect(page.locator('#pl-refresh')).toHaveText('');
     await expect(page.locator('#pl-export')).toContainText('导出 CSV');
-    await expectNoOverlap(page, '#pl-user', '#pl-export', 'product header status and export button should not overlap');
     await expectNoOverlap(page, '#pl-sync', '#pl-refresh', 'product sync text and refresh button should not overlap');
     await expectNoOverlap(page, '#pl-acc-tabs', '#pl-add', 'product account tabs and add button should not overlap');
     await page.locator('#pl-add').click();
@@ -540,7 +612,7 @@ test.describe('release browser smoke', () => {
     await page.locator('#pl-form button[type="submit"]').click();
     await expect(page.locator('#pl-table-container')).toContainText('E2E 测试雨衣 改');
 
-    await page.locator('nav.modules a[data-view="orders"]').click();
+    await openModule(page, 'orders');
     await expect(page.locator('#ot-main')).toBeVisible();
     await expect(page.locator('#ot-main')).toHaveCSS('background-color', productMainBackground);
     await expect(page.locator('#ot-sync')).toContainText('云端已同步');
@@ -577,13 +649,13 @@ test.describe('release browser smoke', () => {
     await page.locator('#ot-form button[type="submit"]').click();
     await expect(page.locator('#ot-table-container')).toContainText('已采购');
 
-    await page.locator('nav.modules a[data-view="collection"]').click();
+    await openModule(page, 'collection');
     await expect(page.locator('#view-collection')).toBeVisible();
-    await expect(page.locator('nav.modules a[data-view="collection"]')).toHaveAttribute('aria-current', 'page');
+    await expectActiveModule(page, 'collection', '商品采编');
     await expect(page.locator('[data-react-collection-page-ready="true"]')).toBeVisible();
     await expect(page.locator('#collection-sync')).toContainText('已同步');
     await expect(page.locator('#collection-export')).toContainText('导出 CSV');
-    await expect(page.locator('#collection-disconnect-firestore')).toContainText('退出数据库');
+    await expect(page.locator('[data-app-topbar-connection]')).toContainText('已连接 · tk-e2e');
     await expect(page.locator('.collection-table')).toContainText('E2E 露营挂钩');
     await page.locator('#collection-search').fill('露营');
     await expect(page.locator('.collection-table')).toContainText('E2E 露营挂钩');
@@ -591,9 +663,9 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('.collection-table')).toContainText('露营收纳场景明确');
     await expect(page.locator('button').filter({ hasText: '导出当前表' })).toHaveCount(0);
 
-    await page.locator('nav.modules a[data-view="analytics"]').click();
+    await openModule(page, 'analytics');
     await expect(page.locator('#view-analytics')).toBeVisible();
-    await expect(page.locator('#analytics-user')).toContainText('已连接 · tk-e2e');
+    await expect(page.locator('[data-app-topbar-connection]')).toContainText('已连接 · tk-e2e');
     await expect(page.locator('#analytics-acc-tabs')).toContainText('Test-Account');
     await page.locator('#analytics-acc-tabs').getByText('Test-Account').click();
     await page.locator('.analytics-file-picker').click();
@@ -629,7 +701,7 @@ test.describe('release browser smoke', () => {
     await activateFooterRoute(page, '/terms.html', '使用条款与免责声明');
   });
 
-  test('uses an in-page confirmation when disconnecting Firebase', async ({ page }) => {
+  test('keeps project connection stable and only signs out accounts', async ({ page }) => {
     const nativeDialogs = [];
     page.on('dialog', async dialog => {
       nativeDialogs.push(dialog.message());
@@ -640,23 +712,18 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#ot-main')).toBeVisible();
     await expect(page.locator('#ot-sync')).toContainText('云端已同步');
 
-    await page.locator('#ot-disconnect-firestore').click();
-    await expect(page.locator('#app-firestore-disconnect-modal')).toBeVisible();
-    await expect(page.locator('#app-firestore-disconnect-project')).toHaveText('tk-e2e');
+    await page.locator('[data-app-topbar-connection] button').click();
+    await expect(page.getByRole('button', { name: '数据库管理' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '退出数据库' })).toHaveCount(0);
+    await expect(page.locator('#app-firestore-disconnect-modal')).toHaveCount(0);
     expect(nativeDialogs).toEqual([]);
 
-    await page.locator('#app-cancel-firestore-disconnect').click();
-    await expect(page.locator('#app-firestore-disconnect-modal')).not.toBeVisible();
+    await page.locator('[data-app-topbar-auth] button').click();
+    await page.getByRole('button', { name: '退出登录' }).click();
     await expect(page.evaluate(() => JSON.parse(localStorage.getItem('tk.firestore.cfg.v1') || '{}').projectId)).resolves.toBe('tk-e2e');
-    await expect(page.locator('#ot-main')).toBeVisible();
-
-    await page.locator('#ot-disconnect-firestore').click();
-    await page.locator('#app-confirm-firestore-disconnect').click();
-    await expect(page.locator('#app-firestore-disconnect-modal')).not.toBeVisible();
-    await expect(page.locator('#ot-main')).toBeVisible();
-    await expect(page.locator('#ot-main').getByText('连接数据库')).toBeVisible();
-    await expect(page.locator('#ot-open-connection')).toBeVisible();
-    await expect(page.evaluate(() => localStorage.getItem('tk.firestore.cfg.v1'))).resolves.toBeNull();
+    await expect(page.locator('#ot-main')).not.toBeVisible();
+    await expect(page.locator('#view-login')).toBeVisible();
+    await expect(page.locator('#view-login')).toContainText('项目登录');
     expect(nativeDialogs).toEqual([]);
   });
 

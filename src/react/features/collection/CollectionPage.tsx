@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ModuleListState } from '@/components/ui/module-list-state';
-import { PageHero } from '@/components/ui/page-hero';
+import { ModuleHeader, ModuleWorkspace } from '@/components/ui/module-workspace';
 import { SearchHelpButton } from '@/components/ui/search-help';
 import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, syncStatusClass } from '@/components/ui/status-strip';
@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { showAppToast } from '@/app/toast';
 import { cn } from '@/lib/utils';
 import { TKFirestoreConnection } from '../../../firestore-connection.ts';
+import { buildFirestoreSyncStatus } from '../../../firestore-sync-status.ts';
 import {
   formatFirestoreRulesUpdateMessage,
   isPermissionDenied
@@ -157,7 +158,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<CollectionSortOrder>('asc');
   const [syncText, setSyncText] = useState('等待连接 Firebase');
-  const [syncClass, setSyncClass] = useState<'local' | 'saved' | 'saving' | 'error'>('local');
+  const [syncClass, setSyncClass] = useState<string>('local');
   const [loading, setLoading] = useState(false);
   const [copyingRules, setCopyingRules] = useState(false);
   const [permissionBlocked, setPermissionBlocked] = useState(false);
@@ -171,6 +172,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
   const [deletingAccountName, setDeletingAccountName] = useState('');
   const [projectId, setProjectId] = useState('');
   const activeRef = useRef(active);
+  const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
   const providerRef = useRef(CollectionProviderFirestore.create({
     state: {},
     helpers: { nowIso: () => new Date().toISOString() }
@@ -225,6 +227,12 @@ function CollectionPage({ active = true }: { active?: boolean }) {
     }));
   }, [projectId]);
 
+  const stopSnapshot = useCallback(() => {
+    if (!unsubscribeSnapshotRef.current) return;
+    unsubscribeSnapshotRef.current();
+    unsubscribeSnapshotRef.current = null;
+  }, []);
+
   useEffect(() => {
     activeRef.current = active;
   }, [active]);
@@ -235,71 +243,70 @@ function CollectionPage({ active = true }: { active?: boolean }) {
   }, [activeAccount, allAccounts]);
 
   const markPermissionBlocked = useCallback(() => {
+    stopSnapshot();
     setPermissionBlocked(true);
     setDatasets({ records: null });
     setSyncText('');
     setSyncClass('error');
-  }, []);
+  }, [stopSnapshot]);
 
   const loadRemoteDatasets = useCallback(async () => {
     const cfg = TKFirestoreConnection.getConfig();
     if (!cfg?.configText) {
+      stopSnapshot();
       setProjectId('');
       setPermissionBlocked(false);
       setAccounts([]);
-      setSyncText('未连接，自动同步结果会在连接后显示');
-      setSyncClass('local');
+      const status = buildFirestoreSyncStatus('unconnected');
+      setSyncText(status.text);
+      setSyncClass(status.className || 'local');
       return false;
     }
     setLoading(true);
-    setSyncText('正在刷新云端数据…');
-    setSyncClass('saving');
+    const refreshingStatus = buildFirestoreSyncStatus('refreshing');
+    setSyncText(refreshingStatus.text);
+    setSyncClass(refreshingStatus.className);
     try {
       const next = await providerRef.current.init({ firestoreConfigText: cfg.configText });
       setProjectId(next.projectId);
-      let remoteDatasets: { records: CollectionDataset | null } = { records: null };
-      let remoteAccounts: string[] = [];
-      let recordsPermissionBlocked = false;
-      try {
-        [remoteAccounts, remoteDatasets] = await Promise.all([
-          providerRef.current.pullAccounts(),
-          providerRef.current.pullDatasets({ includeRejects: false }).catch(error => {
-            if (isPermissionDenied(error)) {
-              recordsPermissionBlocked = true;
-              return { records: null };
-            }
-            throw error;
-          })
-        ]);
-      } catch (error) {
+      stopSnapshot();
+      unsubscribeSnapshotRef.current = providerRef.current.subscribeSnapshot(snapshot => {
+        const remoteRecords = snapshot.records || null;
+        setAccounts(snapshot.accounts || []);
+        setPermissionBlocked(false);
+        setDatasets({ records: remoteRecords });
+        setLoading(false);
+        const status = buildFirestoreSyncStatus(snapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
+          action: '采编更改',
+          count: remoteRecords?.rows.length || 0,
+          unit: '条'
+        });
+        setSyncText(status.text);
+        setSyncClass(status.className);
+      }, error => {
+        setLoading(false);
         if (isPermissionDenied(error)) {
           markPermissionBlocked();
-          return false;
+          return;
         }
-        throw error;
-      }
-      setAccounts(remoteAccounts);
-      if (recordsPermissionBlocked) {
-        markPermissionBlocked();
-        return false;
-      }
-      setPermissionBlocked(false);
-      setDatasets({ records: remoteDatasets.records });
-      setSyncText(`已同步 · ${remoteDatasets.records?.rows.length || 0} 条`);
-      setSyncClass('saved');
+        const status = buildFirestoreSyncStatus('failed', { error: formatFirestoreError(error, '采编实时同步失败') });
+        setSyncText(status.text);
+        setSyncClass(status.className);
+      });
       return true;
     } catch (error) {
       if (isPermissionDenied(error)) {
         markPermissionBlocked();
         return false;
       }
-      setSyncText(formatFirestoreError(error, '数据库同步失败'));
-      setSyncClass('error');
+      const status = buildFirestoreSyncStatus('failed', { error: formatFirestoreError(error, '数据库同步失败') });
+      setSyncText(status.text);
+      setSyncClass(status.className);
       return false;
     } finally {
-      setLoading(false);
+      if (!unsubscribeSnapshotRef.current) setLoading(false);
     }
-  }, [markPermissionBlocked]);
+  }, [markPermissionBlocked, stopSnapshot]);
 
   useEffect(() => {
     if (!active) return undefined;
@@ -335,6 +342,8 @@ function CollectionPage({ active = true }: { active?: boolean }) {
       window.removeEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
     };
   }, [loadRemoteDatasets]);
+
+  useEffect(() => () => stopSnapshot(), [stopSnapshot]);
 
   async function refreshRemote() {
     const ok = await loadRemoteDatasets();
@@ -513,12 +522,10 @@ function CollectionPage({ active = true }: { active?: boolean }) {
   }
 
   return (
-    <section className={collectionShellClass} data-react-collection-page-ready="true">
-      <PageHero
-        variant="collection"
+    <ModuleWorkspace className={collectionShellClass} data-react-collection-page-ready="true">
+      <ModuleHeader
         title="商品采编"
-        kicker="Codex Skills / GitHub / FastMoss / 店小秘"
-        description="商品采编由两个 Codex skill 串起来：商品采集负责 FastMoss 筛选、店小秘采集箱录入和 Firestore 同步；商品编辑负责店小秘编辑、1688 货源核验和编辑状态回写。"
+        description="商品采编由两个 Codex skill 串起来：商品采集负责 FastMoss 筛选，商品编辑负责店小秘编辑，并把候选到可上架的处理状态集中管理。"
       />
 
       <Card>
@@ -573,10 +580,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
       <Card>
         <div className={cn('mb-3', statusStripClass)}>
           <div className={cn(statusStripLeftClass, 'min-w-0 flex-wrap')}>
-            <Badge id="collection-user" className="min-h-[30px] min-w-0 max-w-full truncate text-[var(--text)] font-semibold">
-              {projectId ? `已连接 · ${projectId}` : '未连接 Firebase'}
-            </Badge>
-            {permissionBlocked ? null : <Badge id="collection-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge>}
+            {projectId && !permissionBlocked ? <Badge id="collection-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge> : null}
             <Button
               id="collection-refresh"
               variant="plain"
@@ -592,10 +596,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
           </div>
           <div className={statusStripRightClass}>
             {projectId ? (
-              <>
-                <Button id="collection-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={exportActiveDataset}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-                <Button id="collection-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
-              </>
+              <Button id="collection-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={exportActiveDataset}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
             ) : <Button size="sm" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>}
           </div>
         </div>
@@ -758,7 +759,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
         onOpenChange={setAccountDeleteOpen}
         onConfirm={deleteAccount}
       />
-    </section>
+    </ModuleWorkspace>
   );
 }
 

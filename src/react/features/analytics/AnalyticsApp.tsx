@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { HelpItem, HelpStack } from '@/components/ui/help-stack';
-import { PageHero } from '@/components/ui/page-hero';
 import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState, TableViewport } from '@/components/ui/table-tools';
@@ -19,12 +18,20 @@ import { ModuleListState } from '@/components/ui/module-list-state';
 import { AccountDeleteDialog, AccountEditDialog } from '@/components/ui/account-manage-dialogs';
 import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
 import { AddAccountDialog } from '@/components/ui/add-account-dialog';
+import {
+  ModuleAccountTabs,
+  ModuleHeader,
+  ModuleStatusBar,
+  ModuleToolbar,
+  ModuleWorkspace
+} from '@/components/ui/module-workspace';
 import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, storageHelpButtonClass, syncStatusClass } from '@/components/ui/status-strip';
 import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsPeriodComparison, AnalyticsRecord, AnalyticsXlsx } from '../../../analytics/types';
 import { AnalyticsProviderFirestore, type AnalyticsProviderSnapshotSummary } from '../../../analytics/provider-firestore.ts';
 import { aggregateAnalyses } from '../../../analytics/aggregate.ts';
 import { buildActionPlan } from '../../../analytics/action-plan.ts';
 import { TKFirestoreConnection } from '../../../firestore-connection.ts';
+import { buildFirestoreSyncStatus } from '../../../firestore-sync-status.ts';
 import { normalizeAccountName, uniqueAccounts } from '../../../products/accounts.ts';
 import {
   formatFirestoreRulesUpdateMessage,
@@ -101,8 +108,8 @@ type AnalyticsAppProps = {
 
 const analyticsShellClass = 'analytics-react-shell grid gap-3.5';
 const analyticsControlCardClass = 'analytics-control-card mb-2 grid gap-3 border-[color-mix(in_srgb,var(--accent2)_24%,var(--border))] p-4';
-const analyticsUploadRowClass = 'analytics-upload-card analytics-react-upload-card flex min-w-0 items-center justify-between gap-3.5 max-[760px]:grid max-[760px]:grid-cols-1';
-const periodControlClass = 'analytics-period-control flex min-w-0 flex-1 items-center gap-2.5 max-[760px]:grid max-[760px]:grid-cols-1';
+const analyticsUploadRowClass = 'analytics-upload-card analytics-react-upload-card grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3.5 max-[760px]:grid-cols-1';
+const periodControlClass = 'analytics-period-control flex min-w-0 flex-1 flex-wrap items-center gap-2.5 max-[760px]:grid max-[760px]:grid-cols-1';
 const analyticsChipClass = 'analytics-chip inline-flex min-h-[26px] items-center whitespace-nowrap rounded-full border border-[color-mix(in_srgb,var(--border)_82%,transparent)] bg-[color-mix(in_srgb,var(--panel2)_80%,transparent)] px-2.5 text-xs font-semibold text-[var(--muted)]';
 const uploadActionClass = 'analytics-upload-action relative flex min-w-[220px] justify-end max-[980px]:justify-start max-[640px]:min-w-0';
 const filePickerClass = 'analytics-file-picker inline-flex min-h-11 w-full max-w-[300px] cursor-pointer items-center justify-center gap-[9px] rounded-xl border border-[color-mix(in_srgb,var(--accent)_54%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_13%,var(--panel))] px-4 text-[13px] font-bold text-[color-mix(in_srgb,var(--accent)_76%,white)] transition-[transform,border-color,background-color] hover:-translate-y-px hover:border-[color-mix(in_srgb,var(--accent)_72%,white)] hover:bg-[color-mix(in_srgb,var(--accent)_18%,var(--panel))] max-[760px]:max-w-none';
@@ -118,7 +125,7 @@ const kpiCardClass = 'analytics-kpi-card min-h-28 rounded-xl border border-[colo
 const kpiLabelClass = 'analytics-kpi-label text-[11.5px] font-bold uppercase tracking-[.08em] text-[var(--muted)]';
 const kpiValueClass = 'analytics-kpi-value mt-[9px] text-[clamp(20px,2.1vw,25px)] font-bold leading-[1.12] text-[var(--text)]';
 const kpiMetaClass = 'analytics-kpi-meta mt-2 text-xs text-[var(--muted)]';
-const analyticsTwoColumnClass = 'grid grid-cols-2 items-stretch gap-4 max-[860px]:grid-cols-1';
+const analyticsTwoColumnClass = 'grid grid-cols-2 items-stretch gap-4 max-[980px]:grid-cols-1';
 const analyticsInsightLayoutClass = cn('analytics-insight-layout analytics-react-insight-layout', analyticsTwoColumnClass);
 const analyticsLayoutClass = cn('analytics-layout analytics-summary-layout', analyticsTwoColumnClass);
 const analyticsCardClass = 'analytics-chart-card min-w-0';
@@ -127,7 +134,7 @@ const sectionHeadClass = 'analytics-section-head mb-3.5 flex items-center justif
 const mutedChipClass = cn(analyticsChipClass, 'muted');
 const chartSlotClass = 'analytics-react-chart min-w-0 [&_.echarts-for-react]:h-full [&_.echarts-for-react]:w-full';
 const overviewChartWrapClass = 'analytics-react-overview-chart min-w-0';
-const overviewChartClass = cn(chartSlotClass, 'analytics-react-overview h-[332px] rounded-xl border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_32%,transparent),transparent),color-mix(in_srgb,var(--panel2)_18%,transparent)] px-1.5 pb-1 pt-2.5 max-[640px]:h-[250px]');
+const overviewChartClass = cn(chartSlotClass, 'analytics-react-overview h-[300px] rounded-xl border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_32%,transparent),transparent),color-mix(in_srgb,var(--panel2)_18%,transparent)] px-1.5 pb-1 pt-2.5 max-[640px]:h-[250px]');
 const funnelSummaryClass = 'analytics-react-funnel-summary mt-2.5 grid grid-cols-4 gap-2 max-[860px]:grid-cols-2 max-[640px]:grid-cols-1';
 const funnelStepClass = 'analytics-react-funnel-step grid min-w-0 grid-cols-[8px_minmax(0,1fr)_auto] items-center gap-[7px] rounded-[9px] border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[color-mix(in_srgb,var(--panel2)_30%,transparent)] px-2.5 py-[9px]';
 const funnelDotClass = 'analytics-react-funnel-dot h-2 w-2 rounded-full bg-[var(--funnel-color)]';
@@ -135,8 +142,8 @@ const funnelTextWrapClass = 'grid min-w-0 gap-0.5';
 const funnelLabelClass = 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-bold not-italic text-[var(--text)]';
 const funnelValueClass = 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] font-bold text-[var(--muted)]';
 const funnelRateClass = 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] font-bold not-italic text-[color-mix(in_srgb,var(--accent2)_74%,var(--text))]';
-const scatterWrapClass = 'analytics-react-scatter-wrap min-w-0';
-const scatterChartClass = cn(chartSlotClass, 'analytics-react-scatter h-[332px] rounded-xl border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_32%,transparent),transparent),color-mix(in_srgb,var(--panel2)_18%,transparent)] px-1.5 pb-1 pt-2.5 max-[640px]:h-[250px]');
+const scatterWrapClass = 'analytics-react-scatter-wrap grid min-w-0';
+const scatterChartClass = cn(chartSlotClass, 'analytics-react-scatter h-[300px] rounded-xl border border-[color-mix(in_srgb,var(--border)_72%,transparent)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_32%,transparent),transparent),color-mix(in_srgb,var(--panel2)_18%,transparent)] px-1.5 pb-1 pt-2.5 max-[640px]:h-[250px]');
 const scatterLegendClass = 'analytics-react-legend mt-4 flex flex-wrap gap-2';
 const scatterLegendItemClass = 'inline-flex min-h-6 items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--border)_76%,transparent)] bg-[color-mix(in_srgb,var(--panel2)_28%,transparent)] px-[9px] text-[11.5px] font-bold text-[var(--muted)]';
 const scatterLegendDotClass = 'h-2 w-2 rounded-full bg-[var(--legend-color)]';
@@ -151,7 +158,7 @@ const rankTrackBarClass = 'block h-full rounded-[inherit] bg-[linear-gradient(90
 const rankValueClass = 'analytics-rank-value grid justify-items-end gap-0.5 text-xs text-[var(--muted)] max-[640px]:col-start-2 max-[640px]:flex max-[640px]:items-center max-[640px]:gap-2 max-[640px]:justify-items-start';
 const rankValueStrongClass = 'text-[12.5px] text-[var(--text)]';
 const summaryCardClass = cn(analyticsCardClass, 'analytics-summary-card h-full');
-const portfolioSummaryClass = 'analytics-portfolio-summary grid gap-2.5';
+const portfolioSummaryClass = 'analytics-portfolio-summary grid h-full content-between gap-2.5';
 const portfolioMetricClass = 'analytics-portfolio-metric flex items-start justify-between gap-3 border-b border-[color-mix(in_srgb,var(--border)_58%,transparent)] py-2.5 last:border-b-0';
 const portfolioMetricLabelClass = 'text-xs font-bold text-[var(--muted)]';
 const portfolioMetricValueClass = 'whitespace-nowrap text-[15px] font-bold text-[var(--text)]';
@@ -820,6 +827,7 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
     state: {},
     helpers: { nowIso: () => new Date().toISOString() }
   }));
+  const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
   const allAccounts = accounts;
   const scopedSnapshots = useMemo(() => filterSnapshotsByAccount(savedSnapshots, activeAccount).sort(compareSnapshotsByPeriodDesc), [activeAccount, savedSnapshots]);
   const accountTabItems = useMemo(() => allAccounts.map(account => ({
@@ -842,6 +850,12 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
       }
     }));
   }, [projectId]);
+
+  const stopSnapshot = useCallback(() => {
+    if (!unsubscribeSnapshotRef.current) return;
+    unsubscribeSnapshotRef.current();
+    unsubscribeSnapshotRef.current = null;
+  }, []);
 
   const loadPeriodAnalysis = useCallback(async (periodKey: string, snapshotsSource: AnalyticsProviderSnapshotSummary[] = scopedSnapshots) => {
     const cfg = TKFirestoreConnection.getConfig();
@@ -914,87 +928,69 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
 
   const loadLatestAnalysis = useCallback(async () => {
     const cfg = TKFirestoreConnection.getConfig();
-	      if (!cfg?.configText) {
-	        setProjectId('');
-	        setSyncText('未连接');
-	        setSyncTone('local');
-	        setPermissionBlocked(false);
-	        setAccounts([]);
-	        setAnalysis(null);
-	        setSavedSnapshots([]);
-	        setSelectedPeriodKey(ALL_PERIODS_KEY);
-	        return false;
-	      }
-    setSyncText('正在读取最近一次数据分析…');
-    setSyncTone('saving');
+    if (!cfg?.configText) {
+      stopSnapshot();
+      setProjectId('');
+      const status = buildFirestoreSyncStatus('unconnected');
+      setSyncText(status.text);
+      setSyncTone('local');
+      setPermissionBlocked(false);
+      setAccounts([]);
+      setAnalysis(null);
+      setSavedSnapshots([]);
+      setSelectedPeriodKey(ALL_PERIODS_KEY);
+      return false;
+    }
+    const refreshingStatus = buildFirestoreSyncStatus('refreshing');
+    setSyncText('正在读取数据分析列表…');
+    setSyncTone(refreshingStatus.className as 'saving');
     try {
       const next = await providerRef.current.init({ firestoreConfigText: cfg.configText });
       setProjectId(next.projectId);
-      const remoteAccounts = await providerRef.current.pullAccounts();
-      let snapshotsPermissionBlocked = false;
-      const snapshots = await providerRef.current.listSavedAnalyses().catch(error => {
+      stopSnapshot();
+      unsubscribeSnapshotRef.current = providerRef.current.subscribeSnapshot(snapshot => {
+        const nextAccounts = uniqueAccounts(snapshot.accounts || []);
+        const snapshots = snapshot.snapshots || [];
+        setAccounts(nextAccounts);
+        setActiveAccount(current => (
+          current === ALL_ACCOUNTS_KEY || nextAccounts.includes(current) ? current : ALL_ACCOUNTS_KEY
+        ));
+        setSavedSnapshots(snapshots);
+        setPermissionBlocked(false);
+        const status = buildFirestoreSyncStatus(snapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
+          action: '数据分析更改',
+          count: snapshots.length,
+          unit: '个分析'
+        });
+        setSyncText(snapshots.length ? status.text : '尚未保存分析');
+        setSyncTone(snapshot.hasPendingWrites ? 'saving' : 'saved');
+      }, error => {
+        handleAnalyticsSyncError(error);
         if (isPermissionDenied(error)) {
-          snapshotsPermissionBlocked = true;
-          return [] as AnalyticsProviderSnapshotSummary[];
+          setPermissionBlocked(true);
+          setAnalysis(null);
+          setSelectedPeriodKey(ALL_PERIODS_KEY);
+          setSyncText('');
+        } else {
+          setSyncText(formatAnalyticsError(error));
         }
-        throw error;
+        setSyncTone('error');
       });
-      const nextAccounts = uniqueAccounts(remoteAccounts);
-      setAccounts(nextAccounts);
-      const resolvedActiveAccount = activeAccount === ALL_ACCOUNTS_KEY || nextAccounts.includes(activeAccount) ? activeAccount : ALL_ACCOUNTS_KEY;
-      if (resolvedActiveAccount !== activeAccount) setActiveAccount(resolvedActiveAccount);
-      setSavedSnapshots(snapshots);
-	      if (snapshotsPermissionBlocked) {
-	        setAnalysis(null);
-	        setSelectedPeriodKey(ALL_PERIODS_KEY);
-	        setPermissionBlocked(true);
-	        setSyncText('');
-	        setSyncTone('error');
-        return false;
-      }
-	      const visibleSnapshots = filterSnapshotsByAccount(snapshots, resolvedActiveAccount);
-	      if (!visibleSnapshots.length) {
-	        setAnalysis(null);
-	        setSelectedPeriodKey(ALL_PERIODS_KEY);
-	        setPermissionBlocked(false);
-	        setSyncText('尚未保存分析');
-	        setSyncTone('saved');
-	        return true;
-	      }
-	      const latestSnapshots = await providerRef.current.pullAnalysesBySnapshots(visibleSnapshots.map(snapshot => snapshot.snapshotId));
-	      if (!latestSnapshots.length) {
-	        setAnalysis(null);
-	        setSyncText('没有找到已保存的分析快照');
-	        setSyncTone('error');
-	        return false;
-	      }
-	      const combined = aggregateAnalyses(latestSnapshots.map(snapshot => ({
-	        analysis: snapshot.analysis,
-	        snapshotId: snapshot.snapshotId,
-	        period: snapshot.analysis.period || snapshot.filename,
-	        updatedAt: snapshot.updatedAt
-	      })));
-	      setAnalysis(combined);
-	      setPermissionBlocked(false);
-	      setMeta(`全部周期 · ${visibleSnapshots.length} 张流量表 · ${combined.records.length} 个商品`);
-	      setSelectedPeriodKey(ALL_PERIODS_KEY);
-	      setSyncText(`已聚合全部周期 · ${visibleSnapshots.length} 张表`);
-	      setSyncTone('saved');
-	      return true;
+      return true;
     } catch (error) {
       handleAnalyticsSyncError(error);
       if (isPermissionDenied(error)) {
-	        setPermissionBlocked(true);
-	        setAnalysis(null);
-	        setSelectedPeriodKey(ALL_PERIODS_KEY);
-	        setSyncText('');
+        setPermissionBlocked(true);
+        setAnalysis(null);
+        setSelectedPeriodKey(ALL_PERIODS_KEY);
+        setSyncText('');
       } else {
         setSyncText(formatAnalyticsError(error));
       }
       setSyncTone('error');
       return false;
     }
-  }, [activeAccount]);
+  }, [stopSnapshot]);
 
   useEffect(() => {
     void loadLatestAnalysis();
@@ -1020,10 +1016,11 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
     window.addEventListener('tk-firestore-config-changed', handleConnectionChange);
     window.addEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
     return () => {
+      stopSnapshot();
       window.removeEventListener('tk-firestore-config-changed', handleConnectionChange);
       window.removeEventListener(ACCOUNT_UPDATED_EVENT, handleAccountsChanged);
     };
-  }, [loadLatestAnalysis]);
+  }, [loadLatestAnalysis, stopSnapshot]);
 
   async function saveAnalysisToFirestore(next: AnalyticsAnalysis, filename: string, accountName: string) {
     const normalizedAccountName = normalizeAccountName(accountName);
@@ -1337,18 +1334,15 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
   }
 
   return (
-    <div className={analyticsShellClass} id="analytics-react-root">
-      <PageHero
-        variant="analytics"
-        title="数据分析"
-        kicker="Excel 导入 / 流量诊断 / 商品动作"
-        description="本地解析 TikTok Shop 商品流量导出表，生成渠道表现、商品排行和运营诊断；数据不上传到本站服务器。"
-      />
-      <Card className={analyticsControlCardClass}>
-        <div className={statusStripClass}>
+    <ModuleWorkspace className={analyticsShellClass} id="analytics-react-root">
+        <ModuleHeader
+          title="数据分析"
+          description="导入 TikTok Shop 商品数据表，本地生成流量、转化、商品排行和运营诊断，分析结果保存到你的 Firestore。"
+        />
+        <Card className={analyticsControlCardClass}>
+          <ModuleStatusBar className={statusStripClass}>
           <div className={statusStripLeftClass}>
-            <Badge id="analytics-user" className="min-h-[30px] text-[var(--text)] font-semibold">{projectId ? `已连接 · ${projectId}` : '未连接 Firebase'}</Badge>
-            {permissionBlocked ? null : <Badge id="analytics-sync-status" className={syncStatusClass(syncTone)} data-sync-state={syncTone}>{syncText}</Badge>}
+            {connected && !permissionBlocked ? <Badge id="analytics-sync-status" className={syncStatusClass(syncTone)} data-sync-state={syncTone}>{syncText}</Badge> : null}
             <Button
               id="analytics-refresh"
               variant="plain"
@@ -1376,15 +1370,13 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
           </div>
           <div className={statusStripRightClass}>
             {connected ? (
-              <>
-                <Button id="analytics-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={exportActiveAnalysis}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-                <Button id="analytics-disconnect-firestore" size="sm" variant="danger" data-firestore-disconnect onClick={() => TKFirestoreConnection.requestDisconnect()}>退出数据库</Button>
-              </>
+              <Button id="analytics-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={exportActiveAnalysis}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
             ) : null}
           </div>
-        </div>
-        {connected ? (
-          <AccountTabsBar
+          </ModuleStatusBar>
+          {connected ? (
+            <ModuleAccountTabs>
+              <AccountTabsBar
             id="analytics-acc-tabs"
             activeKey={activeAccount}
             allCount={savedSnapshots.length}
@@ -1399,10 +1391,11 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
             onDeleteAccount={openDeleteAccount}
             onReorder={reorderAccounts}
             onChange={account => setActiveAccount(account)}
-          />
-        ) : null}
-        {connected && !permissionBlocked ? (
-          <div className={analyticsUploadRowClass}>
+              />
+            </ModuleAccountTabs>
+          ) : null}
+          {connected && !permissionBlocked ? (
+            <ModuleToolbar className={analyticsUploadRowClass}>
             <div className={periodControlClass}>
               <Select
                 id="analytics-snapshot-select"
@@ -1435,9 +1428,9 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
               </button>
               <input ref={fileInputRef} id="analytics-file-input" className={fileInputClass} type="file" accept=".xlsx,.xls" disabled={!canUploadAnalysis} onChange={event => void handleFile(event.currentTarget.files?.[0] || null)} />
             </div>
-          </div>
-        ) : null}
-      </Card>
+            </ModuleToolbar>
+          ) : null}
+        </Card>
       <AnalyticsHelpDialog open={helpOpen} onOpenChange={setHelpOpen} />
       {!connected ? (
         <Card id="analytics-connect-state" className={emptyCardClass}>
@@ -1514,7 +1507,7 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
         onOpenChange={setAccountDeleteOpen}
         onConfirm={deleteAccount}
       />
-    </div>
+    </ModuleWorkspace>
   );
 }
 

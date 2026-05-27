@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,9 +36,9 @@ const moduleLabels: Record<ModulePermissionKey, string> = {
 };
 
 const adminPageShellClass = 'admin-page grid gap-4';
-const adminHeroClass = 'rounded-2xl border border-[var(--border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_60%,white),var(--panel))] p-5 shadow-[var(--shadow)]';
-const adminHeroTitleClass = 'mb-2 mt-0 flex items-center gap-2 text-[22px] font-semibold tracking-normal text-[var(--text)] max-[640px]:text-[19px]';
-const adminHeroCopyClass = 'm-0 max-w-[780px] text-[13px] leading-[1.7] text-[var(--muted)]';
+const adminHeroClass = 'rounded-2xl border border-[var(--border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--panel2)_60%,white),var(--panel))] px-5 py-4 shadow-[var(--shadow)]';
+const adminHeroTitleClass = 'mb-1 mt-0 flex items-center gap-2 text-[19px] font-semibold tracking-normal text-[var(--text)] max-[640px]:text-[18px]';
+const adminHeroCopyClass = 'm-0 max-w-[780px] text-[12.5px] leading-[1.65] text-[var(--muted)]';
 const adminToolbarClass = 'flex flex-wrap items-center justify-between gap-2';
 const adminProjectBadgeClass = 'inline-flex min-h-[30px] items-center rounded-full border border-[var(--border)] bg-[var(--panel2)] px-3 text-[12px] font-semibold text-[var(--text)]';
 const adminCardTitleClass = 'mb-0 normal-case tracking-normal text-[14px] text-[var(--text)]';
@@ -48,10 +49,13 @@ const adminMemberNameClass = 'min-w-0';
 const adminMemberEmailClass = 'block truncate text-[13.5px] font-semibold text-[var(--text)]';
 const adminMemberMetaClass = 'mt-1 block text-[11.5px] text-[var(--muted)]';
 const adminMemberRoleClass = 'inline-flex min-h-[26px] items-center rounded-full border border-[var(--border)] bg-[var(--panel)] px-2.5 text-[11.5px] font-semibold text-[var(--muted)]';
-const adminGridClass = 'grid grid-cols-[260px_minmax(0,1fr)] gap-4 max-[880px]:grid-cols-1';
+const adminGridClass = 'grid grid-cols-[280px_minmax(0,1fr)] gap-4 max-[880px]:grid-cols-1';
 const adminSideListClass = 'grid gap-2';
 const adminSideItemClass = 'flex min-h-[44px] w-full items-center justify-between gap-2 rounded-[12px] border border-[var(--border)] bg-[var(--panel2)] px-3 text-left text-[13px] text-[var(--muted)] transition-[border-color,background,color] hover:border-[color-mix(in_srgb,var(--accent)_35%,var(--border))] hover:text-[var(--text)]';
 const adminSideItemActiveClass = 'border-[color-mix(in_srgb,var(--accent)_42%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_10%,var(--panel))] text-[var(--text)]';
+const permissionMainHeaderClass = 'flex min-w-0 flex-1 flex-col gap-1';
+const permissionSelectedEmailClass = 'm-0 truncate text-[13px] font-semibold text-[var(--text)]';
+const permissionSelectedMetaClass = 'm-0 text-[11.5px] text-[var(--muted)]';
 const permissionGridClass = 'grid grid-cols-2 gap-2 max-[640px]:grid-cols-1';
 const permissionItemClass = 'flex min-h-[48px] items-center justify-between gap-3 rounded-[12px] border border-[var(--border)] bg-[var(--panel2)] px-3 text-[13px] text-[var(--text)]';
 const permissionCheckboxClass = 'h-[18px] w-[18px] accent-[var(--accent)]';
@@ -209,7 +213,7 @@ function AccountManagementPage({ active = true }: AdminPageProps) {
       const link = TKFirestoreConnection.createConnectionLink();
       await TKFirestoreConnection.copyText(link);
       setCopiedLink(link);
-      TKFirestoreConnection.showToast('成员连接链接已复制');
+      TKFirestoreConnection.showToast('项目连接链接已复制');
     } catch (copyError) {
       setError(copyError instanceof Error ? copyError.message : '连接链接复制失败');
     }
@@ -224,7 +228,7 @@ function AccountManagementPage({ active = true }: AdminPageProps) {
     >
       <div className={adminToolbarClass}>
         <span className={adminProjectBadgeClass}>项目：{authState.projectId || TKFirestoreConnection.getConfig()?.projectId || '-'}</span>
-        <Button size="sm" onClick={() => void copyConnectionLink()}><Copy aria-hidden="true" />复制成员连接链接</Button>
+        <Button size="sm" onClick={() => void copyConnectionLink()}><Copy aria-hidden="true" />复制项目连接链接</Button>
       </div>
 
       {error ? (
@@ -253,7 +257,7 @@ function AccountManagementPage({ active = true }: AdminPageProps) {
                 </Button>
               </FormField>
             </FormRow>
-            <p className="m-0 text-[12px] text-[var(--muted)]">员工用成员连接链接导入项目，再用这里创建的邮箱和初始密码登录。忘记密码时，回到项目登录页点击“忘记密码”处理。</p>
+            <p className="m-0 text-[12px] text-[var(--muted)]">员工用项目连接链接导入项目，再用这里创建的邮箱和初始密码登录。忘记密码时，回到项目登录页点击“忘记密码”处理。</p>
             {copiedLink ? <p className="m-0 truncate text-[11.5px] text-[var(--muted)]">{copiedLink}</p> : null}
           </div>
         </CardContent>
@@ -303,6 +307,7 @@ function PermissionManagementPage({ active = true }: AdminPageProps) {
   const [bulkMode, setBulkMode] = useState<BulkPermissionMode>('append');
   const [bulkMemberEmails, setBulkMemberEmails] = useState<string[]>([]);
   const [bulkModules, setBulkModules] = useState<ModulePermissionKey[]>([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkSaving, setBulkSaving] = useState(false);
   const permissionsDirty = selectedMember ? !isSamePermissionModules(draftModules, selectedSavedModules) : false;
 
@@ -362,6 +367,7 @@ function PermissionManagementPage({ active = true }: AdminPageProps) {
       const updatedMap = new Map(updated.map(item => [item.email, item.modules]));
       setMembers(current => current.map(member => updatedMap.has(member.email) ? { ...member, modules: updatedMap.get(member.email) || [] } : member));
       setDraftModules(current => selectedMember && updatedMap.has(selectedMember.email) ? updatedMap.get(selectedMember.email) || [] : current);
+      setBulkOpen(false);
       TKFirestoreConnection.showToast(`已更新 ${updated.length} 个员工权限`);
     } catch (bulkError) {
       setError(bulkError instanceof Error ? bulkError.message : '批量权限保存失败');
@@ -400,12 +406,9 @@ function PermissionManagementPage({ active = true }: AdminPageProps) {
         </Alert>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className={adminCardTitleClass}>批量修改权限</CardTitle>
-          <span className={adminMemberRoleClass}>{bulkMemberEmails.length} 个员工</span>
-        </CardHeader>
-        <CardContent>
+      <Dialog id="permission-bulk-modal" open={bulkOpen} titleId="permission-bulk-title" onOpenChange={setBulkOpen}>
+        <DialogContent className="max-w-[880px]">
+          <DialogTitle id="permission-bulk-title">批量修改权限</DialogTitle>
           <div className={bulkPermissionPanelClass}>
             <div className={bulkPermissionGridClass}>
               <div className={adminFormClass}>
@@ -476,19 +479,26 @@ function PermissionManagementPage({ active = true }: AdminPageProps) {
             </div>
             <div className={bulkActionsClass}>
               <p className="m-0 text-[12px] leading-[1.6] text-[var(--muted)]">追加是在现有权限上增加；移除只取消选中的模块；覆盖会把员工权限替换成这里勾选的模块。</p>
-              <Button variant="primary" disabled={bulkSaving || !bulkMemberEmails.length || !bulkModules.length} onClick={() => void applyBulkPermissions()}>
-                {bulkSaving ? '保存中...' : '应用到所选员工'}
-              </Button>
+              <span className={adminMemberRoleClass}>{bulkMemberEmails.length} 个员工 · {bulkModules.length} 个模块</span>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <DialogActions>
+            <Button disabled={bulkSaving} onClick={() => setBulkOpen(false)}>取消</Button>
+            <Button variant="primary" disabled={bulkSaving || !bulkMemberEmails.length || !bulkModules.length} onClick={() => void applyBulkPermissions()}>
+              {bulkSaving ? '保存中...' : '应用到所选员工'}
+            </Button>
+          </DialogActions>
+        </DialogContent>
+      </Dialog>
 
       <div className={adminGridClass}>
         <Card>
           <CardHeader>
             <CardTitle className={adminCardTitleClass}>员工账号</CardTitle>
-            <Button size="sm" onClick={() => void refreshMembers()} disabled={busy}>刷新</Button>
+            <div className="flex items-center gap-2">
+              <span className={adminMemberRoleClass}>{editableMembers.length} 个员工</span>
+              <Button size="sm" onClick={() => void refreshMembers()} disabled={busy}>刷新</Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className={adminSideListClass}>
@@ -512,10 +522,19 @@ function PermissionManagementPage({ active = true }: AdminPageProps) {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className={adminCardTitleClass}>模块权限</CardTitle>
+          <CardHeader className="items-start">
+            <div className={permissionMainHeaderClass}>
+              <CardTitle className={adminCardTitleClass}>模块权限</CardTitle>
+              {selectedMember ? (
+                <>
+                  <p className={permissionSelectedEmailClass}>{selectedMember.email}</p>
+                  <p className={permissionSelectedMetaClass}>勾选后先保存在草稿里，点击保存权限才会写入数据库。</p>
+                </>
+              ) : null}
+            </div>
             {selectedMember ? (
               <div className={permissionHeaderActionsClass}>
+                <Button size="sm" onClick={() => setBulkOpen(true)} disabled={bulkSaving || !editableMembers.length}>批量修改权限</Button>
                 <span className={permissionsDirty ? permissionDirtyBadgeClass : permissionSavedBadgeClass}>{permissionsDirty ? '未保存' : '已保存'}</span>
                 <span className={adminMemberRoleClass}>{draftModules.length} / {ALL_PERMISSION_MODULES.length}</span>
                 {permissionsDirty ? <Button size="sm" disabled={savingPermissions} onClick={resetDraftModules}>撤销</Button> : null}
@@ -528,7 +547,6 @@ function PermissionManagementPage({ active = true }: AdminPageProps) {
           <CardContent>
             {selectedMember ? (
               <div className={adminFormClass}>
-                <p className="m-0 truncate text-[13px] font-semibold text-[var(--text)]">{selectedMember.email}</p>
                 <div className={permissionGridClass}>
                   {ALL_PERMISSION_MODULES.map(moduleKey => {
                     const checked = draftModules.includes(moduleKey);
@@ -578,7 +596,7 @@ function ProjectSettingsPage({ active = true }: AdminPageProps) {
       const link = TKFirestoreConnection.createConnectionLink();
       await TKFirestoreConnection.copyText(link);
       setCopiedLink(link);
-      TKFirestoreConnection.showToast('成员连接链接已复制');
+      TKFirestoreConnection.showToast('项目连接链接已复制');
     } catch (copyError) {
       TKFirestoreConnection.showToast(copyError instanceof Error ? copyError.message : '连接链接复制失败', 'error');
     }
@@ -600,8 +618,8 @@ function ProjectSettingsPage({ active = true }: AdminPageProps) {
     <AdminPageFrame
       active={active}
       icon={<Settings2 size={22} strokeWidth={2.2} aria-hidden="true" />}
-      title="项目配置"
-      copy="查看当前 Firebase 连接、成员连接链接和正在使用的 Firestore 规则。这里的信息只对管理员账号显示。"
+      title="数据库管理"
+      copy="查看当前项目连接、项目连接链接和正在使用的 Firestore 规则。这里的信息只对管理员账号显示。"
     >
       {error ? (
         <Alert variant="danger" className="text-[12.5px]">
@@ -646,16 +664,15 @@ function ProjectSettingsPage({ active = true }: AdminPageProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className={adminCardTitleClass}>Firebase 连接配置</CardTitle>
+          <CardTitle className={adminCardTitleClass}>项目连接链接</CardTitle>
           <div className="flex flex-wrap justify-end gap-2">
-            <Button size="sm" onClick={() => void copyConnectionLink()}><Copy aria-hidden="true" />复制成员连接链接</Button>
+            <Button size="sm" onClick={() => void copyConnectionLink()}><Copy aria-hidden="true" />复制项目连接链接</Button>
             <Button size="sm" onClick={() => TKFirestoreConnection.openConsole()}><ExternalLink aria-hidden="true" />打开 Firebase</Button>
           </div>
         </CardHeader>
         <CardContent>
           <div className={adminFormClass}>
-            <p className={settingsSectionCopyClass}>这里是本项目的 firebaseConfig，用来让工具箱连接到你的 Firebase 项目。成员第一次通过连接链接导入后，后面直接打开同一个网址登录即可。</p>
-            <Textarea className={settingsTextareaClass} readOnly value={config?.configText || ''} />
+            <p className={settingsSectionCopyClass}>项目连接链接会把当前 Firebase 项目连接导入浏览器。管理员换电脑、员工第一次使用，都用这个链接打开工具箱，然后登录自己的账号。不要手动给员工发送 firebaseConfig。</p>
             {copiedLink ? <p className="m-0 truncate text-[11.5px] text-[var(--muted)]">{copiedLink}</p> : null}
           </div>
         </CardContent>

@@ -53,6 +53,7 @@ type OrderRecord = {
   estimatedShippingFee?: string | number | null;
   estimatedShippingFeeMode?: 'auto' | 'manual' | string | null;
   estimatedProfit?: string | number | null;
+  platformFee?: string | number | null;
   creatorCommissionRate?: string | number | null;
   creatorCommission?: string | number | null;
   items?: OrderItem[];
@@ -71,6 +72,7 @@ type OrderRecord = {
   '是否退款'?: string | number | boolean | null;
   '达人佣金率'?: string | number | null;
   '达人佣金'?: string | number | null;
+  '平台手续费'?: string | number | null;
   '采购价格'?: string | number | null;
   '售价'?: string | number | null;
   '预估运费'?: string | number | null;
@@ -146,6 +148,7 @@ type DeriveDisplayedOrdersResult = {
 type DerivePurchaseSummaryOptions = DeriveDisplayedOrdersOptions & {
   exchangeRate?: unknown;
   computeOrderSaleCny?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
+  computeOrderPlatformFee?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
   computeOrderCreatorCommission?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
   computeOrderEstimatedProfit?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
 };
@@ -159,6 +162,8 @@ type PurchaseSummary = {
   allSaleTotal: number;
   filteredShippingTotal: number;
   allShippingTotal: number;
+  filteredPlatformFeeTotal: number;
+  allPlatformFeeTotal: number;
   filteredCreatorCommissionTotal: number;
   allCreatorCommissionTotal: number;
   filteredProfitTotal: number;
@@ -171,6 +176,8 @@ type PurchaseSummary = {
   allGrossSaleMetric: OrderSummaryMetric;
   filteredShippingMetric: OrderSummaryMetric;
   allShippingMetric: OrderSummaryMetric;
+  filteredPlatformFeeMetric: OrderSummaryMetric;
+  allPlatformFeeMetric: OrderSummaryMetric;
   filteredCreatorCommissionMetric: OrderSummaryMetric;
   allCreatorCommissionMetric: OrderSummaryMetric;
   filteredRefundMetric: OrderSummaryMetric;
@@ -195,6 +202,7 @@ type BuildOrderExportRowsOptions = {
   orders?: OrderRecord[];
   exchangeRate?: unknown;
   computeWarningFn?: (order: OrderRecord) => OrderWarning;
+  computeOrderPlatformFeeFn?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
   computeOrderCreatorCommissionFn?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
   computeOrderEstimatedProfitFn?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
 };

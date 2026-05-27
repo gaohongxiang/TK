@@ -136,7 +136,7 @@ assert.doesNotMatch(
     assert.equal(esmStore.getExchangeRate(), 21.5, '全局设置 ESM 模块需要读取当前 SPA 汇率');
     assert.deepEqual(
       esmStore.getPricingContext(),
-      { rate: 21.5, shippingMultiplier: 1.18, labelFee: 1.6 },
+      { rate: 21.5, shippingMultiplier: 1.18, labelFee: 1.6, platformFeeRate: 10 },
       '全局设置 ESM 模块需要读取当前 SPA 定价上下文'
     );
     esmStore.setExchangeRate(24.12567);
@@ -150,19 +150,19 @@ assert.doesNotMatch(
     unsubscribe();
     assert.deepEqual(
       notifiedState,
-      { exchangeRate: 22.5, shippingMultiplier: 1.1, labelFee: 1.2 },
+      { exchangeRate: 22.5, shippingMultiplier: 1.1, labelFee: 1.2, platformFeeRate: 10 },
       '全局设置 ESM 模块参数变化时需要通知订阅者'
     );
     esmStore.setPricingContext({ exchangeRate: 22.33333, shippingMultiplier: 1.25, labelFee: 2 });
     assert.deepEqual(
       esmStore.getPricingContext(),
-      { rate: 22.3333, shippingMultiplier: 1.25, labelFee: 2 },
+      { rate: 22.3333, shippingMultiplier: 1.25, labelFee: 2, platformFeeRate: 10 },
       '全局设置 ESM 模块需要统一保存定价上下文'
     );
     const saved = JSON.parse(localStorageState.get('tk.global-settings.v1') || 'null');
     assert.deepEqual(
       saved,
-      { exchangeRate: 22.3333, shippingMultiplier: 1.25, labelFee: 2 },
+      { exchangeRate: 22.3333, shippingMultiplier: 1.25, labelFee: 2, platformFeeRate: 10 },
       '全局设置 ESM 模块需要写入独立存储'
     );
   } finally {

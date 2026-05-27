@@ -3,13 +3,15 @@ const SETTINGS_CHANGED_EVENT = 'tk-global-settings-changed';
 const DEFAULT_PRICING_CONTEXT = {
   exchangeRate: null,
   shippingMultiplier: 1.1,
-  labelFee: 1.2
+  labelFee: 1.2,
+  platformFeeRate: 10
 };
 
 type GlobalSettingsState = {
   exchangeRate: number | null;
   shippingMultiplier: number;
   labelFee: number;
+  platformFeeRate: number;
 };
 
 type PricingContextInput = Partial<GlobalSettingsState> & {
@@ -17,6 +19,7 @@ type PricingContextInput = Partial<GlobalSettingsState> & {
   exchangeRate?: unknown;
   shippingMultiplier?: unknown;
   labelFee?: unknown;
+  platformFeeRate?: unknown;
 };
 
 type GlobalSettingsCreateOptions = {
@@ -47,7 +50,8 @@ function normalizeState(raw: unknown = {}): GlobalSettingsState {
   return {
     exchangeRate: parseExchangeRate(source.exchangeRate),
     shippingMultiplier: parsePositiveNumber(source.shippingMultiplier, DEFAULT_PRICING_CONTEXT.shippingMultiplier, 1),
-    labelFee: parsePositiveNumber(source.labelFee, DEFAULT_PRICING_CONTEXT.labelFee, 0)
+    labelFee: parsePositiveNumber(source.labelFee, DEFAULT_PRICING_CONTEXT.labelFee, 0),
+    platformFeeRate: parsePositiveNumber(source.platformFeeRate, DEFAULT_PRICING_CONTEXT.platformFeeRate, 0)
   };
 }
 
@@ -103,7 +107,8 @@ function create({ storageKey = DEFAULT_STORAGE_KEY }: GlobalSettingsCreateOption
       ...state,
       exchangeRate: next.exchangeRate ?? next.rate ?? state.exchangeRate,
       shippingMultiplier: next.shippingMultiplier ?? state.shippingMultiplier,
-      labelFee: next.labelFee ?? state.labelFee
+      labelFee: next.labelFee ?? state.labelFee,
+      platformFeeRate: next.platformFeeRate ?? state.platformFeeRate
     });
     writeJson(storageKey, state);
     notify();
@@ -118,7 +123,8 @@ function create({ storageKey = DEFAULT_STORAGE_KEY }: GlobalSettingsCreateOption
     return {
       rate: getExchangeRate(),
       shippingMultiplier: state.shippingMultiplier,
-      labelFee: state.labelFee
+      labelFee: state.labelFee,
+      platformFeeRate: state.platformFeeRate
     };
   }
 

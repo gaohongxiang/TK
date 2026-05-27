@@ -293,11 +293,13 @@ function deriveFinanceSummary({
   month = '',
   query = '',
   exchangeRate = null,
+  platformFeeRate = 0,
   labelFee = 0
 }: FinanceFilters & {
   records?: FinanceRecord[];
   orders?: OrderRecord[];
   exchangeRate?: unknown;
+  platformFeeRate?: unknown;
   labelFee?: unknown;
 } = {}): FinanceSummary {
   const filteredRecords = filterFinanceRecords(records, { activeAccount, month, query });
@@ -305,7 +307,7 @@ function deriveFinanceSummary({
   const purchaseSummary = derivePurchaseSummary({
     orders: filteredOrders,
     activeAccount: '__all__',
-    exchangeRate
+    exchangeRate: { rate: exchangeRate, platformFeeRate }
   });
   const actualIncome = sumFinanceRecords(filteredRecords, 'actual_income');
   const rawCosts = sumFinanceRecords(filteredRecords, 'cost');

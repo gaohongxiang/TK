@@ -4,6 +4,8 @@ const DEFAULT_CONSTANTS = {
   ACCOUNT_FILE_SUFFIX: '.json',
   COURIER_AUTO_DETECTORS: []
 };
+import { calcSalePriceV3 } from '../calc/formulas.ts';
+import { DEFAULT_CONSTANTS as SHIPPING_DEFAULT_CONSTANTS } from '../shipping-core.ts';
 import type {
   CourierDetector,
   NormalizedOrderItem,
@@ -18,6 +20,12 @@ import type {
 } from './types.ts';
 
 type LooseRecord = Record<string, unknown>;
+
+type OrderPricingContext = {
+  exchangeRate: number | null;
+  platformFeeRate: number;
+  customerShippingJpy: number;
+};
 
 function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -80,6 +88,22 @@ function parseCreatorCommissionRateValue(value: unknown): number | null {
   return parsed && parsed > 0 ? parsed : null;
 }
 
+function parseNonNegativeOrderMoneyValue(value: unknown, fallback = 0): number {
+  const parsed = parseOrderMoneyValue(value);
+  return parsed !== null && parsed >= 0 ? parsed : fallback;
+}
+
+function normalizeOrderPricingContext(value: unknown = null): OrderPricingContext {
+  const source = value && typeof value === 'object' && !Array.isArray(value)
+    ? value as LooseRecord
+    : { exchangeRate: value };
+  return {
+    exchangeRate: parseExchangeRateValue(source.rate ?? source.exchangeRate),
+    platformFeeRate: parseNonNegativeOrderMoneyValue(source.platformFeeRate, 0),
+    customerShippingJpy: parseNonNegativeOrderMoneyValue(source.customerShippingJpy, SHIPPING_DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY)
+  };
+}
+
 function isOrderRefunded(order: OrderRecord): boolean {
   const raw = String(
     order?.['是否退款']
@@ -91,7 +115,7 @@ function isOrderRefunded(order: OrderRecord): boolean {
 }
 
 function computeOrderSaleCny(order: OrderRecord, exchangeRate: unknown = null): number | null {
-  const rate = parseExchangeRateValue(exchangeRate);
+  const { exchangeRate: rate } = normalizeOrderPricingContext(exchangeRate);
   const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
   if (rate === null) return null;
   if (isOrderRefunded(order)) return 0;
@@ -100,23 +124,52 @@ function computeOrderSaleCny(order: OrderRecord, exchangeRate: unknown = null): 
 }
 
 function computeOrderCreatorCommission(order: OrderRecord, exchangeRate: unknown = null): number | null {
-  const rate = parseExchangeRateValue(exchangeRate);
+  const { exchangeRate: rate, platformFeeRate, customerShippingJpy } = normalizeOrderPricingContext(exchangeRate);
   const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
   const commissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率'] ?? order?.creatorCommissionRate);
   if (rate === null) return null;
   if (commissionRate === null) return 0;
   if (isOrderRefunded(order)) return 0;
   if (saleJpy === null || saleJpy <= 0) return null;
-  return roundMoney((saleJpy / rate) * (commissionRate / 100));
+  const result = calcSalePriceV3({
+    state: { salePrice: saleJpy, rateNew: rate, feeNew: platformFeeRate, creatorRateNew: commissionRate },
+    totalCost: 0,
+    customerShippingJpy
+  });
+  return roundMoney(result?.creatorCommission ?? 0);
+}
+
+function computeOrderPlatformFee(order: OrderRecord, pricingContext: unknown = null): number | null {
+  const { exchangeRate: rate, platformFeeRate, customerShippingJpy } = normalizeOrderPricingContext(pricingContext);
+  const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
+  if (rate === null) return null;
+  if (isOrderRefunded(order)) return 0;
+  if (saleJpy === null || saleJpy <= 0) return null;
+  if (platformFeeRate <= 0) return 0;
+  const result = calcSalePriceV3({
+    state: { salePrice: saleJpy, rateNew: rate, feeNew: platformFeeRate, creatorRateNew: 0 },
+    totalCost: 0,
+    customerShippingJpy
+  });
+  return roundMoney(result?.platformFee ?? 0);
 }
 
 function computeOrderEstimatedProfit(order: OrderRecord, exchangeRate: unknown): number | null {
-  const saleCny = computeOrderSaleCny(order, exchangeRate);
+  const { exchangeRate: rate, platformFeeRate, customerShippingJpy } = normalizeOrderPricingContext(exchangeRate);
+  const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
   const purchase = parseOrderMoneyValue(order?.['采购价格'] ?? order?.purchasePrice);
   const shipping = parseOrderMoneyValue(order?.['预估运费'] ?? order?.estimatedShippingFee);
-  const commission = computeOrderCreatorCommission(order, exchangeRate);
-  if (saleCny === null || purchase === null || shipping === null || commission === null) return null;
-  return roundMoney(saleCny - purchase - shipping - commission);
+  const commissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率'] ?? order?.creatorCommissionRate) ?? 0;
+  if (rate === null) return null;
+  if (purchase === null || shipping === null) return null;
+  if (isOrderRefunded(order)) return roundMoney(0 - purchase - shipping);
+  if (saleJpy === null || saleJpy <= 0 || purchase === null || shipping === null) return null;
+  const result = calcSalePriceV3({
+    state: { salePrice: saleJpy, rateNew: rate, feeNew: platformFeeRate, creatorRateNew: commissionRate },
+    totalCost: purchase + shipping,
+    customerShippingJpy
+  });
+  return result ? roundMoney(result.profit) : null;
 }
 
 function escapeHtml(value: unknown): string {
@@ -533,6 +586,10 @@ function create({
     return computeOrderCreatorCommission(order, exchangeRate);
   }
 
+  function computeScopedOrderPlatformFee(order, exchangeRate = null) {
+    return computeOrderPlatformFee(order, exchangeRate);
+  }
+
   function computeScopedOrderEstimatedProfit(order, exchangeRate = null) {
     return computeOrderEstimatedProfit(order, exchangeRate);
   }
@@ -822,8 +879,10 @@ function create({
     showDatePicker,
     parseOrderMoneyValue,
     parseCreatorCommissionRateValue,
+    normalizeOrderPricingContext,
     computeOrderSaleCny: computeScopedOrderSaleCny,
     computeOrderCreatorCommission: computeScopedOrderCreatorCommission,
+    computeOrderPlatformFee: computeScopedOrderPlatformFee,
     computeOrderEstimatedProfit: computeScopedOrderEstimatedProfit,
     escapeHtml,
     normalizeStatusValue,
@@ -867,6 +926,7 @@ export {
   create,
   normalizeOrderRecord,
   computeOrderEstimatedProfit,
+  computeOrderPlatformFee,
   addDays,
   buildOrderCourierSummary,
   buildOrderItemsSummary,
@@ -874,6 +934,7 @@ export {
   computeWarning,
   computeOrderCreatorCommission,
   computeOrderSaleCny,
+  normalizeOrderPricingContext,
   createOrderNormalizer,
   deriveOrderItemTotals,
   detectCourierCompany,

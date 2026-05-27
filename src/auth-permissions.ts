@@ -39,6 +39,7 @@ const ALL_PERMISSION_MODULES: ModulePermissionKey[] = ['products', 'orders', 'fi
 const OWNER_MODULES: ModulePermissionKey[] = [...ALL_PERMISSION_MODULES];
 const DEFAULT_STAFF_MODULES: ModulePermissionKey[] = [];
 const OWNER_EMAIL_KEY = 'tk.auth.owner-email.v1';
+const MEMBER_CACHE_KEY = 'tk.auth.member.v1';
 const PROJECT_CONFIG_DOC = 'project';
 const OWNER_CONFIG_DOC = 'owner';
 
@@ -122,6 +123,41 @@ function saveOwnerEmail(email: string, projectId = activeProjectId) {
   if (!normalized || !projectId) return;
   try {
     getStorageRef()?.setItem?.(ownerStorageKey(projectId), normalized);
+  } catch (error) {}
+}
+
+function memberCacheKey(email: string, projectId = activeProjectId) {
+  const normalizedEmail = normalizeEmail(email);
+  return projectId && normalizedEmail ? `${MEMBER_CACHE_KEY}.${projectId}.${normalizedEmail}` : '';
+}
+
+function readCachedMember(user: FirebaseCompatUser | null, projectId = activeProjectId) {
+  const key = memberCacheKey(user?.email || '', projectId);
+  if (!key) return null;
+  try {
+    const raw = getStorageRef()?.getItem?.(key);
+    if (!raw) return null;
+    return normalizeMember(user, JSON.parse(raw));
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveCachedMember(member: MemberProfile | null, projectId = activeProjectId) {
+  const key = memberCacheKey(member?.email || '', projectId);
+  if (!key) return;
+  try {
+    const storage = getStorageRef();
+    if (!member) storage?.removeItem?.(key);
+    else storage?.setItem?.(key, JSON.stringify(member));
+  } catch (error) {}
+}
+
+function clearCachedMember(email: string, projectId = activeProjectId) {
+  const key = memberCacheKey(email, projectId);
+  if (!key) return;
+  try {
+    getStorageRef()?.removeItem?.(key);
   } catch (error) {}
 }
 
@@ -288,15 +324,26 @@ async function loadMemberForUser(user: FirebaseCompatUser | null) {
 
   const currentDb = requireDb();
   const userEmail = normalizeEmail(user.email || '');
+  const cachedMember = readCachedMember(user);
+  emit({
+    ready: false,
+    user,
+    member: cachedMember,
+    isOwner: cachedMember?.role === 'owner',
+    error: ''
+  });
   try {
     const ownerProfile = await ensureOwnerProfile(user, currentDb);
     if (ownerProfile) {
+      saveCachedMember(ownerProfile);
       emit({ ready: true, user, member: ownerProfile, isOwner: true, error: '' });
       return;
     }
 
     const snapshot = await currentDb.collection('members').doc(userEmail).get();
     const member = normalizeMember(user, await getDocData(snapshot));
+    if (member) saveCachedMember(member);
+    else clearCachedMember(userEmail);
     emit({
       ready: true,
       user,
@@ -335,6 +382,8 @@ function initializeAuthSession(rawConfig: unknown = TKFirestoreConnection.getCon
   auth = app.auth;
   db = app.db;
   activeProjectId = parsed.projectId;
+  const initialUser = auth?.currentUser || null;
+  const initialMember = initialUser ? readCachedMember(initialUser, parsed.projectId) : null;
 
   if (!auth) {
     emit({
@@ -349,7 +398,15 @@ function initializeAuthSession(rawConfig: unknown = TKFirestoreConnection.getCon
     return currentState;
   }
 
-  emit({ ready: false, connected: true, projectId: parsed.projectId, user: auth.currentUser || null, member: null, isOwner: false, error: '' });
+  emit({
+    ready: false,
+    connected: true,
+    projectId: parsed.projectId,
+    user: initialUser,
+    member: initialMember,
+    isOwner: initialMember?.role === 'owner',
+    error: ''
+  });
   unsubscribeAuth = auth.onAuthStateChanged(user => {
     void loadMemberForUser(user);
   });
@@ -363,7 +420,18 @@ async function signInWithEmailPassword(email: string, password: string, mode: Si
   const action = mode === 'signup'
     ? currentAuth.createUserWithEmailAndPassword(normalizedEmail, password)
     : currentAuth.signInWithEmailAndPassword(normalizedEmail, password);
-  await action;
+  const credential = await action as { user?: FirebaseCompatUser | null };
+  const signedInUser = credential?.user || currentAuth.currentUser || null;
+  if (signedInUser) {
+    const cachedMember = readCachedMember(signedInUser);
+    emit({
+      ready: false,
+      user: signedInUser,
+      member: cachedMember,
+      isOwner: cachedMember?.role === 'owner',
+      error: ''
+    });
+  }
 }
 
 async function sendPasswordReset(email: string) {

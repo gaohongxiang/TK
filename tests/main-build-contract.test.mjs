@@ -173,13 +173,13 @@ assert.match(
 
 assert.match(
   reactAppSource,
-  /skipLinkClass = 'skip-link[\s\S]*appWrapClass = 'wrap[\s\S]*appMainClass = 'app-main[\s\S]*<a className=\{skipLinkClass\} href="#main-content">跳到主要内容<\/a>[\s\S]*<AppShell[\s\S]*modules=\{visibleModules\}[\s\S]*active=\{renderedActive\}[\s\S]*docsUrl=\{config\.docsUrl\}[\s\S]*authEmail=\{authSession\.user\?\.email \|\| authSession\.user\?\.uid \|\| ''\}[\s\S]*<main id="main-content" className=\{appMainClass\} tabIndex=\{-1\}>/,
+  /skipLinkClass = 'skip-link[\s\S]*appWrapClass = 'app-layout-content[\s\S]*appMainClass = 'app-main[\s\S]*appTopbarClass = 'app-topbar[\s\S]*const authEmail = authSession\.user\?\.email \|\| authSession\.user\?\.uid \|\| ''[\s\S]*<a className=\{skipLinkClass\} href="#main-content">跳到主要内容<\/a>[\s\S]*<AppShell[\s\S]*modules=\{visibleModules\}[\s\S]*active=\{renderedActive\}[\s\S]*docsUrl=\{config\.docsUrl\}[\s\S]*authEmail=\{authEmail\}[\s\S]*<main id="main-content" className=\{appMainClass\} tabIndex=\{-1\}>/,
   '主站需要由 React App 提供跳转主内容链接、AppShell 和 main landmark'
 );
 
 assert.match(
   fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8'),
-  /modulesNavClass = 'modules[\s\S]*<nav className=\{modulesNavClass\} aria-label="模块导航">[\s\S]*aria-current=\{isActive \? 'page' : undefined\}/,
+  /<nav className="app-shell-nav" aria-label="模块导航">[\s\S]*aria-current=\{isActive \? 'page' : undefined\}/,
   'React AppShell 需要保留统一模块导航和当前导航语义'
 );
 

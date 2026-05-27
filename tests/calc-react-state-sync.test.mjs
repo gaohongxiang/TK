@@ -56,6 +56,12 @@ assert.match(
 
 assert.match(
   calculatorSource,
+  /<Field id="feeNew"[\s\S]*label="TK 平台手续费率（%）"[\s\S]*value=\{state\.feeNew\}[\s\S]*updateNumber\('feeNew', value\)/,
+  '定价新平台手续费率需要保留 feeNew 状态'
+);
+
+assert.match(
+  calculatorSource,
   /<Field id="creatorRateReview"[\s\S]*inputClassName="min-h-\[48px\] text-\[18px\]/,
   '利润复盘达人佣金率输入框需要和同组重点输入框保持一致高度'
 );

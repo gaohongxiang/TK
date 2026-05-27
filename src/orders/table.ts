@@ -1,5 +1,10 @@
 import {
+  computeOrderCreatorCommission,
+  computeOrderEstimatedProfit,
+  computeOrderPlatformFee,
+  computeOrderSaleCny,
   escapeHtml,
+  normalizeOrderPricingContext,
   isOrderRefunded,
   parseCreatorCommissionRateValue,
   parseOrderMoneyValue
@@ -70,6 +75,8 @@ function parseMoneyAmount(value: unknown): ParsedMoneyAmount {
 }
 
 function parseExchangeRateValue(value: unknown): number | null {
+  const context = normalizeOrderPricingContext(value);
+  if (context.exchangeRate !== null) return context.exchangeRate;
   const parsed = parseMoneyAmount(value);
   return parsed.hasValue && parsed.amount > 0 ? parsed.amount : null;
 }
@@ -140,32 +147,19 @@ function sumGrossSaleAmount(orders: OrderRecord[] = [], exchangeRate: unknown = 
 }
 
 function computeOrderSaleCnyAmount(order: OrderRecord, exchangeRate: unknown = null): number | null {
-  const sale = parseMoneyAmount(order?.['售价']);
-  const rate = parseExchangeRateValue(exchangeRate);
-  if (rate === null) return null;
-  if (isOrderRefunded(order)) return 0;
-  if (!sale.hasValue || sale.amount <= 0) return null;
-  return roundMoney(sale.amount / rate);
+  return computeOrderSaleCny(order, exchangeRate);
 }
 
 function computeOrderCreatorCommissionAmount(order: OrderRecord, exchangeRate: unknown = null): number | null {
-  const sale = parseMoneyAmount(order?.['售价']);
-  const rate = parseExchangeRateValue(exchangeRate);
-  const creatorCommissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率']);
-  if (rate === null) return null;
-  if (creatorCommissionRate === null) return 0;
-  if (isOrderRefunded(order)) return 0;
-  if (!sale.hasValue || sale.amount <= 0) return null;
-  return roundMoney((sale.amount / rate) * (creatorCommissionRate / 100));
+  return computeOrderCreatorCommission(order, exchangeRate);
+}
+
+function computeOrderPlatformFeeAmount(order: OrderRecord, exchangeRate: unknown = null): number | null {
+  return computeOrderPlatformFee(order, exchangeRate);
 }
 
 function computeOrderProfitAmount(order: OrderRecord, exchangeRate: unknown = null): number | null {
-  const saleCny = computeOrderSaleCnyAmount(order, exchangeRate);
-  const purchase = parseMoneyAmount(order?.['采购价格']);
-  const shipping = parseMoneyAmount(order?.['预估运费']);
-  const creatorCommission = computeOrderCreatorCommissionAmount(order, exchangeRate);
-  if (saleCny === null || !purchase.hasValue || !shipping.hasValue || creatorCommission === null) return null;
-  return roundMoney(saleCny - purchase.amount - shipping.amount - creatorCommission);
+  return computeOrderEstimatedProfit(order, exchangeRate);
 }
 
 function formatTableMoneyValue(value: number): string {
@@ -362,7 +356,8 @@ function derivePurchaseSummary({
   sortOrder = 'asc',
   exchangeRate = null,
   computeOrderSaleCny,
-  computeOrderCreatorCommission
+  computeOrderCreatorCommission,
+  computeOrderPlatformFee
 }: DerivePurchaseSummaryOptions = {}): PurchaseSummary {
   const list = Array.isArray(orders) ? orders : [];
   const { sorted } = deriveDisplayedOrders({ orders: list, activeAccount, searchQuery, sortOrder });
@@ -376,6 +371,12 @@ function derivePurchaseSummary({
   const allSale = sumResolvedMoneyAmount(list, resolveSale);
   const filteredShipping = sumMoneyAmount(sorted, '预估运费');
   const allShipping = sumMoneyAmount(list, '预估运费');
+  const resolvePlatformFee = (order: OrderRecord) => {
+    if (typeof computeOrderPlatformFee === 'function') return computeOrderPlatformFee(order, exchangeRate);
+    return computeOrderPlatformFeeAmount(order, exchangeRate);
+  };
+  const filteredPlatformFee = sumResolvedMoneyAmount(sorted, resolvePlatformFee);
+  const allPlatformFee = sumResolvedMoneyAmount(list, resolvePlatformFee);
   const resolveCreatorCommission = (order: OrderRecord) => {
     const creatorCommissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率']);
     if (creatorCommissionRate === null) return null;
@@ -388,14 +389,14 @@ function derivePurchaseSummary({
   const allRefund = sumRefundSaleAmount(list, exchangeRate);
   const filteredGrossSale = sumGrossSaleAmount(sorted, exchangeRate);
   const allGrossSale = sumGrossSaleAmount(list, exchangeRate);
-  const filteredExpenseCount = (filteredPurchase.count || 0) + (filteredShipping.count || 0) + (filteredCreatorCommission.count || 0);
-  const allExpenseCount = (allPurchase.count || 0) + (allShipping.count || 0) + (allCreatorCommission.count || 0);
+  const filteredExpenseCount = (filteredPurchase.count || 0) + (filteredShipping.count || 0) + (filteredPlatformFee.count || 0) + (filteredCreatorCommission.count || 0);
+  const allExpenseCount = (allPurchase.count || 0) + (allShipping.count || 0) + (allPlatformFee.count || 0) + (allCreatorCommission.count || 0);
   const filteredProfit = {
-    total: roundMoney(filteredSale.total - (filteredPurchase.total + filteredShipping.total + filteredCreatorCommission.total)) ?? 0,
+    total: roundMoney(filteredSale.total - (filteredPurchase.total + filteredShipping.total + filteredPlatformFee.total + filteredCreatorCommission.total)) ?? 0,
     count: Math.max(filteredSale.count || 0, filteredExpenseCount)
   };
   const allProfit = {
-    total: roundMoney(allSale.total - (allPurchase.total + allShipping.total + allCreatorCommission.total)) ?? 0,
+    total: roundMoney(allSale.total - (allPurchase.total + allShipping.total + allPlatformFee.total + allCreatorCommission.total)) ?? 0,
     count: Math.max(allSale.count || 0, allExpenseCount)
   };
   return {
@@ -407,6 +408,8 @@ function derivePurchaseSummary({
     allSaleTotal: allSale.total,
     filteredShippingTotal: filteredShipping.total,
     allShippingTotal: allShipping.total,
+    filteredPlatformFeeTotal: filteredPlatformFee.total,
+    allPlatformFeeTotal: allPlatformFee.total,
     filteredCreatorCommissionTotal: filteredCreatorCommission.total,
     allCreatorCommissionTotal: allCreatorCommission.total,
     filteredProfitTotal: filteredProfit.total,
@@ -419,6 +422,8 @@ function derivePurchaseSummary({
     allGrossSaleMetric: allGrossSale,
     filteredShippingMetric: filteredShipping,
     allShippingMetric: allShipping,
+    filteredPlatformFeeMetric: filteredPlatformFee,
+    allPlatformFeeMetric: allPlatformFee,
     filteredCreatorCommissionMetric: filteredCreatorCommission,
     allCreatorCommissionMetric: allCreatorCommission,
     filteredRefundMetric: filteredRefund,
@@ -513,6 +518,7 @@ const OrderTableView = {
   buildOrderNoCellMarkup,
   buildSaleCellMarkup,
   computeOrderCreatorCommissionAmount,
+  computeOrderPlatformFeeAmount,
   computeOrderProfitAmount,
   computeOrderSaleCnyAmount,
   deriveDisplayedOrders,
@@ -542,6 +548,7 @@ export {
   buildOrderNoCellMarkup,
   buildSaleCellMarkup,
   computeOrderCreatorCommissionAmount,
+  computeOrderPlatformFeeAmount,
   computeOrderProfitAmount,
   computeOrderSaleCnyAmount,
   deriveDisplayedOrders,

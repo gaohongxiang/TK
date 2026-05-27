@@ -8,6 +8,7 @@ import type {
   FirebaseCompatApp,
   FirebaseCompatFirestore,
   FirebaseCompatNamespace,
+  FirebaseCompatQuerySnapshot,
   FirebaseConfig,
   HydratedFirebaseConfig
 } from '../types/firestore.ts';
@@ -68,6 +69,12 @@ type AnalyticsProviderSnapshotSummary = {
   recordCount: number;
   activeCount: number;
   updatedAt: string;
+};
+type AnalyticsProviderLiveSnapshot = {
+  accounts: string[];
+  snapshots: AnalyticsProviderSnapshotSummary[];
+  hasPendingWrites?: boolean;
+  fromCache?: boolean;
 };
 
 function toPlainObject(value: unknown): LooseRecord | null {
@@ -194,6 +201,25 @@ function snapshotDocToSummary(doc: AnalyticsSnapshotDoc): AnalyticsProviderSnaps
   };
 }
 
+function accountsFromSnapshot(snapshot: FirebaseCompatQuerySnapshot): string[] {
+  return uniqueAccounts(snapshot.docs
+    .map((doc, index) => ({ data: doc.data() || {}, fallbackIndex: index }))
+    .filter(row => !row.data.deletedAt)
+    .map(row => ({
+      name: String(row.data.name || '').trim(),
+      sortIndex: Number.isFinite(Number(row.data.sortIndex)) ? Number(row.data.sortIndex) : row.fallbackIndex
+    }))
+    .filter(row => row.name)
+    .sort((left, right) => left.sortIndex - right.sortIndex || left.name.localeCompare(right.name))
+    .map(row => row.name));
+}
+
+function summariesFromSnapshot(snapshot: FirebaseCompatQuerySnapshot): AnalyticsProviderSnapshotSummary[] {
+  return snapshot.docs
+    .map(doc => snapshotDocToSummary(normalizeSnapshotDoc(doc.data(), doc.id)))
+    .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+}
+
 function normalizeRecordDoc(doc: LooseRecord): AnalyticsRecord {
   return {
     id: String(doc.id || '').trim(),
@@ -241,16 +267,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
   async function pullAccounts(): Promise<string[]> {
     const currentDb = await requireDb();
     const snapshot = await currentDb.collection('order_accounts').get();
-    return snapshot.docs
-      .map((doc, index) => ({ data: doc.data() || {}, fallbackIndex: index }))
-      .filter(row => !row.data.deletedAt)
-      .map(row => ({
-        name: String(row.data.name || '').trim(),
-        sortIndex: Number.isFinite(Number(row.data.sortIndex)) ? Number(row.data.sortIndex) : row.fallbackIndex
-      }))
-      .filter(row => row.name)
-      .sort((left, right) => left.sortIndex - right.sortIndex || left.name.localeCompare(right.name))
-      .map(row => row.name);
+    return accountsFromSnapshot(snapshot);
   }
 
   function trackWritePromise(promise: Promise<unknown>, label: string, { waitForCommit = true }: AnalyticsProviderWriteOptions = {}): Promise<unknown> {
@@ -317,9 +334,74 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     const currentDb = await requireDb();
     const snapshotsRef = currentDb.collection('analytics_snapshots').orderBy('updatedAt', 'desc');
     const snapshot = await snapshotsRef.get();
-    return snapshot.docs
-      .map(doc => snapshotDocToSummary(normalizeSnapshotDoc(doc.data(), doc.id)))
-      .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+    return summariesFromSnapshot(snapshot);
+  }
+
+  function subscribeSnapshot(onNext: (snapshot: AnalyticsProviderLiveSnapshot) => void, onError: (error: unknown) => void = () => {}) {
+    let active = true;
+    let snapshotsSnap: FirebaseCompatQuerySnapshot | null = null;
+    let accountsSnap: FirebaseCompatQuerySnapshot | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let unsubscribeSnapshots: (() => void) | null = null;
+    let unsubscribeAccounts: (() => void) | null = null;
+
+    const emit = () => {
+      if (!active || !snapshotsSnap || !accountsSnap) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!active || !snapshotsSnap || !accountsSnap) return;
+        onNext({
+          accounts: accountsFromSnapshot(accountsSnap),
+          snapshots: summariesFromSnapshot(snapshotsSnap),
+          hasPendingWrites: !!(snapshotsSnap.metadata?.hasPendingWrites || accountsSnap.metadata?.hasPendingWrites),
+          fromCache: !!(snapshotsSnap.metadata?.fromCache || accountsSnap.metadata?.fromCache)
+        });
+      }, 0);
+    };
+
+    requireDb().then(currentDb => {
+      if (!active) return;
+      const snapshotsQuery = currentDb.collection('analytics_snapshots').orderBy('updatedAt', 'desc');
+      const accountsQuery = currentDb.collection('order_accounts');
+      if (!snapshotsQuery.onSnapshot || !accountsQuery.onSnapshot) {
+        Promise.all([
+          snapshotsQuery.get(),
+          accountsQuery.get()
+        ]).then(([snapshotsSnapshot, accountsSnapshot]) => {
+          if (!active) return;
+          onNext({
+            accounts: accountsFromSnapshot(accountsSnapshot),
+            snapshots: summariesFromSnapshot(snapshotsSnapshot),
+            hasPendingWrites: !!(snapshotsSnapshot.metadata?.hasPendingWrites || accountsSnapshot.metadata?.hasPendingWrites),
+            fromCache: !!(snapshotsSnapshot.metadata?.fromCache || accountsSnapshot.metadata?.fromCache)
+          });
+        }).catch(onError);
+        return;
+      }
+      unsubscribeSnapshots = snapshotsQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          snapshotsSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+      unsubscribeAccounts = accountsQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          accountsSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+    }).catch(onError);
+
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      if (unsubscribeSnapshots) unsubscribeSnapshots();
+      if (unsubscribeAccounts) unsubscribeAccounts();
+    };
   }
 
   async function pullAnalysisBySnapshot(snapshotId: string): Promise<AnalyticsProviderSnapshot | null> {
@@ -434,6 +516,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     hydrateConfig,
     init,
     listSavedAnalyses,
+    subscribeSnapshot,
     pullAccounts,
     pullAnalysisBySnapshot,
     pullAnalysesBySnapshots,
@@ -462,6 +545,7 @@ export {
 
 export type {
   AnalyticsProviderSaveOptions,
+  AnalyticsProviderLiveSnapshot,
   AnalyticsProviderSnapshot,
   AnalyticsProviderSnapshotSummary,
   AnalyticsRecordDoc,

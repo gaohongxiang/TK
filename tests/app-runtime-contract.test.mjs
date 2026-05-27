@@ -119,14 +119,20 @@ assert.match(
 
 assert.match(
   appShell,
-  /appHeaderClass = 'app-header[\s\S]*modulesNavClass = 'modules[\s\S]*className=\{appHeaderClass\}[\s\S]*data-react-app-shell-ready="true"[\s\S]*className=\{modulesNavClass\}[\s\S]*href=\{`#\$\{module\.key\}`\}/,
-  'React AppShell 需要接管主导航，同时保留现有 header/modules 类名以维持视觉连续性'
+  /function AppShell[\s\S]*<nav className="app-shell-nav" aria-label="模块导航">[\s\S]*href=\{`#\$\{module\.key\}`\}[\s\S]*<div className="app-shell-mobile-bar" data-react-app-shell-ready="true">[\s\S]*renderSidebar/,
+  'React AppShell 需要接管主导航，并改为左侧导航加移动端顶部栏'
 );
 
 assert.match(
   appShell,
-  /appHeaderClass = 'app-header sticky top-0 z-\[60\][\s\S]*pt-3\.5[\s\S]*before:w-screen[\s\S]*before:bg-\[color-mix\(in_srgb,var\(--bg\)_98%,transparent\)\][\s\S]*before:backdrop-blur-xl[\s\S]*max-\[640px\]:pt-2\.5/,
-  '顶部 TK 电商工具箱主导航需要滚动时固定在顶部，用全屏宽背景避免容器两侧透底'
+  /<nav className="app-shell-nav"[\s\S]*onCollapsedChange[\s\S]*app-shell-icon-button/,
+  '左侧 TK 电商工具箱导航需要支持折叠，业务状态不应重复塞进侧栏'
+);
+
+assert.match(
+  reactApp,
+  /function TopbarGlobalStatus[\s\S]*data-app-topbar-connection[\s\S]*数据库管理[\s\S]*data-app-topbar-auth[\s\S]*账号管理[\s\S]*权限管理[\s\S]*退出登录/,
+  '数据库连接和账号状态需要统一放在顶部右侧全局菜单，退出只处理账号登录态'
 );
 
 assert.match(
@@ -137,8 +143,14 @@ assert.match(
 
 assert.match(
   appRuntime,
-  /data-app-runtime-ready="true"[\s\S]*id="app-firestore-modal"[\s\S]*<Textarea[\s\S]*id="app-firestore-rules-modal"[\s\S]*<Alert[\s\S]*id="app-firestore-disconnect-modal"[\s\S]*<Toast/,
+  /data-app-runtime-ready="true"[\s\S]*id="app-firestore-modal"[\s\S]*<Textarea[\s\S]*id="app-firestore-rules-modal"[\s\S]*<Alert[\s\S]*<Toast/,
   'React App 内的全局运行层需要接管 Firestore 弹窗和 Toast'
+);
+
+assert.doesNotMatch(
+  appRuntime,
+  /app-firestore-disconnect-modal|app-confirm-firestore-disconnect|断开本机数据库连接/,
+  'React App 内的全局运行层不应再提供断开数据库入口'
 );
 
 [

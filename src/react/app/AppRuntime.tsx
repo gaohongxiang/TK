@@ -7,7 +7,6 @@ import { Toast } from '@/components/ui/toast';
 import { useEffect, useState } from 'react';
 import {
   initializeAuthSession,
-  signOutAuthSession,
   subscribeAuthSession,
   type AuthSessionState
 } from '../../auth-permissions.ts';
@@ -20,10 +19,6 @@ type ToastState = {
   visible: boolean;
 };
 
-type DisconnectOptions = {
-  closeModal?: boolean;
-};
-
 let toastTimer = 0;
 const modalCopyClass = 'text-[13px] leading-[1.75] text-[var(--muted)]';
 
@@ -31,9 +26,6 @@ function AppRuntime() {
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [rulesMessage, setRulesMessage] = useState('当前 Firebase 项目的 Firestore 规则较旧，请重新复制并发布最新规则。');
-  const [disconnectOpen, setDisconnectOpen] = useState(false);
-  const [disconnectProject, setDisconnectProject] = useState('-');
-  const [disconnectOptions, setDisconnectOptions] = useState<DisconnectOptions>({});
   const [configText, setConfigText] = useState('');
   const [authState, setAuthState] = useState<AuthSessionState>(() => ({
     ready: false,
@@ -85,20 +77,12 @@ function AppRuntime() {
     }
   }
 
-  function applyDisconnect() {
-    TKFirestoreConnection.clearConfig();
-    void signOutAuthSession();
-    initializeAuthSession('');
-    setDisconnectOpen(false);
-    if (disconnectOptions.closeModal) setConnectionOpen(false);
-  }
-
   async function copyConnectionLink() {
     try {
       const link = TKFirestoreConnection.createConnectionLink();
       await TKFirestoreConnection.copyText(link);
       setConnectionLink(link);
-      showToast('成员连接链接已复制');
+      showToast('项目连接链接已复制');
     } catch (error) {
       showToast(error instanceof Error ? error.message : '生成连接链接失败', 'error');
     }
@@ -123,7 +107,7 @@ function AppRuntime() {
   useEffect(() => {
     TKFirestoreConnection.registerUI({
       close: () => setConnectionOpen(false),
-      closeDisconnectConfirm: () => setDisconnectOpen(false),
+      closeDisconnectConfirm: () => undefined,
       closeRulesNotice: () => setRulesOpen(false),
       open: () => {
         refreshConfigText();
@@ -137,12 +121,8 @@ function AppRuntime() {
         setRulesOpen(true);
       },
       requestDisconnect: options => {
-        const cfg = TKFirestoreConnection.getConfig();
-        if (!cfg?.projectId) return false;
-        setDisconnectOptions(options || {});
-        setDisconnectProject(cfg.projectId);
-        setDisconnectOpen(true);
-        return true;
+        showToast('项目连接不会在日常使用中断开。需要退出时请使用“退出登录”。', 'error');
+        return false;
       },
       showToast
     });
@@ -202,19 +182,16 @@ function AppRuntime() {
           {TKFirestoreConnection.getConfig()?.projectId ? (
             <Alert variant="info" className={`${modalCopyClass} mt-[12px]`}>
               <AlertDescription>
-                成员第一次用连接链接导入配置，之后直接打开工具箱即可；模块访问由登录账号和 Firestore 规则决定。
+                管理员初始化后会生成项目连接链接；管理员换电脑和员工第一次使用，都打开这个链接后再登录账号。
               </AlertDescription>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Button size="sm" onClick={() => void copyConnectionLink()}>生成成员连接链接</Button>
+                <Button size="sm" onClick={() => void copyConnectionLink()}>生成项目连接链接</Button>
                 {connectionLink ? <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--muted)]">{connectionLink}</span> : null}
               </div>
             </Alert>
           ) : null}
           <DialogActions>
             <Button id="app-close-firestore-modal" onClick={() => setConnectionOpen(false)}>取消</Button>
-            {TKFirestoreConnection.getConfig()?.projectId ? (
-              <Button id="app-clear-firestore-config" variant="danger" onClick={() => TKFirestoreConnection.requestDisconnect({ closeModal: true })}>退出数据库</Button>
-            ) : null}
             <Button id="app-save-firestore-config" variant="primary" onClick={saveConnection}>连接并开始使用</Button>
           </DialogActions>
         </DialogContent>
@@ -232,21 +209,6 @@ function AppRuntime() {
           </div>
           <DialogActions>
             <Button id="app-close-firestore-rules-modal" variant="primary" onClick={() => setRulesOpen(false)}>我知道了</Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog id="app-firestore-disconnect-modal" open={disconnectOpen} titleId="app-firestore-disconnect-title" onOpenChange={setDisconnectOpen}>
-        <DialogContent className="max-w-[460px]">
-          <DialogTitle id="app-firestore-disconnect-title">退出当前数据库？</DialogTitle>
-          <Alert variant="warning" className={modalCopyClass}>
-            <AlertDescription>
-              当前项目：<strong id="app-firestore-disconnect-project">{disconnectProject}</strong>。退出后只会清除本浏览器保存的 Firebase 连接配置，不会删除 Firestore 里的商品和订单。
-            </AlertDescription>
-          </Alert>
-          <DialogActions>
-            <Button id="app-cancel-firestore-disconnect" onClick={() => setDisconnectOpen(false)}>取消</Button>
-            <Button id="app-confirm-firestore-disconnect" variant="danger" onClick={applyDisconnect}>退出数据库</Button>
           </DialogActions>
         </DialogContent>
       </Dialog>

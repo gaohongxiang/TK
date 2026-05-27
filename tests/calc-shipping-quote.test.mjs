@@ -16,7 +16,7 @@ assert.match(
 );
 assert.match(
   reactCalculatorSource,
-  /function quoteForPricing\([\s\S]*computeShippingQuote\(\{[\s\S]*rules: SHIPPING_RULES[\s\S]*constants: DEFAULT_CONSTANTS/,
+  /function quoteForPricingMode\([\s\S]*computeShippingQuote\(\{[\s\S]*rules: SHIPPING_RULES[\s\S]*constants: shippingConstantsForCustomerShipping\(customerShippingJpy\)/,
   'React 利润计算器需要在页面内通过共享运费核心生成 quote'
 );
 assert.match(
@@ -59,7 +59,7 @@ assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'calc', 'shipping.mjs
 
   assert.equal(volumeQuote.band.range, '0 - 0.5 kg', 'calc shipping ESM 模块体积重命中的价卡区间不正确');
   assert.equal(volumeQuote.chargeWeightKg, 0.375, 'calc shipping ESM 模块应按体积重计费');
-  assert.equal(volumeQuote.jpyFee, 322.5, 'calc shipping ESM 模块应扣除用户承担的 350 円');
+  assert.equal(volumeQuote.jpyFee, 322.5, 'calc shipping ESM 模块应扣除买家支付运费 350 円');
 
   const floorQuote = shippingCoreModule.computeShippingQuote({
     cargoType: 'general',

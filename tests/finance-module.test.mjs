@@ -229,6 +229,7 @@ assert.match(
 const module = await import(pathToFileURL(path.join(root, 'src', 'finance', 'summary.ts')).href);
 const summary = module.deriveFinanceSummary({
   exchangeRate: 20,
+  platformFeeRate: 0,
   month: '2026-05',
   records: [
     { id: 'income', kind: 'actual_income', accountName: 'A', category: 'TK提现', amount: 40, occurredAt: '2026-05-20', note: '', createdAt: '', updatedAt: '' },

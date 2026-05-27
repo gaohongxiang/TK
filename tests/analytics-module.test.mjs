@@ -93,8 +93,14 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /analyticsTwoColumnClass = 'grid grid-cols-2 items-stretch gap-4 max-\[860px\]:grid-cols-1'[\s\S]*analyticsInsightLayoutClass = cn\('analytics-insight-layout analytics-react-insight-layout', analyticsTwoColumnClass\)[\s\S]*analyticsLayoutClass = cn\('analytics-layout analytics-summary-layout', analyticsTwoColumnClass\)[\s\S]*summaryCardClass = cn\(analyticsCardClass, 'analytics-summary-card h-full'\)[\s\S]*portfolioSummaryClass = 'analytics-portfolio-summary grid gap-2\.5'[\s\S]*portfolioNextClass = 'analytics-portfolio-next/,
+  /analyticsTwoColumnClass = 'grid grid-cols-2 items-stretch gap-4 max-\[980px\]:grid-cols-1'[\s\S]*analyticsInsightLayoutClass = cn\('analytics-insight-layout analytics-react-insight-layout', analyticsTwoColumnClass\)[\s\S]*analyticsLayoutClass = cn\('analytics-layout analytics-summary-layout', analyticsTwoColumnClass\)[\s\S]*summaryCardClass = cn\(analyticsCardClass, 'analytics-summary-card h-full'\)[\s\S]*portfolioSummaryClass = 'analytics-portfolio-summary grid h-full content-between gap-2\.5'[\s\S]*portfolioNextClass = 'analytics-portfolio-next/,
   '数据分析 Top GMV 和运营摘要需要同高展示，并保持卡片内部标题和内容起点对齐'
+);
+
+assert.match(
+  styleSource,
+  /\.analytics-insight-layout,\n\.analytics-summary-layout[\s\S]*align-items: stretch[\s\S]*\.analytics-bubble-card,\n\.analytics-overview-card,\n\.analytics-summary-card[\s\S]*flex-direction: column/,
+  '数据分析卡片需要由全局样式保证同一行卡片同高'
 );
 
 assert.match(
@@ -123,7 +129,7 @@ assert.doesNotMatch(
 
 assert.match(
   reactAnalyticsSource,
-  /analytics-react-overview h-\[332px\][\s\S]*analytics-react-funnel-summary[\s\S]*grid-cols-4/,
+  /analytics-react-overview h-\[300px\][\s\S]*analytics-react-funnel-summary[\s\S]*grid-cols-4/,
   'React 数据分析页需要用一个总览图结合渠道结构和流量漏斗'
 );
 
@@ -141,7 +147,7 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /scatterChartClass = cn\(chartSlotClass, 'analytics-react-scatter h-\[332px\][\s\S]*px-1\.5 pb-1 pt-2\.5[\s\S]*scatterLegendClass = 'analytics-react-legend mt-4/,
+  /scatterChartClass = cn\(chartSlotClass, 'analytics-react-scatter h-\[300px\][\s\S]*px-1\.5 pb-1 pt-2\.5[\s\S]*scatterLegendClass = 'analytics-react-legend mt-4/,
   'React 数据分析页需要提供稳定的散点图画布高度'
 );
 
@@ -210,14 +216,20 @@ assert.doesNotMatch(
 
 assert.match(
   reactAnalyticsSource,
-  /AnalyticsProviderFirestore[\s\S]*pullAccounts\(\)[\s\S]*listSavedAnalyses\(\)[\s\S]*pullAnalysesBySnapshots\([\s\S]*aggregateAnalyses\([\s\S]*saveAnalysis\(next,\s*\{\s*accountName:\s*normalizedAccountName,\s*filename\s*\}\)[\s\S]*analytics-sync-status/,
-  'React 数据分析需要按账号保存到用户自己的 Firestore、恢复历史快照并显示同步状态'
+  /pullAnalysesBySnapshots\([\s\S]*aggregateAnalyses\(/,
+  'React 数据分析恢复全部周期时需要读取快照明细并重新聚合'
+);
+
+assert.match(
+  reactAnalyticsSource,
+  /AnalyticsProviderFirestore[\s\S]*subscribeSnapshot\([\s\S]*setSavedSnapshots\(snapshots\)[\s\S]*saveAnalysis\(next,\s*\{\s*accountName:\s*normalizedAccountName,\s*filename\s*\}\)[\s\S]*analytics-sync-status/,
+  'React 数据分析需要按账号保存到用户自己的 Firestore、实时订阅历史快照并显示同步状态'
 );
 
 assert.match(
   analyticsFirestoreSource,
-  /analytics_snapshots[\s\S]*analytics_records[\s\S]*buildAnalyticsSnapshotDoc[\s\S]*buildAnalyticsRecordDoc[\s\S]*listSavedAnalyses[\s\S]*pullAnalysisBySnapshot[\s\S]*pullAnalysesBySnapshots[\s\S]*pullLatestAnalysis[\s\S]*saveAnalysis[\s\S]*upsertAccount[\s\S]*saveAccountOrder[\s\S]*renameAccount[\s\S]*deleteAccount/,
-  '数据分析 Firestore provider 需要保存快照和商品明细，支持列出和恢复历史分析，并复用共享账号写入能力'
+  /analytics_snapshots[\s\S]*analytics_records[\s\S]*buildAnalyticsSnapshotDoc[\s\S]*buildAnalyticsRecordDoc[\s\S]*listSavedAnalyses[\s\S]*subscribeSnapshot[\s\S]*pullAnalysisBySnapshot[\s\S]*pullAnalysesBySnapshots[\s\S]*pullLatestAnalysis[\s\S]*saveAnalysis[\s\S]*upsertAccount[\s\S]*saveAccountOrder[\s\S]*renameAccount[\s\S]*deleteAccount/,
+  '数据分析 Firestore provider 需要保存快照和商品明细，支持实时订阅快照列表和恢复历史分析，并复用共享账号写入能力'
 );
 
 assert.match(
@@ -239,8 +251,8 @@ assert.match(
 );
 
 assert.match(
-  reactAnalyticsSource,
-  /const nextAccounts = uniqueAccounts\(remoteAccounts\)/,
+  analyticsFirestoreSource,
+  /accountsFromSnapshot\(snapshot: FirebaseCompatQuerySnapshot\)[\s\S]*collection\('order_accounts'\)[\s\S]*accounts: accountsFromSnapshot\(accountsSnap\)/,
   '数据分析账号标签必须只来自 order_accounts 共享账号表，不能从历史分析快照反推账号'
 );
 
@@ -438,8 +450,14 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /import \{ refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, storageHelpButtonClass, syncStatusClass \} from '@\/components\/ui\/status-strip';[\s\S]*<div className=\{statusStripLeftClass\}>[\s\S]*id="analytics-user"[\s\S]*id="analytics-sync-status"[\s\S]*id="analytics-refresh"[\s\S]*id="analytics-help"[\s\S]*<div className=\{statusStripRightClass\}>[\s\S]*id="analytics-export"[\s\S]*导出 CSV[\s\S]*id="analytics-disconnect-firestore"[\s\S]*退出数据库[\s\S]*id="analytics-snapshot-select"[\s\S]*className=\{uploadActionClass\}/,
-  '数据分析控制卡片需要保留状态栏、账号标签和导入区布局，并在右侧提供导出和退出数据库'
+  /import \{ refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, storageHelpButtonClass, syncStatusClass \} from '@\/components\/ui\/status-strip';[\s\S]*<div className=\{statusStripLeftClass\}>[\s\S]*id="analytics-sync-status"[\s\S]*id="analytics-refresh"[\s\S]*id="analytics-help"[\s\S]*<div className=\{statusStripRightClass\}>[\s\S]*id="analytics-export"[\s\S]*导出 CSV[\s\S]*id="analytics-snapshot-select"[\s\S]*className=\{uploadActionClass\}/,
+  '数据分析控制卡片需要保留同步、刷新、说明、导出、账号标签和导入区布局，数据库连接入口交给顶部全局菜单'
+);
+
+assert.doesNotMatch(
+  reactAnalyticsSource,
+  /id="analytics-user"|id="analytics-disconnect-firestore"/,
+  '数据分析页不应重复展示数据库连接和退出数据库入口'
 );
 
 assert.match(

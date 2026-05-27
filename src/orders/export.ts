@@ -1,7 +1,9 @@
 import {
   computeOrderCreatorCommission,
   computeOrderEstimatedProfit,
+  computeOrderPlatformFee,
   computeWarning,
+  normalizeOrderPricingContext,
   todayStr
 } from './shared.ts';
 import type {
@@ -31,6 +33,8 @@ const CSV_HEADERS = [
   '数量',
   '采购价格',
   '售价(日元)',
+  '平台手续费率(%)',
+  '平台手续费(人民币)',
   '达人佣金率(%)',
   '达人佣金(人民币)',
   '预估运费(人民币)',
@@ -114,11 +118,16 @@ function buildExportRows({
   orders = [],
   exchangeRate = null,
   computeWarningFn = computeWarning,
+  computeOrderPlatformFeeFn = computeOrderPlatformFee,
   computeOrderCreatorCommissionFn = computeOrderCreatorCommission,
   computeOrderEstimatedProfitFn = computeOrderEstimatedProfit
 }: BuildOrderExportRowsOptions = {}): OrderExportRow[] {
+  const pricingContext = normalizeOrderPricingContext(exchangeRate);
   return (Array.isArray(orders) ? orders : []).map(order => {
     const warning = computeWarningFn(order).text;
+    const platformFee = typeof computeOrderPlatformFeeFn === 'function'
+      ? computeOrderPlatformFeeFn(order, exchangeRate)
+      : order?.['平台手续费'];
     const creatorCommission = typeof computeOrderCreatorCommissionFn === 'function'
       ? computeOrderCreatorCommissionFn(order, exchangeRate)
       : order?.['达人佣金'];
@@ -136,6 +145,8 @@ function buildExportRows({
       order?.['数量'] || '',
       order?.['采购价格'] || '',
       order?.['售价'] || '',
+      pricingContext.platformFeeRate || '',
+      platformFee ?? '',
       order?.['达人佣金率'] || '',
       creatorCommission ?? '',
       order?.['预估运费'] || '',

@@ -73,7 +73,7 @@ assert.match(
 
 assert.match(
   collectionSource,
-  /formatFirestoreRulesUpdateMessage\('collection'[\s\S]*setSyncText\(''\)[\s\S]*pullDatasets\(\{\s*includeRejects:\s*false\s*\}\)[\s\S]*permissionBlocked[\s\S]*商品采编保存不可用/,
+  /formatFirestoreRulesUpdateMessage\('collection'[\s\S]*setSyncText\(''\)[\s\S]*subscribeSnapshot\(snapshot =>[\s\S]*isPermissionDenied\(error\)[\s\S]*markPermissionBlocked\(\)[\s\S]*permissionBlocked[\s\S]*商品采编保存不可用/,
   '商品采编需要用真实读取失败触发列表区权限不足提示'
 );
 
@@ -97,14 +97,14 @@ assert.match(
 
 assert.match(
   analyticsSource,
-  /formatFirestoreRulesUpdateMessage\('analytics'[\s\S]*notifyRulesUpdateNeeded\(message\)[\s\S]*listSavedAnalyses\(\)[\s\S]*saveAnalysis\(next,\s*\{\s*accountName:\s*normalizedAccountName,\s*filename\s*\}\)/,
+  /formatFirestoreRulesUpdateMessage\('analytics'[\s\S]*notifyRulesUpdateNeeded\(message\)[\s\S]*subscribeSnapshot\(snapshot =>[\s\S]*saveAnalysis\(next,\s*\{\s*accountName:\s*normalizedAccountName,\s*filename\s*\}\)/,
   '数据分析需要用真实读取和保存失败触发统一规则不足弹窗'
 );
 
 assert.match(
   productsSource + ordersSource + financeSource + collectionSource,
-  /permissionBlocked \? null : <Badge id="pl-sync"[\s\S]*permissionBlocked \? null : <Badge id="ot-sync"[\s\S]*permissionBlocked \? null : <Badge id="finance-sync"[\s\S]*permissionBlocked \? null : <Badge id="collection-sync"/,
-  '权限不足时顶部状态条只保留连接状态，不应重复显示规则更新文案'
+  /connected && !permissionBlocked \? <Badge id="pl-sync"[\s\S]*connected && !permissionBlocked \? <Badge id="ot-sync"[\s\S]*connected && !permissionBlocked \? <Badge id="finance-sync"[\s\S]*projectId && !permissionBlocked \? <Badge id="collection-sync"/,
+  '权限不足时模块状态条只保留模块内同步状态，不应重复显示规则更新文案'
 );
 
 assert.doesNotMatch(

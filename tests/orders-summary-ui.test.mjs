@@ -81,8 +81,8 @@ const orders = [
 
 assert.match(
   ordersPageSource,
-  /filteredCreatorCommissionTotal[\s\S]*allCreatorCommissionTotal[\s\S]*buildExpenseNote[\s\S]*采购 \$\{formatSummaryMetric\(purchaseMetric\)\} \+ 运费 \$\{formatSummaryMetric\(shippingMetric\)\} \+ 达人 \$\{formatSummaryMetric\(creatorCommissionMetric\)\}/,
-  '统计卡片需要按收入和支出组织汇总信息，并把达人佣金计入支出'
+  /filteredPlatformFeeTotal[\s\S]*filteredCreatorCommissionTotal[\s\S]*allPlatformFeeTotal[\s\S]*allCreatorCommissionTotal[\s\S]*buildExpenseNote[\s\S]*采购 \$\{formatSummaryMetric\(purchaseMetric\)\} \+ 运费 \$\{formatSummaryMetric\(shippingMetric\)\} \+ 平台 \$\{formatSummaryMetric\(platformFeeMetric\)\} \+ 达人 \$\{formatSummaryMetric\(creatorCommissionMetric\)\}/,
+  '统计卡片需要按收入和支出组织汇总信息，并把平台手续费和达人佣金计入支出'
 );
 
 assert.match(
@@ -217,11 +217,12 @@ function toPlain(value) {
     ],
     activeAccount: '__all__',
     searchQuery: '',
-    exchangeRate: 20
+    exchangeRate: { rate: 20, platformFeeRate: 10 }
   });
 
+  assert.equal(creatorCommissionSummary.allPlatformFeeMetric.total, 6.75, '平台手续费汇总应按 V3 商品售价加用户运费口径统计');
   assert.equal(creatorCommissionSummary.allCreatorCommissionMetric.total, 5, '达人佣金汇总应按订单总售价百分比折算后统计');
-  assert.equal(creatorCommissionSummary.allProfitTotal, 20, '摘要区总利润应扣除达人佣金');
+  assert.equal(creatorCommissionSummary.allProfitTotal, 13.25, '摘要区总利润应扣除平台手续费和达人佣金');
 
   assert.deepEqual(
     toPlain(summary),

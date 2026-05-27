@@ -87,7 +87,13 @@ assert.match(
 assert.match(
   ordersPageSource,
   /const refreshPricingContext = \(\) => \{[\s\S]*setPricingContext\(store\.getPricingContext\(\)\)[\s\S]*store\.subscribe\(refreshPricingContext\)[\s\S]*window\.addEventListener\(SETTINGS_CHANGED_EVENT, refreshPricingContext\)/,
-  'React 订单页需要订阅全局定价参数和事件，但参数变化不应直接覆盖当前运费'
+  'React 订单页需要订阅全局定价参数和事件'
+);
+
+assert.match(
+  ordersPageSource,
+  /useEffect\(\(\) => \{[\s\S]*if \(!modalOpen\) return;[\s\S]*setDraft\(previous => computeAutoFieldsWithContext\(previous, products, pricingContext\)\)[\s\S]*\}, \[modalOpen, pricingContext, products\]\)/,
+  'React 订单弹窗在自动运费状态下需要随全局汇率、倍率和贴单费刷新'
 );
 
 assert.match(
@@ -136,6 +142,12 @@ assert.match(
   ordersPageSource,
   /applyShippingRefreshPolicy\(nextDraft, draft, products, pricingContext, !!resetAuto\.shipping\)[\s\S]*applyShippingRefreshPolicy\(nextDraft, draft, products, pricingContext, true\)[\s\S]*items: \[\.\.\.draft\.items, createEmptyOrderItem\(\)\]/,
   'React 订单明细结构变化后需要恢复总尺寸自动汇总，但不应直接覆盖当前运费'
+);
+
+assert.match(
+  ordersPageSource,
+  /if \(nextDraft\.manualEstimatedShippingFee\) \{[\s\S]*return preserveEstimatedShippingFee\(nextDraft\);[\s\S]*if \(resetShipping\) \{[\s\S]*shippingFeeMode: 'auto' as const[\s\S]*manualEstimatedShippingFee: false[\s\S]*if \(shouldPreserveCurrentShippingFee\(currentDraft, products, pricingContext\)\) \{[\s\S]*return preserveEstimatedShippingFee\(nextDraft\);/,
+  'React 订单预估运费应先保留手动值，再让明细变化自动重算，最后才保护老订单保存值'
 );
 
 (async () => {

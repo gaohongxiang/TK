@@ -19,8 +19,8 @@ assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'calc', 'index.mjs'))
   assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'calc', file)), `完整 React SPA 重建后旧 calc DOM 壳层 ${file} 应删除`);
 });
 assert.match(reactCalculatorSource, /import \{ ensureGlobalSettingsStore \}[\s\S]*from '\.\.\/\.\.\/\.\.\/global-settings\.ts'[\s\S]*import \{ DEFAULT_CONSTANTS[\s\S]*from '\.\.\/\.\.\/\.\.\/shipping-core\.ts'/, 'React 利润计算器需要显式导入全局设置和共享运费核心');
-assert.match(formulasSource, /export\s+\{[\s\S]*calcLegacyRow[\s\S]*calcPricingRow[\s\S]*calcSalePrice[\s\S]*deriveLegacyOrigPrice[\s\S]*derivePricingOrigPrice[\s\S]*\}/, '利润计算器应保留纯公式 ESM 导出');
-assert.match(reactCalculatorSource, /import \{ calcLegacyRow, calcPricingRow, calcSalePrice, deriveLegacyOrigPrice, derivePricingOrigPrice \} from '\.\.\/\.\.\/\.\.\/calc\/formulas\.ts'/, 'React 利润计算器需要直接导入纯公式模块');
+assert.match(formulasSource, /export\s+\{[\s\S]*calcLegacyRow[\s\S]*calcPricingRow[\s\S]*calcPricingV3Row[\s\S]*calcSalePrice[\s\S]*calcSalePriceV3[\s\S]*deriveLegacyOrigPrice[\s\S]*derivePricingOrigPrice[\s\S]*derivePricingV3OrigPrice[\s\S]*\}/, '利润计算器应保留纯公式 ESM 导出');
+assert.match(reactCalculatorSource, /calcLegacyRow[\s\S]*calcPricingRow[\s\S]*calcPricingV3Row[\s\S]*calcSalePriceV3[\s\S]*deriveLegacyOrigPrice[\s\S]*derivePricingOrigPrice[\s\S]*derivePricingV3OrigPrice/, 'React 利润计算器需要直接导入纯公式模块');
 assert.doesNotMatch(htmlSource, /<script src="js\/calc\.js" defer><\/script>/, 'index.html 不应再直接加载旧的 js/calc.js');
 assert.doesNotMatch(htmlSource, /<script src="js\/calc\/(?:shared|shipping|legacy|pricing|index)\.js" defer><\/script>/, 'index.html 不应再加载旧 calc 普通脚本链');
 assert.doesNotMatch(htmlSource, /<script type="module" src="\/src\/calc\/index\.mjs"><\/script>/, 'React SPA 阶段不应再自动运行旧 calc DOM 入口');
@@ -36,13 +36,13 @@ assert.match(
 );
 assert.match(
   reactCalculatorSource,
-  /calcPricingRow[\s\S]*calcSalePrice[\s\S]*derivePricingOrigPrice[\s\S]*computeShippingQuote[\s\S]*id="costNew"[\s\S]*id="totalCostNew"[\s\S]*id="tbodyNew"/,
+  /calcPricingRow[\s\S]*calcPricingV3Row[\s\S]*calcSalePriceV3[\s\S]*derivePricingOrigPrice[\s\S]*derivePricingV3OrigPrice[\s\S]*computeShippingQuote[\s\S]*id="costNew"[\s\S]*id="totalCostNew"[\s\S]*id=\{isV3 \? 'tbodyV3' : 'tbodyNew'\}/,
   'React 利润计算器需要复用现有公式和运费核心，并保留关键 DOM id 以维持体验连续性'
 );
 
 assert.match(
   reactCalculatorSource,
-  /from '@\/components\/ui\/table'[\s\S]*calcResultTableClass = 'calc-result-table[\s\S]*tabular-nums[\s\S]*<Table className=\{calcResultTableClass\}[\s\S]*<TableBody id="tbodyNew"[\s\S]*<TableBody id="tbody"/,
+  /from '@\/components\/ui\/table'[\s\S]*calcResultTableClass = 'calc-result-table[\s\S]*tabular-nums[\s\S]*<Table className=\{calcResultTableClass\}[\s\S]*<TableBody id=\{isV3 \? 'tbodyV3' : 'tbodyNew'\}[\s\S]*<TableBody id="tbody"/,
   'React 利润计算器结果表需要使用共享 Table primitive'
 );
 
@@ -83,7 +83,7 @@ assert.doesNotMatch(
 );
 
 (async () => {
-  assert.match(reactCalculatorSource, /rateNew:\s*23\.5[\s\S]*calcTab:\s*'pricingNew'/, 'React 利润计算器需要保留原默认汇率和默认新定价 tab');
+  assert.match(reactCalculatorSource, /rateNew:\s*23\.5[\s\S]*calcTab:\s*'pricingV3'/, 'React 利润计算器需要保留原默认汇率，并默认进入 V3 主口径 tab');
 
   assert.match(reactCalculatorSource, /from '@\/components\/ui\/number-input'[\s\S]*DecimalInput[\s\S]*DecimalListInput/, 'React 利润计算器需要使用共享数字输入组件');
   assert.match(numberInputSource, /function normalizeDecimalText\([\s\S]*\.replace\(\s*\/\[。．｡，\]\/g,\s*'\.'[\s\S]*function normalizeDecimalInput[\s\S]*seenDot/, '共享数字输入需要统一小数符号归一化和单小数点规则');

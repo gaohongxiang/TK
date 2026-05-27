@@ -52,9 +52,15 @@ assert.match(
 );
 
 assert.match(
+  authSource,
+  /MEMBER_CACHE_KEY[\s\S]*readCachedMember[\s\S]*saveCachedMember[\s\S]*loadMemberForUser\(user[\s\S]*emit\(\{\s*ready:\s*false,[\s\S]*member:\s*cachedMember[\s\S]*signInWithEmailPassword[\s\S]*signedInUser[\s\S]*emit\(\{\s*ready:\s*false,[\s\S]*member:\s*cachedMember/,
+  '登录成功后需要先广播已登录和缓存权限，不能等 members 权限读取完成才切出项目登录'
+);
+
+assert.match(
   appRuntimeSource,
-  /app-firestore-modal[\s\S]*生成成员连接链接/,
-  '全局运行层需要保留连接设置和成员连接链接生成'
+  /app-firestore-modal[\s\S]*生成项目连接链接/,
+  '全局运行层需要保留管理员初始化用的项目连接链接生成'
 );
 
 assert.match(
@@ -71,7 +77,7 @@ assert.doesNotMatch(
 
 assert.match(
   adminPagesSource,
-  /function AccountManagementPage[\s\S]*createStaffMember\(email, password, \[\]\)[\s\S]*deleteMember\(emailToRemove\)[\s\S]*title="账号管理"[\s\S]*复制成员连接链接[\s\S]*新增员工账号[\s\S]*回到项目登录页点击“忘记密码”处理[\s\S]*账号列表/,
+  /function AccountManagementPage[\s\S]*createStaffMember\(email, password, \[\]\)[\s\S]*deleteMember\(emailToRemove\)[\s\S]*title="账号管理"[\s\S]*复制项目连接链接[\s\S]*新增员工账号[\s\S]*回到项目登录页点击“忘记密码”处理[\s\S]*账号列表/,
   '账号管理需要作为独立模块创建和移除员工账号，密码找回统一回到项目登录页'
 );
 
@@ -88,14 +94,20 @@ assert.match(
 );
 
 assert.match(
-  appShellSource,
-  /data-app-header-auth[\s\S]*className=\{appHeaderAuthSummaryClass\}[\s\S]*\{authEmail\}[\s\S]*authMenuOpen[\s\S]*appHeaderAuthMenuClass[\s\S]*authRoleLabel[\s\S]*退出登录/,
-  '顶部导航右侧登录状态默认只显示邮箱，角色和退出登录需要放在可收起的下拉菜单里'
+  appSource,
+  /function TopbarGlobalStatus[\s\S]*data-app-topbar-auth[\s\S]*\{authEmail\}[\s\S]*\{roleText\}[\s\S]*账号管理[\s\S]*权限管理[\s\S]*退出登录/,
+  '统一壳层需要把账号状态放在顶部右侧菜单，按钮显示邮箱，角色和退出登录放进下拉菜单'
+);
+
+assert.doesNotMatch(
+  appShellSource + fs.readFileSync(path.join(root, 'src', 'react', 'styles.css'), 'utf8'),
+  /data-app-header-auth|app-shell-user-menu|app-shell-global/,
+  '账号和数据库状态不能继续留在左侧栏底部，避免与顶部全局入口重复'
 );
 
 assert.match(
   appSource,
-  /loginModule[\s\S]*projectSettingsModule[\s\S]*accountModule[\s\S]*permissionModule[\s\S]*ProjectSetupGuide[\s\S]*项目管理员初始化[\s\S]*loginSetupBodyClass[\s\S]*创建 Firestore 数据库[\s\S]*开启 Firebase Auth[\s\S]*连接 Firebase 项目[\s\S]*发布数据库规则[\s\S]*创建管理员账号[\s\S]*管理员后台/,
+  /loginModule[\s\S]*projectSettingsModule[\s\S]*accountModule[\s\S]*permissionModule[\s\S]*ProjectSetupGuide[\s\S]*项目管理员初始化[\s\S]*loginSetupBodyClass[\s\S]*创建 Firestore 数据库[\s\S]*开启 Firebase Auth[\s\S]*保存项目连接[\s\S]*发布数据库规则[\s\S]*创建管理员账号[\s\S]*管理员后台/,
   '项目登录需要作为页面视图显示，管理员设置入口才展示初始化向导'
 );
 
@@ -137,8 +149,14 @@ assert.match(
 
 assert.match(
   appSource,
-  /保存连接[\s\S]*退出连接[\s\S]*复制最新规则[\s\S]*TKFirestoreConnection\.openConsole\('rules'\)/,
-  '管理员初始化操作面板需要提供保存连接、退出连接、复制规则和打开 Rules'
+  /保存项目连接[\s\S]*复制最新规则[\s\S]*TKFirestoreConnection\.openConsole\('rules'\)/,
+  '管理员初始化操作面板需要提供保存项目连接、复制规则和打开 Rules'
+);
+
+assert.doesNotMatch(
+  appSource,
+  /退出连接|更新连接/,
+  '管理员初始化页不应提供退出连接或更换连接入口'
 );
 
 assert.match(
@@ -155,8 +173,8 @@ assert.match(
 
 assert.match(
   appSource,
-  /ProjectInitializedCard[\s\S]*已初始化[\s\S]*项目管理员已设置[\s\S]*返回登录[\s\S]*#project-settings[\s\S]*打开项目配置[\s\S]*#accounts[\s\S]*打开账号管理[\s\S]*#permissions[\s\S]*打开权限管理/,
-  '管理员初始化完成后，项目管理员设置页需要隐藏初始化步骤并显示项目配置、账号管理和权限管理入口'
+  /ProjectInitializedCard[\s\S]*已初始化[\s\S]*项目管理员已设置[\s\S]*项目连接链接[\s\S]*复制项目连接链接[\s\S]*返回登录[\s\S]*#project-settings[\s\S]*打开数据库管理[\s\S]*#accounts[\s\S]*打开账号管理[\s\S]*#permissions[\s\S]*打开权限管理/,
+  '管理员初始化完成后，项目管理员设置页需要隐藏初始化步骤并显示项目连接链接、数据库管理、账号管理和权限管理入口'
 );
 
 assert.doesNotMatch(
@@ -167,8 +185,14 @@ assert.doesNotMatch(
 
 assert.match(
   appSource,
-  /shouldShowLoginPage = active === 'login' \|\| \(!authSession\.user && \(protectedModuleKeys\.has\(active as ModulePermissionKey\) \|\| ownerOnlyModuleKeys\.has\(active\)\)\)[\s\S]*renderedActive = shouldShowLoginPage \? 'login' : active/,
-  '主 App 需要未登录时显示项目登录页'
+  /const calculatorModule = modules\.find\(module => module\.key === 'calc'\)[\s\S]*if \(!authSession\.user\) \{[\s\S]*return \[calculatorModule, loginModule\][\s\S]*shouldShowLoginPage = active === 'login' \|\| \(!authSession\.user && \(protectedModuleKeys\.has\(active as ModulePermissionKey\) \|\| ownerOnlyModuleKeys\.has\(active\)\)\)[\s\S]*renderedActive = shouldShowLoginPage \? 'login' : active/,
+  '主 App 需要未登录时只显示利润计算器和项目登录，访问业务模块时切到项目登录页'
+);
+
+assert.match(
+  appSource,
+  /if \(!authSession\.ready && !authSession\.member\) return modules[\s\S]*isResolvingPermissions[\s\S]*isBlockedByPermission = \(moduleKey: string\) => isResolvingPermissions/,
+  '主 App 在已登录但权限读取中时需要先展示业务模块，并用权限读取中状态挡住受控页面'
 );
 
 assert.match(
@@ -185,8 +209,14 @@ assert.match(
 
 assert.match(
   adminPagesSource,
-  /function ProjectSettingsPage[\s\S]*getRulesSource\(\)[\s\S]*title="项目配置"[\s\S]*项目状态[\s\S]*项目 ID[\s\S]*Auth 域名[\s\S]*当前管理员[\s\S]*权限模式[\s\S]*Firebase 连接配置[\s\S]*复制成员连接链接[\s\S]*Firestore 最新规则[\s\S]*复制最新规则[\s\S]*打开 Rules/,
-  '管理员项目配置页需要展示初始化、连接配置和最新规则，并提供成员连接链接和规则操作'
+  /function ProjectSettingsPage[\s\S]*getRulesSource\(\)[\s\S]*title="数据库管理"[\s\S]*项目状态[\s\S]*项目 ID[\s\S]*Auth 域名[\s\S]*当前管理员[\s\S]*权限模式[\s\S]*项目连接链接[\s\S]*复制项目连接链接[\s\S]*打开 Firebase[\s\S]*Firestore 最新规则[\s\S]*复制最新规则[\s\S]*打开 Rules/,
+  '管理员数据库管理页需要展示初始化状态、项目连接链接和最新规则，并提供复制项目连接链接和规则操作'
+);
+
+assert.doesNotMatch(
+  adminPagesSource,
+  /更换连接|断开本机连接|退出数据库/,
+  '管理员数据库管理页不应暴露更换连接、断开本机连接或退出数据库入口'
 );
 
 console.log('auth permissions contract ok');

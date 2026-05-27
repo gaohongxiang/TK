@@ -2,6 +2,7 @@ import type {
   FirebaseCompatApp,
   FirebaseCompatFirestore,
   FirebaseCompatNamespace,
+  FirebaseCompatQuerySnapshot,
   FirebaseConfig,
   HydratedFirebaseConfig
 } from '../types/firestore.ts';
@@ -18,6 +19,11 @@ type CollectionDataset = {
   rows: CollectionCsvRow[];
 };
 type CollectionDatasetMap = Record<CollectionDatasetKey, CollectionDataset | null>;
+type CollectionProviderSnapshot = CollectionDatasetMap & {
+  accounts: string[];
+  hasPendingWrites?: boolean;
+  fromCache?: boolean;
+};
 type CollectionProviderCreateOptions = {
   state?: LooseRecord;
   helpers?: {
@@ -435,6 +441,36 @@ function datasetsFromDocs(docs: CollectionRecordDoc[], rejectDocs: CollectionExc
   return next;
 }
 
+function accountsFromSnapshot(snapshot: FirebaseCompatQuerySnapshot): string[] {
+  return [...new Set(snapshot.docs
+    .map((doc, index) => ({ data: doc.data() || {}, fallbackIndex: index }))
+    .filter(row => !row.data.deletedAt)
+    .map(row => ({
+      name: String(row.data.name || '').trim(),
+      sortIndex: toSortIndex(row.data.sortIndex, row.fallbackIndex)
+    }))
+    .filter(row => row.name)
+    .sort((left, right) => left.sortIndex - right.sortIndex || left.name.localeCompare(right.name))
+    .map(row => row.name))];
+}
+
+function buildProviderSnapshot(
+  recordsSnapshot: FirebaseCompatQuerySnapshot,
+  accountsSnapshot: FirebaseCompatQuerySnapshot,
+  rejectsSnapshot: FirebaseCompatQuerySnapshot | null = null
+): CollectionProviderSnapshot {
+  const datasets = datasetsFromDocs(
+    recordsSnapshot.docs.map(doc => doc.data() as CollectionRecordDoc),
+    rejectsSnapshot?.docs.map(doc => doc.data() as CollectionExcludedProductDoc) || []
+  );
+  return {
+    ...datasets,
+    accounts: accountsFromSnapshot(accountsSnapshot),
+    hasPendingWrites: !!(recordsSnapshot.metadata?.hasPendingWrites || accountsSnapshot.metadata?.hasPendingWrites || rejectsSnapshot?.metadata?.hasPendingWrites),
+    fromCache: !!(recordsSnapshot.metadata?.fromCache || accountsSnapshot.metadata?.fromCache || rejectsSnapshot?.metadata?.fromCache)
+  };
+}
+
 function create({ state = {}, helpers = {}, window: rootWindow = globalThis.window }: CollectionProviderCreateOptions = {}) {
   const nowIso = helpers.nowIso || (() => new Date().toISOString());
   let app: FirebaseCompatApp | null = null;
@@ -479,16 +515,63 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
   async function pullAccounts(): Promise<string[]> {
     const currentDb = await requireDb();
     const snapshot = await currentDb.collection('order_accounts').get();
-    return snapshot.docs
-      .map((doc, index) => ({ data: doc.data() || {}, fallbackIndex: index }))
-      .filter(row => !row.data.deletedAt)
-      .map(row => ({
-        name: String(row.data.name || '').trim(),
-        sortIndex: toSortIndex(row.data.sortIndex, row.fallbackIndex)
-      }))
-      .filter(row => row.name)
-      .sort((left, right) => left.sortIndex - right.sortIndex || left.name.localeCompare(right.name))
-      .map(row => row.name);
+    return accountsFromSnapshot(snapshot);
+  }
+
+  function subscribeSnapshot(onNext: (snapshot: CollectionProviderSnapshot) => void, onError: (error: unknown) => void = () => {}) {
+    let active = true;
+    let recordsSnap: FirebaseCompatQuerySnapshot | null = null;
+    let accountsSnap: FirebaseCompatQuerySnapshot | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let unsubscribeRecords: (() => void) | null = null;
+    let unsubscribeAccounts: (() => void) | null = null;
+
+    const emit = () => {
+      if (!active || !recordsSnap || !accountsSnap) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!active || !recordsSnap || !accountsSnap) return;
+        onNext(buildProviderSnapshot(recordsSnap, accountsSnap));
+      }, 0);
+    };
+
+    requireDb().then(currentDb => {
+      if (!active) return;
+      const recordsQuery = currentDb.collection('collection_records').orderBy('collectedAt', 'desc');
+      const accountsQuery = currentDb.collection('order_accounts');
+      if (!recordsQuery.onSnapshot || !accountsQuery.onSnapshot) {
+        Promise.all([
+          currentDb.collection('collection_records').orderBy('collectedAt', 'desc').get(),
+          currentDb.collection('order_accounts').get()
+        ]).then(([recordsSnapshot, accountsSnapshot]) => {
+          if (active) onNext(buildProviderSnapshot(recordsSnapshot, accountsSnapshot));
+        }).catch(onError);
+        return;
+      }
+      unsubscribeRecords = recordsQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          recordsSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+      unsubscribeAccounts = accountsQuery.onSnapshot(
+        { includeMetadataChanges: true },
+        snapshot => {
+          accountsSnap = snapshot;
+          emit();
+        },
+        onError
+      );
+    }).catch(onError);
+
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      if (unsubscribeRecords) unsubscribeRecords();
+      if (unsubscribeAccounts) unsubscribeAccounts();
+    };
   }
 
   function accountDocId(name: unknown = ''): string {
@@ -585,6 +668,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     init,
     pullAccounts,
     pullDatasets,
+    subscribeSnapshot,
     upsertAccount,
     saveAccountOrder,
     renameAccount,

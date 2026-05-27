@@ -177,6 +177,12 @@ assert.match(
   '管理员初始化完成后，项目管理员设置页需要隐藏初始化步骤并显示项目连接链接、数据库管理、账号管理和权限管理入口'
 );
 
+assert.match(
+  appSource,
+  /loginInitializedCardClass = 'grid min-w-0[\s\S]*overflow-hidden[\s\S]*loginConnectionLinkBoxClass = 'mt-2 min-w-0 max-w-full[\s\S]*loginConnectionLinkTextClass = 'mt-1 block min-w-0 max-w-full overflow-hidden truncate whitespace-nowrap[\s\S]*className=\{loginConnectionLinkBoxClass\}[\s\S]*className=\{loginConnectionLinkTextClass\}/,
+  '项目连接链接很长时，初始化完成卡片需要限制宽度并截断链接，避免撑破布局'
+);
+
 assert.doesNotMatch(
   appRuntimeSource,
   /app-auth-modal|authDialogOpen|员工登录|老板初始化/,
@@ -208,9 +214,21 @@ assert.match(
 );
 
 assert.match(
+  appSource,
+  /function TopbarGlobalStatus[\s\S]*\{authEmail \? \([\s\S]*data-app-topbar-connection[\s\S]*\) : null\}[\s\S]*data-app-topbar-auth[\s\S]*<span className=\{appAccountEmailClass\}>未登录<\/span>/,
+  '未登录时顶部不应仅凭本机 Firebase config 显示已连接数据库，数据库状态只在登录后展示'
+);
+
+assert.match(
+  appSource,
+  /const connected = !!authSession\.connected && !!authSession\.projectId[\s\S]*const connectionLabel = connected && authSession\.projectId/,
+  '顶部数据库状态需要以当前 authSession 连接为准，不直接用本机缓存 config 显示已连接'
+);
+
+assert.match(
   adminPagesSource,
-  /function ProjectSettingsPage[\s\S]*getRulesSource\(\)[\s\S]*title="数据库管理"[\s\S]*项目状态[\s\S]*项目 ID[\s\S]*Auth 域名[\s\S]*当前管理员[\s\S]*权限模式[\s\S]*项目连接链接[\s\S]*复制项目连接链接[\s\S]*打开 Firebase[\s\S]*Firestore 最新规则[\s\S]*复制最新规则[\s\S]*打开 Rules/,
-  '管理员数据库管理页需要展示初始化状态、项目连接链接和最新规则，并提供复制项目连接链接和规则操作'
+  /function ProjectSettingsPage[\s\S]*getRulesSource\(\)[\s\S]*copyConfigText[\s\S]*title="数据库管理"[\s\S]*项目状态[\s\S]*项目 ID[\s\S]*Auth 域名[\s\S]*当前管理员[\s\S]*权限模式[\s\S]*Firebase config 配置[\s\S]*复制 config[\s\S]*value=\{configText\}[\s\S]*项目连接链接[\s\S]*复制项目连接链接[\s\S]*打开 Firebase[\s\S]*Firestore 最新规则[\s\S]*复制最新规则[\s\S]*打开 Rules/,
+  '管理员数据库管理页需要展示初始化状态、Firebase config、项目连接链接和最新规则，并提供复制 config、项目连接链接和规则操作'
 );
 
 assert.doesNotMatch(

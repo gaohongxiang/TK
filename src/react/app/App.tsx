@@ -146,8 +146,10 @@ const loginPageActionsClass = 'flex flex-wrap justify-end gap-2';
 const loginSubmitActionsClass = 'flex justify-center pt-1';
 const loginSubmitButtonClass = 'min-w-[180px] justify-center px-9';
 const loginResetButtonClass = 'min-w-[86px] justify-center font-semibold text-[var(--accent)] hover:text-[var(--accent2)]';
-const loginInitializedCardClass = 'grid gap-4 rounded-2xl border border-[color-mix(in_srgb,var(--ok)_28%,var(--border))] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--ok)_8%,var(--panel)),var(--panel))] p-5 shadow-[var(--shadow)] max-[640px]:p-4';
+const loginInitializedCardClass = 'grid min-w-0 gap-4 overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--ok)_28%,var(--border))] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--ok)_8%,var(--panel)),var(--panel))] p-5 shadow-[var(--shadow)] max-[640px]:p-4';
 const loginInitializedBadgeClass = 'inline-flex w-fit items-center rounded-full border border-[color-mix(in_srgb,var(--ok)_34%,var(--border))] bg-[color-mix(in_srgb,var(--ok)_10%,var(--panel))] px-3 py-1 text-[12px] font-semibold text-[color-mix(in_srgb,var(--ok)_84%,var(--text))]';
+const loginConnectionLinkBoxClass = 'mt-2 min-w-0 max-w-full rounded-[12px] border border-[color-mix(in_srgb,var(--accent)_22%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_6%,var(--panel))] px-3 py-2 text-[12px] leading-[1.6] text-[var(--muted)]';
+const loginConnectionLinkTextClass = 'mt-1 block min-w-0 max-w-full overflow-hidden truncate whitespace-nowrap text-[11.5px]';
 const setupStepClass = 'relative grid grid-cols-[34px_minmax(0,1fr)] gap-3 border-b border-[var(--border)] py-4 text-left last:border-b-0 max-[640px]:grid-cols-[30px_minmax(0,1fr)]';
 const setupStepDoneClass = '[&_.setup-step-mark]:border-[color-mix(in_srgb,var(--ok)_38%,var(--border))] [&_.setup-step-mark]:bg-[color-mix(in_srgb,var(--ok)_12%,var(--panel))] [&_.setup-step-mark]:text-[color-mix(in_srgb,var(--ok)_86%,var(--text))]';
 const setupStepAttentionClass = '[&_.setup-step-mark]:border-[color-mix(in_srgb,var(--accent)_30%,var(--border))] [&_.setup-step-mark]:bg-[var(--panel)] [&_.setup-step-mark]:text-[var(--accent)]';
@@ -483,9 +485,9 @@ function ProjectInitializedCard({
           这个项目已经完成初始化。以后管理员换电脑、员工第一次使用，都打开同一个项目连接链接，再登录自己的账号。
         </p>
       </div>
-      <div className={setupStepHintClass}>
+      <div className={loginConnectionLinkBoxClass}>
         <strong>项目连接链接</strong>
-        <div className="mt-1 truncate text-[11.5px]">{copiedLink || '点击下方按钮复制。链接会把当前项目连接导入浏览器，不会自动登录账号。'}</div>
+        <div className={loginConnectionLinkTextClass}>{copiedLink || '点击下方按钮复制。链接会把当前项目连接导入浏览器，不会自动登录账号。'}</div>
       </div>
       <div className={loginPageActionsClass}>
         <Button type="button" onClick={() => void copyProjectConnectionLink()}><Copy aria-hidden="true" />复制项目连接链接</Button>
@@ -809,28 +811,30 @@ function TopbarGlobalStatus({
 
   return (
     <div className={appTopbarRightClass} ref={rootRef}>
-      <div className={appAccountMenuClass} data-app-topbar-connection>
-        <button
-          type="button"
-          className={appGlobalStatusClass}
-          title={connectionLabel}
-          aria-expanded={connectionMenuOpen}
-          aria-haspopup="menu"
-          onClick={() => onConnectionMenuOpenChange(!connectionMenuOpen)}
-        >
-          <Database size={15} strokeWidth={2} aria-hidden="true" />
-          <span className={appGlobalStatusTextClass}>{connectionLabel}</span>
-        </button>
-        {connectionMenuOpen ? (
-          <div className={appConnectionDropdownClass} role="menu">
-            {isConnected ? (
-              <button type="button" className={appAccountMenuButtonClass} onClick={onOpenProjectSettings}><Settings size={14} strokeWidth={2} aria-hidden="true" />数据库管理</button>
-            ) : (
-              <button type="button" className={appAccountMenuButtonClass} onClick={onOpenConnection}><Settings size={14} strokeWidth={2} aria-hidden="true" />项目登录</button>
-            )}
-          </div>
-        ) : null}
-      </div>
+      {authEmail ? (
+        <div className={appAccountMenuClass} data-app-topbar-connection>
+          <button
+            type="button"
+            className={appGlobalStatusClass}
+            title={connectionLabel}
+            aria-expanded={connectionMenuOpen}
+            aria-haspopup="menu"
+            onClick={() => onConnectionMenuOpenChange(!connectionMenuOpen)}
+          >
+            <Database size={15} strokeWidth={2} aria-hidden="true" />
+            <span className={appGlobalStatusTextClass}>{connectionLabel}</span>
+          </button>
+          {connectionMenuOpen ? (
+            <div className={appConnectionDropdownClass} role="menu">
+              {isConnected ? (
+                <button type="button" className={appAccountMenuButtonClass} onClick={onOpenProjectSettings}><Settings size={14} strokeWidth={2} aria-hidden="true" />数据库管理</button>
+              ) : (
+                <button type="button" className={appAccountMenuButtonClass} onClick={onOpenConnection}><Settings size={14} strokeWidth={2} aria-hidden="true" />项目登录</button>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <div className={appAccountMenuClass} data-app-topbar-auth>
         {authEmail ? (
           <button
@@ -884,7 +888,7 @@ function App({
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [topbarActions, setTopbarActions] = useState<ReactNode | null>(null);
   const year = now.getFullYear();
-  const connected = !!authSession.connected || !!TKFirestoreConnection.getConfig()?.projectId;
+  const connected = !!authSession.connected && !!authSession.projectId;
   const calculatorModule = modules.find(module => module.key === 'calc') || (fallbackModules[0] as ModuleItem);
   const visibleModules = useMemo(() => {
     if (!authSession.user) {
@@ -910,11 +914,9 @@ function App({
   const renderedActive = shouldShowLoginPage ? 'login' : active;
   const renderedModuleLabel = getModuleLabel(visibleModules, renderedActive);
   const renderedModuleMeta = moduleTopbarMeta[renderedActive] || {};
-  const connectionLabel = authSession.projectId
+  const connectionLabel = connected && authSession.projectId
     ? `已连接 · ${authSession.projectId}`
-    : TKFirestoreConnection.getConfig()?.projectId
-      ? `已连接 · ${TKFirestoreConnection.getConfig()?.projectId}`
-      : '未连接数据库';
+    : '未连接数据库';
   const authEmail = authSession.user?.email || authSession.user?.uid || '';
   const roleText = authSession.isOwner ? '管理员' : authSession.user ? '成员' : '未登录';
 

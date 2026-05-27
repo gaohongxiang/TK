@@ -583,13 +583,27 @@ function ProjectSettingsPage({ active = true }: AdminPageProps) {
   const [copiedLink, setCopiedLink] = useState('');
   const [copyingRules, setCopyingRules] = useState(false);
   const config = TKFirestoreConnection.getConfig();
+  const configText = config?.configText || '';
   const rulesSource = TKFirestoreConnection.getRulesSource();
-  const parsedConfig = config?.configText ? JSON.parse(config.configText) as Record<string, unknown> : null;
+  const parsedConfig = configText ? JSON.parse(configText) as Record<string, unknown> : null;
   const projectId = authState.projectId || config?.projectId || '';
   const authDomain = String(parsedConfig?.authDomain || (projectId ? `${projectId}.firebaseapp.com` : ''));
   const appId = String(parsedConfig?.appId || '');
   const apiKey = String(parsedConfig?.apiKey || '');
   const maskedApiKey = apiKey ? `${apiKey.slice(0, 8)}...${apiKey.slice(-4)}` : '-';
+
+  async function copyConfigText() {
+    if (!configText.trim()) {
+      TKFirestoreConnection.showToast('暂无 Firebase config', 'error');
+      return;
+    }
+    try {
+      await TKFirestoreConnection.copyText(configText);
+      TKFirestoreConnection.showToast('Firebase config 已复制');
+    } catch (copyError) {
+      TKFirestoreConnection.showToast(copyError instanceof Error ? copyError.message : 'Firebase config 复制失败', 'error');
+    }
+  }
 
   async function copyConnectionLink() {
     try {
@@ -619,7 +633,7 @@ function ProjectSettingsPage({ active = true }: AdminPageProps) {
       active={active}
       icon={<Settings2 size={22} strokeWidth={2.2} aria-hidden="true" />}
       title="数据库管理"
-      copy="查看当前项目连接、项目连接链接和正在使用的 Firestore 规则。这里的信息只对管理员账号显示。"
+      copy="查看当前 Firebase config、项目连接链接和正在使用的 Firestore 规则。这里的信息只对管理员账号显示。"
     >
       {error ? (
         <Alert variant="danger" className="text-[12.5px]">
@@ -658,6 +672,24 @@ function ProjectSettingsPage({ active = true }: AdminPageProps) {
               <div className={settingsLabelClass}>权限模式</div>
               <div className={settingsValueClass}>Firebase Auth + Firestore Rules</div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className={adminCardTitleClass}>Firebase config 配置</CardTitle>
+          <Button size="sm" disabled={!configText.trim()} onClick={() => void copyConfigText()}><Copy aria-hidden="true" />复制 config</Button>
+        </CardHeader>
+        <CardContent>
+          <div className={adminFormClass}>
+            <p className={settingsSectionCopyClass}>当前浏览器保存的 Firebase Web 配置，用于核对项目或迁移管理员设备。日常给员工使用项目连接链接，不需要手动复制 config。</p>
+            <Textarea
+              className={settingsTextareaClass}
+              readOnly
+              placeholder="暂无 Firebase config"
+              value={configText}
+            />
           </div>
         </CardContent>
       </Card>

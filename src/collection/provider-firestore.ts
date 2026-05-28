@@ -712,9 +712,9 @@ export type {
   CollectionDataset,
   CollectionDatasetKey,
   CollectionDatasetMap,
+  CollectionExcludedProductDoc,
   CollectionProviderPullDatasetsOptions,
   CollectionProviderAccountWriteOptions,
   CollectionProviderDeferredAccountWrite,
-  CollectionRecordDoc,
-  CollectionExcludedProductDoc
+  CollectionRecordDoc
 };

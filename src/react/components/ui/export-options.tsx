@@ -9,6 +9,7 @@ type ExportOption = {
 };
 
 type ExportOptionsProps = {
+  allLabel?: ReactNode;
   allCheckboxId: string;
   checkboxClassName?: string;
   countLabel: (count: number) => ReactNode;
@@ -19,6 +20,7 @@ type ExportOptionsProps = {
 };
 
 function ExportOptions({
+  allLabel = '全部账号',
   allCheckboxId,
   checkboxClassName,
   countLabel,
@@ -45,7 +47,7 @@ function ExportOptions({
             checked={allChecked}
             onChange={event => onSelectedChange(event.target.checked ? new Set(options.map(option => option.key)) : new Set())}
           />
-          <span>全部账号</span>
+          <span>{allLabel}</span>
         </span>
       </label>
       <div id={optionsId} className="flex max-h-[280px] flex-col gap-2 overflow-auto">

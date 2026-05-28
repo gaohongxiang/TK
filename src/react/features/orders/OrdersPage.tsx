@@ -6,7 +6,6 @@ import { Badge, badgeToneMap } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { ExportOptions } from '@/components/ui/export-options';
 import { FormField, FormRow } from '@/components/ui/form';
 import { HelpItem, HelpStack } from '@/components/ui/help-stack';
 import { InlineToken } from '@/components/ui/inline-token';
@@ -24,7 +23,7 @@ import {
 import { SearchHelpButton } from '@/components/ui/search-help';
 import { Select } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, storageHelpButtonClass, syncStatusClass } from '@/components/ui/status-strip';
+import { refreshButtonClass, statusStripClass, statusStripLeftClass, storageHelpButtonClass, syncStatusClass } from '@/components/ui/status-strip';
 import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
@@ -51,12 +50,6 @@ import {
   todayStr
 } from '../../../orders/shared.ts';
 import {
-  buildExportFilename,
-  buildExportRows,
-  buildOrdersCsv,
-  getExportAccountOptions
-} from '../../../orders/export.ts';
-import {
   buildCurrentFilterTitle,
   buildOrderCourierSummary,
   deriveDisplayedOrders,
@@ -74,7 +67,6 @@ import { cn } from '@/lib/utils';
 import {
   CalendarDays,
   Copy,
-  FileDown,
   HelpCircle,
   Pencil,
   Plus,
@@ -120,7 +112,6 @@ type PricingContext = ReturnType<ReturnType<typeof ensureGlobalSettingsStore>['g
 const LS_KEY = 'tk.orders.runtime.v1';
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const ACCOUNT_UPDATED_EVENT = 'tk-accounts-changed';
-const UNASSIGNED_ACCOUNT_SLOT = '__unassigned__';
 const ORDER_STATUS_OPTIONS = ['未采购', '已采购', '在途', '已入仓', '已送达', '已完成', '订单取消'];
 const modalCopyClass = 'mb-4 text-[13px] leading-[1.75] text-[var(--muted)]';
 const COURIER_AUTO_DETECTORS = [
@@ -163,10 +154,6 @@ function normalizeAccountName(value: unknown) {
 
 function uniqueAccounts(values: unknown[] = []) {
   return [...new Set(values.map(normalizeAccountName).filter(Boolean))];
-}
-
-function toAccountSlot(value: unknown) {
-  return normalizeAccountName(value) || UNASSIGNED_ACCOUNT_SLOT;
 }
 
 function readGlobalConfig() {
@@ -1553,46 +1540,6 @@ function OrderModal({
   );
 }
 
-function ExportModal({
-  open,
-  options,
-  selected,
-  onSelectedChange,
-  onOpenChange,
-  onConfirm
-}: {
-  open: boolean;
-  options: { key: string; label: string; count: number }[];
-  selected: Set<string>;
-  onSelectedChange: (value: Set<string>) => void;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Dialog id="ot-export-modal" open={open} titleId="ot-export-title" onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[460px]">
-        <DialogTitle id="ot-export-title">选择要导出的账号</DialogTitle>
-        <Alert variant="info" className={modalCopyClass}>
-          <AlertDescription>可勾选一个或多个账号；如果有未关联订单，也可以单独导出。</AlertDescription>
-        </Alert>
-        <ExportOptions
-          allCheckboxId="ot-export-all"
-          checkboxClassName="ot-export-checkbox"
-          countLabel={count => `${count} 条`}
-          options={options}
-          optionsId="ot-export-options"
-          selected={selected}
-          onSelectedChange={onSelectedChange}
-        />
-        <DialogActions>
-          <Button id="ot-export-cancel" onClick={() => onOpenChange(false)}>取消</Button>
-          <Button id="ot-export-confirm" variant="primary" onClick={onConfirm}>导出 CSV</Button>
-        </DialogActions>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function OrderTrashModal({
   open,
   orders,
@@ -1712,8 +1659,6 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   const [editingAccountValue, setEditingAccountValue] = useState('');
   const [accountDeleteOpen, setAccountDeleteOpen] = useState(false);
   const [deletingAccountName, setDeletingAccountName] = useState('');
-  const [exportOpen, setExportOpen] = useState(false);
-  const [exportSelected, setExportSelected] = useState<Set<string>>(new Set());
   const [trashOpen, setTrashOpen] = useState(false);
   const [storageHelpOpen, setStorageHelpOpen] = useState(false);
   const [searchHelpOpen, setSearchHelpOpen] = useState(false);
@@ -1723,11 +1668,6 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   const exchangeRate = pricingContext.rate;
 
   const allAccounts = accounts;
-  const exportOptions = useMemo(() => getExportAccountOptions({ accounts: allAccounts, orders, constants: { UNASSIGNED_ACCOUNT_SLOT } }).map(option => ({
-    key: String(option.key),
-    label: String(option.label),
-    count: option.count
-  })), [allAccounts, orders]);
   const accountTabItems = useMemo(() => allAccounts.map(account => ({
     key: account,
     label: account,
@@ -2412,52 +2352,6 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     }
   }
 
-  function openExportModal() {
-    if (!orders.length) {
-      showToast('当前没有可导出的订单数据', 'error');
-      return;
-    }
-    const selected: Set<string> = activeAccount !== '__all__'
-      ? new Set([activeAccount])
-      : new Set(exportOptions.map(option => String(option.key)));
-    setExportSelected(selected);
-    setExportOpen(true);
-  }
-
-  function confirmExport() {
-    if (!exportSelected.size) {
-      showToast('请至少选择一个账号', 'error');
-      return;
-    }
-    const selectedKeys = [...exportSelected].map(String);
-    const rowsSource = orders.filter(order => selectedKeys.includes(toAccountSlot(order['账号'])));
-    if (!rowsSource.length) {
-      showToast('当前选择下没有可导出的订单数据', 'error');
-      return;
-    }
-    const rows = buildExportRows({
-      orders: rowsSource,
-      exchangeRate: pricingContext,
-      computeOrderPlatformFeeFn: computeOrderPlatformFee,
-      computeOrderCreatorCommissionFn: computeOrderCreatorCommission,
-      computeOrderEstimatedProfitFn: computeOrderEstimatedProfit
-    });
-    const csv = buildOrdersCsv({ rows, includeBom: true });
-    const selectedOptions = exportOptions.filter(option => exportSelected.has(String(option.key)));
-    const filename = buildExportFilename(selectedOptions);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    setExportOpen(false);
-    showToast('CSV 已开始导出');
-  }
-
   return (
     <>
       <ModuleWorkspace className="orders-page" data-react-orders-page-ready="true">
@@ -2477,11 +2371,6 @@ function OrdersPage({ active = true }: { active?: boolean }) {
               <Button id="ot-storage-help-btn" variant="plain" className={storageHelpButtonClass} aria-controls="ot-storage-help-modal" aria-haspopup="dialog" aria-label="数据存储说明" title="数据存储说明" onClick={() => setStorageHelpOpen(true)}>
                 <HelpCircle size={15} strokeWidth={2} aria-hidden="true" />
               </Button>
-            </div>
-            <div className={statusStripRightClass}>
-              {connected ? (
-                <Button id="ot-export" size="sm" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-              ) : null}
             </div>
           </div>
           </ModuleStatusBar>
@@ -2595,7 +2484,6 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         onOpenChange={setAccountDeleteOpen}
         onConfirm={deleteAccount}
       />
-      <ExportModal open={exportOpen} options={exportOptions} selected={exportSelected} onSelectedChange={setExportSelected} onOpenChange={setExportOpen} onConfirm={confirmExport} />
       <OrderTrashModal
         open={trashOpen}
         orders={deletedOrders}

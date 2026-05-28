@@ -122,8 +122,8 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /ot-header-status-row[\s\S]*statusStripClass[\s\S]*statusStripLeftClass[\s\S]*id="pl-sync"[\s\S]*id="pl-refresh"[\s\S]*statusStripRightClass[\s\S]*id="pl-export"[\s\S]*<AccountTabsBar[\s\S]*id="pl-acc-tabs"[\s\S]*actionsId="pl-acc-actions"[\s\S]*id="pl-add"/,
-  'React 商品管理顶部需要保留同步和图标刷新，数据库连接入口交给顶部全局菜单'
+  /ot-header-status-row[\s\S]*statusStripClass[\s\S]*statusStripLeftClass[\s\S]*id="pl-sync"[\s\S]*id="pl-refresh"[\s\S]*<AccountTabsBar[\s\S]*id="pl-acc-tabs"[\s\S]*actionsId="pl-acc-actions"[\s\S]*id="pl-add"/,
+  'React 商品管理顶部需要保留同步和图标刷新，导出与数据库连接入口交给顶部全局菜单'
 );
 
 assert.doesNotMatch(
@@ -204,34 +204,16 @@ assert.doesNotMatch(
   '商品库刷新按钮不应显示“刷新”文字，和订单页保持图标按钮'
 );
 
-assert.match(
+assert.doesNotMatch(
   reactProductsPageSource,
-  /id="pl-export"[\s\S]*className="inline-flex items-center justify-center gap-1\.5"[\s\S]*<FileDown[\s\S]*导出 CSV/,
-  '商品库导出 CSV 按钮需要图标和文字居中'
-);
-
-assert.match(
-  reactProductsPageSource,
-  /id="pl-export-modal"[\s\S]*<ExportOptions[\s\S]*optionsId="pl-export-options"[\s\S]*id="pl-export-confirm"/,
-  'React 商品库需要提供按账号选择的导出 CSV 弹层'
-);
-
-assert.match(
-  reactProductsPageSource,
-  /from '@\/components\/ui\/account-tabs-bar'[\s\S]*from '@\/components\/ui\/export-options'|from '@\/components\/ui\/export-options'[\s\S]*from '@\/components\/ui\/account-tabs-bar'/,
-  '商品管理账号标签和导出弹层需要使用共享 AccountTabsBar/ExportOptions primitives'
+  /id="pl-export"|id="pl-export-modal"|FileDown/,
+  '商品库不应再保留模块内导出入口，导出统一放进顶部账号菜单'
 );
 
 assert.match(
   reactProductsPageSource,
   /dataAttrs:\s*\{\s*'data-pl-acc': account\s*\}[\s\S]*<AccountTabsBar[\s\S]*items=\{accountTabItems\}/,
-  '商品管理账号筛选和导出账号选择需要迁到共享 TabsTrigger 与 ExportOptions，减少旧基础标签依赖'
-);
-
-assert.match(
-  reactProductsPageSource,
-  /<ExportOptions[\s\S]*allCheckboxId="pl-export-all"[\s\S]*checkboxClassName="pl-export-checkbox"/,
-  '商品管理导出账号选择需要迁到共享 ExportOptions'
+  '商品管理账号筛选需要迁到共享 TabsTrigger，减少旧基础标签依赖'
 );
 
 assert.match(
@@ -337,9 +319,9 @@ assert.match(
 );
 
 assert.match(
-  reactProductsPageSource,
-  /function confirmExport\([\s\S]*new Blob\(\[[^\]]+csv\][\s\S]*link\.download = productExporter\.buildProductExportFilename/,
-  'React 商品库需要直接负责 CSV 下载逻辑'
+  fs.readFileSync(path.join(root, 'src', 'app-export-center.ts'), 'utf8'),
+  /buildProductsFile[\s\S]*buildProductCsv[\s\S]*downloadExportFiles/,
+  '商品库 CSV 下载逻辑需要统一交给导出中心'
 );
 
 assert.match(
@@ -367,9 +349,9 @@ assert.match(
 );
 
 assert.match(
-  reactProductsPageSource,
-  /id="pl-export-modal"[\s\S]*<ExportOptions[\s\S]*optionsId="pl-export-options"[\s\S]*id="pl-export-confirm"/,
-  'React 商品库需要直接负责导出账号选择弹层'
+  reactAppSource,
+  /function UnifiedExportDialog[\s\S]*allLabel="全部店铺"[\s\S]*id="app-export-confirm"/,
+  '商品库导出需要通过顶部统一导出弹层选择店铺和模块'
 );
 
 assert.match(

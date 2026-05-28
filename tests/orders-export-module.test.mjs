@@ -43,9 +43,9 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  ordersPageSource,
-  /function confirmExport\([\s\S]*new Blob\(\[csv\][\s\S]*link\.download = filename/,
-  'React 订单页需要直接负责 CSV 下载动作'
+  fs.readFileSync(path.join(__dirname, '..', 'src', 'app-export-center.ts'), 'utf8'),
+  /function downloadBlob[\s\S]*new Blob\(\[files\[0\]\.csv\][\s\S]*JSZip/,
+  '统一导出中心需要直接负责 CSV 下载和多文件 ZIP 打包'
 );
 
 assert.match(
@@ -69,9 +69,9 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  ordersPageSource,
-  /buildExportRows[\s\S]*buildOrdersCsv[\s\S]*id="ot-export-modal"/,
-  'React 订单页需要直接接管订单 CSV 导出弹窗和 CSV 构造'
+  fs.readFileSync(path.join(__dirname, '..', 'src', 'app-export-center.ts'), 'utf8'),
+  /buildExportRows[\s\S]*buildOrdersCsv[\s\S]*function buildExportFiles/,
+  '统一导出中心需要负责订单 CSV 构造'
 );
 
 assert.doesNotMatch(

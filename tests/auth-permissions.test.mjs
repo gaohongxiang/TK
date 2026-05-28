@@ -95,8 +95,8 @@ assert.match(
 
 assert.match(
   appSource,
-  /function TopbarGlobalStatus[\s\S]*data-app-topbar-auth[\s\S]*\{authEmail\}[\s\S]*\{roleText\}[\s\S]*账号管理[\s\S]*权限管理[\s\S]*退出登录/,
-  '统一壳层需要把账号状态放在顶部右侧菜单，按钮显示邮箱，角色和退出登录放进下拉菜单'
+  /function TopbarGlobalStatus[\s\S]*data-app-topbar-auth[\s\S]*\{authEmail\}[\s\S]*\{roleText\}[\s\S]*账号管理[\s\S]*权限管理[\s\S]*数据导出[\s\S]*退出登录/,
+  '统一壳层需要把账号状态放在顶部右侧菜单，按钮显示邮箱，角色、统一导出和退出登录放进下拉菜单'
 );
 
 assert.doesNotMatch(

@@ -32,21 +32,15 @@ assert.match(
 );
 
 assert.match(
-  reactProductsSource,
-  /ProductLibraryExport\.create[\s\S]*buildProductExportRows/,
-  'React 商品页需要直接接管商品 CSV 导出弹层，并复用商品导出 ESM 纯逻辑'
+  fs.readFileSync(path.join(root, 'src', 'app-export-center.ts'), 'utf8'),
+  /ProductLibraryExport\.create[\s\S]*buildProductExportRows[\s\S]*buildProductCsv/,
+  '统一导出中心需要复用商品导出 ESM 纯逻辑'
 );
 
 assert.match(
-  reactProductsSource,
-  /id="pl-export-modal"[\s\S]*<ExportOptions[\s\S]*optionsId="pl-export-options"[\s\S]*id="pl-export-confirm"/,
-  'React 商品页需要直接接管商品 CSV 导出弹层'
-);
-
-assert.match(
-  reactProductsSource,
-  /new Blob\(\[[^\]]+csv\][\s\S]*URL\.createObjectURL[\s\S]*link\.download = productExporter\.buildProductExportFilename/,
-  'React 商品页需要负责浏览器下载动作'
+  fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8'),
+  /function UnifiedExportDialog[\s\S]*allLabel="全部店铺"[\s\S]*id="app-export-confirm"/,
+  'React 需要通过顶部统一导出弹层选择店铺和模块'
 );
 
 assert.match(

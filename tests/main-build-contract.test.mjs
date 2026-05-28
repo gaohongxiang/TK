@@ -304,8 +304,8 @@ assert.doesNotMatch(
 
 assert.match(
   fs.readFileSync(path.join(root, 'src', 'react', 'features', 'orders', 'OrdersPage.tsx'), 'utf8'),
-  /OrderTrackerProviderFirestore[\s\S]*ProductLibraryProviderFirestore[\s\S]*id="ot-modal"[\s\S]*id="ot-export-modal"/,
-  '完整 React SPA 重建后订单管理页面需要由 React 直接接管 Firestore、弹窗和导出'
+  /OrderTrackerProviderFirestore[\s\S]*ProductLibraryProviderFirestore[\s\S]*id="ot-modal"/,
+  '完整 React SPA 重建后订单管理页面需要由 React 直接接管 Firestore 和编辑弹窗'
 );
 
 assert.match(

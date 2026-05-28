@@ -11,6 +11,7 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 
 const configSource = fs.readFileSync(path.join(root, 'src', 'app-config.ts'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const collectionSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'collection', 'CollectionPage.tsx'), 'utf8');
+const collectionExportSource = fs.readFileSync(path.join(root, 'src', 'collection', 'export.ts'), 'utf8');
 const collectionTablePath = path.join(root, 'src', 'collection', 'table.ts');
 const reactSearchHelpSource = fs.readFileSync(path.join(root, 'src', 'react', 'components', 'ui', 'search-help.tsx'), 'utf8');
 const collectionProviderSource = fs.readFileSync(path.join(root, 'src', 'collection', 'provider-firestore.ts'), 'utf8');
@@ -63,10 +64,10 @@ assert.match(
   '商品采编页需要在左侧展示同步状态和刷新按钮，数据库连接入口交给顶部全局菜单'
 );
 
-assert.match(
+assert.doesNotMatch(
   collectionSource,
-  /id="collection-export"[\s\S]*<FileDown[\s\S]*导出 CSV/,
-  '商品采编页连接后右侧需要提供导出 CSV'
+  /id="collection-export"|FileDown/,
+  '商品采编页不应再保留模块内导出入口，导出统一放进顶部账号菜单'
 );
 
 assert.doesNotMatch(
@@ -403,9 +404,9 @@ assert.match(
 );
 
 assert.match(
-  collectionSource,
-  /function downloadCsv\(/,
-  '商品采编页面需要支持导出编辑后的 CSV'
+  collectionExportSource,
+  /function buildCollectionExportFile[\s\S]*stringifyCollectionCsv/,
+  '商品采编导出需要通过公共导出模块生成编辑后的 CSV'
 );
 
 assert.doesNotMatch(

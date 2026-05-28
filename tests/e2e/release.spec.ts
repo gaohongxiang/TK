@@ -577,11 +577,10 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#pl-main .ot-header-status-row .left #pl-user')).toHaveCount(0);
     await expect(page.locator('#pl-main .ot-header-status-row .left #pl-sync')).toBeVisible();
     await expect(page.locator('#pl-main .ot-header-status-row .left #pl-refresh')).toBeVisible();
-    await expect(page.locator('#pl-main .ot-header-status-row .right #pl-export')).toBeVisible();
+    await expect(page.locator('#pl-export')).toHaveCount(0);
     const productMainBackground = await page.locator('#pl-main').evaluate(element => getComputedStyle(element).backgroundColor);
     await expect(page.locator('#pl-refresh')).toHaveAttribute('aria-label', '刷新商品数据');
     await expect(page.locator('#pl-refresh')).toHaveText('');
-    await expect(page.locator('#pl-export')).toContainText('导出 CSV');
     await expectNoOverlap(page, '#pl-sync', '#pl-refresh', 'product sync text and refresh button should not overlap');
     await expectNoOverlap(page, '#pl-acc-tabs', '#pl-add', 'product account tabs and add button should not overlap');
     await page.locator('#pl-add').click();
@@ -654,7 +653,7 @@ test.describe('release browser smoke', () => {
     await expectActiveModule(page, 'collection', '商品采编');
     await expect(page.locator('[data-react-collection-page-ready="true"]')).toBeVisible();
     await expect(page.locator('#collection-sync')).toContainText('已同步');
-    await expect(page.locator('#collection-export')).toContainText('导出 CSV');
+    await expect(page.locator('#collection-export')).toHaveCount(0);
     await expect(page.locator('[data-app-topbar-connection]')).toContainText('已连接 · tk-e2e');
     await expect(page.locator('.collection-table')).toContainText('E2E 露营挂钩');
     await page.locator('#collection-search').fill('露营');

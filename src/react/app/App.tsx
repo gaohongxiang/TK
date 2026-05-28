@@ -1,4 +1,4 @@
-import { Copy, Database, ExternalLink, LockKeyhole, LogOut, Settings, ShieldCheck, UserRound } from 'lucide-react';
+import { Copy, Database, ExternalLink, FileArchive, LockKeyhole, LogOut, Settings, ShieldCheck, UserRound } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ComponentType, type FormEvent, type ReactNode } from 'react';
 import { AppRuntime } from './AppRuntime';
 import { TopbarActionsContext } from './TopbarActionsContext';
@@ -32,7 +32,22 @@ import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { ExportOptions } from '@/components/ui/export-options';
 import { TKFirestoreConnection } from '../../firestore-connection.ts';
+import {
+  ALL_ACCOUNT_KEY,
+  buildExportFiles,
+  downloadExportFiles,
+  getExportAccountOptionsFromSnapshot,
+  getModuleOptionsForPermissions,
+  loadExportCenterSnapshot,
+  type ExportCenterSnapshot,
+  type ExportModuleKey,
+  type ExportOption
+} from '../../app-export-center.ts';
+import { ensureGlobalSettingsStore } from '../../global-settings.ts';
 
 type ModuleItem = {
   key: string;
@@ -112,11 +127,21 @@ const appAccountButtonClass = 'app-account-button inline-flex max-w-[300px] item
 const appAccountAvatarClass = 'grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--accent)_16%,white)] text-[var(--accent)]';
 const appAccountTextClass = 'grid min-w-0 leading-tight';
 const appAccountEmailClass = 'min-w-0 max-w-[190px] truncate';
-const appAccountRoleClass = 'text-[10.5px] text-[var(--muted)]';
 const appAccountDropdownClass = 'app-account-dropdown absolute right-0 top-[calc(100%+8px)] z-[130] grid min-w-[230px] gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-2 shadow-[var(--shadow)]';
 const appConnectionDropdownClass = 'app-account-dropdown absolute left-0 top-[calc(100%+8px)] z-[130] grid w-full min-w-full gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-2 shadow-[var(--shadow)]';
 const appAccountMenuButtonClass = 'inline-flex min-h-9 w-full items-center gap-2 rounded-xl border border-transparent bg-transparent px-3 text-left text-[12px] font-semibold text-[var(--text)] hover:border-[var(--border)] hover:bg-[var(--panel2)]';
 const appAccountDangerButtonClass = `${appAccountMenuButtonClass} text-[var(--danger)]`;
+const appExportDialogClass = 'max-w-[760px]';
+const appExportCopyClass = 'm-0 mb-4 text-[12.5px] leading-[1.65] text-[var(--muted)]';
+const appExportGridClass = 'grid grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] gap-4 max-[760px]:grid-cols-1';
+const appExportPanelClass = 'grid min-w-0 content-start gap-3 rounded-[14px] border border-[var(--border)] bg-[color-mix(in_srgb,var(--panel2)_48%,transparent)] p-3';
+const appExportPanelTitleClass = 'text-[12px] font-semibold text-[var(--muted)]';
+const appExportModuleGridClass = 'grid gap-2';
+const appExportModuleOptionClass = 'flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[rgba(255,255,255,.025)] px-3 py-2.5';
+const appExportModuleLabelClass = 'inline-flex min-w-0 items-center gap-2.5 text-[13px] font-semibold text-[var(--text)]';
+const appExportModuleMetaClass = 'whitespace-nowrap text-[11.5px] text-[var(--muted)]';
+const appExportHintClass = 'rounded-xl border border-[color-mix(in_srgb,var(--accent)_22%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_6%,var(--panel))] px-3 py-2 text-[12px] leading-[1.55] text-[var(--muted)]';
+const appExportEmptyClass = 'rounded-xl border border-dashed border-[var(--border)] px-3 py-4 text-center text-[12px] leading-[1.55] text-[var(--muted)]';
 const analyticsStatusClass = 'analytics-react-status mb-4 grid grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3.5 max-[640px]:grid-cols-[32px_minmax(0,1fr)]';
 const analyticsStatusMarkClass = 'analytics-react-status-mark h-[38px] w-[38px] rounded-xl border border-[color-mix(in_srgb,var(--accent2)_45%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--accent2)_56%,transparent),transparent),color-mix(in_srgb,var(--panel2)_48%,transparent)]';
 const analyticsStatusLoadingClass = '[&_.analytics-react-status-mark]:animate-pulse';
@@ -288,6 +313,123 @@ function ModuleAccessGate({
         {!state.user ? <Button type="button" variant="primary" onClick={() => { window.location.hash = '#login'; }}>去项目登录</Button> : null}
       </div>
     </Card>
+  );
+}
+
+function UnifiedExportDialog({
+  accountOptions,
+  exporting,
+  loading,
+  moduleOptions,
+  open,
+  selectedAccounts,
+  selectedModules,
+  onExport,
+  onOpenChange,
+  onReload,
+  onSelectedAccountsChange,
+  onSelectedModulesChange
+}: {
+  accountOptions: ExportOption[];
+  exporting: boolean;
+  loading: boolean;
+  moduleOptions: ExportOption[];
+  open: boolean;
+  selectedAccounts: Set<string>;
+  selectedModules: Set<ExportModuleKey>;
+  onExport: () => void;
+  onOpenChange: (open: boolean) => void;
+  onReload: () => void;
+  onSelectedAccountsChange: (value: Set<string>) => void;
+  onSelectedModulesChange: (value: Set<ExportModuleKey>) => void;
+}) {
+  const allModulesChecked = moduleOptions.length > 0 && moduleOptions.every(option => selectedModules.has(option.key as ExportModuleKey));
+  const selectedAccountCount = selectedAccounts.size;
+  const selectedModuleCount = selectedModules.size;
+
+  function toggleModule(moduleKey: ExportModuleKey, checked: boolean) {
+    const next = new Set(selectedModules);
+    if (checked) next.add(moduleKey);
+    else next.delete(moduleKey);
+    onSelectedModulesChange(next);
+  }
+
+  return (
+    <Dialog open={open} titleId="app-export-title" onOpenChange={onOpenChange}>
+      <DialogContent className={appExportDialogClass}>
+        <DialogTitle id="app-export-title" className="mb-2">数据导出</DialogTitle>
+        <p className={appExportCopyClass}>按店铺和模块统一导出 CSV。只选一个模块会直接下载 CSV；同时选择多个模块时会打包成 ZIP。</p>
+        <div className={appExportGridClass}>
+          <div className={appExportPanelClass}>
+            <div className={appExportPanelTitleClass}>店铺</div>
+            {loading ? (
+              <div className={appExportEmptyClass}>正在读取店铺和数据量...</div>
+            ) : accountOptions.length ? (
+              <ExportOptions
+                allCheckboxId="app-export-all-accounts"
+                allLabel="全部店铺"
+                checkboxClassName="app-export-account-checkbox"
+                countLabel={count => `${count} 条`}
+                options={accountOptions}
+                optionsId="app-export-account-options"
+                selected={selectedAccounts}
+                onSelectedChange={onSelectedAccountsChange}
+              />
+            ) : (
+              <div className={appExportEmptyClass}>还没有可导出的店铺数据。</div>
+            )}
+          </div>
+          <div className={appExportPanelClass}>
+            <div className={appExportPanelTitleClass}>模块</div>
+            {moduleOptions.length ? (
+              <div className={appExportModuleGridClass} id="app-export-module-options">
+                <label className={appExportModuleOptionClass}>
+                  <span className={appExportModuleLabelClass}>
+                    <Checkbox
+                      id="app-export-all-modules"
+                      checked={allModulesChecked}
+                      onChange={event => onSelectedModulesChange(event.target.checked ? new Set(moduleOptions.map(option => option.key as ExportModuleKey)) : new Set())}
+                    />
+                    <span>全部模块</span>
+                  </span>
+                  <span className={appExportModuleMetaClass}>{moduleOptions.length} 个</span>
+                </label>
+                {moduleOptions.map(option => {
+                  const moduleKey = option.key as ExportModuleKey;
+                  return (
+                    <label className={appExportModuleOptionClass} key={option.key}>
+                      <span className={appExportModuleLabelClass}>
+                        <Checkbox
+                          className="app-export-module-checkbox"
+                          value={option.key}
+                          checked={selectedModules.has(moduleKey)}
+                          onChange={event => toggleModule(moduleKey, event.target.checked)}
+                        />
+                        <span>{option.label}</span>
+                      </span>
+                      <span className={appExportModuleMetaClass}>CSV</span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={appExportEmptyClass}>当前账号没有可导出的业务模块权限。</div>
+            )}
+            <div className={appExportHintClass}>
+              已选 {selectedAccountCount} 个店铺、{selectedModuleCount} 个模块。导出使用各模块现有公共计算和 CSV 生成逻辑。
+            </div>
+          </div>
+        </div>
+        <DialogActions>
+          <Button variant="ghost" onClick={onReload} disabled={loading || exporting}>刷新数据</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={exporting}>取消</Button>
+          <Button variant="primary" id="app-export-confirm" onClick={onExport} disabled={loading || exporting || !selectedAccountCount || !selectedModuleCount}>
+            <FileArchive aria-hidden="true" />
+            {exporting ? '导出中...' : '导出'}
+          </Button>
+        </DialogActions>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -779,6 +921,7 @@ function TopbarGlobalStatus({
   onOpenProjectSettings,
   onOpenAccounts,
   onOpenPermissions,
+  onOpenExport,
   onSignOut
 }: {
   authEmail: string;
@@ -793,6 +936,7 @@ function TopbarGlobalStatus({
   onOpenProjectSettings: () => void;
   onOpenAccounts: () => void;
   onOpenPermissions: () => void;
+  onOpenExport: () => void;
   onSignOut: () => void;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -864,6 +1008,7 @@ function TopbarGlobalStatus({
             </div>
             <button type="button" className={appAccountMenuButtonClass} onClick={onOpenAccounts}><UserRound size={14} strokeWidth={2} aria-hidden="true" />账号管理</button>
             <button type="button" className={appAccountMenuButtonClass} onClick={onOpenPermissions}><ShieldCheck size={14} strokeWidth={2} aria-hidden="true" />权限管理</button>
+            <button type="button" className={appAccountMenuButtonClass} onClick={onOpenExport}><FileArchive size={14} strokeWidth={2} aria-hidden="true" />数据导出</button>
             <button type="button" className={appAccountDangerButtonClass} onClick={onSignOut}><LogOut size={14} strokeWidth={2} aria-hidden="true" />退出登录</button>
           </div>
         ) : null}
@@ -887,6 +1032,12 @@ function App({
   const [connectionMenuOpen, setConnectionMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [topbarActions, setTopbarActions] = useState<ReactNode | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportSnapshot, setExportSnapshot] = useState<ExportCenterSnapshot | null>(null);
+  const [selectedExportAccounts, setSelectedExportAccounts] = useState<Set<string>>(() => new Set());
+  const [selectedExportModules, setSelectedExportModules] = useState<Set<ExportModuleKey>>(() => new Set());
   const year = now.getFullYear();
   const connected = !!authSession.connected && !!authSession.projectId;
   const calculatorModule = modules.find(module => module.key === 'calc') || (fallbackModules[0] as ModuleItem);
@@ -919,6 +1070,73 @@ function App({
     : '未连接数据库';
   const authEmail = authSession.user?.email || authSession.user?.uid || '';
   const roleText = authSession.isOwner ? '管理员' : authSession.user ? '成员' : '未登录';
+  const exportAccountOptions = useMemo(
+    () => getExportAccountOptionsFromSnapshot(exportSnapshot).filter(option => option.key !== ALL_ACCOUNT_KEY),
+    [exportSnapshot]
+  );
+  const exportModuleOptions = useMemo(
+    () => getModuleOptionsForPermissions(moduleKey => canAccessModule(moduleKey, authSession)),
+    [authSession]
+  );
+
+  async function refreshExportSnapshot({ resetSelection = true } = {}) {
+    setExportLoading(true);
+    try {
+      const modulesForUser = getModuleOptionsForPermissions(moduleKey => canAccessModule(moduleKey, authSession));
+      const snapshot = await loadExportCenterSnapshot({ modules: modulesForUser.map(option => option.key as ExportModuleKey) });
+      const accounts = getExportAccountOptionsFromSnapshot(snapshot).filter(option => option.key !== ALL_ACCOUNT_KEY);
+      setExportSnapshot(snapshot);
+      if (resetSelection) {
+        setSelectedExportAccounts(new Set(accounts.map(option => option.key)));
+        setSelectedExportModules(new Set(modulesForUser.map(option => option.key as ExportModuleKey)));
+      }
+    } catch (error) {
+      console.error(error);
+      TKFirestoreConnection.showToast(error instanceof Error ? error.message : '读取导出数据失败', 'error');
+    } finally {
+      setExportLoading(false);
+    }
+  }
+
+  function openExportCenter() {
+    setConnectionMenuOpen(false);
+    setAccountMenuOpen(false);
+    setExportDialogOpen(true);
+    void refreshExportSnapshot({ resetSelection: true });
+  }
+
+  async function runUnifiedExport() {
+    if (!selectedExportAccounts.size) {
+      TKFirestoreConnection.showToast('请选择至少一个店铺', 'error');
+      return;
+    }
+    if (!selectedExportModules.size) {
+      TKFirestoreConnection.showToast('请选择至少一个模块', 'error');
+      return;
+    }
+    setExporting(true);
+    try {
+      const pricingContext = ensureGlobalSettingsStore().getPricingContext();
+      const result = await buildExportFiles({
+        selectedAccounts: selectedExportAccounts,
+        selectedModules: selectedExportModules,
+        snapshot: exportSnapshot,
+        pricingContext
+      });
+      if (!result.files.length) {
+        TKFirestoreConnection.showToast('当前选择下没有可导出的数据', 'error');
+        return;
+      }
+      const downloaded = await downloadExportFiles(result.files, selectedExportAccounts, selectedExportModules);
+      TKFirestoreConnection.showToast(downloaded.kind === 'zip' ? `已打包导出 ${result.files.length} 个 CSV` : 'CSV 已开始导出', 'success');
+      setExportDialogOpen(false);
+    } catch (error) {
+      console.error(error);
+      TKFirestoreConnection.showToast(error instanceof Error ? error.message : '导出失败', 'error');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   useEffect(() => {
     const syncRoute = () => setActive(getRouteKey(window.location, config));
@@ -1005,6 +1223,7 @@ function App({
                     setAccountMenuOpen(false);
                     window.location.hash = '#permissions';
                   }}
+                  onOpenExport={openExportCenter}
                   onSignOut={() => {
                     setConnectionMenuOpen(false);
                     setAccountMenuOpen(false);
@@ -1092,6 +1311,20 @@ function App({
           </div>
         </div>
       </div>
+      <UnifiedExportDialog
+        accountOptions={exportAccountOptions}
+        exporting={exporting}
+        loading={exportLoading}
+        moduleOptions={exportModuleOptions}
+        open={exportDialogOpen}
+        selectedAccounts={selectedExportAccounts}
+        selectedModules={selectedExportModules}
+        onExport={() => void runUnifiedExport()}
+        onOpenChange={setExportDialogOpen}
+        onReload={() => void refreshExportSnapshot({ resetSelection: false })}
+        onSelectedAccountsChange={setSelectedExportAccounts}
+        onSelectedModulesChange={setSelectedExportModules}
+      />
       <AppRuntime />
     </>
   );

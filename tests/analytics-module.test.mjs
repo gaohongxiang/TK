@@ -13,6 +13,7 @@ const srcParserSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'par
 const srcAnalyzerSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'analyzer.ts'), 'utf8');
 const srcActionPlanSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'action-plan.ts'), 'utf8');
 const srcAggregateSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'aggregate.ts'), 'utf8');
+const srcAnalyticsExportSource = fs.readFileSync(path.join(root, 'src', 'analytics', 'export.ts'), 'utf8');
 const reactMainSource = fs.readFileSync(path.join(root, 'src', 'react', 'main.tsx'), 'utf8');
 const reactAppSource = fs.readFileSync(path.join(root, 'src', 'react', 'app', 'App.tsx'), 'utf8');
 const reactAppShellSource = fs.readFileSync(path.join(root, 'src', 'react', 'layouts', 'AppShell.tsx'), 'utf8');
@@ -395,7 +396,7 @@ assert.match(
 );
 
 assert.match(
-  reactAnalyticsSource,
+  srcAnalyticsExportSource,
   /buildAnalyticsExportCsv[\s\S]*动作优先级[\s\S]*动作类型[\s\S]*动作建议/,
   '数据分析 CSV 导出需要带上动作建议'
 );
@@ -450,8 +451,8 @@ assert.match(
 
 assert.match(
   reactAnalyticsSource,
-  /import \{ refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, storageHelpButtonClass, syncStatusClass \} from '@\/components\/ui\/status-strip';[\s\S]*<div className=\{statusStripLeftClass\}>[\s\S]*id="analytics-sync-status"[\s\S]*id="analytics-refresh"[\s\S]*id="analytics-help"[\s\S]*<div className=\{statusStripRightClass\}>[\s\S]*id="analytics-export"[\s\S]*导出 CSV[\s\S]*id="analytics-snapshot-select"[\s\S]*className=\{uploadActionClass\}/,
-  '数据分析控制卡片需要保留同步、刷新、说明、导出、账号标签和导入区布局，数据库连接入口交给顶部全局菜单'
+  /import \{ refreshButtonClass, statusStripClass, statusStripLeftClass, storageHelpButtonClass, syncStatusClass \} from '@\/components\/ui\/status-strip';[\s\S]*<div className=\{statusStripLeftClass\}>[\s\S]*id="analytics-sync-status"[\s\S]*id="analytics-refresh"[\s\S]*id="analytics-help"[\s\S]*id="analytics-snapshot-select"[\s\S]*className=\{uploadActionClass\}/,
+  '数据分析控制卡片需要保留同步、刷新、说明、账号标签和导入区布局，导出和数据库连接入口交给顶部全局菜单'
 );
 
 assert.doesNotMatch(

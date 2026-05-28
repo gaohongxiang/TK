@@ -196,10 +196,10 @@ assert.match(
   '收支汇总卡片和顶部状态条之间需要保留间距'
 );
 
-assert.match(
+assert.doesNotMatch(
   financePageSource,
-  /function exportRecordsCsv[\s\S]*id="finance-export"[\s\S]*<FileDown[\s\S]*导出 CSV/,
-  '收支管理顶部需要提供导出 CSV'
+  /function exportRecordsCsv|id="finance-export"|FileDown/,
+  '收支管理不应再保留模块内导出入口，导出统一放进顶部账号菜单'
 );
 
 assert.match(

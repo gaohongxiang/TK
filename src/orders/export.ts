@@ -177,7 +177,8 @@ const OrderTrackerExport = {
   buildOrdersCsv,
   csvEscape,
   getExportAccountOptions,
-  selectOrdersForExport
+  selectOrdersForExport,
+  toAccountSlot
 };
 
 export {
@@ -188,5 +189,6 @@ export {
   buildOrdersCsv,
   csvEscape,
   getExportAccountOptions,
-  selectOrdersForExport
+  selectOrdersForExport,
+  toAccountSlot
 };

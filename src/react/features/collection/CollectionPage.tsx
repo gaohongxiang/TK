@@ -8,7 +8,7 @@ import { ModuleListState } from '@/components/ui/module-list-state';
 import { ModuleHeader, ModuleWorkspace } from '@/components/ui/module-workspace';
 import { SearchHelpButton } from '@/components/ui/search-help';
 import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
-import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, syncStatusClass } from '@/components/ui/status-strip';
+import { refreshButtonClass, statusStripClass, statusStripLeftClass, syncStatusClass } from '@/components/ui/status-strip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { showAppToast } from '@/app/toast';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,6 @@ import {
   ClipboardList,
   Copy,
   ExternalLink,
-  FileDown,
   PencilLine,
   Plus,
   RefreshCw,
@@ -510,17 +509,6 @@ function CollectionPage({ active = true }: { active?: boolean }) {
     }
   }
 
-  function exportActiveDataset() {
-    if (!activeData?.rows.length) {
-      showToast('当前没有可导出的 CSV', 'error');
-      return;
-    }
-    const csv = stringifyCsv(activeData.headers, activeData.rows);
-    const baseName = activeData.filename.replace(/\.csv$/i, '') || datasetMeta[activeDataset].filename.replace(/\.csv$/i, '');
-    downloadCsv(`${baseName}.edited.csv`, csv);
-    showToast('CSV 已开始导出');
-  }
-
   return (
     <ModuleWorkspace className={collectionShellClass} data-react-collection-page-ready="true">
       <ModuleHeader
@@ -593,11 +581,6 @@ function CollectionPage({ active = true }: { active?: boolean }) {
             >
               <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
             </Button>
-          </div>
-          <div className={statusStripRightClass}>
-            {projectId ? (
-              <Button id="collection-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={exportActiveDataset}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-            ) : <Button size="sm" onClick={() => TKFirestoreConnection.open()}>连接 Firebase</Button>}
           </div>
         </div>
         {!projectId ? (
@@ -975,31 +958,6 @@ function parseCsv(text: string) {
   };
 }
 
-function stringifyCsv(headers: string[], rows: CsvRow[]) {
-  return [
-    headers.map(csvCell).join(','),
-    ...rows.map(row => headers.map(header => csvCell(row[header] || '')).join(','))
-  ].join('\r\n');
-}
-
-function csvCell(value: string) {
-  const text = String(value ?? '');
-  if (!/[",\n\r]/.test(text)) return text;
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
-function downloadCsv(filename: string, csv: string) {
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
 async function copyText(text: string) {
   if (!text) return;
   try {
@@ -1056,4 +1014,4 @@ function getRowValue(row: CsvRow, names: string[]) {
   return '';
 }
 
-export { CollectionPage, parseCsv, stringifyCsv };
+export { CollectionPage, parseCsv };

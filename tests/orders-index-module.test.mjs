@@ -28,7 +28,7 @@ assert.match(
 
 assert.match(ordersPageSource, /id="ot-modal"/, '订单编辑弹窗应由 React 订单页渲染');
 assert.match(ordersPageSource, /modalId="ot-add-acc-modal"/, '订单新增账号弹窗应由 React 订单页渲染');
-assert.match(ordersPageSource, /id="ot-export-modal"/, '订单导出弹层应由 React 订单页渲染');
+assert.doesNotMatch(ordersPageSource, /id="ot-export-modal"|id="ot-export"/, '订单页不再渲染模块内导出入口，导出统一放进顶部账号菜单');
 assert.match(ordersPageSource, /tk-products-changed/, '订单页应监听商品资料变化');
 
 assert.doesNotMatch(

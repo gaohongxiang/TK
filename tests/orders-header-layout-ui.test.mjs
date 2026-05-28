@@ -55,8 +55,8 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /from '@\/components\/ui\/account-tabs-bar'[\s\S]*from '@\/components\/ui\/export-options'|from '@\/components\/ui\/export-options'[\s\S]*from '@\/components\/ui\/account-tabs-bar'/,
-  '订单管理账号标签和导出弹层需要使用共享 AccountTabsBar/ExportOptions primitives'
+  /from '@\/components\/ui\/account-tabs-bar'/,
+  '订单管理账号标签需要使用共享 AccountTabsBar primitive'
 );
 
 assert.match(
@@ -65,10 +65,10 @@ assert.match(
   '订单账号筛选需要迁到共享 AccountTabsBar，同时保留现有账号区 DOM 语义'
 );
 
-assert.match(
+assert.doesNotMatch(
   ordersPageSource,
-  /<ExportOptions[\s\S]*allCheckboxId="ot-export-all"[\s\S]*checkboxClassName="ot-export-checkbox"/,
-  '订单导出账号选择需要迁到共享 ExportOptions primitive'
+  /id="ot-export"|id="ot-export-modal"/,
+  '订单页不应再保留模块内导出入口，导出统一放进顶部账号菜单'
 );
 
 assert.match(

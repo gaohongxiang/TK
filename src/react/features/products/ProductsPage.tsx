@@ -1,4 +1,3 @@
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AccountDeleteDialog, AccountEditDialog } from '@/components/ui/account-manage-dialogs';
 import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
 import { AddAccountDialog } from '@/components/ui/add-account-dialog';
@@ -6,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogActions, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { ExportOptions } from '@/components/ui/export-options';
 import { FormField, FormRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ModuleListState } from '@/components/ui/module-list-state';
@@ -17,7 +15,7 @@ import {
 } from '@/components/ui/module-workspace';
 import { SearchHelpButton } from '@/components/ui/search-help';
 import { Select } from '@/components/ui/select';
-import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, syncStatusClass } from '@/components/ui/status-strip';
+import { refreshButtonClass, statusStripClass, statusStripLeftClass, syncStatusClass } from '@/components/ui/status-strip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,10 +26,8 @@ import {
   isPermissionDenied
 } from '../../../firestore-rules-compatibility.ts';
 import { ProductLibraryProviderFirestore } from '../../../products/provider-firestore.ts';
-import { ProductLibraryExport, csvEscape } from '../../../products/export.ts';
 import {
   normalizeAccountName,
-  toAccountSlot,
   uniqueAccounts
 } from '../../../products/accounts.ts';
 import {
@@ -49,7 +45,6 @@ import { TKShippingCore } from '../../../shipping-core.ts';
 import {
   Copy,
   ExternalLink,
-  FileDown,
   Pencil,
   Plus,
   RefreshCw,
@@ -82,7 +77,6 @@ type ProductFormDraft = {
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const ACCOUNT_UPDATED_EVENT = 'tk-accounts-changed';
-const modalCopyClass = 'mb-4 text-[13px] leading-[1.75] text-[var(--muted)]';
 const productSkuPanelClass = 'pl-sku-panel mt-4 rounded-[14px] border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel)_92%,white)] px-4 py-3.5';
 const productSkuHeaderClass = 'pl-sku-header flex items-start justify-between gap-3';
 const productSkuTitleClass = 'pl-sku-title text-sm font-bold text-[var(--text)]';
@@ -798,46 +792,6 @@ function SkuEditorList({
   );
 }
 
-function ExportModal({
-  open,
-  options,
-  selected,
-  onSelectedChange,
-  onOpenChange,
-  onConfirm
-}: {
-  open: boolean;
-  options: { key: string; label: string; count: number }[];
-  selected: Set<string>;
-  onSelectedChange: (selected: Set<string>) => void;
-  onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Dialog id="pl-export-modal" open={open} titleId="pl-export-title" onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[460px]">
-        <DialogTitle id="pl-export-title">选择要导出的账号</DialogTitle>
-        <Alert variant="info" className={modalCopyClass}>
-          <AlertDescription>可勾选一个或多个账号；如果当前已经切到某个账号，会默认选中该账号。</AlertDescription>
-        </Alert>
-        <ExportOptions
-          allCheckboxId="pl-export-all"
-          checkboxClassName="pl-export-checkbox"
-          countLabel={count => `${count} 个商品`}
-          options={options}
-          optionsId="pl-export-options"
-          selected={selected}
-          onSelectedChange={onSelectedChange}
-        />
-        <DialogActions>
-          <Button id="pl-export-cancel" onClick={() => onOpenChange(false)}>取消</Button>
-          <Button id="pl-export-confirm" variant="primary" onClick={onConfirm}>导出 CSV</Button>
-        </DialogActions>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function buildDraftFromProduct(product: ProductRecord | null, activeAccount: string, accounts: string[]): ProductFormDraft {
   if (!product) {
     return {
@@ -903,35 +857,11 @@ function ProductsPage({ active = true }: { active?: boolean }) {
   const [editingAccountValue, setEditingAccountValue] = useState('');
   const [accountDeleteOpen, setAccountDeleteOpen] = useState(false);
   const [deletingAccountName, setDeletingAccountName] = useState('');
-  const [exportOpen, setExportOpen] = useState(false);
-  const [exportSelected, setExportSelected] = useState<Set<string>>(new Set());
   const [searchHelpOpen, setSearchHelpOpen] = useState(false);
   const [pricingContext, setPricingContext] = useState(() => ensureGlobalSettingsStore().getPricingContext());
 
   const allAccounts = accounts;
 
-  const productExporter = useMemo(() => ProductLibraryExport.create({
-    state: {
-      accounts: allAccounts,
-      activeAccount
-    },
-    helpers: {
-      getDisplayedProducts: (overrides: { activeAccount?: string } = {}) => ProductLibraryTable.deriveDisplayedProducts({
-        products,
-        activeAccount: overrides.activeAccount || activeAccount,
-        searchQuery,
-        sortOrder
-      }),
-      normalizeAccountName,
-      toAccountSlot,
-      uniqueAccounts
-    }
-  }), [activeAccount, allAccounts, products, searchQuery, sortOrder]);
-
-  const exportOptions = useMemo(
-    () => productExporter.getProductExportAccountOptions(),
-    [productExporter]
-  );
   const accountTabItems = useMemo(() => {
     const counts: Record<string, number> = {};
     products.forEach(product => {
@@ -1582,44 +1512,6 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     }
   }
 
-  function openExportModal() {
-    if (!exportOptions.length) {
-      showToast('当前没有可导出的商品数据', 'error');
-      return;
-    }
-    const defaultSelected = activeAccount && activeAccount !== '__all__'
-      ? new Set([activeAccount])
-      : new Set<string>(exportOptions.map(option => String(option.key)));
-    setExportSelected(defaultSelected);
-    setExportOpen(true);
-  }
-
-  function confirmExport() {
-    if (!exportSelected.size) {
-      showToast('请至少选择一个账号', 'error');
-      return;
-    }
-    const rows = productExporter.buildProductExportRows(exportSelected);
-    if (!rows.length) {
-      showToast('当前选择下没有可导出的商品数据', 'error');
-      return;
-    }
-    const headers = ['账号', 'TK ID', '商品名称', '货物类型', 'SKU 名称', 'SKU ID', '重量(g)', '尺寸(cm)', '单件预估海外运费(元)', '1688 链接', '图片 URL', '创建时间', '更新时间', '备注'];
-    const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
-    const selectedOptions = exportOptions.filter(option => exportSelected.has(option.key));
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = productExporter.buildProductExportFilename(selectedOptions);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    setExportOpen(false);
-    showToast('CSV 已开始导出');
-  }
-
   return (
     <ModuleWorkspace className="products-page" data-react-products-page-ready="true">
       <ModuleHeader
@@ -1652,11 +1544,6 @@ function ProductsPage({ active = true }: { active?: boolean }) {
             >
               <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
             </Button>
-          </div>
-          <div className={statusStripRightClass}>
-            {connected ? (
-              <Button id="pl-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={openExportModal}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-            ) : null}
           </div>
         </div>
 
@@ -1770,14 +1657,6 @@ function ProductsPage({ active = true }: { active?: boolean }) {
         onConfirm={deleteAccount}
       />
 
-      <ExportModal
-        open={exportOpen}
-        options={exportOptions}
-        selected={exportSelected}
-        onSelectedChange={setExportSelected}
-        onOpenChange={setExportOpen}
-        onConfirm={confirmExport}
-      />
     </ModuleWorkspace>
   );
 }

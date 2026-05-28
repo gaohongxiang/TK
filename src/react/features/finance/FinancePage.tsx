@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ModuleListState } from '@/components/ui/module-list-state';
 import { ModuleHeader, ModuleWorkspace } from '@/components/ui/module-workspace';
 import { Select } from '@/components/ui/select';
-import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, syncStatusClass } from '@/components/ui/status-strip';
+import { refreshButtonClass, statusStripClass, statusStripLeftClass, syncStatusClass } from '@/components/ui/status-strip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,7 +39,11 @@ import {
   parseMoneyAmount,
   todayStr
 } from '../../../finance/summary.ts';
-import { CalendarDays, FileDown, HelpCircle, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  getFinanceAccountLabel,
+  getRecordKindLabel
+} from '../../../finance/export.ts';
+import { CalendarDays, HelpCircle, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FinanceRecord, FinanceRecordDraft, FinanceRecordKind } from '../../../finance/types.ts';
 import type { OrderRecord } from '../../../orders/types.ts';
@@ -145,31 +149,8 @@ function clampPage(currentPage: number, pageSize: number, totalItems: number) {
   return { currentPage: nextCurrentPage, totalPages, pageSize: safePageSize };
 }
 
-function formatInputAmount(value: unknown) {
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return '';
-  return amount.toFixed(2).replace(/\.?0+$/, '');
-}
-
-function csvEscape(value: unknown): string {
-  const text = String(value ?? '');
-  return `"${text.replace(/"/g, '""')}"`;
-}
-
 function getFinanceDisplaySeq(absoluteIndex: number, total: number, sortOrder: string): number {
   return sortOrder === 'asc' ? absoluteIndex + 1 : total - absoluteIndex;
-}
-
-function getFinanceAccountLabel(value: unknown): string {
-  return normalizeAccountName(value) || PUBLIC_ACCOUNT_LABEL;
-}
-
-function getRecordKindLabel(kind: FinanceRecordKind) {
-  const labels: Record<FinanceRecordKind, string> = {
-    actual_income: '回款',
-    cost: '成本'
-  };
-  return labels[kind] || '成本';
 }
 
 function getRecordKindTone(kind: FinanceRecordKind) {
@@ -923,38 +904,6 @@ function FinancePage({ active = true }: { active?: boolean }) {
     }
   }
 
-  function exportRecordsCsv() {
-    const displayed = filterFinanceRecords(records, { activeAccount, month, query: searchQuery });
-    if (!displayed.length) {
-      showToast('当前没有可导出的收支记录', 'error');
-      return;
-    }
-    const headers = ['日期', '类型', '账号', '类别', '金额(¥)', '备注', '创建时间', '更新时间'];
-    const rows = displayed.map(record => [
-      record.occurredAt || '',
-      getRecordKindLabel(getFinanceAccountingKind(record)),
-      getFinanceAccountLabel(record.accountName),
-      record.category || '',
-      formatInputAmount(record.amount),
-      record.note || '',
-      record.createdAt || '',
-      record.updatedAt || ''
-    ]);
-    const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
-    const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    const accountPart = activeAccount === '__all__' ? '全部' : activeAccount === PUBLIC_ACCOUNT_KEY ? PUBLIC_ACCOUNT_LABEL : activeAccount;
-    const monthPart = searchQuery.trim() ? searchQuery.trim().replace(/[\\/:*?"<>|]+/g, '_') : '全部月份';
-    link.href = url;
-    link.download = `收支记录_${accountPart}_${monthPart}_${todayStr()}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    showToast('CSV 已开始导出');
-  }
-
   return (
     <>
       <ModuleWorkspace className="finance-page" data-react-finance-page-ready="true">
@@ -973,11 +922,6 @@ function FinancePage({ active = true }: { active?: boolean }) {
             <Button id="finance-help-btn" variant="plain" className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-full border border-[var(--border)] bg-transparent p-0 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]" aria-controls="finance-help-modal" aria-haspopup="dialog" aria-label="收支口径说明" title="收支口径说明" onClick={() => setHelpOpen(true)}>
               <HelpCircle size={15} strokeWidth={2} aria-hidden="true" />
             </Button>
-          </div>
-          <div className={statusStripRightClass}>
-            {connected ? (
-              <Button id="finance-export" size="sm" onClick={exportRecordsCsv}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-            ) : null}
           </div>
         </div>
 

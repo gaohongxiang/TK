@@ -131,8 +131,14 @@ assert.match(
 
 assert.match(
   reactApp,
-  /function TopbarGlobalStatus[\s\S]*data-app-topbar-connection[\s\S]*数据库管理[\s\S]*data-app-topbar-auth[\s\S]*账号管理[\s\S]*权限管理[\s\S]*退出登录/,
-  '数据库连接和账号状态需要统一放在顶部右侧全局菜单，退出只处理账号登录态'
+  /function TopbarGlobalStatus[\s\S]*data-app-topbar-connection[\s\S]*数据库管理[\s\S]*data-app-topbar-auth[\s\S]*账号管理[\s\S]*权限管理[\s\S]*数据导出[\s\S]*退出登录/,
+  '数据库连接、账号状态和统一数据导出需要放在顶部右侧全局菜单，退出只处理账号登录态'
+);
+
+assert.match(
+  reactApp,
+  /function UnifiedExportDialog[\s\S]*全部店铺[\s\S]*全部模块[\s\S]*id="app-export-confirm"[\s\S]*buildExportFiles[\s\S]*downloadExportFiles/,
+  '统一数据导出需要提供店铺和模块选择，并复用公共导出中心打包下载'
 );
 
 assert.match(

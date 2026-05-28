@@ -4,7 +4,7 @@ import type { EChartsCoreOption, EChartsType } from 'echarts/core';
 import { FunnelChart, PieChart, ScatterChart } from 'echarts/charts';
 import { GridComponent, LegendComponent, TitleComponent, TooltipComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { FileDown, HelpCircle, RefreshCw, Upload } from 'lucide-react';
+import { HelpCircle, RefreshCw, Upload } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ import {
   ModuleToolbar,
   ModuleWorkspace
 } from '@/components/ui/module-workspace';
-import { refreshButtonClass, statusStripClass, statusStripLeftClass, statusStripRightClass, storageHelpButtonClass, syncStatusClass } from '@/components/ui/status-strip';
+import { refreshButtonClass, statusStripClass, statusStripLeftClass, storageHelpButtonClass, syncStatusClass } from '@/components/ui/status-strip';
 import type { AnalyticsAnalysis, AnalyticsAnalyzer, AnalyticsFunnelStage, AnalyticsParser, AnalyticsPeriodComparison, AnalyticsRecord, AnalyticsXlsx } from '../../../analytics/types';
 import { AnalyticsProviderFirestore, type AnalyticsProviderSnapshotSummary } from '../../../analytics/provider-firestore.ts';
 import { aggregateAnalyses } from '../../../analytics/aggregate.ts';
@@ -290,71 +290,8 @@ function comparePeriodRowsDesc(left: AnalyticsPeriodComparison, right: Analytics
     || String(right.updatedAt || '').localeCompare(String(left.updatedAt || ''));
 }
 
-function csvEscape(value: unknown) {
-  const text = String(value ?? '');
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
 function getAnalysisActions(analysis: AnalyticsAnalysis) {
   return analysis.actionPlan?.length ? analysis.actionPlan : buildActionPlan(analysis);
-}
-
-function buildAnalyticsExportCsv(analysis: AnalyticsAnalysis) {
-  const actionsByProduct = new Map(
-    getAnalysisActions(analysis).map(item => [item.productId || item.productName, item])
-  );
-  const headers = [
-    '周期',
-    '商品ID',
-    '商品名称',
-    '状态',
-    'GMV',
-    '订单',
-    '件数',
-    '总曝光',
-    '总浏览',
-    '成交客户',
-    '点击率',
-    '转化率',
-    '覆盖周期数',
-    '最近周期',
-    'GMV趋势',
-    '诊断',
-    '动作优先级',
-    '动作类型',
-    '动作建议'
-  ];
-  const rows = analysis.records.map(record => {
-    const action = actionsByProduct.get(record.id || record.name);
-    return [
-      analysis.period,
-      record.id,
-      record.name,
-      record.status,
-      record.gmv,
-      record.orders,
-      record.units,
-      record.exposureTotal,
-      record.pageViewsTotal,
-      record.customersTotal,
-      formatPercent(record.overallCtr),
-      formatPercent(record.overallConversion),
-      record.periodCount || 1,
-      record.latestPeriod || analysis.period,
-      record.gmvTrend ?? '',
-      record.diagnosis.label,
-      action?.priority || '',
-      action?.title || '',
-      action?.action || ''
-    ];
-  });
-  return `\uFEFF${[headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\n')}`;
-}
-
-function buildAnalyticsExportFilename(analysis: AnalyticsAnalysis, activeAccount: string) {
-  const account = activeAccount === ALL_ACCOUNTS_KEY ? '全部账号' : activeAccount;
-  const period = String(analysis.period || '数据分析').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '');
-  return `数据分析_${account}_${period}.csv`;
 }
 
 function filterSnapshotsByAccount(snapshots: AnalyticsProviderSnapshotSummary[], activeAccount: string) {
@@ -1315,24 +1252,6 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
     window.setTimeout(() => fileInputRef.current?.click(), 0);
   }
 
-  function exportActiveAnalysis() {
-    if (!analysis?.records.length) {
-      onToast?.('当前没有可导出的数据分析', 'error');
-      return;
-    }
-    const csv = buildAnalyticsExportCsv(analysis);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = buildAnalyticsExportFilename(analysis, activeAccount);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    onToast?.('CSV 已开始导出', 'ok');
-  }
-
   return (
     <ModuleWorkspace className={analyticsShellClass} id="analytics-react-root">
         <ModuleHeader
@@ -1367,11 +1286,6 @@ function AnalyticsApp({ parser, analyzer, getXlsx, onToast }: AnalyticsAppProps)
             >
               <HelpCircle size={14} strokeWidth={2} aria-hidden="true" />
             </Button>
-          </div>
-          <div className={statusStripRightClass}>
-            {connected ? (
-              <Button id="analytics-export" size="sm" className="inline-flex items-center justify-center gap-1.5" onClick={exportActiveAnalysis}><FileDown size={14} strokeWidth={2} aria-hidden="true" />导出 CSV</Button>
-            ) : null}
           </div>
           </ModuleStatusBar>
           {connected ? (

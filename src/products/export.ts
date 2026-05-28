@@ -12,6 +12,8 @@ import type {
   ProductSku
 } from './types.ts';
 
+const PRODUCT_CSV_HEADERS = ['账号', 'TK ID', '商品名称', '货物类型', 'SKU 名称', 'SKU ID', '重量(g)', '尺寸(cm)', '单件预估海外运费(元)', '1688 链接', '图片 URL', '创建时间', '更新时间', '备注'];
+
 function csvEscape(value: unknown): string {
   const text = String(value ?? '');
   return `"${text.replace(/"/g, '""')}"`;
@@ -86,6 +88,11 @@ function defaultUniqueAccounts(values: unknown[] = []): string[] {
 
 function defaultToAccountSlot(value: unknown): string {
   return defaultNormalizeAccountName(value) || '__unassigned__';
+}
+
+function buildProductCsv(rows: ProductExportRow[] = [], { includeBom = false } = {}) {
+  const csv = [PRODUCT_CSV_HEADERS, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+  return includeBom ? `\uFEFF${csv}` : csv;
 }
 
 function create({
@@ -187,6 +194,8 @@ function create({
 }
 
 const ProductLibraryExport = {
+  PRODUCT_CSV_HEADERS,
+  buildProductCsv,
   create,
   csvEscape,
   formatSizeText,
@@ -198,7 +207,9 @@ const ProductLibraryExport = {
 };
 
 export {
+  PRODUCT_CSV_HEADERS,
   ProductLibraryExport,
+  buildProductCsv,
   create,
   csvEscape,
   formatSizeText,

@@ -971,7 +971,10 @@ function TopbarGlobalStatus({
           {connectionMenuOpen ? (
             <div className={appConnectionDropdownClass} role="menu">
               {isConnected ? (
-                <button type="button" className={appAccountMenuButtonClass} onClick={onOpenProjectSettings}><Settings size={14} strokeWidth={2} aria-hidden="true" />数据库管理</button>
+                <>
+                  <button type="button" className={appAccountMenuButtonClass} onClick={onOpenExport}><FileArchive size={14} strokeWidth={2} aria-hidden="true" />数据导出</button>
+                  <button type="button" className={appAccountMenuButtonClass} onClick={onOpenProjectSettings}><Settings size={14} strokeWidth={2} aria-hidden="true" />数据库管理</button>
+                </>
               ) : (
                 <button type="button" className={appAccountMenuButtonClass} onClick={onOpenConnection}><Settings size={14} strokeWidth={2} aria-hidden="true" />项目登录</button>
               )}
@@ -1008,7 +1011,6 @@ function TopbarGlobalStatus({
             </div>
             <button type="button" className={appAccountMenuButtonClass} onClick={onOpenAccounts}><UserRound size={14} strokeWidth={2} aria-hidden="true" />账号管理</button>
             <button type="button" className={appAccountMenuButtonClass} onClick={onOpenPermissions}><ShieldCheck size={14} strokeWidth={2} aria-hidden="true" />权限管理</button>
-            <button type="button" className={appAccountMenuButtonClass} onClick={onOpenExport}><FileArchive size={14} strokeWidth={2} aria-hidden="true" />数据导出</button>
             <button type="button" className={appAccountDangerButtonClass} onClick={onSignOut}><LogOut size={14} strokeWidth={2} aria-hidden="true" />退出登录</button>
           </div>
         ) : null}
@@ -1280,7 +1282,7 @@ function App({
                 {!authSession.isOwner ? active === 'project-settings' ? (
                   <ModuleAccessGate moduleLabel="数据库管理" state={authSession} />
                 ) : null : (
-                  <ProjectSettingsPage active={active === 'project-settings'} />
+                  <ProjectSettingsPage active={active === 'project-settings'} onOpenExport={openExportCenter} />
                 )}
               </div>
               <div id="view-accounts" className={viewClass(renderedActive, 'accounts')}>

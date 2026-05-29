@@ -712,12 +712,19 @@ test.describe('release browser smoke', () => {
     await expect(page.locator('#ot-sync')).toContainText('云端已同步');
 
     await page.locator('[data-app-topbar-connection] button').click();
+    await expect(page.getByRole('button', { name: '数据导出' })).toBeVisible();
     await expect(page.getByRole('button', { name: '数据库管理' })).toBeVisible();
     await expect(page.getByRole('button', { name: '退出数据库' })).toHaveCount(0);
+    await page.getByRole('button', { name: '数据导出' }).click();
+    await expect(page.locator('#app-export-title')).toHaveText('数据导出');
+    await expect(page.locator('#app-export-module-options')).toContainText('全部模块');
+    await page.getByRole('button', { name: '取消' }).click();
+    await expect(page.locator('#app-export-title')).not.toBeVisible();
     await expect(page.locator('#app-firestore-disconnect-modal')).toHaveCount(0);
     expect(nativeDialogs).toEqual([]);
 
     await page.locator('[data-app-topbar-auth] button').click();
+    await expect(page.locator('[data-app-topbar-auth]')).not.toContainText('数据导出');
     await page.getByRole('button', { name: '退出登录' }).click();
     await expect(page.evaluate(() => JSON.parse(localStorage.getItem('tk.firestore.cfg.v1') || '{}').projectId)).resolves.toBe('tk-e2e');
     await expect(page.locator('#ot-main')).not.toBeVisible();

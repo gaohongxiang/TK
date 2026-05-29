@@ -190,8 +190,8 @@ assert.match(
 
 assert.match(
   appSource,
-  /function TopbarGlobalStatus[\s\S]*data-app-topbar-connection[\s\S]*数据库管理[\s\S]*data-app-topbar-auth[\s\S]*账号管理[\s\S]*权限管理[\s\S]*数据导出[\s\S]*退出登录/,
-  '数据库连接、账号状态和统一数据导出需要保留在顶部右侧菜单里，退出只处理账号登录态'
+  /function TopbarGlobalStatus[\s\S]*data-app-topbar-connection[\s\S]*数据导出[\s\S]*数据库管理[\s\S]*data-app-topbar-auth[\s\S]*账号管理[\s\S]*权限管理[\s\S]*退出登录/,
+  '数据库连接和统一数据导出需要保留在顶部连接菜单里，账号菜单只处理账号登录态'
 );
 
 assert.match(

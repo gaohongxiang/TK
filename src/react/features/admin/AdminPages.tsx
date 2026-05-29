@@ -1,4 +1,4 @@
-import { Check, Copy, ExternalLink, KeyRound, Plus, Settings2, ShieldCheck, Trash2, UserRound, UsersRound } from 'lucide-react';
+import { Check, Copy, ExternalLink, FileArchive, KeyRound, Plus, Settings2, ShieldCheck, Trash2, UserRound, UsersRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,9 @@ import { cn } from '@/lib/utils';
 
 type AdminPageProps = {
   active?: boolean;
+};
+type ProjectSettingsPageProps = AdminPageProps & {
+  onOpenExport?: () => void;
 };
 type BulkPermissionMode = 'append' | 'remove' | 'replace';
 
@@ -578,7 +581,7 @@ function PermissionManagementPage({ active = true }: AdminPageProps) {
   );
 }
 
-function ProjectSettingsPage({ active = true }: AdminPageProps) {
+function ProjectSettingsPage({ active = true, onOpenExport }: ProjectSettingsPageProps) {
   const { authState, error } = useAdminMembers(active);
   const [copiedLink, setCopiedLink] = useState('');
   const [copyingRules, setCopyingRules] = useState(false);
@@ -673,6 +676,16 @@ function ProjectSettingsPage({ active = true }: AdminPageProps) {
               <div className={settingsValueClass}>Firebase Auth + Firestore Rules</div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className={adminCardTitleClass}>数据导出</CardTitle>
+          <Button size="sm" variant="primary" disabled={!onOpenExport} onClick={onOpenExport}><FileArchive aria-hidden="true" />打开数据导出</Button>
+        </CardHeader>
+        <CardContent>
+          <p className={settingsSectionCopyClass}>按当前数据库里的店铺和模块统一导出 CSV；选择多个模块时会自动打包成 ZIP。顶部“已连接数据库”下拉也会打开同一个导出入口。</p>
         </CardContent>
       </Card>
 

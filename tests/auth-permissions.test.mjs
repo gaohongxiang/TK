@@ -95,8 +95,16 @@ assert.match(
 
 assert.match(
   appSource,
-  /function TopbarGlobalStatus[\s\S]*data-app-topbar-auth[\s\S]*\{authEmail\}[\s\S]*\{roleText\}[\s\S]*账号管理[\s\S]*权限管理[\s\S]*数据导出[\s\S]*退出登录/,
-  '统一壳层需要把账号状态放在顶部右侧菜单，按钮显示邮箱，角色、统一导出和退出登录放进下拉菜单'
+  /function TopbarGlobalStatus[\s\S]*data-app-topbar-connection[\s\S]*数据导出[\s\S]*数据库管理[\s\S]*data-app-topbar-auth[\s\S]*\{authEmail\}[\s\S]*\{roleText\}[\s\S]*账号管理[\s\S]*权限管理[\s\S]*退出登录/,
+  '统一壳层需要把数据库状态和统一导出放进连接菜单，账号菜单只保留账号管理、权限管理和退出登录'
+);
+
+const topbarAuthBlockStart = appSource.indexOf('data-app-topbar-auth');
+const topbarAuthBlockEnd = appSource.indexOf('function App({', topbarAuthBlockStart);
+assert.doesNotMatch(
+  appSource.slice(topbarAuthBlockStart, topbarAuthBlockEnd),
+  /数据导出/,
+  '账号下拉菜单不应承载数据导出入口'
 );
 
 assert.doesNotMatch(
@@ -209,7 +217,7 @@ assert.match(
 
 assert.match(
   appSource,
-  /id="view-project-settings"[\s\S]*<ProjectSettingsPage active=\{active === 'project-settings'\}[\s\S]*id="view-accounts"[\s\S]*<AccountManagementPage active=\{active === 'accounts'\}[\s\S]*id="view-permissions"[\s\S]*<PermissionManagementPage active=\{active === 'permissions'\}/,
+  /id="view-project-settings"[\s\S]*<ProjectSettingsPage active=\{active === 'project-settings'\} onOpenExport=\{openExportCenter\}[\s\S]*id="view-accounts"[\s\S]*<AccountManagementPage active=\{active === 'accounts'\}[\s\S]*id="view-permissions"[\s\S]*<PermissionManagementPage active=\{active === 'permissions'\}/,
   '管理员登录后需要渲染项目设置、账号管理和权限管理模块'
 );
 
@@ -227,8 +235,8 @@ assert.match(
 
 assert.match(
   adminPagesSource,
-  /function ProjectSettingsPage[\s\S]*getRulesSource\(\)[\s\S]*copyConfigText[\s\S]*title="数据库管理"[\s\S]*项目状态[\s\S]*项目 ID[\s\S]*Auth 域名[\s\S]*当前管理员[\s\S]*权限模式[\s\S]*Firebase config 配置[\s\S]*复制 config[\s\S]*value=\{configText\}[\s\S]*项目连接链接[\s\S]*复制项目连接链接[\s\S]*打开 Firebase[\s\S]*Firestore 最新规则[\s\S]*复制最新规则[\s\S]*打开 Rules/,
-  '管理员数据库管理页需要展示初始化状态、Firebase config、项目连接链接和最新规则，并提供复制 config、项目连接链接和规则操作'
+  /function ProjectSettingsPage\(\{ active = true, onOpenExport \}[\s\S]*getRulesSource\(\)[\s\S]*copyConfigText[\s\S]*title="数据库管理"[\s\S]*项目状态[\s\S]*项目 ID[\s\S]*Auth 域名[\s\S]*当前管理员[\s\S]*权限模式[\s\S]*数据导出[\s\S]*onClick=\{onOpenExport\}[\s\S]*打开数据导出[\s\S]*Firebase config 配置[\s\S]*复制 config[\s\S]*value=\{configText\}[\s\S]*项目连接链接[\s\S]*复制项目连接链接[\s\S]*打开 Firebase[\s\S]*Firestore 最新规则[\s\S]*复制最新规则[\s\S]*打开 Rules/,
+  '管理员数据库管理页需要展示初始化状态、数据导出、Firebase config、项目连接链接和最新规则，并提供复制 config、项目连接链接和规则操作'
 );
 
 assert.doesNotMatch(

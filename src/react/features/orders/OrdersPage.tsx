@@ -1963,6 +1963,16 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     void loadProducts();
   }
 
+  function markOrdersSynced(count = orders.length) {
+    const status = buildFirestoreSyncStatus('confirmed', {
+      action: '订单更改',
+      count,
+      unit: '条'
+    });
+    setSyncText(status.text);
+    setSyncClass(status.className);
+  }
+
   async function persistOrderUpsert(payload: OrderRecord, nextOrders: OrderRecord[], nextAccounts = allAccounts) {
     setOrders(nextOrders);
     setAccounts(nextAccounts);
@@ -2003,6 +2013,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     if (focusedPage !== null) setCurrentPage(focusedPage);
     result?.commitPromise?.then(() => {
       setPermissionBlocked(false);
+      markOrdersSynced(displayedOrders.length);
     }).catch(error => {
       if (isPermissionDenied(error)) markPermissionBlocked();
       const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 写入失败，已保留本地视图' });
@@ -2050,6 +2061,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setPermissionBlocked(false);
     result?.commitPromise?.then(() => {
       setPermissionBlocked(false);
+      markOrdersSynced(nextOrders.length);
     }).catch(error => {
       if (isPermissionDenied(error)) markPermissionBlocked();
       const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 删除失败，已保留本地视图' });
@@ -2184,6 +2196,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     if (focusedPage !== null) setCurrentPage(focusedPage);
     result?.commitPromise?.then(() => {
       setPermissionBlocked(false);
+      markOrdersSynced(nextOrders.length);
     }).catch(error => {
       if (isPermissionDenied(error)) markPermissionBlocked();
       const failedStatus = buildFirestoreSyncStatus('failed', { error: 'Firestore 恢复失败，已保留本地视图' });
@@ -2224,6 +2237,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setPermissionBlocked(false);
     result?.commitPromise?.then(() => {
       setPermissionBlocked(false);
+      markOrdersSynced(orders.length);
     }).catch(error => {
       setDeletedOrders(previous => previous.some(order => String(order.id) === id) ? previous : [deletedOrder, ...previous]);
       if (isPermissionDenied(error)) markPermissionBlocked();
@@ -2264,6 +2278,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       });
       result?.commitPromise?.then(() => {
         setPermissionBlocked(false);
+        markOrdersSynced(orders.length);
         notifyAccountsChanged({ action: 'commit', account: name, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
@@ -2291,7 +2306,10 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         assignSeq: false,
         waitForCommit: false
       });
-      result?.commitPromise?.catch(error => {
+      const syncedCount = orders.length;
+      result?.commitPromise?.then(() => {
+        markOrdersSynced(syncedCount);
+      }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
         showToast(formatFirestoreError(error, '账号排序保存失败'), 'error');
       });
@@ -2344,6 +2362,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, clientId: clientIdRef.current, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
         setPermissionBlocked(false);
+        markOrdersSynced(nextOrders.length);
         notifyAccountsChanged({ action: 'commit', account: newName, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
@@ -2377,6 +2396,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, clientId: clientIdRef.current, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
         setPermissionBlocked(false);
+        markOrdersSynced(orders.length);
         notifyAccountsChanged({ action: 'commit-delete', account: name, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();

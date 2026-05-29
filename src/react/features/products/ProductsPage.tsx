@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, TableViewport } from '@/components/ui/table-tools';
 import { Textarea } from '@/components/ui/textarea';
 import { showAppToast, type ToastType } from '@/app/toast';
+import { useStaleAutoRefresh } from '@/lib/stale-auto-refresh';
 import { TKFirestoreConnection } from '../../../firestore-connection.ts';
 import {
   formatFirestoreRulesUpdateMessage,
@@ -77,6 +78,7 @@ type ProductFormDraft = {
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const ACCOUNT_UPDATED_EVENT = 'tk-accounts-changed';
+const LS_KEY = 'tk.products.runtime.v1';
 const productSkuPanelClass = 'pl-sku-panel mt-4 rounded-[14px] border border-[color-mix(in_srgb,var(--border)_88%,white)] bg-[color-mix(in_srgb,var(--panel)_92%,white)] px-4 py-3.5';
 const productSkuHeaderClass = 'pl-sku-header flex items-start justify-between gap-3';
 const productSkuTitleClass = 'pl-sku-title text-sm font-bold text-[var(--text)]';
@@ -150,6 +152,22 @@ const EMPTY_PRODUCT_FORM: ProductFormDraft = {
 
 function generateInternalSkuId() {
   return `sku_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function getRuntimeClientId() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (saved?.clientId) return String(saved.clientId);
+    const clientId = uid();
+    localStorage.setItem(LS_KEY, JSON.stringify({ ...(saved || {}), clientId }));
+    return clientId;
+  } catch (error) {
+    return uid();
+  }
 }
 
 function createEmptySku(): ProductDraftSku {
@@ -829,6 +847,9 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     helpers: { nowIso: () => new Date().toISOString() }
   }));
   const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
+  const markRemoteStaleRef = useRef<() => void>(() => {});
+  const clientIdRef = useRef('');
+  const syncRevisionRef = useRef('');
   const [connected, setConnected] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -907,6 +928,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
 
   const loadProducts = useCallback(async () => {
     const result = await providerRef.current.pullProducts();
+    syncRevisionRef.current = result.syncRevision || '';
     setProducts(result.products || []);
     setAccounts(Array.isArray(result.accounts) ? result.accounts : []);
     setLoaded(true);
@@ -958,6 +980,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       setProjectId(next.projectId);
       setConnected(true);
       const result = await providerRef.current.pullProducts();
+      syncRevisionRef.current = result.syncRevision || '';
       setProducts(result.products || []);
       setAccounts(Array.isArray(result.accounts) ? result.accounts : []);
       setLoaded(true);
@@ -971,18 +994,15 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       setSyncClass(status.className);
       if (unsubscribeSnapshotRef.current) unsubscribeSnapshotRef.current();
       unsubscribeSnapshotRef.current = providerRef.current.subscribeSnapshot(snapshot => {
-        setProducts(snapshot.products || []);
-        setAccounts(Array.isArray(snapshot.accounts) ? snapshot.accounts : []);
+        if (!snapshot.hasExternalChanges) return;
+        syncRevisionRef.current = snapshot.syncRevision || syncRevisionRef.current;
         setLoaded(true);
         setConnected(true);
         setPermissionBlocked(false);
-        const nextStatus = buildFirestoreSyncStatus(snapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
-          action: '商品更改',
-          count: (snapshot.products || []).length,
-          unit: '个商品'
-        });
+        const nextStatus = buildFirestoreSyncStatus('stale');
         setSyncText(nextStatus.text);
         setSyncClass(nextStatus.className);
+        markRemoteStaleRef.current();
       }, error => {
         if (isPermissionDenied(error)) {
           markPermissionBlocked();
@@ -994,6 +1014,9 @@ function ProductsPage({ active = true }: { active?: boolean }) {
         setSyncText(failedStatus.text);
         setSyncClass(failedStatus.className);
         showToast(formatFirestoreError(error, '商品实时同步失败'), 'error');
+      }, {
+        clientId: clientIdRef.current,
+        currentRevision: syncRevisionRef.current
       });
       return true;
     } catch (error) {
@@ -1007,7 +1030,32 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     }
   }, [formatFirestoreError, markPermissionBlocked]);
 
+  const remoteStaleRefresh = useStaleAutoRefresh({
+    canRefresh: connected && !permissionBlocked && !loading && !modalOpen && !accountModalOpen && !accountEditOpen && !accountDeleteOpen,
+    onRefresh: loadProducts,
+    onRefreshError: error => {
+      if (isPermissionDenied(error)) {
+        markPermissionBlocked();
+        return;
+      }
+      const failedStatus = buildFirestoreSyncStatus('failed', {
+        error: formatFirestoreError(error, '自动刷新失败')
+      });
+      setSyncText(failedStatus.text);
+      setSyncClass(failedStatus.className);
+      showToast(formatFirestoreError(error, '自动刷新失败'), 'error');
+    }
+  });
+
   useEffect(() => {
+    markRemoteStaleRef.current = remoteStaleRefresh.markStale;
+    return () => {
+      markRemoteStaleRef.current = () => {};
+    };
+  }, [remoteStaleRefresh.markStale]);
+
+  useEffect(() => {
+    clientIdRef.current = getRuntimeClientId();
     void connectUsingGlobalConfig().catch(error => {
       showToast(formatFirestoreError(error, '连接商品管理失败'), 'error');
       setConnected(false);
@@ -1320,7 +1368,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
         skus,
         createdAt: current?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
-      }, { waitForCommit: false });
+      }, { clientId: clientIdRef.current, waitForCommit: false });
       const saved = isProductDeferredWrite(result) ? result.product : result;
       if (!saved) throw new Error('商品保存结果为空');
       setProducts(previous => [...previous.filter(item => item.tkId !== saved.tkId), saved]);
@@ -1350,7 +1398,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       const queueStatus = buildFirestoreSyncStatus('queueing', { action: '商品删除' });
       setSyncText(queueStatus.text);
       setSyncClass(queueStatus.className);
-      const result = await providerRef.current.deleteProduct(tkId, { waitForCommit: false });
+      const result = await providerRef.current.deleteProduct(tkId, { clientId: clientIdRef.current, waitForCommit: false });
       setProducts(previous => previous.filter(item => item.tkId !== tkId));
       notifyProductsChanged({ action: 'delete', tkId });
       if (typeof result === 'object' && result?.commitPromise) result.commitPromise.then(() => {
@@ -1379,7 +1427,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     }
     try {
       const nextAccounts = uniqueAccounts([...allAccounts, name]);
-      const result = await providerRef.current.upsertAccount(name, { sortIndex: nextAccounts.indexOf(name), waitForCommit: false });
+      const result = await providerRef.current.upsertAccount(name, { sortIndex: nextAccounts.indexOf(name), clientId: clientIdRef.current, waitForCommit: false });
       setAccounts(nextAccounts);
       setActiveAccount(name);
       setCurrentPage(1);
@@ -1413,7 +1461,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     setAccounts(nextAccounts);
     notifyAccountsChanged({ action: 'reorder', accounts: nextAccounts });
     try {
-      const result = await providerRef.current.saveAccountOrder(nextAccounts, { waitForCommit: false });
+      const result = await providerRef.current.saveAccountOrder(nextAccounts, { clientId: clientIdRef.current, waitForCommit: false });
       if (typeof result === 'object' && result?.commitPromise) result.commitPromise.catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
         showToast(formatFirestoreError(error, '账号排序保存失败'), 'error');
@@ -1464,7 +1512,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     notifyAccountsChanged({ action: 'rename', oldAccount: oldName, account: newName, accounts: nextAccounts });
     notifyProductsChanged({ action: 'rename-account', oldAccount: oldName, account: newName });
     try {
-      const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, waitForCommit: false });
+      const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, clientId: clientIdRef.current, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
         notifyAccountsChanged({ action: 'commit', account: newName, accounts: nextAccounts });
       }).catch(error => {
@@ -1495,7 +1543,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     setSyncClass(queueStatus.className);
     notifyAccountsChanged({ action: 'delete', account: name, accounts: nextAccounts });
     try {
-      const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, waitForCommit: false });
+      const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, clientId: clientIdRef.current, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
         notifyAccountsChanged({ action: 'commit-delete', account: name, accounts: nextAccounts });
       }).catch(error => {
@@ -1531,16 +1579,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
               aria-label="刷新商品数据"
               title="刷新商品数据"
               aria-busy={loading ? 'true' : 'false'}
-              onClick={() => void loadProducts().catch(error => {
-                if (isPermissionDenied(error)) {
-                  markPermissionBlocked();
-                  showToast(formatFirestoreError(error, '刷新失败'), 'error');
-                  return;
-                }
-                showToast(formatFirestoreError(error, '刷新失败'), 'error');
-                setSyncText('刷新失败');
-                setSyncClass('error');
-              })}
+              onClick={() => void remoteStaleRefresh.refreshNow()}
             >
               <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
             </Button>

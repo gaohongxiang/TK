@@ -229,8 +229,26 @@ assert.match(
 
 assert.match(
   analyticsFirestoreSource,
-  /analytics_snapshots[\s\S]*analytics_records[\s\S]*buildAnalyticsSnapshotDoc[\s\S]*buildAnalyticsRecordDoc[\s\S]*listSavedAnalyses[\s\S]*subscribeSnapshot[\s\S]*pullAnalysisBySnapshot[\s\S]*pullAnalysesBySnapshots[\s\S]*pullLatestAnalysis[\s\S]*saveAnalysis[\s\S]*upsertAccount[\s\S]*saveAccountOrder[\s\S]*renameAccount[\s\S]*deleteAccount/,
+  /buildAnalyticsSnapshotDoc[\s\S]*buildAnalyticsRecordDoc[\s\S]*listSavedAnalyses[\s\S]*subscribeSnapshot[\s\S]*pullAnalysisBySnapshot[\s\S]*pullAnalysesBySnapshots[\s\S]*pullLatestAnalysis[\s\S]*saveAnalysis[\s\S]*upsertAccount[\s\S]*saveAccountOrder[\s\S]*renameAccount[\s\S]*deleteAccount/,
   '数据分析 Firestore provider 需要保存快照和商品明细，支持实时订阅快照列表和恢复历史分析，并复用共享账号写入能力'
+);
+
+assert.match(
+  analyticsFirestoreSource,
+  /analyticsRecordsForSnapshotQuery[\s\S]*where\('snapshotId', '==', normalizedId\)[\s\S]*pullAnalysisBySnapshot[\s\S]*analyticsRecordsForSnapshotQuery/,
+  '数据分析恢复单个快照时必须按 snapshotId 服务端过滤 analytics_records，不能全表读取后前端过滤'
+);
+
+assert.doesNotMatch(
+  analyticsFirestoreSource,
+  /where\('snapshotId', '==', normalizedId\)\.orderBy\('gmv', 'desc'\)/,
+  '数据分析按 snapshotId 恢复时不能组合 orderBy，避免要求额外复合索引'
+);
+
+assert.doesNotMatch(
+  analyticsFirestoreSource,
+  /pullAnalysisBySnapshot[\s\S]*collection\('analytics_records'\)\.orderBy\('gmv', 'desc'\)\.get\(\)/,
+  '数据分析单快照恢复不能全表读取 analytics_records'
 );
 
 assert.match(

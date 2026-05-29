@@ -11,6 +11,7 @@ import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, Tab
 import { refreshButtonClass, statusStripClass, statusStripLeftClass, syncStatusClass } from '@/components/ui/status-strip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { showAppToast } from '@/app/toast';
+import { useStaleAutoRefresh } from '@/lib/stale-auto-refresh';
 import { cn } from '@/lib/utils';
 import { TKFirestoreConnection } from '../../../firestore-connection.ts';
 import { buildFirestoreSyncStatus } from '../../../firestore-sync-status.ts';
@@ -48,6 +49,7 @@ const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const STATUS_OPTIONS: CollectStatus[] = ['已采集', '失败'];
 const ALL_ACCOUNTS_KEY = '__all__';
 const ACCOUNT_UPDATED_EVENT = 'tk-accounts-changed';
+const LS_KEY = 'tk.collection.runtime.v1';
 
 const selectionSkillUrl = 'https://github.com/gaohongxiang/TK/tree/main/skills/tk-product-selection';
 const editorSkillUrl = 'https://github.com/gaohongxiang/TK/tree/main/skills/tk-product-editor';
@@ -74,6 +76,22 @@ const skillCards = [
     commandLabel: '复制编辑命令'
   }
 ] as const;
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function getRuntimeClientId() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (saved?.clientId) return String(saved.clientId);
+    const clientId = uid();
+    localStorage.setItem(LS_KEY, JSON.stringify({ ...(saved || {}), clientId }));
+    return clientId;
+  } catch (error) {
+    return uid();
+  }
+}
 
 const usageSteps = [
   {
@@ -172,6 +190,9 @@ function CollectionPage({ active = true }: { active?: boolean }) {
   const [projectId, setProjectId] = useState('');
   const activeRef = useRef(active);
   const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
+  const markRemoteStaleRef = useRef<() => void>(() => {});
+  const clientIdRef = useRef('');
+  const syncRevisionRef = useRef('');
   const providerRef = useRef(CollectionProviderFirestore.create({
     state: {},
     helpers: { nowIso: () => new Date().toISOString() }
@@ -269,19 +290,29 @@ function CollectionPage({ active = true }: { active?: boolean }) {
       const next = await providerRef.current.init({ firestoreConfigText: cfg.configText });
       setProjectId(next.projectId);
       stopSnapshot();
+      const snapshot = await providerRef.current.pullDatasets({ includeRejects: false });
+      const remoteRecords = snapshot.records || null;
+      syncRevisionRef.current = snapshot.syncRevision || '';
+      setAccounts(snapshot.accounts || []);
+      setPermissionBlocked(false);
+      setDatasets({ records: remoteRecords });
+      setLoading(false);
+      const status = buildFirestoreSyncStatus(snapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
+        action: '采编更改',
+        count: remoteRecords?.rows.length || 0,
+        unit: '条'
+      });
+      setSyncText(status.text);
+      setSyncClass(status.className);
       unsubscribeSnapshotRef.current = providerRef.current.subscribeSnapshot(snapshot => {
-        const remoteRecords = snapshot.records || null;
-        setAccounts(snapshot.accounts || []);
+        if (!snapshot.hasExternalChanges) return;
+        syncRevisionRef.current = snapshot.syncRevision || syncRevisionRef.current;
         setPermissionBlocked(false);
-        setDatasets({ records: remoteRecords });
         setLoading(false);
-        const status = buildFirestoreSyncStatus(snapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
-          action: '采编更改',
-          count: remoteRecords?.rows.length || 0,
-          unit: '条'
-        });
-        setSyncText(status.text);
-        setSyncClass(status.className);
+        const staleStatus = buildFirestoreSyncStatus('stale');
+        setSyncText(staleStatus.text);
+        setSyncClass(staleStatus.className);
+        markRemoteStaleRef.current();
       }, error => {
         setLoading(false);
         if (isPermissionDenied(error)) {
@@ -291,6 +322,9 @@ function CollectionPage({ active = true }: { active?: boolean }) {
         const status = buildFirestoreSyncStatus('failed', { error: formatFirestoreError(error, '采编实时同步失败') });
         setSyncText(status.text);
         setSyncClass(status.className);
+      }, {
+        clientId: clientIdRef.current,
+        currentRevision: syncRevisionRef.current
       });
       return true;
     } catch (error) {
@@ -307,8 +341,33 @@ function CollectionPage({ active = true }: { active?: boolean }) {
     }
   }, [markPermissionBlocked, stopSnapshot]);
 
+  const remoteStaleRefresh = useStaleAutoRefresh({
+    canRefresh: !!projectId && !permissionBlocked && !loading && !accountModalOpen && !accountEditOpen && !accountDeleteOpen,
+    onRefresh: loadRemoteDatasets,
+    onRefreshError: error => {
+      if (isPermissionDenied(error)) {
+        markPermissionBlocked();
+        return;
+      }
+      const status = buildFirestoreSyncStatus('failed', {
+        error: formatFirestoreError(error, '自动刷新失败')
+      });
+      setSyncText(status.text);
+      setSyncClass(status.className);
+      showToast(formatFirestoreError(error, '自动刷新失败'), 'error');
+    }
+  });
+
+  useEffect(() => {
+    markRemoteStaleRef.current = remoteStaleRefresh.markStale;
+    return () => {
+      markRemoteStaleRef.current = () => {};
+    };
+  }, [remoteStaleRefresh.markStale]);
+
   useEffect(() => {
     if (!active) return undefined;
+    clientIdRef.current = getRuntimeClientId();
     void loadRemoteDatasets();
     return undefined;
   }, [active, loadRemoteDatasets]);
@@ -345,7 +404,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
   useEffect(() => () => stopSnapshot(), [stopSnapshot]);
 
   async function refreshRemote() {
-    const ok = await loadRemoteDatasets();
+    const ok = await remoteStaleRefresh.refreshNow();
     if (ok) showToast('采编记录已刷新');
   }
 
@@ -370,7 +429,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
     }
     try {
       const nextAccounts = uniqueAccounts([...allAccounts, name]);
-      const result = await providerRef.current.upsertAccount(name, { sortIndex: nextAccounts.indexOf(name), waitForCommit: false });
+      const result = await providerRef.current.upsertAccount(name, { sortIndex: nextAccounts.indexOf(name), clientId: clientIdRef.current, waitForCommit: false });
       setAccounts(nextAccounts);
       setActiveAccount(name);
       setCurrentPage(1);
@@ -401,7 +460,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
     setAccounts(nextAccounts);
     notifyAccountsChanged({ action: 'reorder', accounts: nextAccounts });
     try {
-      const result = await providerRef.current.saveAccountOrder(nextAccounts, { waitForCommit: false });
+      const result = await providerRef.current.saveAccountOrder(nextAccounts, { clientId: clientIdRef.current, waitForCommit: false });
       if (typeof result === 'object' && result?.commitPromise) result.commitPromise.catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
         showToast(formatFirestoreError(error, '账号排序保存失败'), 'error');
@@ -463,7 +522,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
     setSyncClass('saving');
     notifyAccountsChanged({ action: 'rename', oldAccount: oldName, account: newName, accounts: nextAccounts });
     try {
-      const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, waitForCommit: false });
+      const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, clientId: clientIdRef.current, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
         setSyncText(`已同步 · ${nextDatasets.records?.rows.length || 0} 条`);
         setSyncClass('saved');
@@ -493,7 +552,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
     setSyncClass('saving');
     notifyAccountsChanged({ action: 'delete', account: name, accounts: nextAccounts });
     try {
-      const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, waitForCommit: false });
+      const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, clientId: clientIdRef.current, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
         setSyncText(`已同步 · ${activeData?.rows.length || 0} 条`);
         setSyncClass('saved');

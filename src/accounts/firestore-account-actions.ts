@@ -3,9 +3,11 @@ import type {
   FirebaseCompatFirestore,
   FirebaseCompatWriteBatch
 } from '../types/firestore.ts';
+import { touchSyncScopes } from '../firestore-sync-state.ts';
 
 type AccountWriteOptions = {
   waitForCommit?: boolean;
+  clientId?: string;
 };
 
 type AccountRenameOptions = AccountWriteOptions & {
@@ -238,7 +240,7 @@ async function renameAccountAcrossModules(
   oldValue: string,
   newValue: string,
   nowIso: () => string,
-  { accountOrder = [], waitForCommit = true }: AccountRenameOptions = {}
+  { accountOrder = [], waitForCommit = true, clientId = '' }: AccountRenameOptions = {}
 ): Promise<AccountActionResult | DeferredAccountAction> {
   const oldName = normalizeAccountName(oldValue);
   const newName = normalizeAccountName(newValue);
@@ -265,6 +267,7 @@ async function renameAccountAcrossModules(
     renameAnalyticsAccounts(db, oldName, newName, updatedAt, mutations),
     renameFinanceAccounts(db, oldName, newName, updatedAt, mutations)
   ]);
+  mutations.push(batch => touchSyncScopes(db, batch, undefined, { updatedAt, clientId }));
 
   const commitPromise = commitMutations(db, mutations, { waitForCommit });
   if (waitForCommit) await commitPromise;
@@ -275,7 +278,7 @@ async function deleteAccountLabel(
   db: FirebaseCompatFirestore,
   value: string,
   nowIso: () => string,
-  { accountOrder = [], waitForCommit = true }: AccountDeleteOptions = {}
+  { accountOrder = [], waitForCommit = true, clientId = '' }: AccountDeleteOptions = {}
 ): Promise<AccountActionResult | DeferredAccountAction> {
   const name = normalizeAccountName(value);
   if (!name) throw new Error('账号名称不能为空');
@@ -290,6 +293,7 @@ async function deleteAccountLabel(
     deletedAt: updatedAt
   }, { merge: true }));
   setAccountOrderMutations(db, accounts, updatedAt, mutations);
+  mutations.push(batch => touchSyncScopes(db, batch, undefined, { updatedAt, clientId }));
 
   const commitPromise = commitMutations(db, mutations, { waitForCommit });
   if (waitForCommit) await commitPromise;

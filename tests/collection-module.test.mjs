@@ -333,8 +333,8 @@ assert.match(
 
 assert.match(
   collectionSource,
-  /const \[accounts, setAccounts\][\s\S]*subscribeSnapshot\(snapshot =>[\s\S]*setAccounts\(snapshot\.accounts \|\| \[\]\)[\s\S]*setDatasets\(\{\s*records:\s*remoteRecords\s*\}\)[\s\S]*markPermissionBlocked\(\)[\s\S]*<AccountTabsBar[\s\S]*<ModuleListState[\s\S]*数据库权限不足/,
-  '商品采编页需要实时订阅共享账号和采编记录，且记录权限不足时走统一权限提示'
+  /const \[accounts, setAccounts\][\s\S]*pullDatasets\(\{ includeRejects: false \}\)[\s\S]*setAccounts\(snapshot\.accounts \|\| \[\]\)[\s\S]*setDatasets\(\{\s*records:\s*remoteRecords\s*\}\)[\s\S]*subscribeSnapshot\(snapshot =>[\s\S]*hasExternalChanges[\s\S]*buildFirestoreSyncStatus\('stale'\)[\s\S]*markPermissionBlocked\(\)[\s\S]*<AccountTabsBar[\s\S]*<ModuleListState[\s\S]*数据库权限不足/,
+  '商品采编页需要首屏拉取采编记录，轻量订阅 sync_state 提醒外部变更，且权限不足时走统一权限提示'
 );
 
 assert.match(
@@ -357,8 +357,8 @@ assert.match(
 
 assert.match(
   collectionSource,
-  /setDatasets\(\{\s*records:\s*remoteRecords\s*\}\)[\s\S]*buildFirestoreSyncStatus\(snapshot\.hasPendingWrites \? 'queueing' : 'confirmed'[\s\S]*count:\s*remoteRecords\?\.rows\.length \|\| 0/,
-  '商品采编页收到云端快照后必须把 records 写入 React 状态，并用共享同步状态显示记录数'
+  /pullDatasets\(\{ includeRejects: false \}\)[\s\S]*setDatasets\(\{\s*records:\s*remoteRecords\s*\}\)[\s\S]*buildFirestoreSyncStatus\(snapshot\.hasPendingWrites \? 'queueing' : 'confirmed'[\s\S]*count:\s*remoteRecords\?\.rows\.length \|\| 0[\s\S]*subscribeSnapshot\(snapshot =>[\s\S]*hasExternalChanges[\s\S]*buildFirestoreSyncStatus\('stale'\)/,
+  '商品采编页首屏拉取 records 并显示记录数，之后只用轻量 sync_state 提示需要刷新'
 );
 
 assert.doesNotMatch(

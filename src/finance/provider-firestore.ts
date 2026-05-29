@@ -14,6 +14,7 @@ import {
   toIsoString,
   toNullableText
 } from '../orders/provider-firestore.ts';
+import { readSyncState, subscribeSyncState, touchSyncState } from '../firestore-sync-state.ts';
 import { normalizeFinanceRecord, todayStr as defaultTodayStr } from './summary.ts';
 import type {
   FirebaseCompatApp,
@@ -162,7 +163,8 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
   function buildSnapshotFromQuerySnapshots(
     recordsSnap: FirebaseCompatQuerySnapshot,
     ordersSnap: FirebaseCompatQuerySnapshot,
-    accountsSnap: FirebaseCompatQuerySnapshot
+    accountsSnap: FirebaseCompatQuerySnapshot,
+    syncState: { revision?: string; updatedByClientId?: string } | null = null
   ): FinanceProviderSnapshot {
     const records = recordsSnap.docs
       .map(doc => normalizePulledFinanceRecord({ ...(doc.data() || {}), id: String(doc.data()?.id || doc.id || '') }, { nowIso, todayStr }))
@@ -191,87 +193,57 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
         ...accountsSnap.docs.map(doc => String(doc.data()?.updatedAt || ''))
       ]),
       hasPendingWrites: !!(recordsSnap.metadata?.hasPendingWrites || ordersSnap.metadata?.hasPendingWrites || accountsSnap.metadata?.hasPendingWrites),
-      fromCache: !!(recordsSnap.metadata?.fromCache || ordersSnap.metadata?.fromCache || accountsSnap.metadata?.fromCache)
+      fromCache: !!(recordsSnap.metadata?.fromCache || ordersSnap.metadata?.fromCache || accountsSnap.metadata?.fromCache),
+      syncRevision: syncState?.revision || '',
+      syncUpdatedByClientId: syncState?.updatedByClientId || ''
     };
   }
 
   async function pullSnapshot(): Promise<FinanceProviderSnapshot> {
     const currentDb = await requireDb();
-    const [recordsSnap, ordersSnap, accountsSnap] = await Promise.all([
+    const [recordsSnap, ordersSnap, accountsSnap, syncState] = await Promise.all([
       getQuerySnapshot(currentDb.collection('finance_records').orderBy('occurredAt', 'desc')),
       getQuerySnapshot(currentDb.collection('orders')),
-      getQuerySnapshot(currentDb.collection('order_accounts'))
+      getQuerySnapshot(currentDb.collection('order_accounts')),
+      readSyncState(currentDb, 'finance')
     ]);
 
-    return buildSnapshotFromQuerySnapshots(recordsSnap, ordersSnap, accountsSnap);
+    return buildSnapshotFromQuerySnapshots(recordsSnap, ordersSnap, accountsSnap, syncState);
   }
 
-  function subscribeSnapshot(onNext: (snapshot: FinanceProviderSnapshot) => void, onError: (error: unknown) => void = () => {}) {
+  function subscribeSnapshot(
+    onNext: (snapshot: FinanceProviderSnapshot) => void,
+    onError: (error: unknown) => void = () => {},
+    options: { currentRevision?: string; clientId?: string } = {}
+  ) {
     let active = true;
-    let recordsSnap: FirebaseCompatQuerySnapshot | null = null;
-    let ordersSnap: FirebaseCompatQuerySnapshot | null = null;
-    let accountsSnap: FirebaseCompatQuerySnapshot | null = null;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let unsubscribeRecords: (() => void) | null = null;
-    let unsubscribeOrders: (() => void) | null = null;
-    let unsubscribeAccounts: (() => void) | null = null;
-
-    const emit = () => {
-      if (!active || !recordsSnap || !ordersSnap || !accountsSnap) return;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (!active || !recordsSnap || !ordersSnap || !accountsSnap) return;
-        onNext(buildSnapshotFromQuerySnapshots(recordsSnap, ordersSnap, accountsSnap));
-      }, 0);
-    };
+    let unsubscribeSyncState: (() => void) | null = null;
 
     requireDb().then(currentDb => {
       if (!active) return;
-      const recordsQuery = currentDb.collection('finance_records').orderBy('occurredAt', 'desc');
-      const ordersQuery = currentDb.collection('orders');
-      const accountsQuery = currentDb.collection('order_accounts');
-      if (!recordsQuery.onSnapshot || !ordersQuery.onSnapshot || !accountsQuery.onSnapshot) {
-        void pullSnapshot().then(snapshot => {
-          if (active) onNext(snapshot);
-        }).catch(onError);
-        return;
-      }
-      unsubscribeRecords = recordsQuery.onSnapshot(
-        { includeMetadataChanges: true },
-        snapshot => {
-          recordsSnap = snapshot;
-          emit();
-        },
-        onError
-      );
-      unsubscribeOrders = ordersQuery.onSnapshot(
-        { includeMetadataChanges: true },
-        snapshot => {
-          ordersSnap = snapshot;
-          emit();
-        },
-        onError
-      );
-      unsubscribeAccounts = accountsQuery.onSnapshot(
-        { includeMetadataChanges: true },
-        snapshot => {
-          accountsSnap = snapshot;
-          emit();
-        },
-        onError
-      );
+      unsubscribeSyncState = subscribeSyncState(currentDb, 'finance', state => {
+        if (!active) return;
+        onNext({
+          records: [],
+          orders: [],
+          accounts: [],
+          updatedAt: state.updatedAt,
+          hasPendingWrites: false,
+          fromCache: false,
+          hasExternalChanges: true,
+          syncRevision: state.revision,
+          syncUpdatedByClientId: state.updatedByClientId
+        });
+      }, onError, options);
     }).catch(onError);
 
     return () => {
       active = false;
-      if (timer) clearTimeout(timer);
-      if (unsubscribeRecords) unsubscribeRecords();
-      if (unsubscribeOrders) unsubscribeOrders();
-      if (unsubscribeAccounts) unsubscribeAccounts();
+      if (unsubscribeSyncState) unsubscribeSyncState();
     };
   }
 
-  async function upsertRecord(record: Partial<FinanceRecord> | FinanceRecordDraft, { waitForCommit = true }: FinanceProviderUpsertOptions = {}): Promise<FinanceProviderUpsertResult> {
+  async function upsertRecord(record: Partial<FinanceRecord> | FinanceRecordDraft, { waitForCommit = true, clientId = '' }: FinanceProviderUpsertOptions = {}): Promise<FinanceProviderUpsertResult> {
     const currentDb = await requireDb();
     const updatedAt = nowIso();
     const normalized = normalizeFinanceRecord({
@@ -281,7 +253,10 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       createdAt: String((record as Partial<FinanceRecord>)?.createdAt || '').trim() || updatedAt
     }, { nowIso, todayStr });
     const doc = buildFinanceDoc(normalized, { nowIso });
-    const commitPromise = currentDb.collection('finance_records').doc(doc.id).set(doc, { merge: true });
+    const batch = currentDb.batch();
+    batch.set(currentDb.collection('finance_records').doc(doc.id), doc, { merge: true });
+    touchSyncState(currentDb, batch, 'finance', { updatedAt, clientId });
+    const commitPromise = batch.commit();
     if (!waitForCommit) commitPromise.catch(error => console.error('Firestore finance local queue write failed', error));
     if (waitForCommit) await commitPromise;
     return {
@@ -291,16 +266,19 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     };
   }
 
-  async function deleteRecord(id: string, { waitForCommit = true }: FinanceProviderDeleteOptions = {}): Promise<FinanceProviderDeleteResult> {
+  async function deleteRecord(id: string, { waitForCommit = true, clientId = '' }: FinanceProviderDeleteOptions = {}): Promise<FinanceProviderDeleteResult> {
     const currentDb = await requireDb();
     const normalizedId = String(id || '').trim();
     if (!normalizedId) throw new Error('记录 ID 不能为空');
     const updatedAt = nowIso();
-    const commitPromise = currentDb.collection('finance_records').doc(normalizedId).set({
+    const batch = currentDb.batch();
+    batch.set(currentDb.collection('finance_records').doc(normalizedId), {
       id: normalizedId,
       updatedAt,
       deletedAt: updatedAt
     }, { merge: true });
+    touchSyncState(currentDb, batch, 'finance', { updatedAt, clientId });
+    const commitPromise = batch.commit();
     if (!waitForCommit) commitPromise.catch(error => console.error('Firestore finance delete local queue write failed', error));
     if (waitForCommit) await commitPromise;
     return {
@@ -310,12 +288,12 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     };
   }
 
-  async function renameAccount(oldName: string, newName: string, options: { accountOrder?: string[]; waitForCommit?: boolean } = {}) {
+  async function renameAccount(oldName: string, newName: string, options: { accountOrder?: string[]; waitForCommit?: boolean; clientId?: string } = {}) {
     const currentDb = await requireDb();
     return renameAccountAcrossModules(currentDb, oldName, newName, nowIso, options);
   }
 
-  async function deleteAccount(name: string, options: { accountOrder?: string[]; waitForCommit?: boolean } = {}) {
+  async function deleteAccount(name: string, options: { accountOrder?: string[]; waitForCommit?: boolean; clientId?: string } = {}) {
     const currentDb = await requireDb();
     return deleteAccountLabel(currentDb, name, nowIso, options);
   }

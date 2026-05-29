@@ -238,6 +238,15 @@ function normalizeRecordDoc(doc: LooseRecord): AnalyticsRecord {
   };
 }
 
+function analyticsRecordsForSnapshotQuery(currentDb: FirebaseCompatFirestore, snapshotId: string) {
+  const collection = currentDb.collection('analytics_records');
+  const normalizedId = String(snapshotId || '').trim();
+  if (collection.where) {
+    return collection.where('snapshotId', '==', normalizedId);
+  }
+  return collection.orderBy('gmv', 'desc');
+}
+
 function create({ state = {}, helpers = {}, window: rootWindow = globalThis.window }: AnalyticsProviderCreateOptions = {}) {
   const nowIso = helpers.nowIso || (() => new Date().toISOString());
   let app: FirebaseCompatApp | null = null;
@@ -412,7 +421,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     const latest = await snapshotDocRef.get();
     if (!latest?.exists) return null;
     const snapshotDoc = normalizeSnapshotDoc(latest.data(), latest.id || id);
-    const recordsSnapshot = await currentDb.collection('analytics_records').orderBy('gmv', 'desc').get();
+    const recordsSnapshot = await analyticsRecordsForSnapshotQuery(currentDb, snapshotDoc.id).get();
     const records = recordsSnapshot.docs
       .map(doc => doc.data() as LooseRecord)
       .filter(doc => String(doc.snapshotId || '') === snapshotDoc.id)
@@ -437,15 +446,15 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     const currentDb = await requireDb();
     const ids = [...new Set(snapshotIds.map(id => String(id || '').trim()).filter(Boolean))];
     if (!ids.length) return [];
-    const [snapshotDocs, recordsSnapshot] = await Promise.all([
+    const [snapshotDocs, recordSnapshots] = await Promise.all([
       Promise.all(ids.map(async id => {
         const doc = await currentDb.collection('analytics_snapshots').doc(id).get();
         return doc?.exists ? normalizeSnapshotDoc(doc.data(), doc.id || id) : null;
       })),
-      currentDb.collection('analytics_records').orderBy('gmv', 'desc').get()
+      Promise.all(ids.map(id => analyticsRecordsForSnapshotQuery(currentDb, id).get()))
     ]);
     const recordsBySnapshot = new Map<string, AnalyticsRecord[]>();
-    recordsSnapshot.docs.forEach(doc => {
+    recordSnapshots.flatMap(snapshot => snapshot.docs).forEach(doc => {
       const data = doc.data() as LooseRecord;
       const snapshotId = String(data.snapshotId || '').trim();
       if (!ids.includes(snapshotId)) return;

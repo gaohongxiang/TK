@@ -262,6 +262,9 @@ type OrderProviderSnapshot = {
   updatedAt: string;
   accountsUpdatedAt: string;
   remoteCursor: string;
+  syncRevision?: string;
+  syncUpdatedByClientId?: string;
+  hasExternalChanges?: boolean;
   hasPendingWrites?: boolean;
   fromCache?: boolean;
 };
@@ -300,21 +303,22 @@ type OrderProviderApi = {
   pullSnapshot: (options?: { cursor?: string }) => Promise<OrderProviderSnapshot>;
   subscribeSnapshot: (
     onNext: (snapshot: OrderProviderSnapshot) => void,
-    onError?: (error: unknown) => void
+    onError?: (error: unknown) => void,
+    options?: { currentRevision?: string; clientId?: string }
   ) => () => void;
   pushChanges: (options?: OrderProviderPushChangesOptions) => Promise<OrderProviderPushResult>;
   renameAccount: (
     oldName: string,
     newName: string,
-    options?: { accountOrder?: string[]; waitForCommit?: boolean }
+    options?: { accountOrder?: string[]; waitForCommit?: boolean; clientId?: string }
   ) => Promise<{ accounts: string[]; commitPromise?: Promise<unknown[]> }>;
   deleteAccount: (
     name: string,
-    options?: { accountOrder?: string[]; waitForCommit?: boolean }
+    options?: { accountOrder?: string[]; waitForCommit?: boolean; clientId?: string }
   ) => Promise<{ accounts: string[]; commitPromise?: Promise<unknown[]> }>;
   permanentlyDeleteOrder: (
     id: string,
-    options?: { waitForCommit?: boolean }
+    options?: { waitForCommit?: boolean; clientId?: string }
   ) => Promise<{ id: string; commitPromise?: Promise<unknown[]> }>;
 };
 

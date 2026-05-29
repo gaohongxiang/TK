@@ -7,6 +7,7 @@ import type {
   HydratedFirebaseConfig
 } from '../types/firestore.ts';
 import { deleteAccountLabel, renameAccountAcrossModules } from '../accounts/firestore-account-actions.ts';
+import { readSyncState, subscribeSyncState, touchSyncState } from '../firestore-sync-state.ts';
 import { initSharedFirebaseApp } from '../firebase-app.ts';
 
 type CollectionDatasetKey = 'records' | 'rejects';
@@ -23,6 +24,9 @@ type CollectionProviderSnapshot = CollectionDatasetMap & {
   accounts: string[];
   hasPendingWrites?: boolean;
   fromCache?: boolean;
+  hasExternalChanges?: boolean;
+  syncRevision?: string;
+  syncUpdatedByClientId?: string;
 };
 type CollectionProviderCreateOptions = {
   state?: LooseRecord;
@@ -33,6 +37,7 @@ type CollectionProviderCreateOptions = {
 };
 type CollectionProviderWriteOptions = {
   waitForCommit?: boolean;
+  clientId?: string;
 };
 type CollectionProviderPullDatasetsOptions = {
   includeRejects?: boolean;
@@ -56,6 +61,7 @@ type CollectionRecordDoc = {
   productId: string | null;
   productUrl: string | null;
   fastmossUrl: string | null;
+  chuhaijiangUrl?: string | null;
   shopName: string | null;
   productName: string | null;
   editedTitle?: string | null;
@@ -79,6 +85,7 @@ type CollectionExcludedProductDoc = {
   productId: string | null;
   productUrl: string | null;
   fastmossUrl: string | null;
+  chuhaijiangUrl?: string | null;
   shopName: string | null;
   productName: string | null;
   productCategory: string | null;
@@ -303,7 +310,8 @@ function buildRecordDoc(datasetKey: 'records', dataset: CollectionDataset, row: 
     accountName: toNullableText(getAccountName(normalizedRow)),
     productId: toNullableText(productId),
     productUrl: toNullableText(productUrl),
-    fastmossUrl: toNullableText(getRowValue(normalizedRow, ['FastMoss 链接', 'fastmoss_url', '店铺链接', 'shop_url'])),
+    fastmossUrl: toNullableText(getRowValue(normalizedRow, ['FastMoss 链接', 'fastmoss_url', 'fastmossUrl'])),
+    chuhaijiangUrl: toNullableText(getRowValue(normalizedRow, ['出海匠链接', 'chuhaijiang_url', 'chuhaijiangUrl'])),
     shopName: toNullableText(getRowValue(normalizedRow, ['店铺名', 'shop_name'])),
     productName: toNullableText(getRowValue(normalizedRow, ['商品名称'])),
     collectStatus,
@@ -312,7 +320,7 @@ function buildRecordDoc(datasetKey: 'records', dataset: CollectionDataset, row: 
     collectFailureReason,
     note: toNullableText(getRowValue(normalizedRow, ['备注', 'note'])),
     lastDatasetKey: datasetKey,
-    source: 'fastmoss',
+    source: getRowValue(normalizedRow, ['出海匠链接', 'chuhaijiang_url', 'chuhaijiangUrl']) ? 'chuhaijiang' : 'fastmoss',
     createdAt: nowIso,
     updatedAt: nowIso,
     datasets: {
@@ -335,7 +343,8 @@ function buildExcludedProductDoc(dataset: CollectionDataset, row: LooseRecord, n
     accountName: toNullableText(getAccountName(normalizedRow)),
     productId: toNullableText(productId),
     productUrl: toNullableText(productUrl),
-    fastmossUrl: toNullableText(getRowValue(normalizedRow, ['FastMoss 链接', 'fastmoss_url', '店铺链接', 'shop_url'])),
+    fastmossUrl: toNullableText(getRowValue(normalizedRow, ['FastMoss 链接', 'fastmoss_url', 'fastmossUrl'])),
+    chuhaijiangUrl: toNullableText(getRowValue(normalizedRow, ['出海匠链接', 'chuhaijiang_url', 'chuhaijiangUrl'])),
     shopName: toNullableText(getRowValue(normalizedRow, ['店铺名', 'shop_name'])),
     productName: toNullableText(getRowValue(normalizedRow, ['商品名称'])),
     productCategory: toNullableText(getRowValue(normalizedRow, ['商品类目', 'category', 'product_category'])),
@@ -343,7 +352,7 @@ function buildExcludedProductDoc(dataset: CollectionDataset, row: LooseRecord, n
     shopRevenueJpy: toNullableText(getRowValue(normalizedRow, ['店铺总销售额（日元）', '店铺总销售额', 'shop_revenue_jpy'])),
     rejectReason: toNullableText(getRowValue(normalizedRow, ['拒绝原因'])),
     filename: dataset.filename || DEFAULT_FILENAMES.rejects,
-    source: 'fastmoss',
+    source: getRowValue(normalizedRow, ['出海匠链接', 'chuhaijiang_url', 'chuhaijiangUrl']) ? 'chuhaijiang' : 'fastmoss',
     createdAt: nowIso,
     updatedAt: nowIso
   };
@@ -351,7 +360,7 @@ function buildExcludedProductDoc(dataset: CollectionDataset, row: LooseRecord, n
 
 function excludedDatasetFromDocs(docs: CollectionExcludedProductDoc[]): CollectionDataset | null {
   if (!docs.length) return null;
-  const headers = ['账号', '拒绝原因', '商品名称', '店铺名', '商品类目', '商品近7天销量', '店铺总销售额（日元）', '商品链接', '拒绝时间'];
+  const headers = ['账号', '拒绝原因', '商品名称', '店铺名', '商品类目', '商品近7天销量', '店铺总销售额（日元）', '商品链接', 'FastMoss 链接', '出海匠链接', '拒绝时间'];
   return {
     filename: DEFAULT_FILENAMES.rejects,
     headers,
@@ -364,6 +373,8 @@ function excludedDatasetFromDocs(docs: CollectionExcludedProductDoc[]): Collecti
       '商品近7天销量': doc.productSales7d || '',
       '店铺总销售额（日元）': doc.shopRevenueJpy || '',
       '商品链接': doc.productUrl || '',
+      'FastMoss 链接': doc.fastmossUrl || '',
+      '出海匠链接': doc.chuhaijiangUrl || '',
       '拒绝时间': doc.updatedAt || doc.createdAt || ''
     }))
   };
@@ -386,6 +397,7 @@ function recordRowFromDoc(doc: CollectionRecordDoc) {
   putIfValue(row, '核心 TK 链接', doc.productUrl);
   putIfValue(row, '商品链接', doc.productUrl);
   putIfValue(row, 'FastMoss 链接', doc.fastmossUrl);
+  putIfValue(row, '出海匠链接', doc.chuhaijiangUrl);
   putIfValue(row, '商品名称', doc.productName);
   row['采集状态'] = doc.collectStatus || normalizeCollectStatus(row);
   row['采集时间'] = doc.collectedAt || row['采集时间'] || '';
@@ -457,7 +469,8 @@ function accountsFromSnapshot(snapshot: FirebaseCompatQuerySnapshot): string[] {
 function buildProviderSnapshot(
   recordsSnapshot: FirebaseCompatQuerySnapshot,
   accountsSnapshot: FirebaseCompatQuerySnapshot,
-  rejectsSnapshot: FirebaseCompatQuerySnapshot | null = null
+  rejectsSnapshot: FirebaseCompatQuerySnapshot | null = null,
+  syncState: { revision?: string; updatedByClientId?: string } | null = null
 ): CollectionProviderSnapshot {
   const datasets = datasetsFromDocs(
     recordsSnapshot.docs.map(doc => doc.data() as CollectionRecordDoc),
@@ -467,7 +480,9 @@ function buildProviderSnapshot(
     ...datasets,
     accounts: accountsFromSnapshot(accountsSnapshot),
     hasPendingWrites: !!(recordsSnapshot.metadata?.hasPendingWrites || accountsSnapshot.metadata?.hasPendingWrites || rejectsSnapshot?.metadata?.hasPendingWrites),
-    fromCache: !!(recordsSnapshot.metadata?.fromCache || accountsSnapshot.metadata?.fromCache || rejectsSnapshot?.metadata?.fromCache)
+    fromCache: !!(recordsSnapshot.metadata?.fromCache || accountsSnapshot.metadata?.fromCache || rejectsSnapshot?.metadata?.fromCache),
+    syncRevision: syncState?.revision || '',
+    syncUpdatedByClientId: syncState?.updatedByClientId || ''
   };
 }
 
@@ -497,19 +512,18 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return next;
   }
 
-  async function pullDatasets({ includeRejects = true }: CollectionProviderPullDatasetsOptions = {}): Promise<CollectionDatasetMap> {
+  async function pullDatasets({ includeRejects = true }: CollectionProviderPullDatasetsOptions = {}): Promise<CollectionProviderSnapshot> {
     const currentDb = await requireDb();
     const rejectsPromise = includeRejects
       ? currentDb.collection('collection_excluded_products').orderBy('updatedAt', 'desc').get()
       : Promise.resolve(null);
-    const [snapshot, rejectsSnapshot] = await Promise.all([
+    const [snapshot, rejectsSnapshot, accountsSnapshot, syncState] = await Promise.all([
       currentDb.collection('collection_records').orderBy('collectedAt', 'desc').get(),
-      rejectsPromise
+      rejectsPromise,
+      currentDb.collection('order_accounts').get(),
+      readSyncState(currentDb, 'collection')
     ]);
-    return datasetsFromDocs(
-      snapshot.docs.map(doc => doc.data() as CollectionRecordDoc),
-      rejectsSnapshot?.docs.map(doc => doc.data() as CollectionExcludedProductDoc) || []
-    );
+    return buildProviderSnapshot(snapshot, accountsSnapshot, rejectsSnapshot, syncState);
   }
 
   async function pullAccounts(): Promise<string[]> {
@@ -518,59 +532,34 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return accountsFromSnapshot(snapshot);
   }
 
-  function subscribeSnapshot(onNext: (snapshot: CollectionProviderSnapshot) => void, onError: (error: unknown) => void = () => {}) {
+  function subscribeSnapshot(
+    onNext: (snapshot: CollectionProviderSnapshot) => void,
+    onError: (error: unknown) => void = () => {},
+    options: { currentRevision?: string; clientId?: string } = {}
+  ) {
     let active = true;
-    let recordsSnap: FirebaseCompatQuerySnapshot | null = null;
-    let accountsSnap: FirebaseCompatQuerySnapshot | null = null;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let unsubscribeRecords: (() => void) | null = null;
-    let unsubscribeAccounts: (() => void) | null = null;
-
-    const emit = () => {
-      if (!active || !recordsSnap || !accountsSnap) return;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (!active || !recordsSnap || !accountsSnap) return;
-        onNext(buildProviderSnapshot(recordsSnap, accountsSnap));
-      }, 0);
-    };
+    let unsubscribeSyncState: (() => void) | null = null;
 
     requireDb().then(currentDb => {
       if (!active) return;
-      const recordsQuery = currentDb.collection('collection_records').orderBy('collectedAt', 'desc');
-      const accountsQuery = currentDb.collection('order_accounts');
-      if (!recordsQuery.onSnapshot || !accountsQuery.onSnapshot) {
-        Promise.all([
-          currentDb.collection('collection_records').orderBy('collectedAt', 'desc').get(),
-          currentDb.collection('order_accounts').get()
-        ]).then(([recordsSnapshot, accountsSnapshot]) => {
-          if (active) onNext(buildProviderSnapshot(recordsSnapshot, accountsSnapshot));
-        }).catch(onError);
-        return;
-      }
-      unsubscribeRecords = recordsQuery.onSnapshot(
-        { includeMetadataChanges: true },
-        snapshot => {
-          recordsSnap = snapshot;
-          emit();
-        },
-        onError
-      );
-      unsubscribeAccounts = accountsQuery.onSnapshot(
-        { includeMetadataChanges: true },
-        snapshot => {
-          accountsSnap = snapshot;
-          emit();
-        },
-        onError
-      );
+      unsubscribeSyncState = subscribeSyncState(currentDb, 'collection', state => {
+        if (!active) return;
+        onNext({
+          records: null,
+          rejects: null,
+          accounts: [],
+          hasPendingWrites: false,
+          fromCache: false,
+          hasExternalChanges: true,
+          syncRevision: state.revision,
+          syncUpdatedByClientId: state.updatedByClientId
+        });
+      }, onError, options);
     }).catch(onError);
 
     return () => {
       active = false;
-      if (timer) clearTimeout(timer);
-      if (unsubscribeRecords) unsubscribeRecords();
-      if (unsubscribeAccounts) unsubscribeAccounts();
+      if (unsubscribeSyncState) unsubscribeSyncState();
     };
   }
 
@@ -585,21 +574,26 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return commitPromise;
   }
 
-  async function upsertAccount(name: string, { sortIndex, waitForCommit = true }: CollectionProviderAccountWriteOptions = {}): Promise<string | CollectionProviderDeferredAccountWrite> {
+  async function upsertAccount(name: string, { sortIndex, waitForCommit = true, clientId = '' }: CollectionProviderAccountWriteOptions = {}): Promise<string | CollectionProviderDeferredAccountWrite> {
     const currentDb = await requireDb();
     const normalized = String(name || '').trim();
     if (!normalized) throw new Error('账号名称不能为空');
     const updatedAt = nowIso();
     const id = accountDocId(normalized);
     const commitPromise = trackWritePromise(
-      currentDb.collection('order_accounts').doc(id).set({
+      Promise.resolve().then(async () => {
+        const batch = currentDb.batch();
+        batch.set(currentDb.collection('order_accounts').doc(id), {
         id,
         name: normalized,
         ...(Number.isFinite(Number(sortIndex)) ? { sortIndex: Number(sortIndex) } : {}),
         updatedAt,
         deletedAt: null,
         createdAt: updatedAt
-      }, { merge: true }),
+        }, { merge: true });
+        touchSyncState(currentDb, batch, 'collection', { updatedAt, clientId });
+        await batch.commit();
+      }),
       'Firestore collection account local queue write failed',
       { waitForCommit }
     );
@@ -607,7 +601,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return waitForCommit ? normalized : { account: normalized, commitPromise };
   }
 
-  async function saveAccountOrder(names: string[] = [], { waitForCommit = true }: CollectionProviderWriteOptions = {}) {
+  async function saveAccountOrder(names: string[] = [], { waitForCommit = true, clientId = '' }: CollectionProviderWriteOptions = {}) {
     const currentDb = await requireDb();
     const normalizedNames = [...new Set(names.map(name => String(name || '').trim()).filter(Boolean))];
     if (!normalizedNames.length) return waitForCommit ? 0 : { count: 0, commitPromise: Promise.resolve() };
@@ -624,6 +618,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
         createdAt: updatedAt
       }, { merge: true });
     });
+    touchSyncState(currentDb, batch, 'collection', { updatedAt, clientId });
     const commitPromise = trackWritePromise(batch.commit(), 'Firestore collection account order local queue write failed', { waitForCommit });
     if (waitForCommit) await commitPromise;
     return waitForCommit ? normalizedNames.length : { count: normalizedNames.length, commitPromise };
@@ -639,7 +634,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return deleteAccountLabel(currentDb, name, nowIso, options);
   }
 
-  async function upsertDatasetRows(datasetKey: CollectionDatasetKey, dataset: CollectionDataset, { waitForCommit = true }: CollectionProviderWriteOptions = {}) {
+  async function upsertDatasetRows(datasetKey: CollectionDatasetKey, dataset: CollectionDataset, { waitForCommit = true, clientId = '' }: CollectionProviderWriteOptions = {}) {
     const currentDb = await requireDb();
     const rows = Array.isArray(dataset.rows) ? dataset.rows : [];
     if (!rows.length) return waitForCommit ? 0 : { count: 0, commitPromise: Promise.resolve() };
@@ -649,6 +644,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       for (const doc of rejects) {
         batch.set(currentDb.collection('collection_excluded_products').doc(doc.productKey), doc, { merge: true });
       }
+      touchSyncState(currentDb, batch, 'collection', { updatedAt: nowIso(), clientId });
       const commitPromise = trackWritePromise(batch.commit(), 'Firestore collection excluded product local queue write failed', { waitForCommit });
       if (waitForCommit) await commitPromise;
       return waitForCommit ? rejects.length : { count: rejects.length, commitPromise };
@@ -657,6 +653,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     for (const doc of records) {
       batch.set(currentDb.collection('collection_records').doc(doc.productKey), doc, { merge: true });
     }
+    touchSyncState(currentDb, batch, 'collection', { updatedAt: nowIso(), clientId });
     const commitPromise = trackWritePromise(batch.commit(), 'Firestore collection local queue write failed', { waitForCommit });
     if (waitForCommit) await commitPromise;
     return waitForCommit ? records.length : { count: records.length, commitPromise };

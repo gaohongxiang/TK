@@ -59,20 +59,20 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /async function permanentlyDeleteOrder\([\s\S]*window\.confirm\([\s\S]*providerRef\.current\.permanentlyDeleteOrder\(id,\s*\{ waitForCommit:\s*false \}\)/,
-  'React 订单页彻底删除订单必须二次确认，并调用 provider 物理删除当前订单'
+  /async function permanentlyDeleteOrder\([\s\S]*window\.confirm\([\s\S]*providerRef\.current\.permanentlyDeleteOrder\(id,\s*\{[\s\S]*clientId:\s*clientIdRef\.current[\s\S]*waitForCommit:\s*false/,
+  'React 订单页彻底删除订单必须二次确认，并调用 provider 物理删除当前订单，同时带上本机 clientId 避免自写入触发刷新提示'
 );
 
 assert.match(
   ordersPageSource,
-  /buildFirestoreSyncStatus[\s\S]*subscribeSnapshot[\s\S]*hasPendingWrites[\s\S]*queueing[\s\S]*confirmed/,
-  'React 订单页需要使用共享同步状态和实时订阅区分本机待上传与云端已同步'
+  /subscribeSnapshot\(nextSnapshot =>[\s\S]*hasExternalChanges[\s\S]*buildFirestoreSyncStatus\('stale'\)[\s\S]*有新数据，点击刷新|subscribeSnapshot\(nextSnapshot =>[\s\S]*hasExternalChanges[\s\S]*buildFirestoreSyncStatus\('stale'\)/,
+  'React 订单页需要用轻量 sync_state 订阅提示外部新数据，而不是自动拉全量订单'
 );
 
 assert.match(
   syncStatusSource,
-  /本机待上传队列[\s\S]*云端已同步/,
-  '共享 Firestore 同步状态文案需要区分本机待上传和云端已同步'
+  /本机待上传队列[\s\S]*云端已同步[\s\S]*有新数据，点击刷新/,
+  '共享 Firestore 同步状态文案需要区分本机待上传、云端已同步和需要刷新'
 );
 
 assert.match(
@@ -95,8 +95,14 @@ assert.match(
 
 assert.match(
   providerSource,
-  /function subscribeSnapshot\([\s\S]*hasPendingWrites[\s\S]*onSnapshot|function subscribeSnapshot\([\s\S]*onSnapshot[\s\S]*hasPendingWrites/,
-  'Firestore provider 需要提供实时订阅，其他页面新增订单后当前页可自动刷新'
+  /function subscribeSnapshot\([\s\S]*subscribeSyncState[\s\S]*hasExternalChanges/,
+  'Firestore provider 需要提供轻量订阅，其他页面新增订单后当前页提示刷新'
+);
+
+assert.doesNotMatch(
+  providerSource,
+  /function subscribeSnapshot\([\s\S]*collection\('orders'\)\.orderBy\('updatedAt'/,
+  'Firestore provider 不能再通过 subscribeSnapshot 监听 orders 全表'
 );
 
 assert.match(

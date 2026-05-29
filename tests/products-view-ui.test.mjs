@@ -338,13 +338,13 @@ assert.match(
 
 assert.match(
   reactProductsPageSource,
-  /buildFirestoreSyncStatus[\s\S]*subscribeSnapshot[\s\S]*hasPendingWrites[\s\S]*queueing[\s\S]*confirmed/,
-  'React 商品库需要使用共享同步状态和实时订阅区分本机待上传与云端已同步'
+  /pullProducts\(\)[\s\S]*buildFirestoreSyncStatus\(result\.hasPendingWrites \? 'queueing' : 'confirmed'[\s\S]*subscribeSnapshot\(snapshot =>[\s\S]*hasExternalChanges[\s\S]*buildFirestoreSyncStatus\('stale'\)/,
+  'React 商品库需要首屏拉取数据并用轻量 sync_state 订阅提示外部新数据'
 );
 
 assert.match(
   reactProductsPageSource,
-  /deleteProduct\(tkId,\s*\{\s*waitForCommit:\s*false\s*\}\)/,
+  /deleteProduct\(tkId,\s*\{[\s\S]*clientId:\s*clientIdRef\.current[\s\S]*waitForCommit:\s*false/,
   'React 商品库删除应先进入 Firestore 本地队列，不等待云端提交后才更新 UI'
 );
 

@@ -60,14 +60,19 @@ type FinanceProviderSnapshot = {
   updatedAt: string;
   hasPendingWrites?: boolean;
   fromCache?: boolean;
+  hasExternalChanges?: boolean;
+  syncRevision?: string;
+  syncUpdatedByClientId?: string;
 };
 
 type FinanceProviderUpsertOptions = {
   waitForCommit?: boolean;
+  clientId?: string;
 };
 
 type FinanceProviderDeleteOptions = {
   waitForCommit?: boolean;
+  clientId?: string;
 };
 
 type FinanceProviderUpsertResult = {
@@ -97,18 +102,19 @@ type FinanceProviderApi = {
   pullSnapshot: () => Promise<FinanceProviderSnapshot>;
   subscribeSnapshot: (
     onNext: (snapshot: FinanceProviderSnapshot) => void,
-    onError?: (error: unknown) => void
+    onError?: (error: unknown) => void,
+    options?: { currentRevision?: string; clientId?: string }
   ) => () => void;
   upsertRecord: (record: Partial<FinanceRecord> | FinanceRecordDraft, options?: FinanceProviderUpsertOptions) => Promise<FinanceProviderUpsertResult>;
   deleteRecord: (id: string, options?: FinanceProviderDeleteOptions) => Promise<FinanceProviderDeleteResult>;
   renameAccount: (
     oldName: string,
     newName: string,
-    options?: { accountOrder?: string[]; waitForCommit?: boolean }
+    options?: { accountOrder?: string[]; waitForCommit?: boolean; clientId?: string }
   ) => Promise<{ accounts: string[]; commitPromise?: Promise<unknown[]> }>;
   deleteAccount: (
     name: string,
-    options?: { accountOrder?: string[]; waitForCommit?: boolean }
+    options?: { accountOrder?: string[]; waitForCommit?: boolean; clientId?: string }
   ) => Promise<{ accounts: string[]; commitPromise?: Promise<unknown[]> }>;
 };
 

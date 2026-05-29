@@ -14,6 +14,7 @@ import type {
   ProductSkuDoc
 } from './types.ts';
 import { deleteAccountLabel, renameAccountAcrossModules } from '../accounts/firestore-account-actions.ts';
+import { readSyncState, subscribeSyncState, touchSyncState } from '../firestore-sync-state.ts';
 import { initSharedFirebaseApp } from '../firebase-app.ts';
 import type { FirebaseCompatApp, FirebaseCompatFirestore, FirebaseCompatQuerySnapshot } from '../types/firestore.ts';
 
@@ -232,7 +233,11 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return raw ? encodeURIComponent(raw) : '__unassigned__';
   }
 
-  function buildProductSnapshot(snapshot: FirebaseCompatQuerySnapshot, accountsSnapshot: FirebaseCompatQuerySnapshot): ProductProviderPullResult {
+  function buildProductSnapshot(
+    snapshot: FirebaseCompatQuerySnapshot,
+    accountsSnapshot: FirebaseCompatQuerySnapshot,
+    syncState: { revision?: string; updatedByClientId?: string } | null = null
+  ): ProductProviderPullResult {
     const accounts = accountsSnapshot.docs
       .map((doc, index) => ({ data: doc.data() || {}, fallbackIndex: index }))
       .filter(row => !row.data.deletedAt)
@@ -254,7 +259,9 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       accounts,
       lastRemoteUpdatedAt,
       hasPendingWrites: !!(snapshot.metadata?.hasPendingWrites || accountsSnapshot.metadata?.hasPendingWrites),
-      fromCache: !!(snapshot.metadata?.fromCache || accountsSnapshot.metadata?.fromCache)
+      fromCache: !!(snapshot.metadata?.fromCache || accountsSnapshot.metadata?.fromCache),
+      syncRevision: syncState?.revision || '',
+      syncUpdatedByClientId: syncState?.updatedByClientId || ''
     };
   }
 
@@ -276,63 +283,42 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
 
   async function pullProducts() {
     const currentDb = await requireDb();
-    const [snapshot, accountsSnapshot] = await Promise.all([
+    const [snapshot, accountsSnapshot, syncState] = await Promise.all([
       currentDb.collection('products').orderBy('updatedAt', 'desc').get(),
-      currentDb.collection('order_accounts').get()
+      currentDb.collection('order_accounts').get(),
+      readSyncState(currentDb, 'products')
     ]);
-    return buildProductSnapshot(snapshot, accountsSnapshot);
+    return buildProductSnapshot(snapshot, accountsSnapshot, syncState);
   }
 
-  function subscribeSnapshot(onNext: (snapshot: ProductProviderPullResult) => void, onError: (error: unknown) => void = () => {}) {
+  function subscribeSnapshot(
+    onNext: (snapshot: ProductProviderPullResult) => void,
+    onError: (error: unknown) => void = () => {},
+    options: { currentRevision?: string; clientId?: string } = {}
+  ) {
     let active = true;
-    let productsSnap: FirebaseCompatQuerySnapshot | null = null;
-    let accountsSnap: FirebaseCompatQuerySnapshot | null = null;
-    let timer = 0;
-    let unsubscribeProducts: (() => void) | null = null;
-    let unsubscribeAccounts: (() => void) | null = null;
-
-    const emit = () => {
-      if (!active || !productsSnap || !accountsSnap) return;
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        if (!active || !productsSnap || !accountsSnap) return;
-        onNext(buildProductSnapshot(productsSnap, accountsSnap));
-      }, 0);
-    };
+    let unsubscribeSyncState: (() => void) | null = null;
 
     requireDb().then(currentDb => {
       if (!active) return;
-      const productsQuery = currentDb.collection('products').orderBy('updatedAt', 'desc');
-      const accountsQuery = currentDb.collection('order_accounts');
-      if (!productsQuery.onSnapshot || !accountsQuery.onSnapshot) {
-        void pullProducts().then(snapshot => {
-          if (active) onNext(snapshot);
-        }).catch(onError);
-        return;
-      }
-      unsubscribeProducts = productsQuery.onSnapshot(
-        { includeMetadataChanges: true },
-        snapshot => {
-          productsSnap = snapshot;
-          emit();
-        },
-        onError
-      );
-      unsubscribeAccounts = accountsQuery.onSnapshot(
-        { includeMetadataChanges: true },
-        snapshot => {
-          accountsSnap = snapshot;
-          emit();
-        },
-        onError
-      );
+      unsubscribeSyncState = subscribeSyncState(currentDb, 'products', state => {
+        if (!active) return;
+        onNext({
+          products: [],
+          accounts: [],
+          lastRemoteUpdatedAt: state.updatedAt,
+          hasPendingWrites: false,
+          fromCache: false,
+          hasExternalChanges: true,
+          syncRevision: state.revision,
+          syncUpdatedByClientId: state.updatedByClientId
+        });
+      }, onError, options);
     }).catch(onError);
 
     return () => {
       active = false;
-      window.clearTimeout(timer);
-      if (unsubscribeProducts) unsubscribeProducts();
-      if (unsubscribeAccounts) unsubscribeAccounts();
+      if (unsubscribeSyncState) unsubscribeSyncState();
     };
   }
 
@@ -342,12 +328,15 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return commitPromise;
   }
 
-  async function upsertProduct(product: ProductRecord, { waitForCommit = true }: ProductProviderWriteOptions = {}) {
+  async function upsertProduct(product: ProductRecord, { waitForCommit = true, clientId = '' }: ProductProviderWriteOptions = {}) {
     const currentDb = await requireDb();
     const doc = buildProductDoc(product, { nowIso });
     if (!doc.tkId) throw new Error('商品 TK ID 不能为空');
+    const batch = currentDb.batch();
+    batch.set(currentDb.collection('products').doc(doc.tkId), doc, { merge: true });
+    touchSyncState(currentDb, batch, 'products', { updatedAt: doc.updatedAt, clientId });
     const commitPromise = trackWritePromise(
-      currentDb.collection('products').doc(doc.tkId).set(doc, { merge: true }),
+      batch.commit(),
       'Firestore product local queue write failed',
       { waitForCommit }
     );
@@ -356,12 +345,16 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return waitForCommit ? saved : { product: saved, commitPromise };
   }
 
-  async function deleteProduct(tkId: string, { waitForCommit = true }: ProductProviderWriteOptions = {}) {
+  async function deleteProduct(tkId: string, { waitForCommit = true, clientId = '' }: ProductProviderWriteOptions = {}) {
     const currentDb = await requireDb();
     const id = String(tkId || '').trim();
     if (!id) throw new Error('商品 TK ID 不能为空');
+    const updatedAt = nowIso();
+    const batch = currentDb.batch();
+    batch.delete(currentDb.collection('products').doc(id));
+    touchSyncState(currentDb, batch, 'products', { updatedAt, clientId });
     const commitPromise = trackWritePromise(
-      currentDb.collection('products').doc(id).delete(),
+      batch.commit(),
       'Firestore product delete local queue write failed',
       { waitForCommit }
     );
@@ -369,21 +362,24 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return waitForCommit ? true : { deleted: true, commitPromise };
   }
 
-  async function upsertAccount(name: string, { sortIndex, waitForCommit = true }: ProductProviderAccountWriteOptions = {}) {
+  async function upsertAccount(name: string, { sortIndex, waitForCommit = true, clientId = '' }: ProductProviderAccountWriteOptions = {}) {
     const currentDb = await requireDb();
     const normalized = String(name || '').trim();
     if (!normalized) throw new Error('账号名称不能为空');
     const updatedAt = nowIso();
     const id = accountDocId(normalized);
+    const batch = currentDb.batch();
+    batch.set(currentDb.collection('order_accounts').doc(id), {
+      id,
+      name: normalized,
+      ...(Number.isFinite(Number(sortIndex)) ? { sortIndex: Number(sortIndex) } : {}),
+      updatedAt,
+      deletedAt: null,
+      createdAt: updatedAt
+    }, { merge: true });
+    touchSyncState(currentDb, batch, 'products', { updatedAt, clientId });
     const commitPromise = trackWritePromise(
-      currentDb.collection('order_accounts').doc(id).set({
-        id,
-        name: normalized,
-        ...(Number.isFinite(Number(sortIndex)) ? { sortIndex: Number(sortIndex) } : {}),
-        updatedAt,
-        deletedAt: null,
-        createdAt: updatedAt
-      }, { merge: true }),
+      batch.commit(),
       'Firestore account local queue write failed',
       { waitForCommit }
     );
@@ -391,7 +387,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return waitForCommit ? normalized : { account: normalized, commitPromise };
   }
 
-  async function saveAccountOrder(names: string[] = [], { waitForCommit = true }: ProductProviderWriteOptions = {}) {
+  async function saveAccountOrder(names: string[] = [], { waitForCommit = true, clientId = '' }: ProductProviderWriteOptions = {}) {
     const currentDb = await requireDb();
     const normalizedNames = [...new Set(names.map(name => String(name || '').trim()).filter(Boolean))];
     if (!normalizedNames.length) return waitForCommit ? 0 : { count: 0, commitPromise: Promise.resolve() };
@@ -408,6 +404,7 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
         createdAt: updatedAt
       }, { merge: true });
     });
+    touchSyncState(currentDb, batch, 'products', { updatedAt, clientId });
     const commitPromise = trackWritePromise(
       batch.commit(),
       'Firestore account order local queue write failed',

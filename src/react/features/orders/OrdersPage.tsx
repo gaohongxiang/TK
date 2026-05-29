@@ -28,6 +28,7 @@ import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, Tab
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { showAppToast } from '@/app/toast';
+import { useStaleAutoRefresh } from '@/lib/stale-auto-refresh';
 import { TKFirestoreConnection } from '../../../firestore-connection.ts';
 import {
   formatFirestoreRulesUpdateMessage,
@@ -142,6 +143,18 @@ const COURIER_OPTIONS = [
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function getRuntimeClientId() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (saved?.clientId) return String(saved.clientId);
+    const clientId = uid();
+    localStorage.setItem(LS_KEY, JSON.stringify({ ...(saved || {}), clientId }));
+    return clientId;
+  } catch (error) {
+    return uid();
+  }
 }
 
 function nowIso() {
@@ -1635,6 +1648,9 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     helpers: { nowIso }
   }));
   const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
+  const markRemoteStaleRef = useRef<() => void>(() => {});
+  const clientIdRef = useRef('');
+  const syncRevisionRef = useRef('');
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [syncText, setSyncText] = useState('未连接');
@@ -1755,6 +1771,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       setOrders(snapshot.orders || []);
       setDeletedOrders(snapshot.deletedOrders || []);
       setAccounts(snapshot.accounts || []);
+      syncRevisionRef.current = String(snapshot.syncRevision || '');
       setProjectId(cfg.projectId || '');
       setConnected(true);
       setPermissionBlocked(false);
@@ -1767,18 +1784,12 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       setSyncClass(status.className);
       if (unsubscribeSnapshotRef.current) unsubscribeSnapshotRef.current();
       unsubscribeSnapshotRef.current = providerRef.current.subscribeSnapshot(nextSnapshot => {
-        setOrders(nextSnapshot.orders || []);
-        setDeletedOrders(nextSnapshot.deletedOrders || []);
-        setAccounts(nextSnapshot.accounts || []);
-        setConnected(true);
-        setPermissionBlocked(false);
-        const nextStatus = buildFirestoreSyncStatus(nextSnapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
-          action: '订单更改',
-          count: (nextSnapshot.orders || []).length,
-          unit: '条'
-        });
-        setSyncText(nextStatus.text);
-        setSyncClass(nextStatus.className);
+        if (!nextSnapshot.hasExternalChanges) return;
+        syncRevisionRef.current = String(nextSnapshot.syncRevision || syncRevisionRef.current);
+        const staleStatus = buildFirestoreSyncStatus('stale');
+        setSyncText(staleStatus.text);
+        setSyncClass(staleStatus.className);
+        markRemoteStaleRef.current();
       }, error => {
         if (isPermissionDenied(error)) {
           markPermissionBlocked();
@@ -1790,6 +1801,9 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         setSyncText(failedStatus.text);
         setSyncClass(failedStatus.className);
         showToast(formatFirestoreError(error, '订单实时同步失败'), 'error');
+      }, {
+        clientId: clientIdRef.current,
+        currentRevision: syncRevisionRef.current
       });
       return true;
     } catch (error) {
@@ -1808,11 +1822,30 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     }
   }, [formatFirestoreError, loadProducts, markPermissionBlocked]);
 
+  const remoteStaleRefresh = useStaleAutoRefresh({
+    canRefresh: connected && !permissionBlocked && !loading && !modalOpen && !accountModalOpen && !accountEditOpen && !accountDeleteOpen && !trashOpen,
+    onRefresh: connectUsingGlobalConfig,
+    onRefreshError: error => {
+      if (isPermissionDenied(error)) {
+        markPermissionBlocked();
+        return;
+      }
+      const failedStatus = buildFirestoreSyncStatus('failed', { error: formatFirestoreError(error, '自动刷新失败') });
+      setSyncText(failedStatus.text);
+      setSyncClass(failedStatus.className);
+      showToast(formatFirestoreError(error, '自动刷新失败'), 'error');
+    }
+  });
+
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
-      if (!saved?.clientId) localStorage.setItem(LS_KEY, JSON.stringify({ clientId: uid() }));
-    } catch (error) {}
+    markRemoteStaleRef.current = remoteStaleRefresh.markStale;
+    return () => {
+      markRemoteStaleRef.current = () => {};
+    };
+  }, [remoteStaleRefresh.markStale]);
+
+  useEffect(() => {
+    clientIdRef.current = getRuntimeClientId();
     void connectUsingGlobalConfig();
   }, [connectUsingGlobalConfig]);
 
@@ -1937,7 +1970,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       result = await providerRef.current.pushChanges({
         upserts: [payload],
         accountUpserts: accountName ? [accountName] : [],
-        clientId: '',
+        clientId: clientIdRef.current,
         assignSeq: true,
         waitForCommit: false
       });
@@ -1995,7 +2028,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
           accountName: deletedOrder?.['账号'] || '',
           deletedAt
         }],
-        clientId: '',
+        clientId: clientIdRef.current,
         assignSeq: false,
         waitForCommit: false
       });
@@ -2120,7 +2153,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     try {
       result = await providerRef.current.pushChanges({
         upserts: [payload],
-        clientId: '',
+        clientId: clientIdRef.current,
         assignSeq: false,
         waitForCommit: false
       });
@@ -2171,7 +2204,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     }
     let result: Awaited<ReturnType<typeof providerRef.current.permanentlyDeleteOrder>>;
     try {
-      result = await providerRef.current.permanentlyDeleteOrder(id, { waitForCommit: false });
+      result = await providerRef.current.permanentlyDeleteOrder(id, { clientId: clientIdRef.current, waitForCommit: false });
     } catch (error) {
       setDeletedOrders(previous => previous.some(order => String(order.id) === id) ? previous : [deletedOrder, ...previous]);
       if (isPermissionDenied(error)) {
@@ -2218,7 +2251,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       const result = await providerRef.current.pushChanges({
         accountUpserts: [name],
         accountSortOrder: nextAccounts,
-        clientId: '',
+        clientId: clientIdRef.current,
         assignSeq: false,
         waitForCommit: false
       });
@@ -2247,7 +2280,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     try {
       const result = await providerRef.current.pushChanges({
         accountSortOrder: nextAccounts,
-        clientId: '',
+        clientId: clientIdRef.current,
         assignSeq: false,
         waitForCommit: false
       });
@@ -2301,7 +2334,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setSyncClass(queueStatus.className);
     notifyAccountsChanged({ action: 'rename', oldAccount: oldName, account: newName, accounts: nextAccounts });
     try {
-      const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, waitForCommit: false });
+      const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, clientId: clientIdRef.current, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
         setPermissionBlocked(false);
         notifyAccountsChanged({ action: 'commit', account: newName, accounts: nextAccounts });
@@ -2334,7 +2367,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setSyncClass(queueStatus.className);
     notifyAccountsChanged({ action: 'delete', account: name, accounts: nextAccounts });
     try {
-      const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, waitForCommit: false });
+      const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, clientId: clientIdRef.current, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
         setPermissionBlocked(false);
         notifyAccountsChanged({ action: 'commit-delete', account: name, accounts: nextAccounts });
@@ -2365,7 +2398,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
             <div className={statusStripClass}>
               <div className={statusStripLeftClass}>
               {connected && !permissionBlocked ? <Badge id="ot-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge> : null}
-              <Button id="ot-refresh" variant="plain" className={refreshButtonClass(loading)} aria-label="刷新订单数据" title="刷新订单数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void connectUsingGlobalConfig()}>
+              <Button id="ot-refresh" variant="plain" className={refreshButtonClass(loading)} aria-label="刷新订单数据" title="刷新订单数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void remoteStaleRefresh.refreshNow()}>
                 <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
               </Button>
               <Button id="ot-storage-help-btn" variant="plain" className={storageHelpButtonClass} aria-controls="ot-storage-help-modal" aria-haspopup="dialog" aria-label="数据存储说明" title="数据存储说明" onClick={() => setStorageHelpOpen(true)}>

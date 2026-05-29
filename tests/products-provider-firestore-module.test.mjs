@@ -78,8 +78,14 @@ assert.match(
 
 assert.match(
   srcSource,
-  /buildProductSnapshot[\s\S]*hasPendingWrites[\s\S]*function subscribeSnapshot[\s\S]*onSnapshot/,
-  '商品库 Firestore provider ESM 需要提供实时订阅，并用 hasPendingWrites 区分本机待上传和云端确认'
+  /buildProductSnapshot[\s\S]*syncRevision[\s\S]*function subscribeSnapshot[\s\S]*subscribeSyncState[\s\S]*hasExternalChanges/,
+  '商品库 Firestore provider ESM 需要提供轻量订阅，只监听 sync_state 提醒外部变更'
+);
+
+assert.doesNotMatch(
+  srcSource,
+  /function subscribeSnapshot[\s\S]*collection\('products'\)\.orderBy\('updatedAt'/,
+  '商品库 Firestore provider 不能再默认实时监听 products 全表'
 );
 
 const sandbox = {

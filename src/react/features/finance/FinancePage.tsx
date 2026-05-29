@@ -13,6 +13,7 @@ import { TableFrame, TablePager, TableSearch, TableSortButton, TableToolbar, Tab
 import { Textarea } from '@/components/ui/textarea';
 import { showAppToast } from '@/app/toast';
 import { cn } from '@/lib/utils';
+import { useStaleAutoRefresh } from '@/lib/stale-auto-refresh';
 import { AccountTabsBar } from '@/components/ui/account-tabs-bar';
 import { TKFirestoreConnection } from '../../../firestore-connection.ts';
 import { buildFirestoreSyncStatus } from '../../../firestore-sync-status.ts';
@@ -89,6 +90,18 @@ const financeDateInputIconClass = 'pointer-events-none absolute right-3 top-1/2 
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function getRuntimeClientId() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (saved?.clientId) return String(saved.clientId);
+    const clientId = uid();
+    localStorage.setItem(LS_KEY, JSON.stringify({ ...(saved || {}), clientId }));
+    return clientId;
+  } catch (error) {
+    return uid();
+  }
 }
 
 function nowIso() {
@@ -597,6 +610,9 @@ function FinancePage({ active = true }: { active?: boolean }) {
     helpers: { nowIso, todayStr }
   }));
   const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
+  const markRemoteStaleRef = useRef<() => void>(() => {});
+  const clientIdRef = useRef('');
+  const syncRevisionRef = useRef('');
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [syncText, setSyncText] = useState('未连接');
@@ -691,20 +707,31 @@ function FinancePage({ active = true }: { active?: boolean }) {
       setProjectId(cfg.projectId || '');
       setConnected(true);
       stopSnapshot();
+      const snapshot = await providerRef.current.pullSnapshot();
+      syncRevisionRef.current = snapshot.syncRevision || '';
+      setRecords(snapshot.records || []);
+      setOrders(snapshot.orders || []);
+      setAccounts(snapshot.accounts || []);
+      setConnected(true);
+      setPermissionBlocked(false);
+      setLoading(false);
+      const status = buildFirestoreSyncStatus(snapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
+        action: '收支更改',
+        count: (snapshot.records || []).length,
+        unit: '条'
+      });
+      setSyncText(status.text);
+      setSyncClass(status.className);
       unsubscribeSnapshotRef.current = providerRef.current.subscribeSnapshot(snapshot => {
-        setRecords(snapshot.records || []);
-        setOrders(snapshot.orders || []);
-        setAccounts(snapshot.accounts || []);
+        if (!snapshot.hasExternalChanges) return;
+        syncRevisionRef.current = snapshot.syncRevision || syncRevisionRef.current;
         setConnected(true);
         setPermissionBlocked(false);
         setLoading(false);
-        const status = buildFirestoreSyncStatus(snapshot.hasPendingWrites ? 'queueing' : 'confirmed', {
-          action: '收支更改',
-          count: (snapshot.records || []).length,
-          unit: '条'
-        });
-        setSyncText(status.text);
-        setSyncClass(status.className);
+        const staleStatus = buildFirestoreSyncStatus('stale');
+        setSyncText(staleStatus.text);
+        setSyncClass(staleStatus.className);
+        markRemoteStaleRef.current();
       }, error => {
         setLoading(false);
         if (isPermissionDenied(error)) {
@@ -716,6 +743,9 @@ function FinancePage({ active = true }: { active?: boolean }) {
         setSyncText(status.text);
         setSyncClass(status.className);
         showToast(status.text, 'error');
+      }, {
+        clientId: clientIdRef.current,
+        currentRevision: syncRevisionRef.current
       });
       return true;
     } catch (error) {
@@ -735,11 +765,32 @@ function FinancePage({ active = true }: { active?: boolean }) {
     }
   }, [formatFirestoreError, markPermissionBlocked, stopSnapshot]);
 
+  const remoteStaleRefresh = useStaleAutoRefresh({
+    canRefresh: connected && !permissionBlocked && !loading && !modalOpen,
+    onRefresh: connectUsingGlobalConfig,
+    onRefreshError: error => {
+      if (isPermissionDenied(error)) {
+        markPermissionBlocked();
+        return;
+      }
+      const status = buildFirestoreSyncStatus('failed', {
+        error: formatFirestoreError(error, '自动刷新失败')
+      });
+      setSyncText(status.text);
+      setSyncClass(status.className);
+      showToast(status.text, 'error');
+    }
+  });
+
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
-      if (!saved?.clientId) localStorage.setItem(LS_KEY, JSON.stringify({ clientId: uid() }));
-    } catch (error) {}
+    markRemoteStaleRef.current = remoteStaleRefresh.markStale;
+    return () => {
+      markRemoteStaleRef.current = () => {};
+    };
+  }, [remoteStaleRefresh.markStale]);
+
+  useEffect(() => {
+    clientIdRef.current = getRuntimeClientId();
     void connectUsingGlobalConfig();
   }, [connectUsingGlobalConfig]);
 
@@ -861,7 +912,7 @@ function FinancePage({ active = true }: { active?: boolean }) {
     setSyncText('已保存到 Firestore 本地队列…');
     setSyncClass('saving');
     try {
-      const result = await providerRef.current.upsertRecord(payload, { waitForCommit: false });
+      const result = await providerRef.current.upsertRecord(payload, { clientId: clientIdRef.current, waitForCommit: false });
       result.commitPromise?.then(() => {
         setSyncText(`已同步 · ${nextRecords.length} 条`);
         setSyncClass('saved');
@@ -886,7 +937,7 @@ function FinancePage({ active = true }: { active?: boolean }) {
     setSyncText('已删除，本地已更新，等待同步…');
     setSyncClass('saving');
     try {
-      const result = await providerRef.current.deleteRecord(id, { waitForCommit: false });
+      const result = await providerRef.current.deleteRecord(id, { clientId: clientIdRef.current, waitForCommit: false });
       result.commitPromise?.then(() => {
         setSyncText(`已同步 · ${nextRecords.length} 条`);
         setSyncClass('saved');
@@ -916,7 +967,7 @@ function FinancePage({ active = true }: { active?: boolean }) {
         <div className={statusStripClass}>
           <div className={statusStripLeftClass}>
             {connected && !permissionBlocked ? <Badge id="finance-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge> : null}
-            <Button id="finance-refresh" variant="plain" className={refreshButtonClass(loading)} aria-label="刷新收支数据" title="刷新收支数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void connectUsingGlobalConfig()}>
+            <Button id="finance-refresh" variant="plain" className={refreshButtonClass(loading)} aria-label="刷新收支数据" title="刷新收支数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void remoteStaleRefresh.refreshNow()}>
               <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
             </Button>
             <Button id="finance-help-btn" variant="plain" className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-full border border-[var(--border)] bg-transparent p-0 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]" aria-controls="finance-help-modal" aria-haspopup="dialog" aria-label="收支口径说明" title="收支口径说明" onClick={() => setHelpOpen(true)}>

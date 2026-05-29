@@ -78,10 +78,14 @@ type ProductProviderPullResult = {
   lastRemoteUpdatedAt: string;
   hasPendingWrites?: boolean;
   fromCache?: boolean;
+  hasExternalChanges?: boolean;
+  syncRevision?: string;
+  syncUpdatedByClientId?: string;
 };
 
 type ProductProviderWriteOptions = {
   waitForCommit?: boolean;
+  clientId?: string;
 };
 
 type ProductProviderAccountWriteOptions = ProductProviderWriteOptions & {
@@ -108,7 +112,8 @@ type ProductProviderApi = {
   pullProducts: () => Promise<ProductProviderPullResult>;
   subscribeSnapshot: (
     onNext: (snapshot: ProductProviderPullResult) => void,
-    onError?: (error: unknown) => void
+    onError?: (error: unknown) => void,
+    options?: { currentRevision?: string; clientId?: string }
   ) => () => void;
   upsertProduct: (
     product: ProductRecord,

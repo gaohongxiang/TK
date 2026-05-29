@@ -14,6 +14,7 @@ function syncStatusClass(statusClass?: string) {
     syncStatusBaseClass,
     statusClass === 'saving' ? 'text-[var(--warn)]' : '',
     statusClass === 'saved' ? 'text-[var(--ok)]' : '',
+    statusClass === 'stale' ? 'font-semibold text-[var(--accent)]' : '',
     statusClass === 'local' ? 'text-[var(--accent)]' : '',
     statusClass === 'error' ? 'text-[var(--danger)]' : '',
     statusClass

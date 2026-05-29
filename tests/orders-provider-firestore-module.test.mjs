@@ -68,8 +68,14 @@ assert.match(
 
 assert.match(
   esmSource,
-  /subscribeSnapshot[\s\S]*hasPendingWrites[\s\S]*onSnapshot|subscribeSnapshot[\s\S]*onSnapshot[\s\S]*hasPendingWrites/,
-  'Firestore provider 需要暴露实时订阅，并用 hasPendingWrites 区分本机待上传和云端确认'
+  /subscribeSnapshot[\s\S]*subscribeSyncState[\s\S]*hasExternalChanges/,
+  'Firestore provider 需要暴露轻量订阅，只监听 sync_state 提醒外部变更'
+);
+
+assert.doesNotMatch(
+  esmSource,
+  /subscribeSnapshot[\s\S]*collection\('orders'\)\.orderBy\('updatedAt'/,
+  '订单 provider 不能再默认实时监听 orders 全表'
 );
 
 assert.match(

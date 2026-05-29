@@ -54,8 +54,8 @@ assert.match(
 
 assert.match(
   financeProviderSource,
-  /collection\('finance_records'\)[\s\S]*collection\('orders'\)[\s\S]*collection\('order_accounts'\)[\s\S]*upsertRecord[\s\S]*deleteRecord/,
-  '收支 Provider 需要读收支记录、订单和账号，并支持保存和删除记录'
+  /pullSnapshot[\s\S]*collection\('finance_records'\)[\s\S]*collection\('orders'\)[\s\S]*collection\('order_accounts'\)[\s\S]*readSyncState\(currentDb, 'finance'\)[\s\S]*subscribeSnapshot[\s\S]*subscribeSyncState\(currentDb, 'finance'[\s\S]*upsertRecord[\s\S]*touchSyncState\(currentDb, batch, 'finance'[\s\S]*deleteRecord/,
+  '收支 Provider 需要首屏读取收支记录、订单和账号，之后只监听 sync_state，并在保存/删除时更新同步标记'
 );
 
 assert.match(

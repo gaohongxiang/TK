@@ -1,6 +1,6 @@
 type SyncStatusTone = 'idle' | 'saving' | 'saved' | 'error' | string;
 
-type SyncStatusKind = 'unconnected' | 'refreshing' | 'queueing' | 'confirmed' | 'failed';
+type SyncStatusKind = 'unconnected' | 'refreshing' | 'queueing' | 'confirmed' | 'stale' | 'failed';
 
 type SyncStatusOptions = {
   moduleLabel?: string;
@@ -38,6 +38,13 @@ function buildFirestoreSyncStatus(kind: SyncStatusKind, options: SyncStatusOptio
       kind,
       text: countText ? `云端已同步 · ${countText}` : '云端已同步',
       className: 'saved'
+    };
+  }
+  if (kind === 'stale') {
+    return {
+      kind,
+      text: '有新数据，点击刷新',
+      className: 'stale'
     };
   }
   return {

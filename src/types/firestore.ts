@@ -40,10 +40,16 @@ type FirebaseCompatDocRef = {
   get: (options?: unknown) => Promise<FirebaseCompatDocSnapshot>;
   set: (data: unknown, options?: unknown) => Promise<unknown>;
   delete: () => Promise<unknown>;
+  onSnapshot?: (
+    optionsOrObserver: FirebaseCompatSnapshotOptions | ((snapshot: FirebaseCompatDocSnapshot) => void),
+    observerOrError?: ((snapshot: FirebaseCompatDocSnapshot) => void) | FirebaseCompatSnapshotErrorHandler,
+    errorHandler?: FirebaseCompatSnapshotErrorHandler
+  ) => () => void;
 };
 
 type FirebaseCompatCollectionRef = {
   orderBy: (field: string, direction?: string) => FirebaseCompatCollectionRef;
+  where?: (field: string, operator: string, value: unknown) => FirebaseCompatCollectionRef;
   limit?: (count: number) => FirebaseCompatCollectionRef;
   get: (options?: unknown) => Promise<FirebaseCompatQuerySnapshot>;
   doc: (id: string) => FirebaseCompatDocRef;

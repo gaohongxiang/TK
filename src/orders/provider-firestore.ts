@@ -3,6 +3,12 @@ import {
 } from './shared.ts';
 import { deleteAccountLabel, renameAccountAcrossModules } from '../accounts/firestore-account-actions.ts';
 import { initSharedFirebaseApp } from '../firebase-app.ts';
+import {
+  readSyncState,
+  subscribeSyncState,
+  syncStateRef as buildSyncStateRef,
+  touchSyncState
+} from '../firestore-sync-state.ts';
 import type {
   OrderFirestoreConfig,
   OrderFirestoreDoc,
@@ -490,6 +496,10 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     return currentDb.collection('sync_state').doc('app');
   }
 
+  function ordersSyncStateRef(currentDb: FirebaseCompatFirestore): FirebaseCompatDocRef {
+    return buildSyncStateRef(currentDb, 'orders');
+  }
+
   async function requireDb(): Promise<FirebaseCompatFirestore> {
     if (!db) throw new Error('Firestore 尚未初始化');
     return db;
@@ -590,10 +600,11 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
 
   async function pullSnapshot({ cursor = '' }: { cursor?: string } = {}): Promise<OrderProviderSnapshot> {
     const currentDb = await requireDb();
-    const [ordersSnap, accountsSnap, syncStateSnap] = await Promise.all([
+    const [ordersSnap, accountsSnap, syncStateSnap, ordersSyncState] = await Promise.all([
       getQuerySnapshot(currentDb.collection('orders')),
       getQuerySnapshot(currentDb.collection('order_accounts')),
-      getDocSnapshot(syncStateRef(currentDb))
+      getDocSnapshot(syncStateRef(currentDb)),
+      readSyncState(currentDb, 'orders')
     ]);
 
     const allOrderRecords = ordersSnap.docs.map(doc => normalizePulledOrder(doc.data() || {}, { nowIso }));
@@ -650,100 +661,48 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       updatedAt: remoteCursor,
       accountsUpdatedAt: accountUpdatedAt,
       remoteCursor,
+      syncRevision: ordersSyncState.revision,
+      syncUpdatedByClientId: ordersSyncState.updatedByClientId,
       hasPendingWrites: !!(ordersSnap.metadata?.hasPendingWrites || accountsSnap.metadata?.hasPendingWrites),
       fromCache: !!(ordersSnap.metadata?.fromCache || accountsSnap.metadata?.fromCache)
     };
   }
 
-  function subscribeSnapshot(onNext: (snapshot: OrderProviderSnapshot) => void, onError: (error: unknown) => void = () => {}) {
+  function subscribeSnapshot(onNext: (snapshot: OrderProviderSnapshot) => void, onError: (error: unknown) => void = () => {}, options: { currentRevision?: string; clientId?: string } = {}) {
     let active = true;
-    let ordersSnap: FirebaseCompatQuerySnapshot | null = null;
-    let accountsSnap: FirebaseCompatQuerySnapshot | null = null;
-    let timer = 0;
-    let unsubscribeOrders: (() => void) | null = null;
-    let unsubscribeAccounts: (() => void) | null = null;
-
-    const emit = () => {
-      if (!active || !ordersSnap || !accountsSnap) return;
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        if (!active || !ordersSnap || !accountsSnap) return;
-        const allOrderRecords = ordersSnap.docs.map(doc => normalizePulledOrder(doc.data() || {}, { nowIso }));
-        const activeOrders = normalizeOrderList(
-          allOrderRecords
-            .filter(order => !order.deletedAt)
-            .sort((left, right) => (parseSeq(left.seq) || Number.MAX_SAFE_INTEGER) - (parseSeq(right.seq) || Number.MAX_SAFE_INTEGER))
-        );
-        const deletedOrders = normalizeOrderList(
-          allOrderRecords
-            .filter(order => order.deletedAt)
-            .sort((left, right) => String(right.deletedAt || '').localeCompare(String(left.deletedAt || '')))
-        );
-        const accountRows = accountsSnap.docs.map((doc, index) => {
-          const data = doc.data() || {};
-          return {
-            name: String(data?.name || '').trim(),
-            sortIndex: toSortIndex(data?.sortIndex, index),
-            updatedAt: toIsoString(data?.updatedAt || ''),
-            deletedAt: toIsoString(data?.deletedAt || '')
-          };
-        });
-        const activeAccounts = uniqueAccounts(accountRows
-          .filter(row => !row.deletedAt)
-          .sort((left, right) => left.sortIndex - right.sortIndex || left.name.localeCompare(right.name))
-          .map(row => row.name));
-        const remoteCursor = latestIso([
-          ...allOrderRecords.map(order => order.deletedAt || order.updatedAt || ''),
-          ...accountRows.map(account => account.deletedAt || account.updatedAt || '')
-        ]);
-        onNext({
-          orders: activeOrders,
-          deletedOrders,
-          accounts: activeAccounts,
-          changedOrders: activeOrders,
-          changedAccounts: [],
-          updatedAt: remoteCursor,
-          accountsUpdatedAt: latestIso(accountRows.filter(row => !row.deletedAt).map(row => row.updatedAt)),
-          remoteCursor,
-          hasPendingWrites: !!(ordersSnap.metadata?.hasPendingWrites || accountsSnap.metadata?.hasPendingWrites),
-          fromCache: !!(ordersSnap.metadata?.fromCache || accountsSnap.metadata?.fromCache)
-        });
-      }, 0);
-    };
+    let unsubscribeSyncState: (() => void) | null = null;
 
     requireDb().then(currentDb => {
       if (!active) return;
-      const ordersQuery = currentDb.collection('orders').orderBy('updatedAt', 'desc');
-      const accountsQuery = currentDb.collection('order_accounts');
-      if (!ordersQuery.onSnapshot || !accountsQuery.onSnapshot) {
-        void pullSnapshot({ cursor: '' }).then(snapshot => {
-          if (active) onNext(snapshot);
-        }).catch(onError);
-        return;
-      }
-      unsubscribeOrders = ordersQuery.onSnapshot(
-        { includeMetadataChanges: true },
-        snapshot => {
-          ordersSnap = snapshot;
-          emit();
+      unsubscribeSyncState = subscribeSyncState(
+        currentDb,
+        'orders',
+        state => {
+          if (!active) return;
+          onNext({
+            orders: [],
+            deletedOrders: [],
+            accounts: [],
+            changedOrders: [],
+            changedAccounts: [],
+            updatedAt: state.updatedAt,
+            accountsUpdatedAt: '',
+            remoteCursor: state.updatedAt,
+            syncRevision: state.revision,
+            syncUpdatedByClientId: state.updatedByClientId,
+            hasExternalChanges: true,
+            hasPendingWrites: false,
+            fromCache: false
+          });
         },
-        onError
-      );
-      unsubscribeAccounts = accountsQuery.onSnapshot(
-        { includeMetadataChanges: true },
-        snapshot => {
-          accountsSnap = snapshot;
-          emit();
-        },
-        onError
+        onError,
+        options
       );
     }).catch(onError);
 
     return () => {
       active = false;
-      window.clearTimeout(timer);
-      if (unsubscribeOrders) unsubscribeOrders();
-      if (unsubscribeAccounts) unsubscribeAccounts();
+      if (unsubscribeSyncState) unsubscribeSyncState();
     };
   }
 
@@ -817,12 +776,15 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
       }, { merge: true }));
     });
 
-    mutations.push(batch => batch.set(syncStateRef(currentDb), {
-      scope: 'app',
-      updatedAt,
-      lastClientId: String(clientId || '').trim(),
-      schemaVersion: 1
-    }, { merge: true }));
+    mutations.push(batch => {
+      batch.set(syncStateRef(currentDb), {
+        scope: 'app',
+        updatedAt,
+        lastClientId: String(clientId || '').trim(),
+        schemaVersion: 1
+      }, { merge: true });
+      touchSyncState(currentDb, batch, 'orders', { updatedAt, clientId });
+    });
 
     const commitPromise = commitMutations(currentDb, mutations, { waitForCommit });
     if (waitForCommit) await commitPromise;
@@ -834,22 +796,26 @@ function create({ state = {}, helpers = {}, window: rootWindow = globalThis.wind
     };
   }
 
-  async function renameAccount(oldName: string, newName: string, options: { accountOrder?: string[]; waitForCommit?: boolean } = {}) {
+  async function renameAccount(oldName: string, newName: string, options: { accountOrder?: string[]; waitForCommit?: boolean; clientId?: string } = {}) {
     const currentDb = await requireDb();
     return renameAccountAcrossModules(currentDb, oldName, newName, nowIso, options);
   }
 
-  async function deleteAccount(name: string, options: { accountOrder?: string[]; waitForCommit?: boolean } = {}) {
+  async function deleteAccount(name: string, options: { accountOrder?: string[]; waitForCommit?: boolean; clientId?: string } = {}) {
     const currentDb = await requireDb();
     return deleteAccountLabel(currentDb, name, nowIso, options);
   }
 
-  async function permanentlyDeleteOrder(id: string, { waitForCommit = true }: { waitForCommit?: boolean } = {}) {
+  async function permanentlyDeleteOrder(id: string, { clientId = '', waitForCommit = true }: { clientId?: string; waitForCommit?: boolean } = {}) {
     const currentDb = await requireDb();
     const normalizedId = String(id || '').trim();
     if (!normalizedId) throw new Error('订单 ID 不能为空');
+    const updatedAt = nowIso();
     const commitPromise = commitMutations(currentDb, [
-      batch => batch.delete(orderRef(currentDb, normalizedId))
+      batch => {
+        batch.delete(orderRef(currentDb, normalizedId));
+        touchSyncState(currentDb, batch, 'orders', { updatedAt, clientId });
+      }
     ], { waitForCommit });
     if (waitForCommit) await commitPromise;
     return {

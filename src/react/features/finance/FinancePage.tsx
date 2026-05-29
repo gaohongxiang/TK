@@ -789,6 +789,13 @@ function FinancePage({ active = true }: { active?: boolean }) {
     };
   }, [remoteStaleRefresh.markStale]);
 
+  const displaySyncText = useMemo(() => {
+    if (syncClass !== 'stale') return syncText;
+    return buildFirestoreSyncStatus('stale', {
+      autoRefreshSeconds: remoteStaleRefresh.remainingSeconds
+    }).text;
+  }, [remoteStaleRefresh.remainingSeconds, syncClass, syncText]);
+
   useEffect(() => {
     clientIdRef.current = getRuntimeClientId();
     void connectUsingGlobalConfig();
@@ -966,7 +973,7 @@ function FinancePage({ active = true }: { active?: boolean }) {
         <Card id="finance-main" className={!connected ? financeSetupCardClass : undefined}>
         <div className={statusStripClass}>
           <div className={statusStripLeftClass}>
-            {connected && !permissionBlocked ? <Badge id="finance-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge> : null}
+            {connected && !permissionBlocked ? <Badge id="finance-sync" className={syncStatusClass(syncClass)}>{displaySyncText}</Badge> : null}
             <Button id="finance-refresh" variant="plain" className={refreshButtonClass(loading)} aria-label="刷新收支数据" title="刷新收支数据" disabled={loading} aria-busy={loading ? 'true' : 'false'} onClick={() => void remoteStaleRefresh.refreshNow()}>
               <RefreshCw size={15} strokeWidth={2} aria-hidden="true" className={loading ? 'is-spinning' : ''} />
             </Button>

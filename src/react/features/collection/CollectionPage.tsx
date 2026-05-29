@@ -365,6 +365,13 @@ function CollectionPage({ active = true }: { active?: boolean }) {
     };
   }, [remoteStaleRefresh.markStale]);
 
+  const displaySyncText = useMemo(() => {
+    if (syncClass !== 'stale') return syncText;
+    return buildFirestoreSyncStatus('stale', {
+      autoRefreshSeconds: remoteStaleRefresh.remainingSeconds
+    }).text;
+  }, [remoteStaleRefresh.remainingSeconds, syncClass, syncText]);
+
   useEffect(() => {
     if (!active) return undefined;
     clientIdRef.current = getRuntimeClientId();
@@ -627,7 +634,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
       <Card>
         <div className={cn('mb-3', statusStripClass)}>
           <div className={cn(statusStripLeftClass, 'min-w-0 flex-wrap')}>
-            {projectId && !permissionBlocked ? <Badge id="collection-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge> : null}
+            {projectId && !permissionBlocked ? <Badge id="collection-sync" className={syncStatusClass(syncClass)}>{displaySyncText}</Badge> : null}
             <Button
               id="collection-refresh"
               variant="plain"

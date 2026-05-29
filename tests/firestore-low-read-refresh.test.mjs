@@ -12,6 +12,7 @@ const ordersSource = fs.readFileSync(path.join(root, 'src', 'react', 'features',
 const productsSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'products', 'ProductsPage.tsx'), 'utf8');
 const collectionSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'collection', 'CollectionPage.tsx'), 'utf8');
 const financeSource = fs.readFileSync(path.join(root, 'src', 'react', 'features', 'finance', 'FinancePage.tsx'), 'utf8');
+const syncStatusSource = fs.readFileSync(path.join(root, 'src', 'firestore-sync-status.ts'), 'utf8');
 const ordersProviderSource = fs.readFileSync(path.join(root, 'src', 'orders', 'provider-firestore.ts'), 'utf8');
 const productsProviderSource = fs.readFileSync(path.join(root, 'src', 'products', 'provider-firestore.ts'), 'utf8');
 const collectionProviderSource = fs.readFileSync(path.join(root, 'src', 'collection', 'provider-firestore.ts'), 'utf8');
@@ -31,8 +32,20 @@ assert.match(
 
 assert.match(
   staleRefreshSource,
+  /remainingSeconds[\s\S]*tickerRef[\s\S]*window\.setInterval[\s\S]*Math\.ceil\(\(deadlineRef\.current - Date\.now\(\)\) \/ 1000\)/,
+  '远端变更自动刷新需要暴露每秒更新的倒计时'
+);
+
+assert.match(
+  staleRefreshSource,
   /timerRef\.current[\s\S]*if \(timerRef\.current\) return[\s\S]*setStale\(true\)/,
   '远端变更自动刷新需要复用已有定时器，避免状态牌连续变化时重复刷新'
+);
+
+assert.match(
+  syncStatusSource,
+  /autoRefreshSeconds[\s\S]*有新数据，\$\{Math\.ceil\(seconds\)\}s 后自动刷新[\s\S]*有新数据，点击刷新/,
+  '远端变更状态需要显示自动刷新倒计时，不能只显示点击刷新'
 );
 
 [
@@ -50,6 +63,11 @@ assert.match(
     new RegExp(`id="${refreshId}"[\\s\\S]*remoteStaleRefresh\\.refreshNow\\(\\)`),
     `${label} 手动刷新按钮需要和自动刷新走同一条刷新路径`
   );
+  assert.match(
+    source,
+    /displaySyncText[\s\S]*remoteStaleRefresh\.remainingSeconds[\s\S]*<Badge[\s\S]*displaySyncText/,
+    `${label} 同步状态牌需要显示自动刷新倒计时`
+  );
 });
 
 assert.match(
@@ -62,6 +80,12 @@ assert.match(
   collectionSource,
   /async function refreshRemote\(\)[\s\S]*remoteStaleRefresh\.refreshNow\(\)/,
   '商品采编手动刷新按钮需要复用自动刷新路径'
+);
+
+assert.match(
+  collectionSource,
+  /displaySyncText[\s\S]*remoteStaleRefresh\.remainingSeconds[\s\S]*<Badge[\s\S]*displaySyncText/,
+  '商品采编同步状态牌需要显示自动刷新倒计时'
 );
 
 [

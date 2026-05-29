@@ -8,6 +8,7 @@ type SyncStatusOptions = {
   unit?: string;
   action?: string;
   error?: string;
+  autoRefreshSeconds?: number | null;
 };
 
 type SyncStatus = {
@@ -41,9 +42,12 @@ function buildFirestoreSyncStatus(kind: SyncStatusKind, options: SyncStatusOptio
     };
   }
   if (kind === 'stale') {
+    const seconds = Number(options.autoRefreshSeconds);
     return {
       kind,
-      text: '有新数据，点击刷新',
+      text: Number.isFinite(seconds) && seconds > 0
+        ? `有新数据，${Math.ceil(seconds)}s 后自动刷新`
+        : '有新数据，点击刷新',
       className: 'stale'
     };
   }

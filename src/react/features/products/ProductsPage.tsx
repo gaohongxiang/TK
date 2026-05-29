@@ -1054,6 +1054,13 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     };
   }, [remoteStaleRefresh.markStale]);
 
+  const displaySyncText = useMemo(() => {
+    if (syncClass !== 'stale') return syncText;
+    return buildFirestoreSyncStatus('stale', {
+      autoRefreshSeconds: remoteStaleRefresh.remainingSeconds
+    }).text;
+  }, [remoteStaleRefresh.remainingSeconds, syncClass, syncText]);
+
   useEffect(() => {
     clientIdRef.current = getRuntimeClientId();
     void connectUsingGlobalConfig().catch(error => {
@@ -1570,7 +1577,7 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       <Card id="pl-main">
         <div className={cn('ot-header-status-row mb-3', statusStripClass)}>
           <div className={cn(statusStripLeftClass, 'min-w-0 flex-wrap')}>
-            {connected && !permissionBlocked ? <Badge id="pl-sync" className={syncStatusClass(syncClass)}>{syncText}</Badge> : null}
+            {connected && !permissionBlocked ? <Badge id="pl-sync" className={syncStatusClass(syncClass)}>{displaySyncText}</Badge> : null}
             <Button
               id="pl-refresh"
               variant="plain"

@@ -164,6 +164,7 @@ function formatFirestoreError(error: unknown, fallback = '数据库操作失败'
 }
 
 function CollectionPage({ active = true }: { active?: boolean }) {
+  const initialConfig = TKFirestoreConnection.getConfig();
   const [datasets, setDatasets] = useState<Record<DatasetKey, CollectionDataset | null>>({
     records: null
   });
@@ -174,9 +175,15 @@ function CollectionPage({ active = true }: { active?: boolean }) {
   const [pageSize, setPageSize] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<CollectionSortOrder>('asc');
-  const [syncText, setSyncText] = useState('等待连接 Firebase');
-  const [syncClass, setSyncClass] = useState<string>('local');
-  const [loading, setLoading] = useState(false);
+  const [syncText, setSyncText] = useState(() => {
+    const status = buildFirestoreSyncStatus(initialConfig?.configText ? 'refreshing' : 'unconnected');
+    return status.text;
+  });
+  const [syncClass, setSyncClass] = useState<string>(() => {
+    const status = buildFirestoreSyncStatus(initialConfig?.configText ? 'refreshing' : 'unconnected');
+    return status.className || 'local';
+  });
+  const [loading, setLoading] = useState(() => !!initialConfig?.configText);
   const [copyingRules, setCopyingRules] = useState(false);
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const [accounts, setAccounts] = useState<string[]>([]);
@@ -187,7 +194,7 @@ function CollectionPage({ active = true }: { active?: boolean }) {
   const [editingAccountValue, setEditingAccountValue] = useState('');
   const [accountDeleteOpen, setAccountDeleteOpen] = useState(false);
   const [deletingAccountName, setDeletingAccountName] = useState('');
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState(() => initialConfig?.projectId || '');
   const activeRef = useRef(active);
   const unsubscribeSnapshotRef = useRef<(() => void) | null>(null);
   const markRemoteStaleRef = useRef<() => void>(() => {});

@@ -850,14 +850,21 @@ function ProductsPage({ active = true }: { active?: boolean }) {
   const markRemoteStaleRef = useRef<() => void>(() => {});
   const clientIdRef = useRef('');
   const syncRevisionRef = useRef('');
-  const [connected, setConnected] = useState(false);
+  const initialConfig = readGlobalConfig();
+  const [connected, setConnected] = useState(() => !!initialConfig?.configText);
   const [loaded, setLoaded] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !!initialConfig?.configText);
   const [permissionBlocked, setPermissionBlocked] = useState(false);
   const [copyingRules, setCopyingRules] = useState(false);
-  const [syncText, setSyncText] = useState('未连接');
-  const [syncClass, setSyncClass] = useState('');
-  const [projectId, setProjectId] = useState('');
+  const [syncText, setSyncText] = useState(() => {
+    const status = buildFirestoreSyncStatus(initialConfig?.configText ? 'refreshing' : 'unconnected');
+    return status.text;
+  });
+  const [syncClass, setSyncClass] = useState(() => {
+    const status = buildFirestoreSyncStatus(initialConfig?.configText ? 'refreshing' : 'unconnected');
+    return status.className;
+  });
+  const [projectId, setProjectId] = useState(() => initialConfig?.projectId || '');
   const [accounts, setAccounts] = useState<string[]>([]);
   const [products, setProducts] = useState<ProductRecord[]>([]);
   const [activeAccount, setActiveAccount] = useState('__all__');

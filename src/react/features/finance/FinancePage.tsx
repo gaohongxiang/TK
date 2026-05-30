@@ -613,11 +613,18 @@ function FinancePage({ active = true }: { active?: boolean }) {
   const markRemoteStaleRef = useRef<() => void>(() => {});
   const clientIdRef = useRef('');
   const syncRevisionRef = useRef('');
-  const [connected, setConnected] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [syncText, setSyncText] = useState('未连接');
-  const [syncClass, setSyncClass] = useState('');
-  const [projectId, setProjectId] = useState('');
+  const initialConfig = readGlobalConfig();
+  const [connected, setConnected] = useState(() => !!initialConfig?.configText);
+  const [loading, setLoading] = useState(() => !!initialConfig?.configText);
+  const [syncText, setSyncText] = useState(() => {
+    const status = buildFirestoreSyncStatus(initialConfig?.configText ? 'refreshing' : 'unconnected');
+    return status.text;
+  });
+  const [syncClass, setSyncClass] = useState(() => {
+    const status = buildFirestoreSyncStatus(initialConfig?.configText ? 'refreshing' : 'unconnected');
+    return status.className;
+  });
+  const [projectId, setProjectId] = useState(() => initialConfig?.projectId || '');
   const [records, setRecords] = useState<FinanceRecord[]>([]);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [accounts, setAccounts] = useState<string[]>([]);

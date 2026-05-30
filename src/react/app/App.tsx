@@ -293,8 +293,11 @@ function ModuleAccessGate({
   moduleLabel: string;
   state: AuthSessionState;
 }) {
+  const isRestoringLogin = state.connected && !state.ready && !state.user;
   const isResolving = !!state.user && !state.ready && !state.member;
-  const message = isResolving
+  const message = isRestoringLogin
+    ? '正在恢复登录状态，马上回到当前模块。'
+    : isResolving
     ? '正在读取当前账号权限，马上切换到可访问模块。'
     : state.user
     ? getRestrictedModuleMessage(moduleLabel)
@@ -305,12 +308,12 @@ function ModuleAccessGate({
         <LockKeyhole size={20} strokeWidth={2} />
       </div>
       <div>
-        <CardTitle className="mb-2 text-base">{isResolving ? '正在读取权限' : `${moduleLabel}需要权限`}</CardTitle>
+        <CardTitle className="mb-2 text-base">{isRestoringLogin ? '正在恢复登录' : isResolving ? '正在读取权限' : `${moduleLabel}需要权限`}</CardTitle>
         <p className={moduleAccessCopyClass}>{message}</p>
         {state.error ? <p className={moduleAccessErrorClass}>{state.error}</p> : null}
       </div>
       <div className={moduleAccessActionsClass}>
-        {!state.user ? <Button type="button" variant="primary" onClick={() => { window.location.hash = '#login'; }}>去项目登录</Button> : null}
+        {!state.user && !isRestoringLogin ? <Button type="button" variant="primary" onClick={() => { window.location.hash = '#login'; }}>去项目登录</Button> : null}
       </div>
     </Card>
   );
@@ -1028,7 +1031,19 @@ function App({
 }) {
   const modules = useMemo(() => getModules(config), [config]);
   const [active, setActive] = useState(() => getRouteKey(globalThis.location, config));
-  const [authSession, setAuthSession] = useState<AuthSessionState>(() => getAuthSessionSnapshot());
+  const [authSession, setAuthSession] = useState<AuthSessionState>(() => {
+    const snapshot = getAuthSessionSnapshot();
+    const savedConfig = TKFirestoreConnection.getConfig();
+    if (!snapshot.connected && savedConfig?.configText) {
+      return {
+        ...snapshot,
+        ready: false,
+        connected: true,
+        projectId: savedConfig.projectId || ''
+      };
+    }
+    return snapshot;
+  });
   const [shellCollapsed, setShellCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [connectionMenuOpen, setConnectionMenuOpen] = useState(false);
@@ -1042,16 +1057,18 @@ function App({
   const [selectedExportModules, setSelectedExportModules] = useState<Set<ExportModuleKey>>(() => new Set());
   const year = now.getFullYear();
   const connected = !!authSession.connected && !!authSession.projectId;
+  const hasSavedFirestoreConfig = !!TKFirestoreConnection.getConfig()?.configText;
   const calculatorModule = modules.find(module => module.key === 'calc') || (fallbackModules[0] as ModuleItem);
   const visibleModules = useMemo(() => {
     if (!authSession.user) {
+      if (hasSavedFirestoreConfig && !authSession.ready) return modules;
       return [calculatorModule, loginModule];
     }
     if (!authSession.ready && !authSession.member) return modules;
     if (!authSession.member) return [calculatorModule, loginModule];
     const allowedModules = modules.filter(module => module.key === 'calc' || canAccessModule(module.key, authSession));
     return authSession.isOwner ? [...allowedModules, projectSettingsModule, accountModule, permissionModule] : allowedModules;
-  }, [authSession, calculatorModule, modules]);
+  }, [authSession, calculatorModule, hasSavedFirestoreConfig, modules]);
   const activeModuleLabel = active === 'login'
     ? loginModule.label
     : active === 'project-settings'
@@ -1063,7 +1080,7 @@ function App({
           : getModuleLabel(modules, active);
   const isResolvingPermissions = connected && !!authSession.user && !authSession.ready && !authSession.member;
   const isBlockedByPermission = (moduleKey: string) => isResolvingPermissions || (!authSession.ready && authSession.member ? !canAccessModule(moduleKey, authSession) : authSession.ready ? !canAccessModule(moduleKey, authSession) : false);
-  const shouldShowLoginPage = active === 'login' || (!authSession.user && (protectedModuleKeys.has(active as ModulePermissionKey) || ownerOnlyModuleKeys.has(active)));
+  const shouldShowLoginPage = active === 'login' || (!(hasSavedFirestoreConfig && !authSession.ready) && !authSession.user && (protectedModuleKeys.has(active as ModulePermissionKey) || ownerOnlyModuleKeys.has(active)));
   const renderedActive = shouldShowLoginPage ? 'login' : active;
   const renderedModuleLabel = getModuleLabel(visibleModules, renderedActive);
   const renderedModuleMeta = moduleTopbarMeta[renderedActive] || {};

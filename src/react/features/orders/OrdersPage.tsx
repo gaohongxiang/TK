@@ -1651,11 +1651,18 @@ function OrdersPage({ active = true }: { active?: boolean }) {
   const markRemoteStaleRef = useRef<() => void>(() => {});
   const clientIdRef = useRef('');
   const syncRevisionRef = useRef('');
-  const [connected, setConnected] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [syncText, setSyncText] = useState('未连接');
-  const [syncClass, setSyncClass] = useState('');
-  const [projectId, setProjectId] = useState('');
+  const initialConfig = readGlobalConfig();
+  const [connected, setConnected] = useState(() => !!initialConfig?.configText);
+  const [loading, setLoading] = useState(() => !!initialConfig?.configText);
+  const [syncText, setSyncText] = useState(() => {
+    const status = buildFirestoreSyncStatus(initialConfig?.configText ? 'refreshing' : 'unconnected');
+    return status.text;
+  });
+  const [syncClass, setSyncClass] = useState(() => {
+    const status = buildFirestoreSyncStatus(initialConfig?.configText ? 'refreshing' : 'unconnected');
+    return status.className;
+  });
+  const [projectId, setProjectId] = useState(() => initialConfig?.projectId || '');
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [deletedOrders, setDeletedOrders] = useState<OrderRecord[]>([]);
   const [accounts, setAccounts] = useState<string[]>([]);
@@ -1973,6 +1980,23 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setSyncClass(status.className);
   }
 
+  function markOrdersUnconnected() {
+    const status = buildFirestoreSyncStatus('unconnected');
+    setSyncText(status.text);
+    setSyncClass(status.className);
+  }
+
+  function markOrderWriteFailed(error: unknown, fallback: string, statusError = 'Firestore 写入失败，已保留本地视图') {
+    if (isPermissionDenied(error)) {
+      markPermissionBlocked();
+    } else {
+      const failedStatus = buildFirestoreSyncStatus('failed', { error: statusError });
+      setSyncText(failedStatus.text);
+      setSyncClass(failedStatus.className);
+    }
+    showToast(formatFirestoreError(error, fallback), 'error');
+  }
+
   async function persistOrderUpsert(payload: OrderRecord, nextOrders: OrderRecord[], nextAccounts = allAccounts) {
     setOrders(nextOrders);
     setAccounts(nextAccounts);
@@ -1980,7 +2004,10 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setSyncText(queueStatus.text);
     setSyncClass(queueStatus.className);
     const cfg = readGlobalConfig();
-    if (!cfg?.configText) return;
+    if (!cfg?.configText) {
+      markOrdersUnconnected();
+      return;
+    }
     const accountName = normalizeAccountName(payload['账号']);
     let result: Awaited<ReturnType<typeof providerRef.current.pushChanges>>;
     try {
@@ -1992,12 +2019,8 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         waitForCommit: false
       });
     } catch (error) {
-      if (isPermissionDenied(error)) {
-        markPermissionBlocked();
-        showToast(formatFirestoreError(error, '写入失败'), 'error');
-        return;
-      }
-      throw error;
+      markOrderWriteFailed(error, '写入失败');
+      return;
     }
     setPermissionBlocked(false);
     const displayedOrders = mergeAssignedOrders(nextOrders, result?.assignedOrders || []);
@@ -2037,7 +2060,10 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setSyncText(queueStatus.text);
     setSyncClass(queueStatus.className);
     const cfg = readGlobalConfig();
-    if (!cfg?.configText) return;
+    if (!cfg?.configText) {
+      markOrdersUnconnected();
+      return;
+    }
     let result: Awaited<ReturnType<typeof providerRef.current.pushChanges>>;
     try {
       result = await providerRef.current.pushChanges({
@@ -2051,12 +2077,8 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         waitForCommit: false
       });
     } catch (error) {
-      if (isPermissionDenied(error)) {
-        markPermissionBlocked();
-        showToast(formatFirestoreError(error, '删除失败'), 'error');
-        return;
-      }
-      throw error;
+      markOrderWriteFailed(error, '删除失败', 'Firestore 删除失败，已保留本地视图');
+      return;
     }
     setPermissionBlocked(false);
     result?.commitPromise?.then(() => {
@@ -2167,7 +2189,10 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setSyncText(queueStatus.text);
     setSyncClass(queueStatus.className);
     const cfg = readGlobalConfig();
-    if (!cfg?.configText) return;
+    if (!cfg?.configText) {
+      markOrdersUnconnected();
+      return;
+    }
     let result: Awaited<ReturnType<typeof providerRef.current.pushChanges>>;
     try {
       result = await providerRef.current.pushChanges({
@@ -2177,12 +2202,8 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         waitForCommit: false
       });
     } catch (error) {
-      if (isPermissionDenied(error)) {
-        markPermissionBlocked();
-        showToast(formatFirestoreError(error, '恢复失败'), 'error');
-        return;
-      }
-      throw error;
+      markOrderWriteFailed(error, '恢复失败', 'Firestore 恢复失败，已保留本地视图');
+      return;
     }
     setPermissionBlocked(false);
     const focusedPage = getOrderPageForId({
@@ -2219,6 +2240,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
     setSyncClass(queueStatus.className);
     const cfg = readGlobalConfig();
     if (!cfg?.configText) {
+      markOrdersUnconnected();
       showToast('已从本地已删除列表移除');
       return;
     }
@@ -2227,12 +2249,8 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       result = await providerRef.current.permanentlyDeleteOrder(id, { clientId: clientIdRef.current, waitForCommit: false });
     } catch (error) {
       setDeletedOrders(previous => previous.some(order => String(order.id) === id) ? previous : [deletedOrder, ...previous]);
-      if (isPermissionDenied(error)) {
-        markPermissionBlocked();
-        showToast(formatFirestoreError(error, '彻底删除失败'), 'error');
-        return;
-      }
-      throw error;
+      markOrderWriteFailed(error, '彻底删除失败', 'Firestore 彻底删除失败，已恢复到已删除列表');
+      return;
     }
     setPermissionBlocked(false);
     result?.commitPromise?.then(() => {
@@ -2289,8 +2307,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       });
       showToast('账号已添加');
     } catch (error) {
-      if (isPermissionDenied(error)) markPermissionBlocked();
-      showToast(formatFirestoreError(error, '账号保存失败'), 'error');
+      markOrderWriteFailed(error, '账号保存失败');
     }
   }
 
@@ -2314,8 +2331,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
         showToast(formatFirestoreError(error, '账号排序保存失败'), 'error');
       });
     } catch (error) {
-      if (isPermissionDenied(error)) markPermissionBlocked();
-      showToast(formatFirestoreError(error, '账号排序保存失败'), 'error');
+      markOrderWriteFailed(error, '账号排序保存失败', 'Firestore 账号排序保存失败，已保留本地视图');
     }
   }
 
@@ -2373,8 +2389,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       });
       showToast('账号名已更新');
     } catch (error) {
-      if (isPermissionDenied(error)) markPermissionBlocked();
-      showToast(formatFirestoreError(error, '账号名保存失败'), 'error');
+      markOrderWriteFailed(error, '账号名保存失败');
     }
   }
 
@@ -2407,8 +2422,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       });
       showToast('账号名已删除，数据仍在全部里');
     } catch (error) {
-      if (isPermissionDenied(error)) markPermissionBlocked();
-      showToast(formatFirestoreError(error, '账号名删除失败'), 'error');
+      markOrderWriteFailed(error, '账号名删除失败');
     }
   }
 

@@ -199,14 +199,14 @@ assert.doesNotMatch(
 
 assert.match(
   appSource,
-  /const calculatorModule = modules\.find\(module => module\.key === 'calc'\)[\s\S]*if \(!authSession\.user\) \{[\s\S]*return \[calculatorModule, loginModule\][\s\S]*shouldShowLoginPage = active === 'login' \|\| \(!authSession\.user && \(protectedModuleKeys\.has\(active as ModulePermissionKey\) \|\| ownerOnlyModuleKeys\.has\(active\)\)\)[\s\S]*renderedActive = shouldShowLoginPage \? 'login' : active/,
-  '主 App 需要未登录时只显示利润计算器和项目登录，访问业务模块时切到项目登录页'
+  /const hasSavedFirestoreConfig = !!TKFirestoreConnection\.getConfig\(\)\?\.configText[\s\S]*if \(!authSession\.user\) \{[\s\S]*if \(hasSavedFirestoreConfig && !authSession\.ready\) return modules[\s\S]*return \[calculatorModule, loginModule\][\s\S]*shouldShowLoginPage = active === 'login' \|\| \(!\(hasSavedFirestoreConfig && !authSession\.ready\) && !authSession\.user/,
+  '主 App 需要未登录时只显示利润计算器和项目登录；但刷新恢复登录中不能把业务模块闪切到项目登录页'
 );
 
 assert.match(
   appSource,
-  /if \(!authSession\.ready && !authSession\.member\) return modules[\s\S]*isResolvingPermissions[\s\S]*isBlockedByPermission = \(moduleKey: string\) => isResolvingPermissions/,
-  '主 App 在已登录但权限读取中时需要先展示业务模块，并用权限读取中状态挡住受控页面'
+  /if \(hasSavedFirestoreConfig && !authSession\.ready\) return modules[\s\S]*isResolvingPermissions[\s\S]*isBlockedByPermission = \(moduleKey: string\) => isResolvingPermissions/,
+  '主 App 在登录恢复中需要直接留在业务模块，已登录但权限读取中才用权限读取中状态挡住受控页面'
 );
 
 assert.match(

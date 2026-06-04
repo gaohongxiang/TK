@@ -27,6 +27,11 @@ type OrderPricingContext = {
   customerShippingJpy: number;
 };
 
+const ORDER_SALE_PRICING_MODES = {
+  BUYER_PAID_SHIPPING: 'buyer_paid_shipping',
+  FREE_SHIPPING_TRANSFER: 'free_shipping_transfer'
+};
+
 function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -93,6 +98,38 @@ function parseNonNegativeOrderMoneyValue(value: unknown, fallback = 0): number {
   return parsed !== null && parsed >= 0 ? parsed : fallback;
 }
 
+function normalizeOrderSalePricingMode(value: unknown): string {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if ([
+    ORDER_SALE_PRICING_MODES.FREE_SHIPPING_TRANSFER,
+    'free-shipping-transfer',
+    'free_shipping',
+    'shipping_transfer',
+    'transfer',
+    '包邮转嫁',
+    '包邮',
+    '免邮'
+  ].includes(raw)) {
+    return ORDER_SALE_PRICING_MODES.FREE_SHIPPING_TRANSFER;
+  }
+  return ORDER_SALE_PRICING_MODES.BUYER_PAID_SHIPPING;
+}
+
+function getOrderSalePricingMode(order: OrderRecord = {}): string {
+  return normalizeOrderSalePricingMode(order?.['售价口径'] ?? order?.salePricingMode);
+}
+
+function isFreeShippingTransferOrder(order: OrderRecord = {}): boolean {
+  return getOrderSalePricingMode(order) === ORDER_SALE_PRICING_MODES.FREE_SHIPPING_TRANSFER;
+}
+
+function getOrderEffectiveSaleJpy(order: OrderRecord = {}, saleJpy: number | null = null, customerShippingJpy = SHIPPING_DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY): number | null {
+  const resolvedSaleJpy = saleJpy ?? parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
+  if (resolvedSaleJpy === null) return null;
+  if (!isFreeShippingTransferOrder(order)) return resolvedSaleJpy;
+  return Math.max(0, resolvedSaleJpy - Math.max(0, customerShippingJpy || 0));
+}
+
 function normalizeOrderPricingContext(value: unknown = null): OrderPricingContext {
   const source = value && typeof value === 'object' && !Array.isArray(value)
     ? value as LooseRecord
@@ -115,61 +152,58 @@ function isOrderRefunded(order: OrderRecord): boolean {
 }
 
 function computeOrderSaleCny(order: OrderRecord, exchangeRate: unknown = null): number | null {
-  const { exchangeRate: rate } = normalizeOrderPricingContext(exchangeRate);
+  const { exchangeRate: rate, customerShippingJpy } = normalizeOrderPricingContext(exchangeRate);
   const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
+  const effectiveSaleJpy = getOrderEffectiveSaleJpy(order, saleJpy, customerShippingJpy);
   if (rate === null) return null;
   if (isOrderRefunded(order)) return 0;
-  if (saleJpy === null || saleJpy <= 0) return null;
-  return roundMoney(saleJpy / rate);
+  if (saleJpy === null || saleJpy <= 0 || effectiveSaleJpy === null) return null;
+  return roundMoney(effectiveSaleJpy / rate);
 }
 
 function computeOrderCreatorCommission(order: OrderRecord, exchangeRate: unknown = null): number | null {
-  const { exchangeRate: rate, platformFeeRate, customerShippingJpy } = normalizeOrderPricingContext(exchangeRate);
+  const { exchangeRate: rate } = normalizeOrderPricingContext(exchangeRate);
   const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
   const commissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率'] ?? order?.creatorCommissionRate);
   if (rate === null) return null;
   if (commissionRate === null) return 0;
   if (isOrderRefunded(order)) return 0;
   if (saleJpy === null || saleJpy <= 0) return null;
-  const result = calcSalePriceV3({
-    state: { salePrice: saleJpy, rateNew: rate, feeNew: platformFeeRate, creatorRateNew: commissionRate },
-    totalCost: 0,
-    customerShippingJpy
-  });
-  return roundMoney(result?.creatorCommission ?? 0);
+  return roundMoney((saleJpy * (commissionRate / 100)) / rate);
 }
 
 function computeOrderPlatformFee(order: OrderRecord, pricingContext: unknown = null): number | null {
   const { exchangeRate: rate, platformFeeRate, customerShippingJpy } = normalizeOrderPricingContext(pricingContext);
   const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
+  const effectiveSaleJpy = getOrderEffectiveSaleJpy(order, saleJpy, customerShippingJpy);
   if (rate === null) return null;
   if (isOrderRefunded(order)) return 0;
-  if (saleJpy === null || saleJpy <= 0) return null;
+  if (saleJpy === null || saleJpy <= 0 || effectiveSaleJpy === null) return null;
   if (platformFeeRate <= 0) return 0;
-  const result = calcSalePriceV3({
-    state: { salePrice: saleJpy, rateNew: rate, feeNew: platformFeeRate, creatorRateNew: 0 },
-    totalCost: 0,
-    customerShippingJpy
-  });
-  return roundMoney(result?.platformFee ?? 0);
+  const platformFeeJpy = isFreeShippingTransferOrder(order)
+    ? saleJpy
+    : effectiveSaleJpy + customerShippingJpy;
+  return roundMoney((platformFeeJpy * (platformFeeRate / 100)) / rate);
 }
 
 function computeOrderEstimatedProfit(order: OrderRecord, exchangeRate: unknown): number | null {
   const { exchangeRate: rate, platformFeeRate, customerShippingJpy } = normalizeOrderPricingContext(exchangeRate);
   const saleJpy = parseOrderMoneyValue(order?.['售价'] ?? order?.salePrice);
+  const effectiveSaleJpy = getOrderEffectiveSaleJpy(order, saleJpy, customerShippingJpy);
   const purchase = parseOrderMoneyValue(order?.['采购价格'] ?? order?.purchasePrice);
   const shipping = parseOrderMoneyValue(order?.['预估运费'] ?? order?.estimatedShippingFee);
   const commissionRate = parseCreatorCommissionRateValue(order?.['达人佣金率'] ?? order?.creatorCommissionRate) ?? 0;
   if (rate === null) return null;
   if (purchase === null || shipping === null) return null;
   if (isOrderRefunded(order)) return roundMoney(0 - purchase - shipping);
-  if (saleJpy === null || saleJpy <= 0 || purchase === null || shipping === null) return null;
-  const result = calcSalePriceV3({
-    state: { salePrice: saleJpy, rateNew: rate, feeNew: platformFeeRate, creatorRateNew: commissionRate },
-    totalCost: purchase + shipping,
-    customerShippingJpy
-  });
-  return result ? roundMoney(result.profit) : null;
+  if (saleJpy === null || saleJpy <= 0 || effectiveSaleJpy === null) return null;
+  const platformFeeJpy = isFreeShippingTransferOrder(order)
+    ? saleJpy
+    : effectiveSaleJpy + customerShippingJpy;
+  const platformFee = (platformFeeJpy * (platformFeeRate / 100)) / rate;
+  const creatorCommission = (saleJpy * (commissionRate / 100)) / rate;
+  const cnyNet = (effectiveSaleJpy / rate) - platformFee - creatorCommission;
+  return roundMoney(cnyNet - purchase - shipping);
 }
 
 function escapeHtml(value: unknown): string {
@@ -397,6 +431,7 @@ function createOrderNormalizer({ constants = {}, nextUid = uid }: OrderNormalize
     const mergedStatus = normalizeStatusValue(next['入仓状态']) || normalizeStatusValue(next['订单状态']);
     next['订单状态'] = mergedStatus;
     next['是否退款'] = isOrderRefunded(next) ? '1' : '';
+    next['售价口径'] = getOrderSalePricingMode(next);
     const seq = normalizeOrderSeq(next.seq);
     if (seq !== null) next.seq = seq;
     else delete next.seq;
@@ -923,6 +958,7 @@ const OrderTrackerShared = {
 
 export {
   OrderTrackerShared,
+  ORDER_SALE_PRICING_MODES,
   create,
   normalizeOrderRecord,
   computeOrderEstimatedProfit,
@@ -934,7 +970,11 @@ export {
   computeWarning,
   computeOrderCreatorCommission,
   computeOrderSaleCny,
+  getOrderEffectiveSaleJpy,
+  getOrderSalePricingMode,
+  isFreeShippingTransferOrder,
   normalizeOrderPricingContext,
+  normalizeOrderSalePricingMode,
   createOrderNormalizer,
   deriveOrderItemTotals,
   detectCourierCompany,

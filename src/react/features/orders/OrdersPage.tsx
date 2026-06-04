@@ -44,8 +44,11 @@ import {
   computeOrderPlatformFee,
   computeWarning,
   detectCourierCompany,
+  getOrderSalePricingMode,
+  isFreeShippingTransferOrder,
   isOrderRefunded,
   normalizeOrderItems,
+  normalizeOrderSalePricingMode,
   normalizeOrderRecord,
   parseOrderMoneyValue,
   todayStr
@@ -91,6 +94,7 @@ type OrderDraft = {
   latestWarehouseAt: string;
   warningText: string;
   isRefunded: boolean;
+  salePricingMode: string;
   salePrice: string;
   purchasePrice: string;
   estimatedShippingFee: string;
@@ -114,6 +118,8 @@ const LS_KEY = 'tk.orders.runtime.v1';
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 const ACCOUNT_UPDATED_EVENT = 'tk-accounts-changed';
 const ORDER_STATUS_OPTIONS = ['未采购', '已采购', '在途', '已入仓', '已送达', '已完成', '订单取消'];
+const SALE_PRICING_MODE_BUYER_PAID = 'buyer_paid_shipping';
+const SALE_PRICING_MODE_TRANSFER = 'free_shipping_transfer';
 const modalCopyClass = 'mb-4 text-[13px] leading-[1.75] text-[var(--muted)]';
 const COURIER_AUTO_DETECTORS = [
   { name: '顺丰快递', test: (value: string) => /^SF[0-9A-Z]+$/i.test(value) || /^SFP[0-9A-Z]+$/i.test(value) },
@@ -402,6 +408,7 @@ function buildDraftFromOrder(order: OrderRecord | null, activeAccount: string, a
     latestWarehouseAt: String(order?.['最晚到仓时间'] || (orderedAt ? addDays(orderedAt, 6) : '')),
     warningText: String(order?.['订单预警'] || ''),
     isRefunded: String(order?.['是否退款'] || '').trim() === '1',
+    salePricingMode: getOrderSalePricingMode(order || {}),
     salePrice: String(order?.['售价'] || ''),
     purchasePrice: String(order?.['采购价格'] || ''),
     estimatedShippingFee: savedEstimatedShippingFee,
@@ -501,11 +508,13 @@ function computeAutoFieldsWithContext(
   const warningText = computeWarning(tempOrder).text;
   const commission = computeOrderCreatorCommission({
     '售价': draft.salePrice,
+    '售价口径': draft.salePricingMode,
     '达人佣金率': draft.creatorCommissionRate,
     '是否退款': draft.isRefunded ? '1' : ''
   }, pricingContext);
   const profit = computeOrderEstimatedProfit({
     '售价': draft.salePrice,
+    '售价口径': draft.salePricingMode,
     '采购价格': draft.purchasePrice || (totals.purchase ? formatNumericValue(totals.purchase) : ''),
     '预估运费': estimatedShippingFee,
     '达人佣金率': draft.creatorCommissionRate,
@@ -676,7 +685,7 @@ const orderTrashItemTitleClass = 'min-w-0 overflow-hidden text-ellipsis whitespa
 const orderTrashItemMetaClass = 'flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--muted)]';
 const orderTrashActionsClass = 'flex shrink-0 flex-wrap items-center justify-end gap-2';
 const orderMoneyRowClass = 'quint ot-money-row-top mt-[18px] !grid-cols-[70px_minmax(88px,.72fr)_minmax(88px,.72fr)_minmax(116px,.9fr)_minmax(170px,1.15fr)_minmax(118px,.9fr)] gap-[10px] max-[1100px]:!grid-cols-3 max-[768px]:!grid-cols-1 max-[768px]:mt-3';
-const orderMetaRowClass = 'quad ot-meta-row mt-[18px] !grid-cols-4 max-[768px]:mt-3';
+const orderMetaRowClass = 'quint ot-meta-row mt-[18px] !grid-cols-[76px_repeat(4,minmax(0,1fr))] gap-[10px] max-[1100px]:!grid-cols-3 max-[768px]:!grid-cols-1 max-[768px]:mt-3';
 const orderShippingRuleClass = 'ot-shipping-rule flex min-h-[42px] min-w-0 items-center rounded-xl border border-[var(--border)] bg-[var(--panel2)] px-3 py-1 text-[12px] leading-tight text-[var(--muted)] shadow-[inset_0_0_0_1px_rgba(255,255,255,.18)]';
 const orderShippingRuleTextClass = 'min-w-0 flex-1 truncate whitespace-nowrap';
 const orderShippingRuleButtonClass = 'ml-1 inline-flex h-[20px] rounded-md px-1.5 py-0 align-[-3px] text-[10px] font-medium tracking-normal';
@@ -686,6 +695,10 @@ const orderRefundToggleClass = 'ot-refund-toggle flex min-h-10 w-[76px] cursor-p
 const orderRefundInputClass = 'absolute opacity-0 pointer-events-none';
 const orderRefundKnobClass = 'ot-refund-toggle-knob relative h-10 w-[76px] flex-none rounded-full bg-[color-mix(in_srgb,var(--panel2)_84%,white_16%)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--line)_88%,white_12%)] transition-[background-color,box-shadow,transform] after:absolute after:left-1 after:top-1 after:h-8 after:w-8 after:rounded-full after:bg-white after:shadow-[0_1px_4px_rgba(15,23,42,.18)] after:transition-[left] group-hover:bg-[color-mix(in_srgb,var(--panel2)_74%,white_26%)]';
 const orderRefundKnobCheckedClass = 'bg-[linear-gradient(135deg,#f0b1b1,#de6a6a)] shadow-[inset_0_0_0_1px_rgba(196,78,78,.18)] after:left-[calc(100%-36px)]';
+const orderTransferToggleClass = 'ot-transfer-toggle flex min-h-10 w-[76px] cursor-pointer items-center justify-start bg-transparent p-0';
+const orderTransferInputClass = 'absolute opacity-0 pointer-events-none';
+const orderTransferKnobClass = 'ot-transfer-toggle-knob relative h-10 w-[76px] flex-none rounded-full bg-[color-mix(in_srgb,var(--panel2)_84%,white_16%)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--line)_88%,white_12%)] transition-[background-color,box-shadow,transform] after:absolute after:left-1 after:top-1 after:h-8 after:w-8 after:rounded-full after:bg-white after:shadow-[0_1px_4px_rgba(15,23,42,.18)] after:transition-[left] group-hover:bg-[color-mix(in_srgb,var(--panel2)_74%,white_26%)]';
+const orderTransferKnobCheckedClass = 'bg-[linear-gradient(135deg,#dff7ec,#73d8aa)] shadow-[inset_0_0_0_1px_rgba(69,172,121,.20)] after:left-[calc(100%-36px)]';
 const orderSaleFieldClass = 'ot-sale-field';
 const orderSaleInputWrapClass = 'ot-sale-input-wrap relative';
 const orderSaleInputRefundClass = 'ot-sale-input-refund pointer-events-none absolute inset-0 hidden items-center justify-between gap-2.5 rounded-xl bg-[color-mix(in_srgb,#fff5f5_78%,var(--panel2)_22%)] px-3 shadow-[inset_0_0_0_1px_rgba(196,78,78,.16)]';
@@ -743,6 +756,7 @@ function getProfitValueClass(tone: string) {
 function OrderNoCell({ order }: { order: OrderRecord }) {
   const orderNo = formatTableCellValue(order['订单号']);
   const tags = [
+    isFreeShippingTransferOrder(order) ? { key: 'transfer', label: '转嫁', title: '包邮转嫁订单' } : null,
     isCreatorOrder(order) ? { key: 'creator', label: '达人', title: '达人带货订单' } : null,
     isOrderRefunded(order) ? { key: 'refund', label: '退款', title: '退款订单' } : null
   ].filter(Boolean) as { key: string; label: string; title: string }[];
@@ -1417,10 +1431,20 @@ function OrderModal({
             </FormField>
           </FormRow>
           <FormRow columns={5} className={orderMoneyRowClass}>
-            <FormField label="是否退款" className="ot-refund-field">
-              <label className={cn('group', orderRefundToggleClass)}>
-                <input className={orderRefundInputClass} type="checkbox" id="ot-is-refunded" name="是否退款" value="1" checked={draft.isRefunded} onChange={event => updateDraft({ isRefunded: event.target.checked })} />
-                <span className={cn(orderRefundKnobClass, draft.isRefunded ? orderRefundKnobCheckedClass : '')} aria-hidden="true"></span>
+            <FormField label="包邮转嫁" className="ot-transfer-field">
+              <label className={cn('group', orderTransferToggleClass)} title="订单售价已包含原 350円 买家运费时打开">
+                <input
+                  className={orderTransferInputClass}
+                  type="checkbox"
+                  id="ot-free-shipping-transfer"
+                  name="售价口径"
+                  value={SALE_PRICING_MODE_TRANSFER}
+                  checked={draft.salePricingMode === SALE_PRICING_MODE_TRANSFER}
+                  onChange={event => updateDraft({
+                    salePricingMode: event.target.checked ? SALE_PRICING_MODE_TRANSFER : SALE_PRICING_MODE_BUYER_PAID
+                  })}
+                />
+                <span className={cn(orderTransferKnobClass, draft.salePricingMode === SALE_PRICING_MODE_TRANSFER ? orderTransferKnobCheckedClass : '')} aria-hidden="true"></span>
               </label>
             </FormField>
             <FormField label="总售价（円）" className={cn(orderSaleFieldClass, draft.isRefunded ? 'is-refunded' : '')}>
@@ -1487,7 +1511,13 @@ function OrderModal({
               <DecimalInput name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
             </FormField>
           </FormRow>
-          <FormRow columns={4} className={orderMetaRowClass}>
+          <FormRow columns={5} className={orderMetaRowClass}>
+            <FormField label="是否退款" className="ot-refund-field">
+              <label className={cn('group', orderRefundToggleClass)}>
+                <input className={orderRefundInputClass} type="checkbox" id="ot-is-refunded" name="是否退款" value="1" checked={draft.isRefunded} onChange={event => updateDraft({ isRefunded: event.target.checked })} />
+                <span className={cn(orderRefundKnobClass, draft.isRefunded ? orderRefundKnobCheckedClass : '')} aria-hidden="true"></span>
+              </label>
+            </FormField>
             <FormField label="达人佣金率（%）">
               <DecimalInput name="达人佣金率" min="0" step="0.01" value={draft.creatorCommissionRate} onChange={value => updateDraft({ creatorCommissionRate: value })} />
             </FormField>
@@ -2141,6 +2171,8 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       '产品名称': buildOrderItemsSummary(autoDraft.items),
       '数量': String(computeItemTotals(autoDraft.items).quantity || ''),
       '是否退款': autoDraft.isRefunded ? '1' : '',
+      '售价口径': normalizeOrderSalePricingMode(autoDraft.salePricingMode),
+      salePricingMode: normalizeOrderSalePricingMode(autoDraft.salePricingMode),
       '达人佣金率': autoDraft.creatorCommissionRate,
       '达人佣金': autoDraft.creatorCommission,
       '采购价格': autoDraft.purchasePrice,

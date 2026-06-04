@@ -168,6 +168,12 @@ function toPlain(value) {
   );
 
   assert.equal(
+    esmTools.normalizeOrderRecord({ '售价口径': '包邮转嫁' })['售价口径'],
+    'free_shipping_transfer',
+    'ESM 共享 helper 应归一化包邮转嫁售价口径'
+  );
+
+  assert.equal(
     esmTools.normalizeOrderRecord({ id: 'm8zj7r2a1b2c3d' }).createdAt,
     new Date(parseInt('m8zj7r2a', 36)).toISOString(),
     'ESM 共享 helper 应能从旧 uid 中补出稳定的创建时间'
@@ -207,6 +213,36 @@ function toPlain(value) {
     esmTools.computeOrderEstimatedProfit({ '售价': '600', '采购价格': '19.8', '预估运费': '6.5', '达人佣金率': '10' }, 20),
     0.7,
     'ESM 共享 helper 应能把达人佣金一并计入订单人民币利润'
+  );
+
+  assert.equal(
+    esmTools.computeOrderEstimatedProfit({ '售价': '950', '售价口径': 'free_shipping_transfer', '采购价格': '19.8', '预估运费': '6.5', '达人佣金率': '10' }, 20),
+    -1.05,
+    'ESM 共享 helper 包邮转嫁订单应按扣除 350 円后的收入和实际售价达人佣金计算利润'
+  );
+
+  assert.equal(
+    esmTools.computeOrderCreatorCommission({ '售价': '950', '售价口径': 'free_shipping_transfer', '达人佣金率': '10' }, 20),
+    4.75,
+    'ESM 共享 helper 包邮转嫁订单达人佣金应按平台实际商品售价计算'
+  );
+
+  assert.equal(
+    esmTools.computeOrderPlatformFee({ '售价': '1350', '售价口径': 'free_shipping_transfer' }, { rate: 20, platformFeeRate: 10 }),
+    6.75,
+    'ESM 共享 helper 包邮转嫁订单的平台手续费应按平台实际商品售价计算'
+  );
+
+  assert.equal(
+    esmTools.computeOrderEstimatedProfit({ '售价': '300', '售价口径': 'free_shipping_transfer', '采购价格': '10', '预估运费': '5', '达人佣金率': '10' }, { rate: 20, platformFeeRate: 10 }),
+    -18,
+    'ESM 共享 helper 包邮转嫁售价低于 350 円时也应和计算器一样继续扣平台费和达人佣金'
+  );
+
+  assert.equal(
+    esmTools.computeOrderPlatformFee({ '售价': '300', '售价口径': 'free_shipping_transfer' }, { rate: 20, platformFeeRate: 10 }),
+    1.5,
+    'ESM 共享 helper 包邮转嫁售价低于 350 円时平台费仍按实际商品售价计算'
   );
 
   assert.equal(

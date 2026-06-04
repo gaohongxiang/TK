@@ -3,6 +3,7 @@ import type { FirebaseConfig, FirebaseWindow, HydratedFirebaseConfig } from '../
 type OrderSortOrder = 'asc' | 'desc' | string;
 
 type OrderStatus = '未采购' | '已采购' | '在途' | '已入仓' | '已送达' | '已完成' | '订单取消' | string;
+type OrderSalePricingMode = 'buyer_paid_shipping' | 'free_shipping_transfer' | string;
 
 type OrderItem = {
   lineId?: string;
@@ -48,6 +49,7 @@ type OrderRecord = {
   deleted_at?: string;
   isRefunded?: boolean | string | number;
   refunded?: boolean | string | number;
+  salePricingMode?: OrderSalePricingMode | null;
   salePrice?: string | number | null;
   purchasePrice?: string | number | null;
   estimatedShippingFee?: string | number | null;
@@ -70,6 +72,7 @@ type OrderRecord = {
   '产品名称'?: string | null;
   '数量'?: string | number | null;
   '是否退款'?: string | number | boolean | null;
+  '售价口径'?: OrderSalePricingMode | null;
   '达人佣金率'?: string | number | null;
   '达人佣金'?: string | number | null;
   '平台手续费'?: string | number | null;
@@ -352,6 +355,7 @@ type OrderFirestoreDoc = {
   productName: string | null;
   quantity: number | null;
   isRefunded: boolean;
+  salePricingMode: string;
   creatorCommissionRate: number | null;
   creatorCommission: number | null;
   purchasePrice: number | null;
@@ -395,6 +399,7 @@ export type {
   OrderProviderPushResult,
   OrderProviderSnapshot,
   OrderRecord,
+  OrderSalePricingMode,
   OrderSizeParseResult,
   OrderSortOrder,
   OrderStatus,

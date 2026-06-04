@@ -4,6 +4,7 @@ import {
   computeOrderPlatformFee,
   computeOrderSaleCny,
   escapeHtml,
+  isFreeShippingTransferOrder,
   normalizeOrderPricingContext,
   isOrderRefunded,
   parseCreatorCommissionRateValue,
@@ -186,6 +187,9 @@ function buildSaleCellMarkup(order: OrderRecord): string {
 function buildOrderNoCellMarkup(order: OrderRecord): string {
   const orderNo = escapeHtml(formatTableCellValue(order?.['订单号']));
   const tags = [];
+  if (isFreeShippingTransferOrder(order)) {
+    tags.push('<span class="ot-order-tag ot-order-tag-transfer" title="包邮转嫁订单" aria-label="包邮转嫁订单">转嫁</span>');
+  }
   if (isCreatorOrder(order)) {
     tags.push('<span class="ot-order-tag ot-order-tag-creator" title="达人带货订单" aria-label="达人带货订单">达人</span>');
   }
@@ -281,6 +285,7 @@ function getOrderSearchText(order: OrderRecord): unknown[] {
   return [
     order?.['账号'],
     order?.['订单号'],
+    isFreeShippingTransferOrder(order) ? '包邮转嫁 包邮 运费转嫁' : '',
     isOrderRefunded(order) ? '退款 已退款' : '',
     isCreatorOrder(order) ? '达人 达人单' : '',
     order?.['产品名称'],

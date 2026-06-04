@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ChevronDown, ExternalLink, HelpCircle } from 'lucide-react';
 import {
   calcLegacyRow,
   calcPricingRow,
+  calcPricingV3TransferRow,
   calcPricingV3Row,
+  calcSalePriceV3Transfer,
   calcSalePriceV3,
   deriveLegacyOrigPrice,
   derivePricingOrigPrice,
+  derivePricingV3TransferOrigPrice,
   derivePricingV3OrigPrice
 } from '../../../calc/formulas.ts';
 import { ensureGlobalSettingsStore } from '../../../global-settings.ts';
@@ -29,6 +32,8 @@ const LS_KEY = 'tk.calculator.v1';
 const ENABLE_FREE_SHIPPING_CALC = false;
 const COMMISSION_GUIDE_URL = 'https://seller.tiktokglobalshop.com/university/essay?btm_pre_unit_params=%7B%22outreach_task_id%22%3A%2257362904920580%22%2C%22outreach_channel_type%22%3A11%2C%22outreach_message_category_type%22%3A9010000%2C%22outreach_message_mapping_id%22%3A%22674874e4-806e-424e-ab72-9bcea4d6c7dc%22%7D&from=feature_guide&identity=1&knowledge_id=6852631579641601&role=1&shop_region=jp';
 const SHIPPING_RATE_CARD_URL = 'https://seller.tiktokglobalshop.com/university/essay?knowledge_id=6411933700818705&role=1&course_type=1&from=search%7BcontentIdParams%7D&identity=1';
+const REVIEW_SALE_PRICING_MODE_BUYER_PAID = 'buyer_paid_shipping';
+const REVIEW_SALE_PRICING_MODE_TRANSFER = 'free_shipping_transfer';
 
 const DEFAULTS = {
   fee: 7,
@@ -52,7 +57,9 @@ const DEFAULTS = {
   discountsNew: [0.35, 0.38, 0.40, 0.42, 0.45, 0.48, 0.50],
   targetMarginNew: 1.4,
   anchorNew: 0.40,
+  shippingTransferAnchorNew: 0.40,
   origPriceNew: null as number | null,
+  reviewSalePricingMode: REVIEW_SALE_PRICING_MODE_BUYER_PAID,
   shipCargoTypeNew: 'general',
   shipActualWeightNew: 100,
   shipLengthNew: 10,
@@ -85,9 +92,19 @@ function formatMoney(value: number | null | undefined, digits = 2) {
   });
 }
 
+function formatMoneyBare(value: number | null | undefined, digits = 2) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '-';
+  return formatMoney(value, digits);
+}
+
 function formatCny(value: number | null | undefined, digits = 2) {
   if (value === null || value === undefined || !Number.isFinite(value)) return '-';
   return `${value < 0 ? '-¥' : '¥'}${formatMoney(Math.abs(value), digits)}`;
+}
+
+function formatCnyBare(value: number | null | undefined, digits = 2) {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '-';
+  return `${value < 0 ? '-' : ''}${formatMoney(Math.abs(value), digits)}`;
 }
 
 function formatDiscount(discount: number) {
@@ -140,6 +157,12 @@ function loadState(): CalcState {
     const merged = { ...DEFAULTS, ...(saved || {}) };
     if (!Array.isArray(merged.discounts)) merged.discounts = DEFAULTS.discounts;
     if (!Array.isArray(merged.discountsNew)) merged.discountsNew = DEFAULTS.discountsNew;
+    if (!Number.isFinite(merged.shippingTransferAnchorNew) || merged.shippingTransferAnchorNew <= 0) {
+      merged.shippingTransferAnchorNew = DEFAULTS.shippingTransferAnchorNew;
+    }
+    if (![REVIEW_SALE_PRICING_MODE_BUYER_PAID, REVIEW_SALE_PRICING_MODE_TRANSFER].includes(merged.reviewSalePricingMode)) {
+      merged.reviewSalePricingMode = DEFAULTS.reviewSalePricingMode;
+    }
     if (!Object.prototype.hasOwnProperty.call(savedObject, 'pricingV3DefaultMigrated') && savedObject.calcTab === 'pricingNew') {
       merged.calcTab = 'pricingV3';
       merged.pricingV3DefaultMigrated = true;
@@ -286,6 +309,12 @@ const knownSaleItemClass = 'known-sale-item flex flex-col justify-center gap-2 r
 const knownSaleLabelClass = 'label text-[11px] uppercase tracking-[1px] text-[var(--muted)]';
 const knownSaleValueClass = 'value text-xl font-bold leading-[1.2] text-[var(--text)] tabular-nums max-[768px]:text-lg';
 const reviewFormulaClass = 'review-formula mt-3.5 grid gap-[3px] text-[11px] leading-[1.35] text-[var(--muted)] tabular-nums [overflow-wrap:anywhere]';
+const reviewFeeRowClass = 'mt-[18px] !grid-cols-[74px_minmax(148px,1.14fr)_repeat(3,minmax(0,1fr))] gap-[14px] max-[980px]:!grid-cols-3 max-[768px]:!grid-cols-1 max-[768px]:mt-3';
+const reviewTransferLabelClass = 'flex min-h-[18px] items-center gap-1.5 leading-[1.3] text-[12.5px] font-normal text-[var(--muted)]';
+const reviewFeeLabelClass = 'whitespace-nowrap';
+const reviewTransferSwitchClass = 'relative inline-flex h-[48px] w-[74px] max-w-full cursor-pointer items-center overflow-hidden rounded-xl border transition-[background,border-color,color] focus-within:shadow-[0_0_0_3px_rgba(110,168,255,.22)]';
+const reviewTransferInputClass = 'absolute inset-0 opacity-0';
+const reviewTransferSwitchKnobClass = 'absolute top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-white shadow-[0_2px_8px_rgba(20,31,65,.18)] transition-[left]';
 const shippingFieldLabelClass = 'min-h-0 text-xs';
 const shippingControlClass = 'min-h-10 rounded-[9px] px-2.5 py-2.5 text-[13.5px]';
 const shippingSummaryFieldLabelClass = 'text-[11px]';
@@ -317,9 +346,31 @@ const shippingFreeSwitchRightClass = `${shippingFreeSwitchSideClass} justify-sel
 const calcFormulaBlockClass = 'calc-formula-block mt-3 text-[var(--muted)]';
 const calcFormulaTitleClass = 'calc-formula-title mb-1 text-[9.5px] uppercase tracking-[.6px] opacity-70';
 const calcFormulaListClass = 'calc-formula-list flex flex-col gap-[3px] font-mono text-[10.5px] leading-[1.32] [overflow-wrap:anywhere]';
-const calcResultTableClass = 'calc-result-table mt-2 w-full border-collapse border-0 text-[14.5px] tabular-nums [&_td]:border-x-0 [&_td]:border-t-0 [&_th]:border-x-0 [&_th]:border-t-0 [&_tbody_tr:last-child_td]:border-b-0 max-[640px]:text-[13px]';
-const calcResultHeadClass = 'px-[11px] py-[11.5px] text-[11.5px] max-[640px]:px-1.5 max-[640px]:py-2.5 max-[640px]:text-[10.5px]';
-const calcResultCellClass = 'px-[11px] py-[11.5px] max-[640px]:px-1.5 max-[640px]:py-2.5';
+const calcResultTableClass = 'calc-result-table mt-2 w-full border-collapse border-0 text-[13px] tabular-nums [&_td]:border-x-0 [&_td]:border-t-0 [&_th]:border-x-0 [&_th]:border-t-0 [&_tbody_tr:last-child_td]:border-b-0 max-[640px]:text-[12px]';
+const calcResultHeadClass = 'whitespace-nowrap px-[7px] py-[10px] text-[10.5px] max-[640px]:px-1 max-[640px]:py-2 max-[640px]:text-[10px]';
+const calcResultCellClass = 'whitespace-nowrap px-[7px] py-[10px] max-[640px]:px-1 max-[640px]:py-2';
+const calcResultHeaderClass = 'mb-3 flex min-w-0 flex-wrap items-start justify-between gap-3';
+const calcResultTitleBlockClass = 'min-w-[240px] flex-1';
+const calcResultTitleRowClass = 'mb-1 flex min-w-0 flex-wrap items-center gap-2';
+const calcResultTitleClass = 'm-0 flex items-center gap-2 text-[14px] font-semibold uppercase tracking-[.3px] text-[var(--muted)] max-[768px]:text-[13px]';
+const calcResultNoteClass = 'text-[10.5px] leading-[1.45] text-[var(--muted)]';
+const calcResultInfoButtonClass = 'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--panel)] p-0 text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]';
+const shippingTransferControlClass = 'inline-flex max-w-full items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--accent)_22%,var(--border))] bg-[color-mix(in_srgb,var(--accent)_4%,var(--panel))] px-2.5 py-1.5 text-[10.5px] leading-none text-[var(--muted)] shadow-[inset_0_0_0_1px_rgba(255,255,255,.35)] max-[640px]:w-full max-[640px]:justify-start';
+const shippingTransferControlHeadClass = 'inline-flex shrink-0 items-center gap-1.5 font-semibold';
+const shippingTransferSelectWrapClass = 'relative inline-flex h-7 min-w-[52px] cursor-pointer items-center pl-1.5 pr-5 text-[var(--text)] transition-colors hover:text-[var(--accent)] focus-within:text-[var(--accent)]';
+const shippingTransferSelectClass = 'absolute inset-0 h-full w-full cursor-pointer appearance-none border-0 bg-transparent px-0 py-0 text-center text-[12px] font-bold text-transparent caret-transparent outline-none shadow-none focus:shadow-none';
+const shippingTransferSelectTextClass = 'pointer-events-none text-[12px] font-bold text-[var(--text)]';
+const shippingTransferSelectIconClass = 'pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]';
+const shippingTransferHintClass = 'whitespace-nowrap text-[10.5px] text-[var(--muted)]';
+const shippingTransferSepClass = 'h-3.5 w-px bg-[var(--border)]';
+const calcDualValueClass = 'inline-flex items-baseline justify-center gap-0.5 whitespace-nowrap text-[13px] leading-none max-[640px]:text-[11.5px]';
+const calcDualPrimaryClass = 'font-semibold text-[var(--text)]';
+const calcDualSlashClass = 'text-[var(--muted)]';
+const calcDualSecondaryClass = 'font-semibold text-[var(--accent)]';
+const calcDualSecondaryPositiveClass = 'font-semibold text-[var(--ok)]';
+const calcTransferExactClass = 'font-bold text-[var(--danger)]';
+const transferHelpTextClass = 'grid gap-2.5 text-[13px] leading-[1.65] text-[var(--muted)]';
+const transferHelpFormulaClass = 'rounded-[10px] border border-[var(--border)] bg-[var(--panel2)] px-3 py-2 font-mono text-[12px] leading-[1.7] text-[var(--text)]';
 const calcResultAnchorCellClass = 'bg-[linear-gradient(90deg,rgba(110,168,255,.14),transparent)] font-semibold';
 const calcResultOrigCellClass = 'bg-[linear-gradient(180deg,rgba(138,255,207,.16),rgba(138,255,207,.08))] font-semibold';
 const calcResultOrigStrongCellClass = cn(calcResultOrigCellClass, 'font-bold text-[var(--accent2)]');
@@ -536,15 +587,24 @@ function PricingNewPanel({
   version?: 'v2' | 'v3';
 }) {
   const isV3 = version === 'v3';
+  const [transferHelpOpen, setTransferHelpOpen] = useState(false);
   const canToggleFreeShipping = isV3 && ENABLE_FREE_SHIPPING_CALC;
   const customerShippingJpy = isV3 ? v3CustomerShippingJpy(state) : DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY;
   const totalCost = state.costNew + state.overseasShippingNew;
   const discounts = state.discountsNew.length ? state.discountsNew : DEFAULTS.discountsNew;
   const anchor = nearestDiscount(discounts, state.anchorNew);
-  const pricingState = { ...state, anchorNew: anchor };
+  const shippingTransferAnchor = nearestDiscount(discounts, state.shippingTransferAnchorNew);
+  const pricingState = { ...state, anchorNew: anchor, shippingTransferAnchorNew: shippingTransferAnchor };
   const origPrice = isV3
     ? derivePricingV3OrigPrice({ state: pricingState, totalCost, customerShippingJpy })
     : derivePricingOrigPrice({ state: pricingState, totalCost });
+  const transferOrigPrice = isV3
+    ? derivePricingV3TransferOrigPrice({
+        baseOrigPrice: origPrice,
+        transferDiscount: shippingTransferAnchor,
+        transferShippingJpy: DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY
+      })
+    : origPrice;
   const rows = discounts.slice().sort((a, b) => a - b).map(discount => calcPricingRow({
     state: pricingState,
     totalCost,
@@ -558,6 +618,15 @@ function PricingNewPanel({
     discount,
     customerShippingJpy
   }));
+  const v3TransferRows = discounts.slice().sort((a, b) => a - b).map(discount => calcPricingV3TransferRow({
+    state: pricingState,
+    totalCost,
+    baseOrigPrice: origPrice,
+    transferDiscount: shippingTransferAnchor,
+    discount,
+    transferShippingJpy: DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY
+  }));
+  const v3TransferRowsByDiscount = new Map(v3TransferRows.map(row => [row.discount, row]));
   const visibleRows = isV3 ? v3Rows : rows;
   const origRow = isV3
     ? calcPricingV3Row({
@@ -568,6 +637,16 @@ function PricingNewPanel({
         customerShippingJpy
       })
     : calcPricingRow({ state: pricingState, totalCost, origPrice, discount: 1 });
+  const transferOrigRow = isV3
+    ? calcPricingV3TransferRow({
+        state: pricingState,
+        totalCost,
+        baseOrigPrice: origPrice,
+        transferDiscount: shippingTransferAnchor,
+        discount: 1,
+        transferShippingJpy: DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY
+      })
+    : null;
   const updateNumber = (key: keyof CalcState, value: string) => setState(prev => ({
     ...prev,
     [key]: toNumber(value),
@@ -592,7 +671,8 @@ function PricingNewPanel({
     setState(prev => ({
       ...prev,
       discountsNew: parsed,
-      anchorNew: nearestDiscount(parsed, prev.anchorNew)
+      anchorNew: nearestDiscount(parsed, prev.anchorNew),
+      shippingTransferAnchorNew: nearestDiscount(parsed, prev.shippingTransferAnchorNew)
     }));
   };
 
@@ -639,41 +719,176 @@ function PricingNewPanel({
           </div>
         </Card>
         <Card>
-          <CardTitle>各折扣档位定价 / 利润一览</CardTitle>
+          {isV3 ? (
+            <div className={calcResultHeaderClass}>
+              <div className={calcResultTitleBlockClass}>
+                <div className={calcResultTitleRowClass}>
+                  <h2 className={calcResultTitleClass}>各折扣档位定价与利润一览</h2>
+                  <Button
+                    id="pricing-v3-transfer-help-btn"
+                    variant="plain"
+                    className={calcResultInfoButtonClass}
+                    aria-controls="pricing-v3-transfer-help-modal"
+                    aria-haspopup="dialog"
+                    aria-label="包邮转嫁说明"
+                    title="包邮转嫁说明"
+                    onClick={() => setTransferHelpOpen(true)}
+                  >
+                    <HelpCircle size={14} strokeWidth={2} aria-hidden="true" />
+                  </Button>
+                </div>
+                <div className={calcResultNoteClass}>斜杠左侧是不包邮，右侧是包邮转嫁。</div>
+              </div>
+              <div className={shippingTransferControlClass}>
+                <label className={shippingTransferControlHeadClass} htmlFor="shippingTransferAnchorNew">
+                  <span>包邮转嫁折扣</span>
+                  <span className={shippingTransferSelectWrapClass}>
+                    <span className={shippingTransferSelectTextClass}>{formatDiscount(shippingTransferAnchor)}</span>
+                    <ChevronDown className={shippingTransferSelectIconClass} strokeWidth={2} aria-hidden="true" />
+                    <Select
+                      id="shippingTransferAnchorNew"
+                      className={shippingTransferSelectClass}
+                      value={shippingTransferAnchor}
+                      aria-label="选择包邮转嫁折扣"
+                      title="点击切换包邮转嫁折扣"
+                      onChange={event => updateNumber('shippingTransferAnchorNew', event.target.value)}
+                    >
+                      {discounts.map(discount => <option value={discount} key={discount}>{formatDiscount(discount)}</option>)}
+                    </Select>
+                  </span>
+                </label>
+                <span className={shippingTransferSepClass} aria-hidden="true" />
+                <span className={shippingTransferHintClass}>该档包邮转嫁 350円</span>
+              </div>
+            </div>
+          ) : (
+            <CardTitle>各折扣档位定价与利润一览</CardTitle>
+          )}
           <Table className={calcResultTableClass}>
             <TableHeader>
               <TableRow>
                 <TableHead className={calcResultHeadClass}>折扣</TableHead>
-                <TableHead className={calcResultHeadClass}>{isV3 ? '商品售价' : '日元售价'}</TableHead>
-                <TableHead className={calcResultHeadClass}>人民币到手</TableHead>
-                <TableHead className={calcResultHeadClass}>利润</TableHead>
+                <TableHead className={calcResultHeadClass}>{isV3 ? '商品售价(円)' : '日元售价'}</TableHead>
+                {isV3 ? <TableHead className={calcResultHeadClass}>包邮转嫁额(円)</TableHead> : null}
+                <TableHead className={calcResultHeadClass}>{isV3 ? '人民币到手(¥)' : '人民币到手'}</TableHead>
+                <TableHead className={calcResultHeadClass}>{isV3 ? '利润(¥)' : '利润'}</TableHead>
                 <TableHead className={calcResultHeadClass}>利润率</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody id={isV3 ? 'tbodyV3' : 'tbodyNew'}>
               <TableRow className="orig-row">
                 <TableCell className={calcResultOrigStrongCellClass}>原价</TableCell>
-                <TableCell className={cn(calcResultOrigStrongCellClass, 'orig-price-cell')}>{formatMoney(origPrice, 0)} 円</TableCell>
-                <TableCell className={calcResultOrigCellClass}>{formatCny(origRow.cnyNet, 2)}</TableCell>
-                <TableCell className={cn(calcResultOrigCellClass, calcProfitClass(origRow.profit))}>{formatCny(origRow.profit, 2)}</TableCell>
-                <TableCell className={calcResultOrigCellClass}>{formatMargin(origRow.margin)}</TableCell>
+                <TableCell className={cn(calcResultOrigStrongCellClass, 'orig-price-cell')}>
+                  {isV3 ? (
+                    <div className={calcDualValueClass}>
+                      <span className={calcDualPrimaryClass}>{formatMoneyBare(origPrice, 0)}</span>
+                      <span className={calcDualSlashClass}>/</span>
+                      <span className={calcDualSecondaryClass}>{formatMoneyBare(transferOrigPrice, 0)}</span>
+                    </div>
+                  ) : (
+                    <>{formatMoney(origPrice, 0)} 円</>
+                  )}
+                </TableCell>
+                {isV3 ? <TableCell className={calcResultOrigCellClass}>{formatMoneyBare(transferOrigPrice - origPrice, 0)}</TableCell> : null}
+                <TableCell className={calcResultOrigCellClass}>
+                  {isV3 && transferOrigRow ? (
+                    <div className={calcDualValueClass}>
+                      <span>{formatCnyBare(origRow.cnyNet, 2)}</span>
+                      <span className={calcDualSlashClass}>/</span>
+                      <span className={calcDualSecondaryClass}>{formatCnyBare(transferOrigRow.cnyNet, 2)}</span>
+                    </div>
+                  ) : (
+                    <>{formatCny(origRow.cnyNet, 2)}</>
+                  )}
+                </TableCell>
+                <TableCell className={cn(calcResultOrigCellClass, calcProfitClass(origRow.profit))}>
+                  {isV3 && transferOrigRow ? (
+                    <div className={calcDualValueClass}>
+                      <span>{formatCnyBare(origRow.profit, 2)}</span>
+                      <span className={calcDualSlashClass}>/</span>
+                      <span className={cn(calcDualSecondaryPositiveClass, calcProfitClass(transferOrigRow.profit))}>{formatCnyBare(transferOrigRow.profit, 2)}</span>
+                    </div>
+                  ) : (
+                    <>{formatCny(origRow.profit, 2)}</>
+                  )}
+                </TableCell>
+                <TableCell className={calcResultOrigCellClass}>
+                  {isV3 && transferOrigRow ? (
+                    <div className={calcDualValueClass}>
+                      <span>{formatMargin(origRow.margin)}</span>
+                      <span className={calcDualSlashClass}>/</span>
+                      <span className={calcDualSecondaryClass}>{formatMargin(transferOrigRow.margin)}</span>
+                    </div>
+                  ) : (
+                    <>{formatMargin(origRow.margin)}</>
+                  )}
+                </TableCell>
               </TableRow>
               {visibleRows.map(row => {
                 const isAnchor = Math.abs(row.discount - anchor) < 1e-9;
+                const transferRow = isV3 ? v3TransferRowsByDiscount.get(row.discount) : null;
+                const isExactTransfer = transferRow ? Math.abs(transferRow.transferredJpy - DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY) < 0.5 : false;
                 return (
                   <TableRow className={isAnchor ? 'anchor' : ''} key={row.discount}>
                     <TableCell className={calcRowCellClass(isAnchor)}>{formatDiscount(row.discount)}{isAnchor ? ' ★' : ''}</TableCell>
-                    <TableCell className={calcRowCellClass(isAnchor)}>{formatMoney(row.jpyPrice, 0)} 円</TableCell>
-                    <TableCell className={calcRowCellClass(isAnchor)}>{formatCny(row.cnyNet, 2)}</TableCell>
-                    <TableCell className={calcRowCellClass(isAnchor, calcProfitClass(row.profit))}>{formatCny(row.profit, 2)}</TableCell>
-                    <TableCell className={calcRowCellClass(isAnchor)}>{formatMargin(row.margin)}</TableCell>
+                    <TableCell className={calcRowCellClass(isAnchor)}>
+                      {isV3 && transferRow ? (
+                        <div className={calcDualValueClass}>
+                          <span className={calcDualPrimaryClass}>{formatMoneyBare(row.jpyPrice, 0)}</span>
+                          <span className={calcDualSlashClass}>/</span>
+                          <span className={calcDualSecondaryClass}>{formatMoneyBare(transferRow.jpyPrice, 0)}</span>
+                        </div>
+                      ) : (
+                        <>{formatMoney(row.jpyPrice, 0)} 円</>
+                      )}
+                    </TableCell>
+                    {isV3 ? (
+                      <TableCell className={calcRowCellClass(isAnchor)}>
+                        {transferRow ? (
+                          <span className={isExactTransfer ? calcTransferExactClass : ''}>{formatMoneyBare(transferRow.transferredJpy, 0)}</span>
+                        ) : '-'}
+                      </TableCell>
+                    ) : null}
+                    <TableCell className={calcRowCellClass(isAnchor)}>
+                      {isV3 && transferRow ? (
+                        <div className={calcDualValueClass}>
+                          <span>{formatCnyBare(row.cnyNet, 2)}</span>
+                          <span className={calcDualSlashClass}>/</span>
+                          <span className={calcDualSecondaryClass}>{formatCnyBare(transferRow.cnyNet, 2)}</span>
+                        </div>
+                      ) : (
+                        <>{formatCny(row.cnyNet, 2)}</>
+                      )}
+                    </TableCell>
+                    <TableCell className={calcRowCellClass(isAnchor, calcProfitClass(row.profit))}>
+                      {isV3 && transferRow ? (
+                        <div className={calcDualValueClass}>
+                          <span>{formatCnyBare(row.profit, 2)}</span>
+                          <span className={calcDualSlashClass}>/</span>
+                          <span className={cn(calcDualSecondaryPositiveClass, calcProfitClass(transferRow.profit))}>{formatCnyBare(transferRow.profit, 2)}</span>
+                        </div>
+                      ) : (
+                        <>{formatCny(row.profit, 2)}</>
+                      )}
+                    </TableCell>
+                    <TableCell className={calcRowCellClass(isAnchor)}>
+                      {isV3 && transferRow ? (
+                        <div className={calcDualValueClass}>
+                          <span>{formatMargin(row.margin)}</span>
+                          <span className={calcDualSlashClass}>/</span>
+                          <span className={calcDualSecondaryClass}>{formatMargin(transferRow.margin)}</span>
+                        </div>
+                      ) : (
+                        <>{formatMargin(row.margin)}</>
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })}
             </TableBody>
           </Table>
           <div className={calcFormulaBlockClass}>
-            <div className={calcFormulaTitleClass}>◇ 公式</div>
+            <div className={calcFormulaTitleClass}>{isV3 ? '◇ 不包邮公式' : '◇ 公式'}</div>
             <div className={calcFormulaListClass}>
               {isV3 ? (
                 <>
@@ -702,6 +917,42 @@ function PricingNewPanel({
               )}
             </div>
           </div>
+          {isV3 ? (
+            <Dialog
+              id="pricing-v3-transfer-help-modal"
+              open={transferHelpOpen}
+              titleId="pricing-v3-transfer-help-title"
+              onOpenChange={setTransferHelpOpen}
+            >
+              <DialogContent className="max-w-[560px]">
+                <DialogTitle id="pricing-v3-transfer-help-title">包邮转嫁说明</DialogTitle>
+                <div className={transferHelpTextClass}>
+                  <p>不包邮仍按 V3 原公式测算，底部只展示不包邮公式。</p>
+                  <p>包邮转嫁的口径是：买家原本单独支付的 350円 运费，改为放进商品售价里。页面显示包邮，但买家总支付接近不包邮。</p>
+                  <p>所以这里不是把 350円 当成商家新增成本，而是测算“运费从明面运费转到商品售价后”，各折扣档位的售价、到手和利润变化。</p>
+                  <div className={transferHelpFormulaClass}>
+                    <div>包邮原价 = 不包邮原价 + 350 ÷ 包邮转嫁折扣</div>
+                    <div>不包邮商品售价 = 不包邮原价 × 当前折扣</div>
+                    <div>包邮商品售价 = 包邮原价 × 当前折扣</div>
+                    <div>实际包邮转嫁 = 包邮商品售价 - 不包邮商品售价</div>
+                    <div>包邮有效收入 =（包邮商品售价 - 350）÷ 汇率</div>
+                    <div>包邮平台手续费 = 包邮商品售价 × 平台费率 ÷ 汇率</div>
+                    <div>包邮达人佣金 = 包邮商品售价 × 达人佣金率 ÷ 汇率</div>
+                    <div>包邮人民币到手 = 包邮有效收入 - 包邮平台手续费 - 包邮达人佣金</div>
+                    <div>包邮利润 = 包邮人民币到手 - 不包邮总费用</div>
+                    <div>包邮利润率 = 包邮人民币到手 ÷ 不包邮总费用</div>
+                  </div>
+                  <p>表格斜杠左侧是不包邮，右侧是包邮转嫁。当实际包邮转嫁正好是 350 时，平台费能和不包邮对齐；如果有达人佣金，包邮侧会因为实际商品售价更高而多扣一段佣金，约等于 350 × 达人佣金率 ÷ 汇率。</p>
+                  <p>包邮转嫁折扣用来决定哪个折扣档位完整包邮转嫁 350。选 4折时，4折行刚好完整包邮转嫁；如果新品主推 3.5折，就改成 3.5折，让 3.5折行完整包邮转嫁。</p>
+                  <p>不能让每个折扣都刚好包邮转嫁 350，因为 TK 商品原价只能填一个。固定同一个包邮原价后，不同折扣乘出来的价差一定不同：低折扣包邮转嫁少，高折扣包邮转嫁多。</p>
+                  <p>需要特别注意达人佣金：包邮转嫁后商品售价变高，达人佣金按更高的包邮商品售价计算，所以达人费用会比不包邮更多。</p>
+                </div>
+                <DialogActions>
+                  <Button variant="primary" onClick={() => setTransferHelpOpen(false)}>知道了</Button>
+                </DialogActions>
+              </DialogContent>
+            </Dialog>
+          ) : null}
         </Card>
       </div>
     </div>
@@ -746,7 +997,7 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
           </details>
         </Card>
         <Card>
-          <CardTitle>各折扣档位定价 / 利润一览</CardTitle>
+          <CardTitle>各折扣档位定价与利润一览</CardTitle>
           <Table className={calcResultTableClass}>
             <TableHeader>
               <TableRow>
@@ -777,13 +1028,27 @@ function LegacyPanel({ state, setState }: { state: CalcState; setState: Dispatch
 }
 
 function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch<SetStateAction<CalcState>> }) {
+  const [reviewHelpOpen, setReviewHelpOpen] = useState(false);
   const customerShippingJpy = v3CustomerShippingJpy(state);
   const totalCost = state.costNew + state.overseasShippingNew;
-  const result = calcSalePriceV3({ state, totalCost, customerShippingJpy });
+  const isTransferReview = state.reviewSalePricingMode === REVIEW_SALE_PRICING_MODE_TRANSFER;
+  const result = isTransferReview
+    ? calcSalePriceV3Transfer({
+        state,
+        totalCost,
+        transferShippingJpy: DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY
+      })
+    : calcSalePriceV3({ state, totalCost, customerShippingJpy });
   const updateNumber = (key: keyof CalcState, value: string) => setState(prev => ({
     ...prev,
     [key]: toNumber(value),
     ...(key === 'overseasShippingNew' ? { shippingSourceNew: 'manual' } : {})
+  }));
+  const toggleTransferReview = () => setState(prev => ({
+    ...prev,
+    reviewSalePricingMode: prev.reviewSalePricingMode === REVIEW_SALE_PRICING_MODE_TRANSFER
+      ? REVIEW_SALE_PRICING_MODE_BUYER_PAID
+      : REVIEW_SALE_PRICING_MODE_TRANSFER
   }));
   const importShipping = () => {
     const finalCost = finalShippingCost(state, null, customerShippingJpy);
@@ -795,7 +1060,21 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
     <div className={calcPanelClass} id="calc-panel-review">
       <div className={calcLayoutClass}>
         <Card>
-          <CardTitle>成交输入</CardTitle>
+          <CardTitle>
+            <span>成交输入</span>
+            <Button
+              id="review-pricing-guide-btn"
+              variant="plain"
+              className={calcResultInfoButtonClass}
+              aria-controls="review-pricing-guide-modal"
+              aria-haspopup="dialog"
+              aria-label="利润复盘口径说明"
+              title="利润复盘口径说明"
+              onClick={() => setReviewHelpOpen(true)}
+            >
+              <HelpCircle size={14} strokeWidth={2} aria-hidden="true" />
+            </Button>
+          </CardTitle>
           <FormRow>
             <Field id="salePrice" label="商品售价（円）" className="success" value={state.salePrice || ''} onChange={value => updateNumber('salePrice', value)} />
             <FormField htmlFor="totalCostReview" label={<>总费用 ¥<InlineToken variant="var">采购价+海外运费</InlineToken></>} className="expense-field">
@@ -809,8 +1088,31 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
             </FormRow>
           </div>
           <div className={calcFormSectionClass}>
-            <FormRow columns={4}>
-              <Field id="feeReview" label="TK 平台手续费率（%）" inputClassName="min-h-[48px] text-[18px] max-[640px]:text-[18px]" value={state.feeNew} onChange={value => updateNumber('feeNew', value)} />
+            <FormRow columns={5} className={reviewFeeRowClass}>
+              <FormField>
+                <div className={reviewTransferLabelClass}>
+                  <span>包邮转嫁</span>
+                </div>
+                <label
+                  id="reviewFreeShippingTransfer"
+                  className={cn(
+                    reviewTransferSwitchClass,
+                    isTransferReview
+                      ? 'border-[rgba(69,172,121,.34)] bg-[rgba(69,172,121,.11)] text-[var(--ok)]'
+                      : 'border-[rgba(110,168,255,.20)] bg-[var(--panel2)] text-[var(--text)]'
+                  )}
+                >
+                  <input
+                    className={reviewTransferInputClass}
+                    type="checkbox"
+                    aria-label="包邮转嫁"
+                    checked={isTransferReview}
+                    onChange={toggleTransferReview}
+                  />
+                  <span className={cn(reviewTransferSwitchKnobClass, isTransferReview ? 'left-[calc(100%-40px)]' : 'left-1')} aria-hidden="true" />
+                </label>
+              </FormField>
+              <Field id="feeReview" label="TK 平台手续费率（%）" labelClassName={reviewFeeLabelClass} inputClassName="min-h-[48px] text-[18px] max-[640px]:text-[18px]" value={state.feeNew} onChange={value => updateNumber('feeNew', value)} />
               <Field id="platformFeeReview" label="平台手续费 ¥" className="expense-field" value={result ? result.platformFee.toFixed(2) : ''} readOnly />
               <Field id="creatorRateReview" label="达人佣金率（%）" inputClassName="min-h-[48px] text-[18px] max-[640px]:text-[18px]" value={state.creatorRateNew} onChange={value => updateNumber('creatorRateNew', value)} />
               <Field id="saleCommissionReview" label="达人佣金 ¥" className="expense-field" value={result ? result.creatorCommission.toFixed(2) : ''} readOnly />
@@ -838,13 +1140,44 @@ function ReviewPanel({ state, setState }: { state: CalcState; setState: Dispatch
           </div>
           <div className={reviewFormulaClass}>
             <div>总费用 = 采购价 + 海外运费</div>
-            <div>平台手续费 =（商品售价 + 买家支付运费 350円）× 平台手续费率 ÷ 日元汇率</div>
-            <div>达人佣金 = 商品售价 × 达人佣金率 ÷ 日元汇率</div>
-            <div>人民币到手 = 商品售价 ÷ 日元汇率 − 平台手续费 − 达人佣金</div>
+            {isTransferReview ? (
+              <>
+                <div>有效收入 =（实际商品售价 − 包邮转嫁运费 350円）÷ 日元汇率</div>
+                <div>平台手续费 = 实际商品售价 × 平台手续费率 ÷ 日元汇率</div>
+                <div>达人佣金 = 实际商品售价 × 达人佣金率 ÷ 日元汇率</div>
+                <div>人民币到手 = 有效收入 − 平台手续费 − 达人佣金</div>
+              </>
+            ) : (
+              <>
+                <div>平台手续费 =（商品售价 + 买家支付运费 350円）× 平台手续费率 ÷ 日元汇率</div>
+                <div>达人佣金 = 商品售价 × 达人佣金率 ÷ 日元汇率</div>
+                <div>人民币到手 = 商品售价 ÷ 日元汇率 − 平台手续费 − 达人佣金</div>
+              </>
+            )}
             <div>利润 = 人民币到手 − 总费用</div>
             <div>利润率 = 人民币到手 ÷ 总费用</div>
           </div>
         </Card>
+        <Dialog
+          id="review-pricing-guide-modal"
+          open={reviewHelpOpen}
+          titleId="review-pricing-guide-title"
+          onOpenChange={setReviewHelpOpen}
+        >
+          <DialogContent className="max-w-[560px]">
+            <DialogTitle id="review-pricing-guide-title">利润复盘口径说明</DialogTitle>
+            <div className={transferHelpTextClass}>
+              <p>定价V3用于测算包邮转嫁后的售价；利润复盘只按已成交订单的实际售价复盘。</p>
+              <p>商品售价按订单里的平台实际售价填写。</p>
+              <p>包邮转嫁开关只标记这笔单的运费口径，不会自动加减 350円。</p>
+              <p>不包邮时，平台费基数为商品售价 + 买家运费 350円；达人佣金按商品售价计算。</p>
+              <p>包邮转嫁时，收入扣回 350円；平台费和达人佣金按当前填写的商品售价计算。</p>
+            </div>
+            <DialogActions>
+              <Button onClick={() => setReviewHelpOpen(false)}>知道了</Button>
+            </DialogActions>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

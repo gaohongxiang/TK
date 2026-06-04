@@ -160,6 +160,23 @@ function normalizeShippingFeeMode(value: unknown): 'auto' | 'manual' {
   return String(value ?? '').trim() === 'manual' ? 'manual' : 'auto';
 }
 
+function normalizeSalePricingMode(value: unknown): string {
+  const raw = String(value ?? '').trim().toLowerCase();
+  if ([
+    'free_shipping_transfer',
+    'free-shipping-transfer',
+    'free_shipping',
+    'shipping_transfer',
+    'transfer',
+    '包邮转嫁',
+    '包邮',
+    '免邮'
+  ].includes(raw)) {
+    return 'free_shipping_transfer';
+  }
+  return 'buyer_paid_shipping';
+}
+
 function toIsoString(value: unknown, fallback = ''): string {
   if (!value && fallback) return fallback;
   if (!value) return '';
@@ -369,6 +386,8 @@ function normalizePulledOrder(raw: unknown, options: { nowIso?: () => string } =
     '产品名称': String(productSummary || ''),
     '数量': totalQuantity == null || totalQuantity === '' ? '' : String(totalQuantity),
     '是否退款': data?.isRefunded ? '1' : '',
+    '售价口径': normalizeSalePricingMode(data?.salePricingMode),
+    salePricingMode: normalizeSalePricingMode(data?.salePricingMode),
     '达人佣金率': data?.creatorCommissionRate == null ? '' : String(data.creatorCommissionRate),
     '达人佣金': data?.creatorCommission == null ? '' : String(data.creatorCommission),
     '采购价格': totalPurchase == null || totalPurchase === '' ? '' : String(totalPurchase),
@@ -412,6 +431,7 @@ function buildOrderDoc(order: OrderRecord, options: { nowIso?: () => string } = 
     productName: productSummary,
     quantity: items.length ? totals.quantity : toNullableInteger(order?.['数量']),
     isRefunded: toBoolean(order?.['是否退款']),
+    salePricingMode: normalizeSalePricingMode(order?.['售价口径'] ?? order?.salePricingMode),
     creatorCommissionRate: toNullableDecimal(order?.['达人佣金率']),
     creatorCommission: toNullableDecimal(order?.['达人佣金']),
     purchasePrice: topLevelPurchase ?? (items.length ? Number(totals.purchase.toFixed(2)) : null),

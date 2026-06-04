@@ -54,8 +54,8 @@ assert.match(
 
 assert.match(
   reactCalculatorSource,
-  /calcResultTableClass = 'calc-result-table[\s\S]*text-\[14\.5px\][\s\S]*calcResultHeadClass = 'px-\[11px\] py-\[11\.5px\][\s\S]*calcResultCellClass = 'px-\[11px\] py-\[11\.5px\]/,
-  '利润计算器折扣结果表只应比原版略大，不能过度放大'
+  /calcResultTableClass = 'calc-result-table[\s\S]*text-\[13px\][\s\S]*calcResultHeadClass = 'whitespace-nowrap px-\[7px\] py-\[10px\][\s\S]*calcResultCellClass = 'whitespace-nowrap px-\[7px\] py-\[10px\]/,
+  '利润计算器折扣结果表应保持当前紧凑表格尺寸'
 );
 
 assert.match(

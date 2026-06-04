@@ -32,8 +32,8 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /computeOrderCreatorCommission\(\{[\s\S]*'达人佣金率': draft\.creatorCommissionRate[\s\S]*computeOrderEstimatedProfit\(\{[\s\S]*'预估运费': estimatedShippingFee/,
-  'React 订单弹窗需要复用共享订单口径自动计算达人佣金和预估利润'
+  /computeOrderCreatorCommission\(\{[\s\S]*'售价口径': draft\.salePricingMode[\s\S]*'达人佣金率': draft\.creatorCommissionRate[\s\S]*computeOrderEstimatedProfit\(\{[\s\S]*'售价口径': draft\.salePricingMode[\s\S]*'预估运费': estimatedShippingFee/,
+  'React 订单弹窗需要复用共享订单口径自动计算达人佣金和预估利润，并传入售价口径'
 );
 
 assert.match(
@@ -112,6 +112,12 @@ assert.match(
   ordersPageSource,
   /orderMoneyRowClass = 'quint[\s\S]*70px_minmax\(88px,\.72fr\)_minmax\(88px,\.72fr\)_minmax\(116px,\.9fr\)_minmax\(170px,1\.15fr\)_minmax\(118px,\.9fr\)[\s\S]*orderShippingRuleClass = 'ot-shipping-rule flex min-h-\[42px\][\s\S]*orderShippingRuleButtonClass = 'ml-1 inline-flex h-\[20px\][\s\S]*orderShippingHelpButtonClass[\s\S]*orderProfitLabelClass = '!flex-nowrap'/,
   'React 订单金额行需要让金额输入、参数和预估利润对齐并填满行宽'
+);
+
+assert.match(
+  ordersPageSource,
+  /label="包邮转嫁"[\s\S]*id="ot-free-shipping-transfer"[\s\S]*name="售价口径"[\s\S]*label="总售价（円）"[\s\S]*<FormRow columns=\{5\} className=\{orderMetaRowClass\}>[\s\S]*label="是否退款"/,
+  'React 订单弹窗应把包邮转嫁放在金额行第一格，并把是否退款移到下一行'
 );
 
 assert.match(

@@ -224,6 +224,19 @@ function toPlain(value) {
   assert.equal(creatorCommissionSummary.allCreatorCommissionMetric.total, 5, '达人佣金汇总应按订单总售价百分比折算后统计');
   assert.equal(creatorCommissionSummary.allProfitTotal, 13.25, '摘要区总利润应扣除平台手续费和达人佣金');
 
+  const transferSummary = tableModule.OrderTableView.derivePurchaseSummary({
+    orders: [
+      { id: 'transfer-1', '账号': 'A', '售价': '1350', '售价口径': 'free_shipping_transfer', '达人佣金率': '10', '采购价格': '20', '预估运费': '5' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '',
+    exchangeRate: { rate: 20, platformFeeRate: 10 }
+  });
+
+  assert.equal(transferSummary.allPlatformFeeMetric.total, 6.75, '包邮转嫁订单汇总平台费应按平台实际商品售价计算');
+  assert.equal(transferSummary.allCreatorCommissionMetric.total, 6.75, '包邮转嫁订单汇总达人佣金应按平台实际商品售价计算');
+  assert.equal(transferSummary.allProfitTotal, 11.5, '包邮转嫁订单汇总利润应扣除实际售价对应的达人佣金');
+
   assert.deepEqual(
     toPlain(summary),
     toPlain(tableModule.derivePurchaseSummary({

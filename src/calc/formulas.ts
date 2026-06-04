@@ -87,6 +87,55 @@ function calcPricingV3Row({
   return { discount, jpyPrice, cnyNet, platformFee, creatorCommission, profit, margin };
 }
 
+function derivePricingV3TransferOrigPrice({
+  baseOrigPrice,
+  transferDiscount,
+  transferShippingJpy = DEFAULT_CUSTOMER_SHIPPING_JPY
+}) {
+  if (!Number.isFinite(baseOrigPrice) || baseOrigPrice <= 0) return 0;
+  if (!Number.isFinite(transferDiscount) || transferDiscount <= 0) return baseOrigPrice;
+  return Math.max(0, baseOrigPrice + transferShippingJpy / transferDiscount);
+}
+
+function calcPricingV3TransferRow({
+  state,
+  totalCost,
+  baseOrigPrice,
+  transferDiscount,
+  discount,
+  transferShippingJpy = DEFAULT_CUSTOMER_SHIPPING_JPY
+}) {
+  const transferOrigPrice = derivePricingV3TransferOrigPrice({
+    baseOrigPrice,
+    transferDiscount,
+    transferShippingJpy
+  });
+  const row = calcPricingV3Row({
+    state,
+    totalCost,
+    origPrice: transferOrigPrice,
+    discount,
+    customerShippingJpy: 0
+  });
+  const baseJpyPrice = baseOrigPrice * discount;
+  const rate = state.rateNew || 1;
+  const transferredJpy = row.jpyPrice - baseJpyPrice;
+  const effectiveJpyPrice = Math.max(0, row.jpyPrice - Math.max(0, transferShippingJpy || 0));
+  const cnyGross = effectiveJpyPrice / rate;
+  const cnyNet = cnyGross - row.platformFee - row.creatorCommission;
+  const profit = cnyNet - (totalCost || 0);
+  const margin = totalCost > 0 ? cnyNet / totalCost : NaN;
+  return {
+    ...row,
+    cnyNet,
+    profit,
+    margin,
+    transferOrigPrice,
+    transferredJpy,
+    effectiveJpyPrice
+  };
+}
+
 function derivePricingV3OrigPrice({
   state,
   totalCost,
@@ -133,13 +182,33 @@ function calcSalePriceV3({ state, totalCost, customerShippingJpy = DEFAULT_CUSTO
   return { cnyNet, platformFee, creatorCommission, profit, margin };
 }
 
+function calcSalePriceV3Transfer({ state, totalCost, transferShippingJpy = DEFAULT_CUSTOMER_SHIPPING_JPY }) {
+  const salePrice = state.salePrice || 0;
+  const cost = totalCost || 0;
+  const rate = state.rateNew || 1;
+  const platformFeeRate = (state.feeNew || 0) / 100;
+  const creatorRate = (state.creatorRateNew || 0) / 100;
+  if (salePrice <= 0) return null;
+  const effectiveSalePrice = Math.max(0, salePrice - Math.max(0, transferShippingJpy || 0));
+  const cnyGross = effectiveSalePrice / rate;
+  const platformFee = (salePrice * platformFeeRate) / rate;
+  const creatorCommission = (salePrice * creatorRate) / rate;
+  const cnyNet = cnyGross - platformFee - creatorCommission;
+  const profit = cnyNet - cost;
+  const margin = cost > 0 ? cnyNet / cost : NaN;
+  return { cnyNet, platformFee, creatorCommission, profit, margin, effectiveSalePrice };
+}
+
 export {
   PRICING_VIEWS,
   calcLegacyRow,
   calcPricingRow,
+  calcPricingV3TransferRow,
   calcPricingV3Row,
   calcSalePrice,
+  calcSalePriceV3Transfer,
   calcSalePriceV3,
+  derivePricingV3TransferOrigPrice,
   deriveLegacyOrigPrice,
   derivePricingOrigPrice,
   derivePricingV3OrigPrice

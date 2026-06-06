@@ -28,6 +28,7 @@ export default {
           { text: '利润计算器', link: '/guide/calculator' },
           { text: '商品管理', link: '/guide/products' },
           { text: '订单管理', link: '/guide/orders' },
+          { text: '收支管理', link: '/guide/finance' },
           { text: '数据采集', link: '/guide/collection' },
           { text: '数据分析', link: '/guide/analytics' },
           { text: '部署发布', link: '/guide/deploy' },

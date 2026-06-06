@@ -7,6 +7,7 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(await fs.readFile(path.join(scriptDir, 'config.json'), 'utf8'));
 const outputRoot = path.resolve(root, config.outputDir || 'data/collection/fastmoss/runs');
 const args = parseArgs(process.argv.slice(2));
+const strategy = normalizeStrategy(args.strategy || process.env.TK_SELECTION_STRATEGY || config.defaultFallbackStrategy || 'small-shop-filter');
 const accountName = normalizeAccountOption(args.account || process.env.TK_COLLECTION_ACCOUNT);
 if (!accountName) {
   console.error('缺少目标账号：请使用 --account <账号名>，例如 --account NOMA。');
@@ -61,10 +62,11 @@ console.log(`机器候选数：${ranked.length}`);
 console.log(`机器拒绝数：${rejects.length}`);
 console.log(`数据库旧商品排除数：${rejects.filter((row) => row.reason === '数据库已有旧商品，排除重复').length}`);
 console.log(`目标账号：${accountName}`);
+console.log(`选品策略：${strategy}`);
 console.log(`输出目录：${outDir}`);
 
 function parseArgs(argv) {
-  const options = { inputPath: '', account: '' };
+  const options = { inputPath: '', account: '', strategy: '' };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--account') {
@@ -76,9 +78,23 @@ function parseArgs(argv) {
       options.account = arg.slice('--account='.length);
       continue;
     }
+    if (arg === '--strategy') {
+      options.strategy = argv[index + 1] || '';
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('--strategy=')) {
+      options.strategy = arg.slice('--strategy='.length);
+      continue;
+    }
     if (!arg.startsWith('--') && !options.inputPath) options.inputPath = arg;
   }
   return options;
+}
+
+function normalizeStrategy(value) {
+  const text = String(value || '').trim();
+  return text || 'small-shop-filter';
 }
 
 function normalizeAccountOption(value) {
@@ -329,6 +345,15 @@ function firstReject(record) {
   ].filter(Number.isFinite);
   if (dimensions.length && Math.max(...dimensions) > 40 && !isRollableFoldable(text)) return '长边超过 40cm 小卖家尺寸风险';
 
+  if (strategy === 'small-shop-filter') {
+    if (!Number.isFinite(record.shop_total_sales_jpy) || record.shop_total_sales_jpy < config.shopTotalSalesMin || record.shop_total_sales_jpy > config.shopTotalSalesMax) {
+      return 'small-shop-filter 策略要求店铺总销售额在 10,000-80,000 日元内';
+    }
+    if (!Number.isFinite(record.shop_day7_sold_count) || record.shop_day7_sold_count < config.shop7dSalesMin) {
+      return 'small-shop-filter 策略要求店铺近7天销量大于0';
+    }
+  }
+
   return '';
 }
 
@@ -492,6 +517,7 @@ function formatReject(record, reason) {
     shop_category: record.shop_category,
     product_7d_sold_count: record.product_7d_sold_count,
     shop_total_sales_jpy: record.shop_total_sales_jpy,
+    strategy,
     product_url: record.product_url,
     shop_url: record.shop_url
   };
@@ -625,6 +651,7 @@ function candidateHeaders() {
     '店铺近7天销量',
     '需求场景与机会',
     '选品判断',
+    '选品策略',
     '商品链接',
     'FastMoss 链接',
     '图片链接',
@@ -644,6 +671,7 @@ function rejectHeaders() {
     '商品近7天销量',
     '店铺总销售额（日元）',
     '商品链接',
+    '选品策略',
     '店铺链接',
     '是否旧商品',
     '是否计入本次'
@@ -664,6 +692,7 @@ function formatCandidateRow(record, targetAccount) {
     '店铺近7天销量': record.shop_day7_sold_count,
     '需求场景与机会': [record.demand_scene, record.small_seller_opportunity].filter(Boolean).join('；'),
     '选品判断': buildSelectionJudgementText(record),
+    '选品策略': strategy,
     '商品链接': record.product_url,
     'FastMoss 链接': record.shop_url,
     '图片链接': record.image_url,
@@ -683,6 +712,7 @@ function formatRejectRow(record, targetAccount) {
     '商品近7天销量': record.product_7d_sold_count,
     '店铺总销售额（日元）': record.shop_total_sales_jpy,
     '商品链接': record.product_url,
+    '选品策略': strategy,
     '店铺链接': record.shop_url,
     '是否旧商品': record.reason === '数据库已有旧商品，排除重复' ? '是' : '否',
     '是否计入本次': '否'

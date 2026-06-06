@@ -15,7 +15,7 @@ hero:
 
 features:
   - title: 工具使用
-    details: 包含利润计算器、Firebase 连接、商品管理、订单管理、数据采集、Firebase 数据分析和部署发布检查。
+    details: 包含利润计算器、Firebase 连接、商品管理、订单管理、收支管理、数据采集、Firebase 数据分析和部署发布检查。
   - title: TK 运营
     details: 把选品原则、爆款拆解、小卖家打法和运营话术独立成页。
   - title: 数据边界

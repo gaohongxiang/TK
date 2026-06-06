@@ -14,11 +14,12 @@ const overview = fs.readFileSync(path.join(root, 'docs', 'guide', 'overview.md')
 const database = fs.readFileSync(path.join(root, 'docs', 'guide', 'database.md'), 'utf8');
 const products = fs.readFileSync(path.join(root, 'docs', 'guide', 'products.md'), 'utf8');
 const orders = fs.readFileSync(path.join(root, 'docs', 'guide', 'orders.md'), 'utf8');
+const finance = fs.readFileSync(path.join(root, 'docs', 'guide', 'finance.md'), 'utf8');
 const analytics = fs.readFileSync(path.join(root, 'docs', 'guide', 'analytics.md'), 'utf8');
 const deploy = fs.readFileSync(path.join(root, 'docs', 'guide', 'deploy.md'), 'utf8');
 const faq = fs.readFileSync(path.join(root, 'docs', 'guide', 'faq.md'), 'utf8');
 const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-const handoff = fs.readFileSync(path.join(root, 'PROJECT_HANDOFF.md'), 'utf8');
+const technicalArchitecture = fs.readFileSync(path.join(root, 'TECHNICAL_ARCHITECTURE.md'), 'utf8');
 const privacy = fs.readFileSync(path.join(root, 'public', 'privacy.html'), 'utf8');
 const terms = fs.readFileSync(path.join(root, 'public', 'terms.html'), 'utf8');
 const headers = fs.readFileSync(path.join(root, 'public', '_headers'), 'utf8');
@@ -29,6 +30,12 @@ assert.match(
   docsConfig,
   /text:\s*'数据分析',\s*link:\s*'\/guide\/analytics'/,
   '文档站侧边栏需要包含数据分析说明页'
+);
+
+assert.match(
+  docsConfig,
+  /text:\s*'收支管理',\s*link:\s*'\/guide\/finance'/,
+  '文档站侧边栏需要包含收支管理说明页'
 );
 
 assert.match(
@@ -51,8 +58,8 @@ assert.match(
 
 assert.match(
   overview,
-  /静态工具站 \+ 用户自有数据源[\s\S]*数据分析.*\/guide\/analytics/,
-  '概览需要说明项目定位并链接数据分析页'
+  /静态工具站 \+ 用户自有数据源[\s\S]*收支管理.*\/guide\/finance[\s\S]*数据分析.*\/guide\/analytics/,
+  '概览需要说明项目定位并链接收支管理和数据分析页'
 );
 
 assert.match(
@@ -71,6 +78,12 @@ assert.match(
   orders,
   /订单数据保存到你自己的 Firebase Firestore[\s\S]*保存和同步[\s\S]*Firestore SDK 的本地队列/,
   '订单文档需要说明数据保存位置和本地优先保存'
+);
+
+assert.match(
+  finance,
+  /收支数据保存到你自己的 Firebase Firestore[\s\S]*预估口径[\s\S]*现金口径[\s\S]*公共账[\s\S]*finance_records/,
+  '收支文档需要说明保存位置、两套口径、公共账和 Firestore 集合'
 );
 
 assert.match(
@@ -93,14 +106,14 @@ assert.match(
 
 assert.match(
   readme,
-  /正式站点基础文件[\s\S]*public\/privacy\.html[\s\S]*public\/terms\.html[\s\S]*public\/site-page\.css[\s\S]*public\/_headers[\s\S]*Open Graph[\s\S]*sitemap\.xml.*lastmod/s,
-  'README 需要列出正式站点基础文件和当前 SEO 元信息覆盖'
+  /# TK 电商工具箱[\s\S]*## 功能[\s\S]*收支管理[\s\S]*## 计算口径[\s\S]*## 架构[\s\S]*finance[\s\S]*TECHNICAL_ARCHITECTURE\.md[\s\S]*## 数据边界[\s\S]*收支记录[\s\S]*## 本地开发/,
+  'README 应保持简洁项目概览，覆盖收支管理，并链接长期技术架构文档'
 );
 
 assert.match(
-  handoff,
-  /Phase 7：文档补齐[\s\S]*当前状态：已完成[\s\S]*正规网站基础项[\s\S]*Open Graph[\s\S]*404 页面新增 description[\s\S]*sitemap\.xml.*lastmod/s,
-  '交接文件需要记录 Phase 7、正规网站基础项和 SEO 元信息已完成'
+  technicalArchitecture,
+  /# TK 技术架构[\s\S]*## 入口[\s\S]*src\/react\/app\/App\.tsx[\s\S]*## 领域代码[\s\S]*src\/calc\/[\s\S]*src\/finance\/[\s\S]*## 数据边界[\s\S]*收支记录[\s\S]*用户 Firestore[\s\S]*## 计算口径[\s\S]*包邮转嫁[\s\S]*## 收支口径[\s\S]*现金净额[\s\S]*## 平台接口边界[\s\S]*不把平台第三方接口作为技术路线[\s\S]*## 测试/,
+  '技术架构文档需要取代旧交接文档，记录当前架构、数据边界、计算口径、收支口径和平台接口边界'
 );
 
 assert.match(

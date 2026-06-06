@@ -58,6 +58,22 @@ function parseFirebaseConfig(raw) {
   return sanitizeFirebaseConfig(looseObject(body));
 }
 
+function sanitizeFirebaseAuth(raw, previous = null) {
+  const auth = toPlainObject(raw);
+  if (!auth) return null;
+  const email = String(auth.email || auth.username || '').trim();
+  const password = auth.password === undefined ? '' : String(auth.password);
+  if (!email || !password) return null;
+  const next = {
+    email,
+    password,
+    updatedAt: nowIso()
+  };
+  const previousAuth = toPlainObject(previous) || {};
+  if (previousAuth.email === email && previousAuth.refreshToken) next.refreshToken = String(previousAuth.refreshToken);
+  return next;
+}
+
 function parseArgs(argv) {
   const out = { _: [] };
   for (let index = 0; index < argv.length; index += 1) {
@@ -120,10 +136,16 @@ async function writeCredentials(data) {
 function redactStatus(data) {
   const dxm = toPlainObject(data.dianxiaomiByTkAccount) || {};
   const fastmossDefault = data.fastmoss?.default || {};
+  const chuhaijiangDefault = data.chuhaijiang?.default || {};
+  const firebaseAuth = toPlainObject(data.firebaseAuth) || {};
   return {
     hasFirebaseConfig: Boolean(parseFirebaseConfig(data.firebaseConfig)),
+    hasFirebaseAuth: Boolean(firebaseAuth.email && firebaseAuth.password),
+    firebaseAuthEmail: firebaseAuth.email || null,
     hasFastmossDefault: Boolean((fastmossDefault.phone || fastmossDefault.username) && fastmossDefault.password),
     fastmossStatus: fastmossDefault.status || null,
+    hasChuhaijiangDefault: Boolean((chuhaijiangDefault.phone || chuhaijiangDefault.email || chuhaijiangDefault.username) && chuhaijiangDefault.password),
+    chuhaijiangStatus: chuhaijiangDefault.status || null,
     dianxiaomiAccounts: Object.keys(dxm).sort(),
     updatedAt: data.updatedAt || null
   };
@@ -136,6 +158,25 @@ async function setFirebase(rawConfig) {
   data.firebaseConfig = config;
   await writeCredentials(data);
   return { ok: true, saved: 'collectionSyncConfig' };
+}
+
+async function setFirebaseAuth(args) {
+  const data = await readCredentials();
+  const auth = sanitizeFirebaseAuth({
+    email: args.email || args.username,
+    password: args.password
+  }, data.firebaseAuth);
+  if (!auth) throw new Error('缺少 Firebase Auth 邮箱或密码。');
+  data.firebaseAuth = auth;
+  await writeCredentials(data);
+  return { ok: true, saved: 'firebaseAuth', file: credentialsPath(), email: auth.email };
+}
+
+async function clearFirebaseAuth() {
+  const data = await readCredentials();
+  delete data.firebaseAuth;
+  await writeCredentials(data);
+  return { ok: true, cleared: 'firebaseAuth', file: credentialsPath() };
 }
 
 async function setFastmoss(args) {
@@ -156,6 +197,24 @@ async function setFastmoss(args) {
   return { ok: true, saved: 'fastmossDefault' };
 }
 
+async function setChuhaijiang(args) {
+  const username = String(args.email || args.phone || args.username || '').trim();
+  const password = String(args.password || '');
+  if (!username || !password) throw new Error('缺少出海匠登录信息。');
+  const data = await readCredentials();
+  data.chuhaijiang = toPlainObject(data.chuhaijiang) || {};
+  data.chuhaijiang.default = {
+    loginMethod: args.email ? 'email' : 'account',
+    username,
+    password,
+    label: String(args.label || 'default').trim() || 'default',
+    status: 'active',
+    updatedAt: nowIso()
+  };
+  await writeCredentials(data);
+  return { ok: true, saved: 'chuhaijiangDefault', file: credentialsPath(), username };
+}
+
 async function markFastmossExpired(args) {
   const data = await readCredentials();
   data.fastmoss = toPlainObject(data.fastmoss) || {};
@@ -165,6 +224,17 @@ async function markFastmossExpired(args) {
   data.fastmoss.default.lastFailureReason = String(args.reason || 'expired_or_login_failed').trim();
   await writeCredentials(data);
   return { ok: true, marked: 'fastmoss.default.expired', file: credentialsPath() };
+}
+
+async function markChuhaijiangExpired(args) {
+  const data = await readCredentials();
+  data.chuhaijiang = toPlainObject(data.chuhaijiang) || {};
+  data.chuhaijiang.default = toPlainObject(data.chuhaijiang.default) || {};
+  data.chuhaijiang.default.status = 'expired';
+  data.chuhaijiang.default.expiredAt = nowIso();
+  data.chuhaijiang.default.lastFailureReason = String(args.reason || 'expired_or_login_failed').trim();
+  await writeCredentials(data);
+  return { ok: true, marked: 'chuhaijiang.default.expired', file: credentialsPath() };
 }
 
 async function setDianxiaomi(args) {
@@ -194,6 +264,11 @@ async function upsertJson(raw) {
     if (!config) throw new Error('stdin.firebaseConfig 不完整。');
     data.firebaseConfig = config;
   }
+  if (input.firebaseAuth !== undefined) {
+    const auth = sanitizeFirebaseAuth(input.firebaseAuth, data.firebaseAuth);
+    if (!auth) throw new Error('stdin.firebaseAuth 缺少 email/password。');
+    data.firebaseAuth = auth;
+  }
   if (input.fastmoss?.default) {
     const fm = input.fastmoss.default;
     const phone = String(fm.phone || fm.username || '').trim();
@@ -204,6 +279,20 @@ async function upsertJson(raw) {
       phone,
       password: String(fm.password),
       label: String(fm.label || 'default').trim() || 'default',
+      status: 'active',
+      updatedAt: nowIso()
+    };
+  }
+  if (input.chuhaijiang?.default) {
+    const chj = input.chuhaijiang.default;
+    const username = String(chj.email || chj.phone || chj.username || '').trim();
+    if (!username || !chj.password) throw new Error('stdin.chuhaijiang.default 缺少 username/password。');
+    data.chuhaijiang = toPlainObject(data.chuhaijiang) || {};
+    data.chuhaijiang.default = {
+      loginMethod: chj.email ? 'email' : 'account',
+      username,
+      password: String(chj.password),
+      label: String(chj.label || 'default').trim() || 'default',
       status: 'active',
       updatedAt: nowIso()
     };
@@ -247,12 +336,13 @@ function reveal(data, args) {
   const key = String(args.key || '').trim();
   if (key === 'firebase') return parseFirebaseConfig(data.firebaseConfig);
   if (key === 'fastmoss') return data.fastmoss?.default || null;
+  if (key === 'chuhaijiang') return data.chuhaijiang?.default || null;
   if (key === 'dianxiaomi') {
     const account = String(args.account || '').trim();
     if (!account) throw new Error('reveal dianxiaomi 需要 --account <TK账号>。');
     return data.dianxiaomiByTkAccount?.[account] || null;
   }
-  throw new Error('reveal 需要 --key firebase|fastmoss|dianxiaomi。');
+  throw new Error('reveal 需要 --key firebase|fastmoss|chuhaijiang|dianxiaomi。');
 }
 
 async function main() {
@@ -262,8 +352,12 @@ async function main() {
   if (command === 'path') result = { file: credentialsPath() };
   else if (command === 'status') result = redactStatus(await readCredentials());
   else if (command === 'set-firebase') result = await setFirebase(args.config || await readStdin());
+  else if (command === 'set-firebase-auth' || command === 'set-auth') result = await setFirebaseAuth(args);
+  else if (command === 'clear-firebase-auth') result = await clearFirebaseAuth();
   else if (command === 'set-fastmoss') result = await setFastmoss(args);
+  else if (command === 'set-chuhaijiang') result = await setChuhaijiang(args);
   else if (command === 'mark-fastmoss-expired') result = await markFastmossExpired(args);
+  else if (command === 'mark-chuhaijiang-expired') result = await markChuhaijiangExpired(args);
   else if (command === 'set-dianxiaomi') result = await setDianxiaomi(args);
   else if (command === 'upsert-json') result = await upsertJson(await readStdin());
   else if (command === 'sync-firebase') result = await syncFirebaseToProject(args);

@@ -5,6 +5,9 @@ import path from 'node:path';
 
 const FIRESTORE_BASE = 'https://firestore.googleapis.com/v1';
 const PRIVATE_CREDENTIALS_PATH = ['private', 'tk-product-selection', 'credentials.json'];
+let firestoreAuthToken = String(process.env.TK_FIRESTORE_AUTH_TOKEN || '').trim();
+let firestoreAuthSource = firestoreAuthToken ? 'env-token' : 'none';
+let firestoreAuthEmail = '';
 
 function codexHome() {
   return process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
@@ -12,6 +15,25 @@ function codexHome() {
 
 function credentialsPath() {
   return path.join(codexHome(), ...PRIVATE_CREDENTIALS_PATH);
+}
+
+async function readPrivateCredentials() {
+  try {
+    const parsed = JSON.parse(await fs.readFile(credentialsPath(), 'utf8'));
+    return toPlainObject(parsed) || {};
+  } catch {
+    return {};
+  }
+}
+
+async function writePrivateCredentials(data) {
+  const file = credentialsPath();
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  const tmp = `${file}.tmp-${process.pid}`;
+  await fs.writeFile(tmp, `${JSON.stringify(data, null, 2)}\n`);
+  if (process.platform !== 'win32') await fs.chmod(tmp, 0o600).catch(() => {});
+  await fs.rename(tmp, file);
+  if (process.platform !== 'win32') await fs.chmod(file, 0o600).catch(() => {});
 }
 
 function fail(message, meta = {}) {
@@ -83,13 +105,86 @@ function parseFirebaseConfig(raw) {
 async function loadFirebaseConfig() {
   const fromEnv = parseFirebaseConfig(process.env.TK_FIRESTORE_CONFIG || '');
   if (fromEnv) return fromEnv;
-  let privateConfig = null;
-  try {
-    privateConfig = JSON.parse(await fs.readFile(credentialsPath(), 'utf8'));
-  } catch {}
+  const privateConfig = await readPrivateCredentials();
   const fromPrivate = parseFirebaseConfig(privateConfig?.firebaseConfig);
   if (fromPrivate) return fromPrivate;
   throw fail('本地私密配置里没有 firebaseConfig。请先用 local-credentials.mjs set-firebase 保存。');
+}
+
+function getFirebaseAuthCredentials(privateConfig) {
+  const auth = toPlainObject(privateConfig?.firebaseAuth);
+  const email = String(auth?.email || auth?.username || '').trim();
+  const password = auth?.password === undefined ? '' : String(auth.password);
+  if (!email || !password) return null;
+  return { email, password };
+}
+
+async function saveFirebaseRefreshToken(email, refreshToken) {
+  if (!refreshToken) return;
+  const data = await readPrivateCredentials();
+  const auth = toPlainObject(data.firebaseAuth) || {};
+  if (String(auth.email || '').trim() !== email) return;
+  data.firebaseAuth = {
+    ...auth,
+    refreshToken: String(refreshToken),
+    lastSignedInAt: new Date().toISOString()
+  };
+  await writePrivateCredentials(data);
+}
+
+async function signInWithFirebaseAuth(config, auth) {
+  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(config.apiKey)}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      email: auth.email,
+      password: auth.password,
+      returnSecureToken: true
+    })
+  });
+  const text = await response.text();
+  let body = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = { raw: text };
+    }
+  }
+  if (!response.ok || !body?.idToken) {
+    const code = body?.error?.message || body?.raw || response.statusText;
+    throw fail('Firebase Auth 登录失败：无法取得数据库身份。请检查本地 firebaseAuth 邮箱/密码、用户是否启用，以及该用户是否允许访问当前项目。', {
+      code,
+      email: auth.email
+    });
+  }
+  await saveFirebaseRefreshToken(auth.email, body.refreshToken).catch(() => {});
+  return body;
+}
+
+async function ensureFirestoreAuth(config) {
+  if (firestoreAuthToken) return;
+  const privateConfig = await readPrivateCredentials();
+  const auth = getFirebaseAuthCredentials(privateConfig);
+  if (!auth) return;
+  const signedIn = await signInWithFirebaseAuth(config, auth);
+  firestoreAuthToken = signedIn.idToken;
+  firestoreAuthSource = 'firebase-auth';
+  firestoreAuthEmail = auth.email;
+}
+
+function authMeta() {
+  return {
+    authSource: firestoreAuthSource,
+    ...(firestoreAuthEmail ? { firebaseAuthEmail: firestoreAuthEmail } : {})
+  };
+}
+
+function permissionDenied(message) {
+  const hint = firestoreAuthSource === 'none'
+    ? ' 当前没有携带 Firebase Auth 身份。请先把 Firebase Authentication 登录邮箱/密码保存到本机私密配置，或临时设置 TK_FIRESTORE_AUTH_TOKEN。'
+    : ' 当前 Firebase 身份已携带，但 Firestore Rules 仍拒绝访问；请检查该用户是否在规则允许范围内。';
+  return fail(`${message}${hint}`, authMeta());
 }
 
 function dbBase(config) {
@@ -178,10 +273,12 @@ function updateMaskParams(data) {
 }
 
 async function requestJson(url, options = {}) {
+  const authHeaders = firestoreAuthToken ? { authorization: `Bearer ${firestoreAuthToken}` } : {};
   const response = await fetch(url, {
     ...options,
     headers: {
       'content-type': 'application/json',
+      ...authHeaders,
       ...(options.headers || {})
     }
   });
@@ -543,7 +640,8 @@ function buildRecordDoc(dataset, row, nowIso) {
     accountName: toNullableText(getAccountName(orderedRow)),
     productId: toNullableText(productId),
     productUrl: toNullableText(productUrl),
-    fastmossUrl: toNullableText(getRowValue(orderedRow, ['FastMoss 链接', 'fastmoss_url', '店铺链接', 'shop_url'])),
+    fastmossUrl: toNullableText(getRowValue(orderedRow, ['FastMoss 链接', 'fastmoss_url', 'fastmossUrl'])),
+    chuhaijiangUrl: toNullableText(getRowValue(orderedRow, ['出海匠链接', 'chuhaijiang_url', 'chuhaijiangUrl'])),
     shopName: toNullableText(getRowValue(orderedRow, ['店铺名', 'shop_name'])),
     productName: toNullableText(getRowValue(orderedRow, ['商品名称'])),
     collectStatus,
@@ -552,7 +650,7 @@ function buildRecordDoc(dataset, row, nowIso) {
     collectFailureReason,
     note: toNullableText(getRowValue(orderedRow, ['备注', 'note'])),
     lastDatasetKey: 'records',
-    source: 'fastmoss',
+    source: getRowValue(orderedRow, ['出海匠链接', 'chuhaijiang_url', 'chuhaijiangUrl']) ? 'chuhaijiang' : 'fastmoss',
     createdAt: nowIso,
     updatedAt: nowIso,
     datasets: {
@@ -575,7 +673,8 @@ function buildExcludedProductDoc(dataset, row, nowIso) {
     accountName: toNullableText(getAccountName(normalizedRow)),
     productId: toNullableText(productId),
     productUrl: toNullableText(productUrl),
-    fastmossUrl: toNullableText(getRowValue(normalizedRow, ['FastMoss 链接', 'fastmoss_url', '店铺链接', 'shop_url'])),
+    fastmossUrl: toNullableText(getRowValue(normalizedRow, ['FastMoss 链接', 'fastmoss_url', 'fastmossUrl'])),
+    chuhaijiangUrl: toNullableText(getRowValue(normalizedRow, ['出海匠链接', 'chuhaijiang_url', 'chuhaijiangUrl'])),
     shopName: toNullableText(getRowValue(normalizedRow, ['店铺名', 'shop_name'])),
     productName: toNullableText(getRowValue(normalizedRow, ['商品名称'])),
     productCategory: toNullableText(getRowValue(normalizedRow, ['商品类目', 'category', 'product_category'])),
@@ -583,7 +682,7 @@ function buildExcludedProductDoc(dataset, row, nowIso) {
     shopRevenueJpy: toNullableText(getRowValue(normalizedRow, ['店铺总销售额（日元）', '店铺总销售额', 'shop_revenue_jpy'])),
     rejectReason: toNullableText(getRowValue(normalizedRow, ['拒绝原因'])),
     filename: dataset.filename || 'selection_rejects.csv',
-    source: 'fastmoss',
+    source: getRowValue(normalizedRow, ['出海匠链接', 'chuhaijiang_url', 'chuhaijiangUrl']) ? 'chuhaijiang' : 'fastmoss',
     createdAt: nowIso,
     updatedAt: nowIso
   };
@@ -620,7 +719,7 @@ function docProductId(doc) {
     const fromField = getRowValue(row, ['商品ID', 'product_id', 'item_id', 'productId']);
     const id = extractProductId(fromField);
     if (id) return id;
-    const fromUrl = getRowValue(row, ['核心 TK 链接', '商品链接', 'productUrl', 'product_url', 'tk_product_url', '链接', 'FastMoss 链接', 'fastmossUrl', 'fastmoss_url']);
+    const fromUrl = getRowValue(row, ['核心 TK 链接', '商品链接', 'productUrl', 'product_url', 'tk_product_url', '链接', 'FastMoss 链接', 'fastmossUrl', 'fastmoss_url', '出海匠链接', 'chuhaijiangUrl', 'chuhaijiang_url']);
     const urlId = extractProductId(fromUrl);
     if (urlId) return urlId;
   }
@@ -705,7 +804,7 @@ async function markDxmEdited(args) {
   try {
     docs = await state.client.listAll('collection_records', { pageSize: 300 });
   } catch (error) {
-    if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法读取采集表记录。请更新 Firestore 规则后重试。');
+    if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法读取采集表记录。');
     throw error;
   }
   const matches = docs.filter(doc => matchRecordDoc(doc, identity));
@@ -757,7 +856,7 @@ async function markDxmEdited(args) {
       'datasets.records': patch.datasets.records
     });
   } catch (error) {
-    if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法回写店小秘编辑状态。请更新 Firestore 规则后重试。');
+    if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法回写店小秘编辑状态。');
     throw error;
   }
   return {
@@ -792,7 +891,7 @@ async function markDxmRejected(args) {
   try {
     docs = await state.client.listAll('collection_records', { pageSize: 300 });
   } catch (error) {
-    if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法读取采集表记录。请更新 Firestore 规则后重试。');
+    if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法读取采集表记录。');
     throw error;
   }
   const matches = docs.filter(doc => matchRecordDoc(doc, identity));
@@ -843,7 +942,7 @@ async function markDxmRejected(args) {
       'datasets.records': patch.datasets.records
     });
   } catch (error) {
-    if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法回写不合格原因。请更新 Firestore 规则后重试。');
+    if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法回写不合格原因。');
     throw error;
   }
   return {
@@ -864,7 +963,7 @@ async function repairEditStatusFromTitle(args) {
   try {
     docs = await state.client.listAll('collection_records', { pageSize: 300 });
   } catch (error) {
-    if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法读取采集表记录。请更新 Firestore 规则后重试。');
+    if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法读取采集表记录。');
     throw error;
   }
 
@@ -905,7 +1004,7 @@ async function repairEditStatusFromTitle(args) {
         'datasets.records': records
       });
     } catch (error) {
-      if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法修复店小秘编辑状态。请更新 Firestore 规则后重试。');
+      if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法修复店小秘编辑状态。');
       throw error;
     }
     repaired += 1;
@@ -933,7 +1032,7 @@ async function buildFirestoreDedupe(runDir, account) {
     recordDocs = await state.client.listAll('collection_records', { pageSize: 300 });
     excludedDocs = await state.client.listAll('collection_excluded_products', { pageSize: 300 });
   } catch (error) {
-    if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法读取数据采集去重记录。请更新 Firestore 规则后重试。');
+    if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法读取数据采集去重记录。');
     throw error;
   }
 
@@ -975,12 +1074,13 @@ function formatList(values) {
 
 async function loadAccounts() {
   const config = await loadFirebaseConfig();
+  await ensureFirestoreAuth(config);
   const client = createFirestoreClient(config);
   let docs;
   try {
     docs = await client.list('order_accounts', { orderBy: 'name' });
   } catch (error) {
-    if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法读取账号列表。请更新 Firestore 规则后重试。');
+    if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法读取账号列表。');
     throw error;
   }
   const accounts = docs
@@ -989,7 +1089,7 @@ async function loadAccounts() {
     .map(row => normalizeAccount(row.name))
     .filter(Boolean)
     .sort((left, right) => left.localeCompare(right));
-  return { config, client, accounts };
+  return { config, client, accounts, auth: authMeta() };
 }
 
 async function requireAccount(account) {
@@ -1018,13 +1118,13 @@ async function preflightCollection(account) {
     await state.client.list('collection_excluded_products', { pageSize: 1 });
     collectionRead = true;
   } catch (error) {
-    if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法读取数据采集记录。请更新 Firestore 规则后重试。');
+    if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法读取数据采集记录。');
     throw error;
   }
   try {
     collectionWrite = await state.client.probeWrite();
   } catch (error) {
-    if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法保存数据采集记录。请更新 Firestore 规则后重试。');
+    if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法保存数据采集记录。');
     throw error;
   }
   return {
@@ -1034,6 +1134,7 @@ async function preflightCollection(account) {
     targetAccountExists: true,
     firstAccount: state.firstAccount,
     accounts: state.accounts,
+    ...state.auth,
     collectionRead,
     collectionWrite
   };
@@ -1071,7 +1172,7 @@ async function syncCollectionRun(runDir, account) {
       rejectsSynced += 1;
     }
   } catch (error) {
-    if (isPermissionDenied(error)) throw fail('当前数据库权限不足，无法同步数据采集结果。请更新 Firestore 规则后重试。');
+    if (isPermissionDenied(error)) throw permissionDenied('当前数据库权限不足，无法同步数据采集结果。');
     throw error;
   }
 
@@ -1098,6 +1199,8 @@ Usage:
   node firestore-sync.mjs repair-edit-status --account NOMA
 
 Reads local private collection settings.
+For rules-protected projects, save Firebase Auth credentials with local-credentials.mjs set-firebase-auth
+or set TK_FIRESTORE_AUTH_TOKEN for a one-off run.
 `);
 }
 
@@ -1111,7 +1214,7 @@ async function main() {
   }
   if (command === 'accounts') {
     const state = await loadAccounts();
-    result = { ok: true, projectId: state.config.projectId, accounts: state.accounts };
+    result = { ok: true, projectId: state.config.projectId, accounts: state.accounts, ...state.auth };
   } else if (command === 'preflight') {
     result = await preflightCollection(args.account);
   } else if (command === 'dedupe') {

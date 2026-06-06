@@ -5,8 +5,14 @@
   "shopTotalSalesMax": 80000,
   "shop7dSalesMin": 1,
   "product7dSalesMin": 1,
+  "defaultSource": "chuhaijiang",
+  "fallbackSource": "fastmoss",
+  "defaultStrategy": "mixed-discovery",
+  "defaultFallbackStrategy": "small-shop-filter",
   "startUrl": "https://www.fastmoss.com/zh/",
+  "chuhaijiangStartUrl": "https://www.chuhaijiang.com/app/discover/tiktok/products?country=JP",
   "dxmStartUrl": "https://www.tiktok.com/",
   "outputDir": "data/collection/fastmoss/runs",
+  "chuhaijiangOutputDir": "data/collection/chuhaijiang/runs",
   "captureDir": "data/collection/fastmoss/captures"
 }

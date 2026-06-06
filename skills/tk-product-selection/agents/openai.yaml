@@ -1,5 +1,5 @@
 interface:
-  display_name: "TK FastMoss 采集"
-  short_description: "授权页面里的 FastMoss 日本站选品采集"
+  display_name: "TK 商品采集"
+  short_description: "出海匠优先、FastMoss备用的日本站选品采集"
   brand_color: "#2563EB"
-  default_prompt: "使用 $tk-product-selection，在当前授权页面里，为指定 TK 账号从 FastMoss 采集 TikTok Shop 日本站商品。"
+  default_prompt: "使用 $tk-product-selection，在当前授权页面里，为指定 TK 账号优先用出海匠、必要时备用 FastMoss 采集 TikTok Shop 日本站商品。"

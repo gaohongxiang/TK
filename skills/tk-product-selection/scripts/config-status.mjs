@@ -38,6 +38,8 @@ child.on('exit', (code, signal) => {
       hasCollectionSyncConfig: Boolean(raw.hasFirebaseConfig),
       hasFastmossConfig: Boolean(raw.hasFastmossDefault),
       fastmossStatus: raw.fastmossStatus || null,
+      hasChuhaijiangConfig: Boolean(raw.hasChuhaijiangDefault),
+      chuhaijiangStatus: raw.chuhaijiangStatus || null,
       dianxiaomiAccounts: Array.isArray(raw.dianxiaomiAccounts) ? raw.dianxiaomiAccounts : [],
       updatedAt: raw.updatedAt || null,
     };

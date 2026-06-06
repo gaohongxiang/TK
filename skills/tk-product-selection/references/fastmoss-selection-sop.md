@@ -1,10 +1,10 @@
 # FastMoss 日本站选品标准流程
 
-这个流程只使用当前已连接的 Chrome 扩展会话完成电商选品。FastMoss、TikTok 商品页、店小秘和采集表同步都必须在同一个窗口里完成。
+这个流程只使用当前已连接的 Chrome 扩展会话完成电商选品。FastMoss、TikTok 商品页、店小秘和采集表同步都必须在同一个窗口里完成。FastMoss 是备用来源；默认优先使用出海匠，只有用户明确指定 FastMoss、出海匠不可用，或当前策略需要 FastMoss 页面能力时走本 SOP。
 
 ## 目标
 
-从 TikTok Shop 日本站店铺里找适合小卖家的商品，基础条件固定为：
+从 TikTok Shop 日本站店铺里找适合小卖家的商品。具体筛选条件由 `references/rules.md` 的统一策略决定。原 FastMoss 小店条件已抽离为 `small-shop-filter` 策略：
 
 - 店铺总销售额：日元 10,000 到 80,000
 - 店铺近 7 天销量：大于 0
@@ -18,7 +18,7 @@
 - 优先小件、轻货、可压缩、无品牌、无 IP、无电池、无液体、无粉末、售后简单的产品
 - 只在通过硬拒绝后再看运动配件、布艺小件、清洁替换件、桌面小收纳等窄需求实用配件
 - 重点看 SKU 延伸、场景延伸、组合装、多件装、长尾关键词机会
-- 同步前必须回填并校验 `商品近7天销量` 和 `店铺总销售额（日元）`。字段为空、商品近 7 天销量为 0、店铺总销售额低于 10,000 或高于 80,000 的商品，不允许进入 `collection_records.csv`。
+- 同步前必须回填并校验当前策略要求字段。默认至少校验 `商品近7天销量` 和真实 TikTok 商品链接；`small-shop-filter` 策略还必须校验 `店铺总销售额（日元）` 和店铺近 7 天销量。字段为空或不满足策略的商品，不允许进入 `collection_records.csv`。
 
 ## 操作路径
 
@@ -26,9 +26,12 @@
 - 只使用当前已连接的 Chrome 扩展会话，不创建新的操作环境。
 - 不写死本机用户信息；始终使用当前已经授权成功的窗口。
 - FastMoss 页面筛选、页面读取、TikTok 商品页确认、店小秘按钮点击都在同一个窗口里完成。
+- 页面动作串行低频执行：只保留一个 FastMoss 来源页和一个当前商品页；不要批量打开 TikTok 链接、并发开详情页、快速刷新或连续新建关闭标签。
+- 能从 FastMoss 商品详情里的 TikTok 商品入口自然跳转时，优先点击入口；必须直接打开 TikTok 链接时，只打开一个商品页，等待页面稳定后再判断店小秘插件。
+- 每个商品之间保留 20-60 秒间隔；触发过验证后放慢后续商品节奏。
 - 页面操作优先走当前授权页面通道；不要使用桌面控制方式代办页面点击。
 - 多个店小秘/TK 账号按顺序切换：完成当前账号、同步状态，再在同一会话里切到下一个账号。
-- 辅助脚本只负责本地配置、账号检查、筛选、状态初始化和同步，不负责页面点击。
+- 辅助脚本只负责本地配置、账号检查、筛选、状态初始化和同步；`run-dxm-collection-rpa.mjs` 只负责店小秘插件采集这段串行浏览器自动化。
 - 这是授权电商运营流程。对外说明使用 `选品`、`商品筛选`、`待编辑商品登记`、`采集表同步` 等业务词；任务说明只写业务动作和结果。
 
 ## 本地配置状态
@@ -68,7 +71,7 @@ FastMoss 会员切换：
 - 如果必须查采集过程，只查当前批次运行目录和少量业务字段，并把工具输出控制在状态、计数、商品 ID、时间戳和文件路径。
 - 遇到平台人工确认，只说明“页面需要用户确认后继续”，不要描述确认控件细节，也不要讨论绕开或规避。
 - 每次重新采集必须用 `批次开始时间`、`采集时间`、`店小秘创建时间`、`是否旧商品`、`是否计入本次` 做时间排重。旧商品只能作为排重依据，不能计入新批次数量。
-- 如果发现合格记录缺少 `商品近7天销量` 或 `店铺总销售额（日元）`，先回查 FastMoss 补字段；如果字段显示商品近 7 天销量为 0 或店铺总销售额超出范围，改为不计入并补采替换品。
+- 如果发现合格记录缺少当前策略要求字段，先回查页面补字段；如果字段仍不满足策略，改为不计入并补采替换品。
 
 ## 平台人工确认状态机
 
@@ -77,11 +80,11 @@ FastMoss 会员切换：
 发现平台人工确认后：
 
 1. 立即停止当前页面动作，不继续点击、不反复刷新、不读取大段页面内容。
-2. 在当前运行目录写入 `page_confirmation_state.json`，只记录业务恢复需要的信息：`status: "verification_blocked"`、目标账号、阶段、商品 ID、商品名称、商品链接、当前页面地址、阻塞时间、最近检查时间。
+2. 在当前运行目录写入 `page_confirmation_state.json`，只记录业务恢复需要的信息：`status: "verification_blocked"`、目标账号、阶段、商品 ID、商品名称、商品链接、当前页面地址、阻塞时间、最近检查时间；随后调用 `scripts/notify-human-verification.mjs` 播放一次提示音，同一商品/阶段不要重复响。
 3. 不记录账号资料、cookie、LocalStorage、截图或长页面文本。
-4. 保持当前页，按 10-15 秒间隔轻量检查页面是否恢复业务内容；默认最多等待 5 分钟。用户已有自动确认插件时，不反复询问用户。
+4. 保持当前页可见，按 10-15 秒间隔轻量检查页面是否恢复业务内容；默认最多等待 5 分钟。用户已有自动确认插件时，不反复询问用户。
 5. 页面恢复后，把状态更新为 `status: "resumed"`，继续同一个商品的采集动作，完成后关闭该商品页。
-6. 等待超时或仍无法确认店小秘采集结果时，关闭当前商品页；已进入候选商品店小秘采集动作的，在 `collection_records.csv` 写 `采集状态=采集失败`，`选品判断` 写失败原因：页面出现平台人工确认，等待超时，未确认店小秘采集成功。
+6. 等待超时或仍无法确认店小秘采集结果时，先保留当前页让用户可见；用户没有要求继续等时，再关闭当前商品页。已进入候选商品店小秘采集动作的，在 `collection_records.csv` 写 `采集状态=采集失败`，`选品判断` 写失败原因：页面出现平台人工确认，等待超时，未确认店小秘采集成功。
 7. 阻塞发生在 FastMoss 列表阶段且没有进入具体商品时，只保留已确认的 `products.json` 局部结果；页面恢复后继续同一筛选条件。同一列表连续两次阻塞且没有新增商品时，停止本批次页面采集并让用户处理页面状态。
 
 平台人工确认期间不能把空表、遮罩层、半页数据或旧缓存当成真实商品；旧商品和未尝试店小秘采集的候选商品不能计入本次新采集数量。
@@ -106,12 +109,12 @@ node <skill-dir>/scripts/firestore-sync.mjs preflight --account NOMA
 3. 运行 `firestore-sync.mjs preflight --account NOMA`，确认账号存在且采集表可读写。
 4. 创建新的 `data/collection/fastmoss/runs/<run-id>/`，立即运行 `firestore-sync.mjs dedupe ... --account NOMA`，生成数据库来源的 `dedupe_manifest.json`。
 5. 确认当前授权窗口可用，并核对 FastMoss 页面会员状态和数据权限；页面会员可用就沿用页面当前会员，页面不可用才用本地配置重新登录。
-6. 确认会员和数据权限可用后，在同一窗口里打开 FastMoss，设置日本、日元、店铺总销售额 10,000-80,000、店铺近 7 天销量大于 0、商品近 7 天销量大于 0。
+6. 确认会员和数据权限可用后，在同一窗口里打开 FastMoss，按本批次策略设置页面筛选。`small-shop-filter` 策略使用日本、日元、店铺总销售额 10,000-80,000、店铺近 7 天销量大于 0、商品近 7 天销量大于 0；其他策略按关键词、类目榜单、爆品延伸、店铺挖掘、相似商品或种子链接执行。
 7. 从真实 FastMoss 页面慢速采集店铺和商品；页面结果保存到 `data/collection/fastmoss/runs/<run-id>/products.json`。
-8. 运行 `select-fastmoss-products.mjs` 完成硬过滤、评分、数据库去重和候选/拒绝文件生成。
-9. 运行 `init-dianxiaomi-status.mjs` 生成本批次 `collection_records.csv`。
-10. 在同一窗口里打开候选新商品的 TikTok Shop 商品页，点击店小秘“开始采集”，只放进采集箱/待编辑商品；遇到平台人工确认按状态机等待、恢复或写失败原因；每完成或放弃一个商品都关闭对应商品页。
-11. 同步前复核合格记录：`商品近7天销量` 非空且大于 0，`店铺总销售额（日元）` 非空且在 10,000-80,000 内，旧商品和不合格商品不得进入 `collection_records.csv`。
+8. 运行 `select-fastmoss-products.mjs --strategy <策略名>` 完成硬过滤、评分、数据库去重和候选/拒绝文件生成。
+9. 可运行 `init-dianxiaomi-status.mjs` 做采集字段预检；最终 `collection_records.csv` 必须由 RPA attempts 生成，未尝试候选不能进入采集表。
+10. 运行 `run-dxm-collection-rpa.mjs <run-dir> --account NOMA --target-successes 20`。Runner 在同一窗口里逐个打开候选新商品的 TikTok Shop 商品页，优先从 FastMoss 详情页入口自然跳转；确认商品详情页已恢复且店小秘插件条可用后，再点击店小秘“开始采集”，只放进采集箱/待编辑商品；遇到平台人工确认按状态机保留页面、等待恢复或写失败原因；每完成或放弃一个商品都关闭对应商品页。用户说“继续”时用 `--continue-blocked --retry-verification` 从同一商品继续。
+11. 同步前复核合格记录：`商品近7天销量` 非空且大于 0，`商品链接` 是真实 TikTok 商品链接；`small-shop-filter` 策略额外要求 `店铺总销售额（日元）` 非空且在 10,000-80,000 内、店铺近 7 天销量大于 0。旧商品和不合格商品不得进入 `collection_records.csv`。
 12. 记录店小秘返回状态后，运行 `firestore-sync.mjs sync ... --account NOMA` 同步到用户 Firestore。
 13. 打开 TK 网站数据采集页确认同步结果。
 
@@ -121,8 +124,9 @@ node <skill-dir>/scripts/firestore-sync.mjs preflight --account NOMA
 node <skill-dir>/scripts/local-credentials.mjs status
 node <skill-dir>/scripts/firestore-sync.mjs preflight --account NOMA
 node <skill-dir>/scripts/firestore-sync.mjs dedupe data/collection/fastmoss/runs/<run-id> --account NOMA
-node <skill-dir>/scripts/select-fastmoss-products.mjs data/collection/fastmoss/runs/<run-id>/products.json --account NOMA
+node <skill-dir>/scripts/select-fastmoss-products.mjs data/collection/fastmoss/runs/<run-id>/products.json --account NOMA --strategy small-shop-filter
 node <skill-dir>/scripts/init-dianxiaomi-status.mjs data/collection/fastmoss/runs/<run-id>/selection_candidates.json --account NOMA
+node <skill-dir>/scripts/run-dxm-collection-rpa.mjs data/collection/fastmoss/runs/<run-id> --account NOMA --target-successes 20
 node <skill-dir>/scripts/firestore-sync.mjs sync data/collection/fastmoss/runs/<run-id> --account NOMA
 ```
 
@@ -155,6 +159,9 @@ data/collection/fastmoss/runs/<run-id>/
 - `page_confirmation_state.json`：页面出现人工确认时的轻量恢复状态；没有触发时可以不存在
 - `selection_candidates.csv/json`：候选商品过程文件
 - `selection_rejects.csv/json`：拒绝品过程文件
+- `rpa_state.json`：当前商品、阶段、恢复点、目标数量、成功数和失败数
+- `rpa_events.jsonl`：RPA 每一步业务事件日志
+- `collection_attempts.json`：已尝试店小秘采集的结构化结果
 - `collection_records.csv`：同步到采集表的合格商品记录
 
 Firestore 写入：
@@ -180,7 +187,7 @@ Firestore 写入：
 同步前字段校验：
 
 - `商品近7天销量` 必须来自 FastMoss 商品详情页，且数值大于 0。
-- `店铺总销售额（日元）` 必须来自 FastMoss 店铺详情页，且数值在 10,000-80,000。
+- 当前策略是 `small-shop-filter` 时，`店铺总销售额（日元）` 必须来自页面可信字段，且数值在 10,000-80,000；其他策略中该字段只作为参考或评分信息。
 - 不满足条件的商品在过程文件里保留，`是否计入本次` 标记为 `否`，并补采替换品。
 
 ## 店小秘边界

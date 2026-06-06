@@ -5,14 +5,17 @@ import { fileURLToPath } from 'node:url';
 const root = process.cwd();
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(await fs.readFile(path.join(scriptDir, 'config.json'), 'utf8'));
-const outputRoot = path.resolve(root, config.outputDir || 'data/collection/fastmoss/runs');
+const outputRoots = [
+  config.outputDir || 'data/collection/fastmoss/runs',
+  config.chuhaijiangOutputDir || 'data/collection/chuhaijiang/runs'
+].map((dir) => path.resolve(root, dir));
 const args = parseArgs(process.argv.slice(2));
 const inputPath = args.inputPath
   ? path.resolve(root, args.inputPath)
-  : await latestCandidatesFile(outputRoot);
+  : await latestCandidatesFile(outputRoots);
 
 if (!inputPath) {
-  console.error('没有找到 selection_candidates.json，请先执行 select-fastmoss-products.mjs。');
+  console.error('没有找到 selection_candidates.json，请先执行对应来源的 select-fastmoss-products.mjs 或 select-chuhaijiang-products.mjs。');
   process.exit(1);
 }
 
@@ -39,7 +42,9 @@ await writeCsv(outputPath, rows, [
   '采集状态',
   '选品判断',
   '商品链接',
-  'FastMoss 链接'
+  'FastMoss 链接',
+  '出海匠链接',
+  '店铺链接'
 ]);
 
 console.log(`输入文件：${inputPath}`);
@@ -80,23 +85,27 @@ function firstAccount(records) {
   return '';
 }
 
-async function latestCandidatesFile(runsDir) {
-  try {
-    const entries = await fs.readdir(runsDir, { withFileTypes: true });
-    const dirs = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort().reverse();
-    for (const dir of dirs) {
-      const candidate = path.join(runsDir, dir, 'selection_candidates.json');
-      try {
-        await fs.access(candidate);
-        return candidate;
-      } catch {
-        // 继续检查下一个运行目录。
+async function latestCandidatesFile(runsDirs) {
+  const matches = [];
+  for (const runsDir of Array.isArray(runsDirs) ? runsDirs : [runsDirs]) {
+    try {
+      const entries = await fs.readdir(runsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const candidate = path.join(runsDir, entry.name, 'selection_candidates.json');
+        try {
+          const stat = await fs.stat(candidate);
+          matches.push({ path: candidate, mtimeMs: stat.mtimeMs });
+        } catch {
+          // 继续检查下一个运行目录。
+        }
       }
+    } catch {
+      // 继续检查下一个来源目录。
     }
-  } catch {
-    return null;
   }
-  return null;
+  matches.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return matches[0]?.path || null;
 }
 
 function formatRow(candidate, targetAccount) {
@@ -115,7 +124,9 @@ function formatRow(candidate, targetAccount) {
     '采集状态': status,
     '选品判断': judgement || '符合当前选品规则，已采集到店小秘。',
     '商品链接': candidate['商品链接'] || candidate.product_url || '',
-    'FastMoss 链接': candidate['FastMoss 链接'] || candidate.fastmoss_url || candidate['店铺链接'] || candidate.shop_url || ''
+    'FastMoss 链接': candidate['FastMoss 链接'] || candidate.fastmoss_url || '',
+    '出海匠链接': candidate['出海匠链接'] || candidate.chuhaijiang_url || candidate.chuhaijiangUrl || '',
+    '店铺链接': candidate['店铺链接'] || candidate.shop_url || ''
   };
 }
 

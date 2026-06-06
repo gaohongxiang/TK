@@ -10,7 +10,7 @@
 - 注意：`edit.json` 返回的是读取模型，不等于保存 DTO。直接把读取模型原样上传可能触发 `保存对象转换异常,请联系我们!`。
 - `op=1`：保存草稿。用于未授权移入待发布时的保守保存。
 - `op=2`：发布。禁止使用，除非用户在当前步骤明确授权发布并完成最终复核。
-- `op=3`：保存并移入待发布。当前用户已授权编辑完成后使用这个动作；这不是发布。
+- `op=3`：保存并移入待发布。这不是发布；只有用户在本次任务或本地项目规则里明确授权“保存并移入待发布/转入待发布”时使用。
 - `op=5`：定时发布。默认不使用。
 
 ## 工作原则
@@ -20,7 +20,7 @@
 - 保存前必须先生成差异报告，不能直接保存。
 - 只改分类、品牌、属性、标题、描述、重量、尺寸、材质、产地、保修等允许字段；需要改价时必须先按 `sku-pricing.md` 生成并确认 SKU 定价报告。
 - 默认必须保留 SKU、价格、库存、仓库、运费模板、税务、结算、支付、利润和佣金等字段。用户确认 SKU 定价报告后，只允许修改报告中列出的 SKU 价格字段。
-- 保存动作根据当前授权决定：未授权时只允许 `op=1` 保存草稿；当前用户已明确授权“编辑完的商品保存并转入待发布”，所以完整编辑并验证无误后使用 `op=3`。无论如何不得使用 `op=2` 发布，除非用户本次明确说发布。
+- 保存动作根据当前授权决定：未明确授权时只允许 `op=1` 保存草稿；用户本次或本地项目规则明确授权“编辑完保存并转入待发布”时，完整编辑并验证无误后使用 `op=3`。无论如何不得使用 `op=2` 发布，除非用户本次明确说发布。
 - 店小秘返回登录失效、验证、权限异常、接口异常、非 JSON、业务错误或无法识别商品对象时停止，不做规避。
 - 保存成功后才允许回写数据库；未保存成功不得标记 `店小秘编辑状态=已编辑`。
 
@@ -90,7 +90,7 @@
   - `sku.stockInfo = JSON.stringify([{ warehouse_id: dto.warehouseId, available_stock: 100 }])`
   - 同步商品级 `lowPrice`、`highPrice`、`price`、`stock`、`lowStock`、`highStock`
 - 设置 `dto.variationListStr = JSON.stringify(variations)` 后删除 `dto.variationList`。同时删除明显的前端/响应中间字段：`categoryList`、`productDiagnoses`、`multiShopProductList`、`multiShopDataList`、`replicateResultMap`、`replicateResultObj`。
-- 当前流程调用 `await service.v(dto, 3)` 保存并移入待发布；只有未授权移入待发布时才用 `op=1` 保存草稿。`op=2` 只在用户明确授权发布时使用。
+- 保存动作按授权选择：未明确授权移入待发布时用 `op=1` 保存草稿；已授权移入待发布时调用 `await service.v(dto, 3)`；`op=2` 只在用户明确授权发布时使用。
 - 保存返回成功后，必须重新 GET `/api/tiktokProduct/edit.json?id=<商品ID>` 或调用 `service.b(productId)` 验证：使用 `op=3` 时应为 `dxmState=offline` 且 `dxmOfflineState=waitPublish`；标题、描述图片数、描述文字、必填 `productAttributes`、重量尺寸、`lowPrice/highPrice/stock`、每个 SKU 的 `originalPrice/availableStock/stockInfo` 全部匹配。验证成功后才回写采集表。
 
 已确认的反例：
@@ -188,7 +188,7 @@ node skills/tk-product-editor/scripts/dxm-api-editor.mjs diff \
 
 如果补丁触及 SKU、价格、库存、仓库、运费模板、税务等受保护字段，脚本必须报错并停止。
 
-### 3. 确认后保存并移入待发布：首选前端 DTO 路线
+### 3. 确认后按授权保存：首选前端 DTO 路线
 
 用户确认 `diff-report.md` 后才允许保存。推荐流程：
 
@@ -199,8 +199,8 @@ node skills/tk-product-editor/scripts/dxm-api-editor.mjs diff \
 5. 只把已确认的白名单字段覆盖到 DTO：分类、品牌、属性、标题、描述、重量、尺寸等。
 6. SKU、库存、仓库、运费模板、税务、结算等字段从页面 store 原样带出，不自行重建。价格默认原样带出；只有用户已确认 SKU 定价报告时，才按报告覆盖对应 SKU 价格字段。
 7. 删除前端中间字段，例如 `variationBos`。
-8. 调用保存 service：当前授权下用 `await service.v(dto, 3)`。
-9. 保存返回成功后，重新读取 `edit.json` 或 `service.b(productId)` 验证关键字段完全匹配，且 `dxmOfflineState=waitPublish`，再回写数据库。
+8. 调用保存 service：未授权移入待发布时用 `op=1`；已授权移入待发布时用 `op=3`；发布 `op=2` 必须本次明确授权。
+9. 保存返回成功后，重新读取 `edit.json` 或 `service.b(productId)` 验证关键字段完全匹配；使用 `op=3` 时还要验证 `dxmOfflineState=waitPublish`，再回写数据库。
 
 最小伪代码：
 

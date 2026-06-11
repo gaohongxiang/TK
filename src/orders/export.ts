@@ -1,4 +1,5 @@
 import {
+  computeOrderActualProfit,
   computeOrderCreatorCommission,
   computeOrderEstimatedProfit,
   computeOrderPlatformFee,
@@ -40,6 +41,8 @@ const CSV_HEADERS = [
   '达人佣金(人民币)',
   '预估运费(人民币)',
   '预估利润(人民币)',
+  '结算金额(日元)',
+  '实际利润(人民币)',
   '重量',
   '尺寸',
   '订单状态',
@@ -121,7 +124,8 @@ function buildExportRows({
   computeWarningFn = computeWarning,
   computeOrderPlatformFeeFn = computeOrderPlatformFee,
   computeOrderCreatorCommissionFn = computeOrderCreatorCommission,
-  computeOrderEstimatedProfitFn = computeOrderEstimatedProfit
+  computeOrderEstimatedProfitFn = computeOrderEstimatedProfit,
+  computeOrderActualProfitFn = computeOrderActualProfit
 }: BuildOrderExportRowsOptions = {}): OrderExportRow[] {
   const pricingContext = normalizeOrderPricingContext(exchangeRate);
   return (Array.isArray(orders) ? orders : []).map(order => {
@@ -135,6 +139,9 @@ function buildExportRows({
     const estimatedProfit = typeof computeOrderEstimatedProfitFn === 'function'
       ? computeOrderEstimatedProfitFn(order, exchangeRate)
       : order?.['预估利润'];
+    const actualProfit = typeof computeOrderActualProfitFn === 'function'
+      ? computeOrderActualProfitFn(order, exchangeRate)
+      : order?.['实际利润'];
     return [
       order?.['账号'] || '',
       order?.['下单时间'] || '',
@@ -153,6 +160,8 @@ function buildExportRows({
       creatorCommission ?? '',
       order?.['预估运费'] || '',
       estimatedProfit ?? '',
+      order?.['结算金额'] || '',
+      actualProfit ?? '',
       order?.['重量'] || '',
       order?.['尺寸'] || '',
       order?.['订单状态'] || '',

@@ -30,7 +30,7 @@ TK 电商工具箱是面向 TikTok Shop 日本跨境店的 Vite React SPA。
 - `calculator/CalculatorApp.tsx`：利润计算器、海外运费、定价 V3、包邮转嫁、利润复盘。
 - `products/ProductsPage.tsx`：商品、SKU、账号筛选、商品弹窗、CSV 导出。
 - `orders/OrdersPage.tsx`：订单、订单明细、退款、包邮转嫁、预估利润、同步状态。
-- `finance/FinancePage.tsx`：真实回款、运营成本、押金占用、预估口径和现金口径。
+- `finance/FinancePage.tsx`：真实回款、运营成本、押金占用、预估口径和真实口径。
 - `collection/CollectionPage.tsx`：采集表、目标账号筛选、店小秘状态。
 - `analytics/AnalyticsRoute.tsx`：Excel 导入、ECharts 看板、分析快照。
 
@@ -97,7 +97,7 @@ Cloudflare Pages 不保存用户业务数据。不要新增平台方数据库来
 收支管理用于把订单预估利润和真实现金流分开看。
 
 - 预估口径：预估收入直接取订单管理当前筛选范围内的预估利润，运营成本来自手工录入的订单外成本。
-- 现金口径：现金净额 = TK 提现回款 - 订单成本 - 运营成本；订单成本由采购价和当前全局贴单费组成，不再扣订单预估运费。
+- 真实口径：实际净额 = TK 提现回款 - 订单成本 - 运营成本；订单成本由采购价和当前全局贴单费组成，不再扣订单预估运费。
 - 押金占用：押金 - 押金退回 - 押金扣除；押金本身只表示资金占用，押金扣除才算运营成本。
 - 公共账：没有账号归属的收支记录只进入“全部”和“公共账”，不会混入某个店铺账号。
 

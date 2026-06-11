@@ -44,7 +44,7 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /<TableHead>总售价\(円\)<\/TableHead>[\s\S]*<TableHead>总采购额\(¥\)<\/TableHead>[\s\S]*<TableHead>预估总海外运费\(¥\)<\/TableHead>[\s\S]*<TableHead>预估总利润\(¥\)<\/TableHead>/,
+  /<TableHead>售价\(円\)<\/TableHead>[\s\S]*<TableHead>采购额\(¥\)<\/TableHead>[\s\S]*<TableHead>预估总海外运费\(¥\)<\/TableHead>[\s\S]*<TableHead>预估利润\(¥\)<\/TableHead>/,
   '订单表头需要保留销售、采购、运费、利润金额列'
 );
 
@@ -73,15 +73,15 @@ assert.match(
 );
 
 const orders = [
-  { id: '1', '账号': 'A', '产品名称': '红色杯子', '采购价格': '12.5', '售价': '598', '预估运费': '10', '预估利润': '999' },
-  { id: '2', '账号': 'B', '产品名称': '蓝色盘子', '采购价格': '7', '售价': '360', '预估运费': '5.5', '预估利润': '999' },
+  { id: '1', '账号': 'A', '产品名称': '红色杯子', '采购价格': '12.5', '售价': '598', '预估运费': '10', '预估利润': '999', '结算金额': '500' },
+  { id: '2', '账号': 'B', '产品名称': '蓝色盘子', '采购价格': '7', '售价': '360', '预估运费': '5.5', '预估利润': '999', '结算金额': '320' },
   { id: '3', '账号': 'B', '产品名称': '蓝色盒子', '采购价格': '8.25', '售价': '420', '预估运费': '6.5', '预估利润': '999' },
   { id: '4', '账号': 'B', '产品名称': '异常价格', '采购价格': 'abc', '售价': '', '预估运费': '', '预估利润': '' }
 ];
 
 assert.match(
   ordersPageSource,
-  /filteredPlatformFeeTotal[\s\S]*filteredCreatorCommissionTotal[\s\S]*allPlatformFeeTotal[\s\S]*allCreatorCommissionTotal[\s\S]*buildExpenseNote[\s\S]*采购 \$\{formatSummaryMetric\(purchaseMetric\)\} \+ 运费 \$\{formatSummaryMetric\(shippingMetric\)\} \+ 平台 \$\{formatSummaryMetric\(platformFeeMetric\)\} \+ 达人 \$\{formatSummaryMetric\(creatorCommissionMetric\)\}/,
+  /filteredPlatformFeeTotal[\s\S]*filteredCreatorCommissionTotal[\s\S]*buildExpenseNote[\s\S]*采购 \$\{formatSummaryMetric\(purchaseMetric\)\} \+ 运费 \$\{formatSummaryMetric\(shippingMetric\)\} \+ 平台 \$\{formatSummaryMetric\(platformFeeMetric\)\} \+ 达人 \$\{formatSummaryMetric\(creatorCommissionMetric\)\}/,
   '统计卡片需要按收入和支出组织汇总信息，并把平台手续费和达人佣金计入支出'
 );
 
@@ -93,7 +93,7 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /buildSummaryMeta[\s\S]*含 \$\{refundMetric\.count\} 条退款/,
+  /buildEstimatedMeta[\s\S]*含 \$\{refundMetric\.count\} 条退款/,
   '统计说明需要补充退款订单条数'
 );
 
@@ -105,8 +105,26 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /ot-summary-hero[\s\S]*预估总利润/,
-  '统计卡片需要把预估利润总额放进独立主区'
+  /预估口径[\s\S]*预估利润[\s\S]*summary\.filteredProfitMetric[\s\S]*summary\.filteredSaleMetric/,
+  '统计区左侧需要按当前范围展示预估口径'
+);
+
+assert.match(
+  ordersPageSource,
+  /真实口径[\s\S]*实际利润[\s\S]*summary\.filteredActualProfitMetric[\s\S]*summary\.filteredSettlementJpyMetric/,
+  '统计区右侧需要按当前范围内已填写结算金额的订单展示真实口径'
+);
+
+assert.match(
+  ordersPageSource,
+  /已结算 \$\{summary\.filteredSettledCount\} 单[\s\S]*未结算 \$\{summary\.filteredUnsettledCount\} 单/,
+  '真实口径说明需要显示当前范围内已结算和未结算订单数'
+);
+
+assert.doesNotMatch(
+  ordersPageSource,
+  /全部订单[\s\S]*summary\.allProfitMetric|不受账号、搜索、分页影响/,
+  '统计区不应再用一张不受搜索影响的全部订单预估卡'
 );
 
 assert.match(
@@ -129,8 +147,8 @@ assert.doesNotMatch(
 
 assert.match(
   ordersPageSource,
-  /formatSummaryMetric\(profitMetric\)[\s\S]*formatSummaryMetric\(saleMetric\)[\s\S]*summary\.filteredProfitMetric[\s\S]*summary\.filteredSaleMetric/,
-  '统计卡片中的预估总利润和总销售额应直接按有效数据渲染'
+  /formatSummaryMetric\(summary\.filteredProfitMetric\)[\s\S]*formatSummaryMetric\(summary\.filteredSaleMetric\)/,
+  '统计卡片中的预估利润和总销售额应直接按当前范围有效数据渲染'
 );
 
 function toPlain(value) {
@@ -157,7 +175,18 @@ function toPlain(value) {
   assert.equal(summary.allShippingTotal, 22, '全部预估运费总额应按全量订单统计');
   assert.equal(summary.filteredProfitTotal, 11.75, '当前筛选预估总利润应按汇率折算后统计');
   assert.equal(summary.allProfitTotal, 19.15, '全部预估总利润应按汇率折算后统计');
+  assert.equal(summary.filteredActualProfitTotal, 9, '当前筛选实际利润应按已填写结算金额的订单统计');
+  assert.equal(summary.allActualProfitTotal, 21.5, '全部实际利润应按已填写结算金额的订单统计');
+  assert.equal(summary.filteredSettledCount, 1, '当前筛选已结算单数应只统计已填写结算金额的订单');
+  assert.equal(summary.filteredUnsettledCount, 1, '当前筛选未结算单数应统计未填写结算金额的订单');
+  assert.equal(summary.allSettledCount, 2, '全部已结算单数应只统计已填写结算金额的订单');
+  assert.equal(summary.allUnsettledCount, 2, '全部未结算单数应统计未填写结算金额的订单');
+  assert.equal(summary.filteredSettlementJpyTotal, 320, '当前筛选结算金额合计应按日元原值统计');
+  assert.equal(summary.filteredSettlementCnyTotal, 16, '当前筛选结算金额折人民币应按汇率统计');
+  assert.equal(summary.filteredActualCostTotal, 7, '当前筛选真实成本应按结算折人民币减实际利润统计');
   assert.equal(tableModule.formatSummaryMetric(summary.filteredProfitMetric), '¥ 11.75', '有数据时汇总金额应正常格式化');
+  assert.equal(tableModule.formatSummaryMetric(summary.filteredActualProfitMetric), '¥ 9.00', '实际利润汇总金额应正常格式化');
+  assert.equal(tableModule.formatJpySummaryMetric(summary.filteredSettlementJpyMetric), '円 320.00', '结算金额应按日元原值格式化');
   assert.equal(tableModule.formatSummaryMetric({ total: 0, count: 1 }), '¥ 0.00', '有真实数据且结果为 0 时应显示 0');
   assert.equal(tableModule.formatSummaryMetric({ total: 0, count: 0 }), '-', '无数据时汇总金额应显示为 -');
   assert.equal(tableModule.formatSummaryMetric({ total: Number.NaN, count: 1 }), '-', '无效金额不应被兜底显示为 0');

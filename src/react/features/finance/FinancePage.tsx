@@ -319,12 +319,12 @@ function FinanceSummaryView({
         </section>
         <section className={financeSummarySectionClass}>
           <div className={financeSummaryHeadClass}>
-            <div className={financeSummaryLabelClass}>现金口径</div>
+            <div className={financeSummaryLabelClass}>真实口径</div>
             <div className={financeSummaryMetaClass}>按实际到账计算，押金可切换计入净额</div>
           </div>
           <div className={heroClass(cashNetValue)}>
             <span className={financeSummaryHeroTitleClass}>
-              <span className={financeSummaryHeroLabelClass}>现金净额</span>
+              <span className={financeSummaryHeroLabelClass}>实际净额</span>
               {renderDepositSwitch()}
             </span>
             <strong className={heroValueClass(cashNetValue)}>{formatFinanceMoney(cashNetValue)}</strong>
@@ -593,8 +593,8 @@ function FinanceHelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <p><strong className="text-[var(--text)]">预估收入</strong> 直接取订单管理当前筛选范围内的预估利润，口径等同于订单页利润汇总。</p>
           <p><strong className="text-[var(--text)]">运营成本</strong> 是订单外真实成本，例如开店成本、IP 成本、投流成本、手续费、押金扣除和其他；押金本身只是占用，不算运营成本。</p>
           <p><strong className="text-[var(--text)]">押金占用</strong> = 成本里的押金 - 回款里的押金退回 - 成本里的押金扣除，用来观察仍被占用的押金金额。</p>
-          <p><strong className="text-[var(--text)]">现金口径</strong> = TK 提现回款 - 订单成本 - 运营成本；订单成本由采购价和当前全局贴单费组成，不再扣订单预估运费。</p>
-          <p><strong className="text-[var(--text)]">回款</strong> 是你实际到账或提现后的金额，允许滞后补录。它只影响现金口径，不会修改订单。</p>
+          <p><strong className="text-[var(--text)]">真实口径</strong> = TK 提现回款 - 订单成本 - 运营成本；订单成本由采购价和当前全局贴单费组成，不再扣订单预估运费。</p>
+          <p><strong className="text-[var(--text)]">回款</strong> 是你实际到账或提现后的金额，允许滞后补录。它只影响真实口径，不会修改订单。</p>
         </div>
         <DialogActions>
           <Button variant="primary" onClick={() => onOpenChange(false)}>知道了</Button>
@@ -974,7 +974,7 @@ function FinancePage({ active = true }: { active?: boolean }) {
       <ModuleWorkspace className="finance-page" data-react-finance-page-ready="true">
         <ModuleHeader
           title="收支管理"
-          description="把订单预估利润和实际回款分开看，单独记录运营成本、押金占用和押金扣除，方便判断现金口径。"
+          description="把订单预估利润和实际回款分开看，单独记录运营成本、押金占用和押金扣除，方便判断真实口径。"
         />
 
         <Card id="finance-main" className={!connected ? financeSetupCardClass : undefined}>

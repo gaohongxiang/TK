@@ -51,7 +51,7 @@ const orders = [
 
 assert.match(
   ordersPageSource,
-  /<TableHead>总售价\(円\)<\/TableHead>[\s\S]*<TableHead>总采购额\(¥\)<\/TableHead>[\s\S]*<TableHead>预估总海外运费\(¥\)<\/TableHead>[\s\S]*<TableHead>预估总利润\(¥\)<\/TableHead>/,
+  /<TableHead>售价\(円\)<\/TableHead>[\s\S]*<TableHead>采购额\(¥\)<\/TableHead>[\s\S]*<TableHead>预估总海外运费\(¥\)<\/TableHead>[\s\S]*<TableHead>预估利润\(¥\)<\/TableHead>/,
   '表格需要按订单总额口径展示金额列，并保持售价在采购额前面'
 );
 

@@ -1,4 +1,5 @@
 import {
+  computeOrderActualProfit,
   computeOrderCreatorCommission,
   computeOrderEstimatedProfit,
   computeOrderPlatformFee,
@@ -163,6 +164,10 @@ function computeOrderProfitAmount(order: OrderRecord, exchangeRate: unknown = nu
   return computeOrderEstimatedProfit(order, exchangeRate);
 }
 
+function computeOrderActualProfitAmount(order: OrderRecord, exchangeRate: unknown = null): number | null {
+  return computeOrderActualProfit(order, exchangeRate);
+}
+
 function formatTableMoneyValue(value: number): string {
   if (!Number.isFinite(value)) return '';
   return value.toFixed(2).replace(/\.?0+$/, '');
@@ -265,6 +270,20 @@ function formatSummaryMetric(metric?: OrderSummaryMetric | null): string {
   return formatCurrencyAmount(metric.total);
 }
 
+function formatJpyAmount(value: unknown): string {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return '-';
+  return `円 ${amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+}
+
+function formatJpySummaryMetric(metric?: OrderSummaryMetric | null): string {
+  if (!metric || !metric.count) return '-';
+  return formatJpyAmount(metric.total);
+}
+
 function getSummaryTone(metric?: OrderSummaryMetric | null, kind = 'neutral'): string {
   if (kind === 'income') return 'income';
   if (kind === 'expense') return 'expense';
@@ -296,6 +315,8 @@ function getOrderSearchText(order: OrderRecord): unknown[] {
     order?.['达人佣金'],
     order?.['预估运费'],
     order?.['预估利润'],
+    order?.['结算金额'],
+    order?.['实际利润'],
     order?.['重量'],
     order?.['尺寸'],
     order?.['订单状态'],
@@ -362,7 +383,8 @@ function derivePurchaseSummary({
   exchangeRate = null,
   computeOrderSaleCny,
   computeOrderCreatorCommission,
-  computeOrderPlatformFee
+  computeOrderPlatformFee,
+  computeOrderActualProfit
 }: DerivePurchaseSummaryOptions = {}): PurchaseSummary {
   const list = Array.isArray(orders) ? orders : [];
   const { sorted } = deriveDisplayedOrders({ orders: list, activeAccount, searchQuery, sortOrder });
@@ -404,6 +426,40 @@ function derivePurchaseSummary({
     total: roundMoney(allSale.total - (allPurchase.total + allShipping.total + allPlatformFee.total + allCreatorCommission.total)) ?? 0,
     count: Math.max(allSale.count || 0, allExpenseCount)
   };
+  const resolveActualProfit = (order: OrderRecord) => {
+    const settlement = parseMoneyAmount(order?.['结算金额']);
+    if (!settlement.hasValue) return null;
+    if (typeof computeOrderActualProfit === 'function') return computeOrderActualProfit(order, exchangeRate);
+    return computeOrderActualProfitAmount(order, exchangeRate);
+  };
+  const filteredActualProfit = sumResolvedMoneyAmount(sorted, resolveActualProfit);
+  const allActualProfit = sumResolvedMoneyAmount(list, resolveActualProfit);
+  const resolveSettlementJpy = (order: OrderRecord) => {
+    const settlement = parseMoneyAmount(order?.['结算金额']);
+    return settlement.hasValue ? settlement.amount : null;
+  };
+  const resolveSettlementCny = (order: OrderRecord) => {
+    const settlement = parseMoneyAmount(order?.['结算金额']);
+    const rate = parseExchangeRateValue(exchangeRate);
+    if (!settlement.hasValue || rate === null) return null;
+    return roundMoney(settlement.amount / rate);
+  };
+  const resolveActualCost = (order: OrderRecord) => {
+    const settlement = parseMoneyAmount(order?.['结算金额']);
+    if (!settlement.hasValue) return null;
+    const settlementCny = resolveSettlementCny(order);
+    const actualProfit = resolveActualProfit(order);
+    if (settlementCny === null || actualProfit === null) return null;
+    return roundMoney(settlementCny - actualProfit);
+  };
+  const filteredSettlementJpy = sumResolvedMoneyAmount(sorted, resolveSettlementJpy);
+  const allSettlementJpy = sumResolvedMoneyAmount(list, resolveSettlementJpy);
+  const filteredSettlementCny = sumResolvedMoneyAmount(sorted, resolveSettlementCny);
+  const allSettlementCny = sumResolvedMoneyAmount(list, resolveSettlementCny);
+  const filteredActualCost = sumResolvedMoneyAmount(sorted, resolveActualCost);
+  const allActualCost = sumResolvedMoneyAmount(list, resolveActualCost);
+  const filteredSettledCount = sorted.filter(order => parseMoneyAmount(order?.['结算金额']).hasValue).length;
+  const allSettledCount = list.filter(order => parseMoneyAmount(order?.['结算金额']).hasValue).length;
   return {
     filteredCount: sorted.length,
     allCount: list.length,
@@ -419,6 +475,18 @@ function derivePurchaseSummary({
     allCreatorCommissionTotal: allCreatorCommission.total,
     filteredProfitTotal: filteredProfit.total,
     allProfitTotal: allProfit.total,
+    filteredActualProfitTotal: filteredActualProfit.total,
+    allActualProfitTotal: allActualProfit.total,
+    filteredSettlementJpyTotal: filteredSettlementJpy.total,
+    allSettlementJpyTotal: allSettlementJpy.total,
+    filteredSettlementCnyTotal: filteredSettlementCny.total,
+    allSettlementCnyTotal: allSettlementCny.total,
+    filteredActualCostTotal: filteredActualCost.total,
+    allActualCostTotal: allActualCost.total,
+    filteredSettledCount,
+    allSettledCount,
+    filteredUnsettledCount: Math.max(0, sorted.length - filteredSettledCount),
+    allUnsettledCount: Math.max(0, list.length - allSettledCount),
     filteredPurchaseMetric: filteredPurchase,
     allPurchaseMetric: allPurchase,
     filteredSaleMetric: filteredSale,
@@ -434,7 +502,15 @@ function derivePurchaseSummary({
     filteredRefundMetric: filteredRefund,
     allRefundMetric: allRefund,
     filteredProfitMetric: filteredProfit,
-    allProfitMetric: allProfit
+    allProfitMetric: allProfit,
+    filteredActualProfitMetric: filteredActualProfit,
+    allActualProfitMetric: allActualProfit,
+    filteredSettlementJpyMetric: filteredSettlementJpy,
+    allSettlementJpyMetric: allSettlementJpy,
+    filteredSettlementCnyMetric: filteredSettlementCny,
+    allSettlementCnyMetric: allSettlementCny,
+    filteredActualCostMetric: filteredActualCost,
+    allActualCostMetric: allActualCost
   };
 }
 
@@ -525,11 +601,14 @@ const OrderTableView = {
   computeOrderCreatorCommissionAmount,
   computeOrderPlatformFeeAmount,
   computeOrderProfitAmount,
+  computeOrderActualProfitAmount,
   computeOrderSaleCnyAmount,
   deriveDisplayedOrders,
   derivePurchaseSummary,
   formatCompactCurrencyAmount,
   formatCurrencyAmount,
+  formatJpyAmount,
+  formatJpySummaryMetric,
   formatSummaryMetric,
   formatTableCellValue,
   formatTableMoneyValue,
@@ -555,11 +634,14 @@ export {
   computeOrderCreatorCommissionAmount,
   computeOrderPlatformFeeAmount,
   computeOrderProfitAmount,
+  computeOrderActualProfitAmount,
   computeOrderSaleCnyAmount,
   deriveDisplayedOrders,
   derivePurchaseSummary,
   formatCompactCurrencyAmount,
   formatCurrencyAmount,
+  formatJpyAmount,
+  formatJpySummaryMetric,
   formatSummaryMetric,
   formatTableCellValue,
   formatTableMoneyValue,

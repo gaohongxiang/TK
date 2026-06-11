@@ -25,6 +25,7 @@ type OrderPricingContext = {
   exchangeRate: number | null;
   platformFeeRate: number;
   customerShippingJpy: number;
+  labelFee: number;
 };
 
 const ORDER_SALE_PRICING_MODES = {
@@ -137,7 +138,8 @@ function normalizeOrderPricingContext(value: unknown = null): OrderPricingContex
   return {
     exchangeRate: parseExchangeRateValue(source.rate ?? source.exchangeRate),
     platformFeeRate: parseNonNegativeOrderMoneyValue(source.platformFeeRate, 0),
-    customerShippingJpy: parseNonNegativeOrderMoneyValue(source.customerShippingJpy, SHIPPING_DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY)
+    customerShippingJpy: parseNonNegativeOrderMoneyValue(source.customerShippingJpy, SHIPPING_DEFAULT_CONSTANTS.CUSTOMER_SHIPPING_JPY),
+    labelFee: parseNonNegativeOrderMoneyValue(source.labelFee, 0)
   };
 }
 
@@ -204,6 +206,14 @@ function computeOrderEstimatedProfit(order: OrderRecord, exchangeRate: unknown):
   const creatorCommission = (saleJpy * (commissionRate / 100)) / rate;
   const cnyNet = (effectiveSaleJpy / rate) - platformFee - creatorCommission;
   return roundMoney(cnyNet - purchase - shipping);
+}
+
+function computeOrderActualProfit(order: OrderRecord, pricingContext: unknown = null): number | null {
+  const { exchangeRate: rate, labelFee } = normalizeOrderPricingContext(pricingContext);
+  const settlementJpy = parseOrderMoneyValue(order?.['结算金额'] ?? order?.settlementAmount);
+  const purchase = parseOrderMoneyValue(order?.['采购价格'] ?? order?.purchasePrice);
+  if (rate === null || settlementJpy === null || purchase === null) return null;
+  return roundMoney((settlementJpy / rate) - purchase - labelFee);
 }
 
 function escapeHtml(value: unknown): string {
@@ -629,6 +639,10 @@ function create({
     return computeOrderEstimatedProfit(order, exchangeRate);
   }
 
+  function computeScopedOrderActualProfit(order, exchangeRate = null) {
+    return computeOrderActualProfit(order, exchangeRate);
+  }
+
   function normalizeOrderList(list) {
     return Array.isArray(list) ? list.map(normalizer.normalizeOrderRecord) : [];
   }
@@ -919,6 +933,7 @@ function create({
     computeOrderCreatorCommission: computeScopedOrderCreatorCommission,
     computeOrderPlatformFee: computeScopedOrderPlatformFee,
     computeOrderEstimatedProfit: computeScopedOrderEstimatedProfit,
+    computeOrderActualProfit: computeScopedOrderActualProfit,
     escapeHtml,
     normalizeStatusValue,
     hasLegacyOrderStructure: normalizer.hasLegacyOrderStructure,
@@ -962,6 +977,7 @@ export {
   create,
   normalizeOrderRecord,
   computeOrderEstimatedProfit,
+  computeOrderActualProfit,
   computeOrderPlatformFee,
   addDays,
   buildOrderCourierSummary,

@@ -39,6 +39,7 @@ import { ProductLibraryProviderFirestore } from '../../../products/provider-fire
 import {
   addDays,
   buildOrderItemsSummary,
+  computeOrderActualProfit,
   computeOrderCreatorCommission,
   computeOrderEstimatedProfit,
   computeOrderPlatformFee,
@@ -54,10 +55,10 @@ import {
   todayStr
 } from '../../../orders/shared.ts';
 import {
-  buildCurrentFilterTitle,
   buildOrderCourierSummary,
   deriveDisplayedOrders,
   derivePurchaseSummary,
+  formatJpySummaryMetric,
   formatSummaryMetric,
   formatTableCellValue,
   formatTableMoneyValue,
@@ -99,6 +100,8 @@ type OrderDraft = {
   purchasePrice: string;
   estimatedShippingFee: string;
   estimatedProfit: string;
+  settlementAmount: string;
+  actualProfit: string;
   creatorCommissionRate: string;
   creatorCommission: string;
   orderStatus: string;
@@ -413,6 +416,8 @@ function buildDraftFromOrder(order: OrderRecord | null, activeAccount: string, a
     purchasePrice: String(order?.['采购价格'] || ''),
     estimatedShippingFee: savedEstimatedShippingFee,
     estimatedProfit: String(order?.['预估利润'] || ''),
+    settlementAmount: String(order?.['结算金额'] || ''),
+    actualProfit: String(order?.['实际利润'] || ''),
     creatorCommissionRate: String(order?.['达人佣金率'] || ''),
     creatorCommission: String(order?.['达人佣金'] || ''),
     orderStatus: status,
@@ -520,6 +525,10 @@ function computeAutoFieldsWithContext(
     '达人佣金率': draft.creatorCommissionRate,
     '是否退款': draft.isRefunded ? '1' : ''
   }, pricingContext);
+  const actualProfit = computeOrderActualProfit({
+    '结算金额': draft.settlementAmount,
+    '采购价格': draft.purchasePrice || (totals.purchase ? formatNumericValue(totals.purchase) : '')
+  }, pricingContext);
   return {
     ...draft,
     items,
@@ -531,7 +540,8 @@ function computeAutoFieldsWithContext(
     sizeText,
     estimatedShippingFee,
     creatorCommission: commission === null ? '' : formatNumericValue(commission),
-    estimatedProfit: profit === null ? '' : formatNumericValue(profit)
+    estimatedProfit: profit === null ? '' : formatNumericValue(profit),
+    actualProfit: actualProfit === null ? '' : formatNumericValue(actualProfit)
   };
 }
 
@@ -684,8 +694,9 @@ const orderTrashItemHeadClass = 'flex items-start justify-between gap-3';
 const orderTrashItemTitleClass = 'min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-[var(--text)]';
 const orderTrashItemMetaClass = 'flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--muted)]';
 const orderTrashActionsClass = 'flex shrink-0 flex-wrap items-center justify-end gap-2';
-const orderMoneyRowClass = 'quint ot-money-row-top mt-[18px] !grid-cols-[70px_minmax(88px,.72fr)_minmax(88px,.72fr)_minmax(116px,.9fr)_minmax(170px,1.15fr)_minmax(118px,.9fr)] gap-[10px] max-[1100px]:!grid-cols-3 max-[768px]:!grid-cols-1 max-[768px]:mt-3';
+const orderMoneyRowClass = 'quint ot-money-row-top mt-[18px] !grid-cols-[76px_repeat(4,minmax(0,1fr))] gap-[10px] max-[1100px]:!grid-cols-3 max-[768px]:!grid-cols-1 max-[768px]:mt-3';
 const orderMetaRowClass = 'quint ot-meta-row mt-[18px] !grid-cols-[76px_repeat(4,minmax(0,1fr))] gap-[10px] max-[1100px]:!grid-cols-3 max-[768px]:!grid-cols-1 max-[768px]:mt-3';
+const orderSettlementRowClass = 'triple ot-settlement-row mt-[18px] !grid-cols-3 gap-[10px] max-[768px]:!grid-cols-1 max-[768px]:mt-3';
 const orderShippingRuleClass = 'ot-shipping-rule flex min-h-[42px] min-w-0 items-center rounded-xl border border-[var(--border)] bg-[var(--panel2)] px-3 py-1 text-[12px] leading-tight text-[var(--muted)] shadow-[inset_0_0_0_1px_rgba(255,255,255,.18)]';
 const orderShippingRuleTextClass = 'min-w-0 flex-1 truncate whitespace-nowrap';
 const orderShippingRuleButtonClass = 'ml-1 inline-flex h-[20px] rounded-md px-1.5 py-0 align-[-3px] text-[10px] font-medium tracking-normal';
@@ -724,6 +735,7 @@ const orderSummaryHeroClass = 'ot-summary-hero mt-[18px] flex items-baseline jus
 const orderSummaryHeroLabelClass = 'ot-summary-hero-label block flex-1 text-[13px] leading-normal text-[color-mix(in_srgb,var(--muted)_86%,var(--text))]';
 const orderSummaryHeroValueClass = 'ot-summary-hero-value block flex-none text-right text-3xl font-extrabold leading-[1.05] tracking-normal text-[var(--text)] max-[640px]:text-[22px]';
 const orderSummaryLedgerClass = 'ot-summary-ledger mt-[18px] grid grid-cols-[minmax(150px,.82fr)_minmax(230px,1.18fr)] gap-x-12 gap-y-3 border-t border-[color-mix(in_srgb,var(--border)_82%,white)] pt-3.5 max-[900px]:grid-cols-[minmax(140px,.9fr)_minmax(210px,1.1fr)] max-[900px]:gap-x-7 max-[640px]:grid-cols-1';
+const orderSummaryActualLedgerClass = cn(orderSummaryLedgerClass, 'grid-cols-[minmax(170px,1fr)_minmax(170px,1fr)] max-[900px]:grid-cols-2 max-[640px]:grid-cols-1');
 const orderSummaryLedgerItemClass = 'ot-summary-ledger-item min-w-0';
 const orderSummaryLedgerIncomeClass = cn(orderSummaryLedgerItemClass, 'is-income');
 const orderSummaryLedgerExpenseClass = cn(orderSummaryLedgerItemClass, 'is-expense');
@@ -981,15 +993,13 @@ function OrdersSummary({
   activeAccount,
   searchQuery,
   sortOrder,
-  pricingContext,
-  accounts
+  pricingContext
 }: {
   orders: OrderRecord[];
   activeAccount: string;
   searchQuery: string;
   sortOrder: string;
   pricingContext: PricingContext;
-  accounts: string[];
 }) {
   const summary = derivePurchaseSummary({
     orders,
@@ -999,10 +1009,10 @@ function OrdersSummary({
     exchangeRate: pricingContext,
     computeOrderPlatformFee,
     computeOrderCreatorCommission,
-    computeOrderEstimatedProfit
+    computeOrderEstimatedProfit,
+    computeOrderActualProfit
   });
   const expenseValue = (summary.filteredTotal || 0) + (summary.filteredShippingTotal || 0) + (summary.filteredPlatformFeeTotal || 0) + (summary.filteredCreatorCommissionTotal || 0);
-  const allExpenseValue = (summary.allTotal || 0) + (summary.allShippingTotal || 0) + (summary.allPlatformFeeTotal || 0) + (summary.allCreatorCommissionTotal || 0);
 
   function buildIncomeNote(grossMetric: OrderSummaryMetric, refundMetric: OrderSummaryMetric) {
     if (!refundMetric?.count) return `销售 ${formatSummaryMetric(grossMetric)}`;
@@ -1018,44 +1028,62 @@ function OrdersSummary({
     return `采购 ${formatSummaryMetric(purchaseMetric)} + 运费 ${formatSummaryMetric(shippingMetric)} + 平台 ${formatSummaryMetric(platformFeeMetric)} + 达人 ${formatSummaryMetric(creatorCommissionMetric)}`;
   }
 
-  function buildSummaryMeta(prefix: string, count: number, refundMetric: OrderSummaryMetric) {
-    return `${prefix} · 共 ${count} 条${refundMetric?.count ? ` · 含 ${refundMetric.count} 条退款` : ''}`;
+  function buildEstimatedMeta(count: number, refundMetric: OrderSummaryMetric) {
+    return `当前范围 · 共 ${count} 条${refundMetric?.count ? ` · 含 ${refundMetric.count} 条退款` : ''}`;
   }
 
-  function card(
-    title: string,
-    profitMetric: OrderSummaryMetric,
-    saleMetric: OrderSummaryMetric,
-    grossMetric: OrderSummaryMetric,
-    refundMetric: OrderSummaryMetric,
-    purchaseMetric: OrderSummaryMetric,
-    shippingMetric: OrderSummaryMetric,
-    platformFeeMetric: OrderSummaryMetric,
-    creatorCommissionMetric: OrderSummaryMetric,
-    expenseTotal: number,
-    count: number,
-    meta: string
-  ) {
+  function buildActualMeta() {
+    return `当前范围 · 已结算 ${summary.filteredSettledCount} 单 · 未结算 ${summary.filteredUnsettledCount} 单`;
+  }
+
+  function estimatedCard() {
     return (
       <section className={orderSummarySectionClass}>
         <div className={orderSummaryHeadClass}>
-          <div className={orderSummaryLabelClass}>{title}</div>
-          <div className={orderSummaryMetaClass}>{meta}</div>
+          <div className={orderSummaryLabelClass}>预估口径</div>
+          <div className={orderSummaryMetaClass}>{buildEstimatedMeta(summary.filteredCount, summary.filteredRefundMetric)}</div>
         </div>
-        <div className={orderSummaryHeroClassForMetric(profitMetric)}>
-          <span className={orderSummaryHeroLabelClass}>预估总利润</span>
-          <strong className={orderSummaryHeroValueClassForMetric(profitMetric)}>{formatSummaryMetric(profitMetric)}</strong>
+        <div className={orderSummaryHeroClassForMetric(summary.filteredProfitMetric)}>
+          <span className={orderSummaryHeroLabelClass}>预估利润</span>
+          <strong className={orderSummaryHeroValueClassForMetric(summary.filteredProfitMetric)}>{formatSummaryMetric(summary.filteredProfitMetric)}</strong>
         </div>
         <div className={orderSummaryLedgerClass}>
           <div className={orderSummaryLedgerIncomeClass}>
             <span className={orderSummaryLedgerLabelClass}>收入</span>
-            <strong className={orderSummaryLedgerIncomeValueClass}>{formatSummaryMetric(saleMetric)}</strong>
-            <span className={orderSummaryLedgerNoteClass}>{buildIncomeNote(grossMetric, refundMetric)}</span>
+            <strong className={orderSummaryLedgerIncomeValueClass}>{formatSummaryMetric(summary.filteredSaleMetric)}</strong>
+            <span className={orderSummaryLedgerNoteClass}>{buildIncomeNote(summary.filteredGrossSaleMetric, summary.filteredRefundMetric)}</span>
           </div>
           <div className={orderSummaryLedgerExpenseClass}>
             <span className={orderSummaryLedgerLabelClass}>支出</span>
-            <strong className={orderSummaryLedgerExpenseValueClass}>{count ? `¥ ${expenseTotal.toFixed(2)}` : '-'}</strong>
-            <span className={orderSummaryLedgerNoteClass}>{buildExpenseNote(purchaseMetric, shippingMetric, platformFeeMetric, creatorCommissionMetric)}</span>
+            <strong className={orderSummaryLedgerExpenseValueClass}>{summary.filteredCount ? `¥ ${expenseValue.toFixed(2)}` : '-'}</strong>
+            <span className={orderSummaryLedgerNoteClass}>{buildExpenseNote(summary.filteredPurchaseMetric, summary.filteredShippingMetric, summary.filteredPlatformFeeMetric, summary.filteredCreatorCommissionMetric)}</span>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function actualCard() {
+    return (
+      <section className={orderSummarySectionClass}>
+        <div className={orderSummaryHeadClass}>
+          <div className={orderSummaryLabelClass}>真实口径</div>
+          <div className={orderSummaryMetaClass}>{buildActualMeta()}</div>
+        </div>
+        <div className={orderSummaryHeroClassForMetric(summary.filteredActualProfitMetric)}>
+          <span className={orderSummaryHeroLabelClass}>实际利润</span>
+          <strong className={orderSummaryHeroValueClassForMetric(summary.filteredActualProfitMetric)}>{formatSummaryMetric(summary.filteredActualProfitMetric)}</strong>
+        </div>
+        <div className={orderSummaryActualLedgerClass}>
+          <div className={orderSummaryLedgerIncomeClass}>
+            <span className={orderSummaryLedgerLabelClass}>结算金额</span>
+            <strong className={orderSummaryLedgerIncomeValueClass}>{formatJpySummaryMetric(summary.filteredSettlementJpyMetric)}</strong>
+            <span className={orderSummaryLedgerNoteClass}>折合 {formatSummaryMetric(summary.filteredSettlementCnyMetric)}</span>
+          </div>
+          <div className={orderSummaryLedgerExpenseClass}>
+            <span className={orderSummaryLedgerLabelClass}>真实成本</span>
+            <strong className={orderSummaryLedgerExpenseValueClass}>{formatSummaryMetric(summary.filteredActualCostMetric)}</strong>
+            <span className={orderSummaryLedgerNoteClass}>采购价 + 贴单费，仅统计已结算订单</span>
           </div>
         </div>
       </section>
@@ -1065,34 +1093,8 @@ function OrdersSummary({
   return (
     <div className={orderSummarySurfaceClass}>
       <div className={orderSummaryGridClass}>
-        {card(
-          buildCurrentFilterTitle(activeAccount, searchQuery, { accounts }),
-          summary.filteredProfitMetric,
-          summary.filteredSaleMetric,
-          summary.filteredGrossSaleMetric,
-          summary.filteredRefundMetric,
-          summary.filteredPurchaseMetric,
-          summary.filteredShippingMetric,
-          summary.filteredPlatformFeeMetric,
-          summary.filteredCreatorCommissionMetric,
-          expenseValue,
-          summary.filteredCount,
-          buildSummaryMeta('受账号标签和搜索影响', summary.filteredCount, summary.filteredRefundMetric)
-        )}
-        {card(
-          '全部订单',
-          summary.allProfitMetric,
-          summary.allSaleMetric,
-          summary.allGrossSaleMetric,
-          summary.allRefundMetric,
-          summary.allPurchaseMetric,
-          summary.allShippingMetric,
-          summary.allPlatformFeeMetric,
-          summary.allCreatorCommissionMetric,
-          allExpenseValue,
-          summary.allCount,
-          buildSummaryMeta('不受账号、搜索、分页影响', summary.allCount, summary.allRefundMetric)
-        )}
+        {estimatedCard()}
+        {actualCard()}
       </div>
     </div>
   );
@@ -1189,7 +1191,7 @@ function OrdersTable({
             />
           ) : (
             <TableFrame>
-              <Table className="orders-react-table mt-1.5 min-w-[1240px] text-[13px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_tbody_tr.is-refunded:hover]:bg-[rgba(196,78,78,.09)] [&_tbody_tr.is-refunded]:bg-[rgba(196,78,78,.055)] [&_tbody_tr:hover]:bg-[rgba(110,168,255,.05)] max-[768px]:text-[13px] max-[768px]:[&_td]:px-1.5 max-[768px]:[&_td]:py-[9px] max-[768px]:[&_th]:px-1.5 max-[768px]:[&_th]:py-[9px] max-[768px]:[&_th]:text-[10.5px]">
+              <Table className="orders-react-table mt-1.5 min-w-[1360px] text-[13px] [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap [&_tbody_tr.is-refunded:hover]:bg-[rgba(196,78,78,.09)] [&_tbody_tr.is-refunded]:bg-[rgba(196,78,78,.055)] [&_tbody_tr:hover]:bg-[rgba(110,168,255,.05)] max-[768px]:text-[13px] max-[768px]:[&_td]:px-1.5 max-[768px]:[&_td]:py-[9px] max-[768px]:[&_th]:px-1.5 max-[768px]:[&_th]:py-[9px] max-[768px]:[&_th]:text-[10.5px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>#</TableHead>
@@ -1201,10 +1203,12 @@ function OrdersTable({
                     <TableHead>订单号</TableHead>
                     <TableHead>产品名称</TableHead>
                     <TableHead>数量</TableHead>
-                    <TableHead>总售价(円)</TableHead>
-                    <TableHead>总采购额(¥)</TableHead>
+                    <TableHead>售价(円)</TableHead>
+                    <TableHead>采购额(¥)</TableHead>
                     <TableHead>预估总海外运费(¥)</TableHead>
-                    <TableHead>预估总利润(¥)</TableHead>
+                    <TableHead>预估利润(¥)</TableHead>
+                    <TableHead>结算金额(円)</TableHead>
+                    <TableHead>实际利润(¥)</TableHead>
                     <TableHead>总重量</TableHead>
                     <TableHead>总尺寸</TableHead>
                     <TableHead>订单状态</TableHead>
@@ -1220,6 +1224,7 @@ function OrdersTable({
                     const seqNum = sortOrder === 'asc' ? absoluteIndex + 1 : sorted.length - absoluteIndex;
                     const warn = computeWarning(order);
                     const profit = computeOrderEstimatedProfit(order, pricingContext);
+                    const actualProfit = computeOrderActualProfit(order, pricingContext);
                     const courierSummary = buildOrderCourierSummary(order, 'company', 'full');
                     const trackingSummary = buildOrderCourierSummary(order, 'tracking', 'full');
                     const warningTone = badgeToneMap[(warn.cls || 'muted') as keyof typeof badgeToneMap] || 'default';
@@ -1238,6 +1243,8 @@ function OrdersTable({
                         <TableCell>{formatTableCellValue(order['采购价格'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['预估运费'])}</TableCell>
                         <TableCell><span className={getProfitValueClass(getProfitCellToneClass(profit))}>{formatTableMoneyValue(profit) || '-'}</span></TableCell>
+                        <TableCell>{formatTableCellValue(order['结算金额'])}</TableCell>
+                        <TableCell><span className={getProfitValueClass(getProfitCellToneClass(actualProfit))}>{formatTableMoneyValue(actualProfit) || '-'}</span></TableCell>
                         <TableCell>{formatTableCellValue(order['重量'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['尺寸'])}</TableCell>
                         <TableCell>{formatTableCellValue(order['订单状态'])}</TableCell>
@@ -1447,7 +1454,7 @@ function OrderModal({
                 <span className={cn(orderTransferKnobClass, draft.salePricingMode === SALE_PRICING_MODE_TRANSFER ? orderTransferKnobCheckedClass : '')} aria-hidden="true"></span>
               </label>
             </FormField>
-            <FormField label="总售价（円）" className={cn(orderSaleFieldClass, draft.isRefunded ? 'is-refunded' : '')}>
+            <FormField label="售价（円）" className={cn(orderSaleFieldClass, draft.isRefunded ? 'is-refunded' : '')}>
               <div className={orderSaleInputWrapClass}>
                 <DecimalInput className={draft.isRefunded ? 'opacity-0 pointer-events-none' : ''} id="ot-total-sale" name="售价" min="0" step="0.01" readOnly={draft.isRefunded} value={draft.salePrice} onChange={value => updateDraft({ salePrice: value })} />
                 <div className={cn(orderSaleInputRefundClass, draft.isRefunded ? 'flex' : '')} aria-hidden="true">
@@ -1456,7 +1463,7 @@ function OrderModal({
                 </div>
               </div>
             </FormField>
-            <FormField label="总采购额（¥）">
+            <FormField label="采购额（¥）">
               <DecimalInput id="ot-total-purchase" name="采购价格" min="0" step="0.01" value={draft.purchasePrice} onChange={value => updateDraft({ purchasePrice: value })} />
             </FormField>
             <FormField
@@ -1507,9 +1514,6 @@ function OrderModal({
                 <span className={orderShippingRuleTextClass}>{pricingRuleText}</span>
               </div>
             </FormField>
-            <FormField label={<>预估利润（¥） <InlineToken>自动</InlineToken></>} labelClassName={orderProfitLabelClass}>
-              <DecimalInput name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
-            </FormField>
           </FormRow>
           <FormRow columns={5} className={orderMetaRowClass}>
             <FormField label="是否退款" className="ot-refund-field">
@@ -1532,6 +1536,17 @@ function OrderModal({
             </FormField>
             <FormField label={<>订单预警 <InlineToken>自动</InlineToken></>}>
               <Input name="订单预警" readOnly value={draft.warningText} />
+            </FormField>
+          </FormRow>
+          <FormRow columns={3} className={orderSettlementRowClass}>
+            <FormField label={<>预估利润（¥） <InlineToken>自动</InlineToken></>} labelClassName={orderProfitLabelClass}>
+              <DecimalInput name="预估利润" step="0.01" readOnly value={draft.estimatedProfit} />
+            </FormField>
+            <FormField label="结算金额（円）">
+              <DecimalInput name="结算金额" min="0" step="0.01" value={draft.settlementAmount} onChange={value => updateDraft({ settlementAmount: value })} />
+            </FormField>
+            <FormField label={<>实际利润（¥） <InlineToken>自动</InlineToken></>} labelClassName={orderProfitLabelClass}>
+              <DecimalInput name="实际利润" step="0.01" readOnly value={draft.actualProfit} />
             </FormField>
           </FormRow>
           <FormRow columns={1} className="mt-[18px] max-[768px]:mt-3">
@@ -2180,6 +2195,8 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       '预估运费': autoDraft.estimatedShippingFee,
       estimatedShippingFeeMode: autoDraft.shippingFeeMode,
       '预估利润': autoDraft.estimatedProfit,
+      '结算金额': autoDraft.settlementAmount,
+      '实际利润': autoDraft.actualProfit,
       '重量': autoDraft.weightText,
       '尺寸': autoDraft.sizeText,
       '订单状态': autoDraft.orderStatus,
@@ -2463,7 +2480,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
       <ModuleWorkspace className="orders-page" data-react-orders-page-ready="true">
         <ModuleHeader
           title="订单管理"
-          description="记录每笔订单的商品、采购、物流、售价和状态，按账号汇总收入、支出、退款和预估利润。"
+          description="记录每笔订单的商品、采购、物流、售价和状态，按账号汇总收入、支出、退款、预估利润和结算利润。"
         />
 
         <Card id="ot-main" className={!connected ? orderSetupCardClass : undefined}>
@@ -2501,7 +2518,7 @@ function OrdersPage({ active = true }: { active?: boolean }) {
             <>
               <ModuleToolbar id="ot-header-summary-row" className={cn(orderHeaderRowClass, 'ot-header-summary-row')}>
               <div id="ot-summary-container" className={orderSummaryContainerClass}>
-                <OrdersSummary orders={orders} activeAccount={activeAccount} searchQuery={searchQuery} sortOrder={sortOrder} pricingContext={pricingContext} accounts={allAccounts} />
+                <OrdersSummary orders={orders} activeAccount={activeAccount} searchQuery={searchQuery} sortOrder={sortOrder} pricingContext={pricingContext} />
               </div>
               </ModuleToolbar>
               <ModuleAccountTabs id="ot-header-accounts-row" className={cn(orderHeaderRowClass, 'ot-header-accounts-row')}>

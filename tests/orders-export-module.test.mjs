@@ -50,14 +50,14 @@ assert.match(
 
 assert.match(
   esmSource,
-  /售价口径[\s\S]*采购价格[\s\S]*售价\(日元\)[\s\S]*平台手续费率\(%\)[\s\S]*平台手续费\(人民币\)[\s\S]*达人佣金率\(%\)[\s\S]*达人佣金\(人民币\)[\s\S]*预估运费\(人民币\)[\s\S]*预估利润\(人民币\)/,
-  'CSV 导出需要明确标注售价口径、售价为日元、平台手续费/达人佣金/运费/利润为人民币'
+  /售价口径[\s\S]*采购价格[\s\S]*售价\(日元\)[\s\S]*平台手续费率\(%\)[\s\S]*平台手续费\(人民币\)[\s\S]*达人佣金率\(%\)[\s\S]*达人佣金\(人民币\)[\s\S]*预估运费\(人民币\)[\s\S]*预估利润\(人民币\)[\s\S]*结算金额\(日元\)[\s\S]*实际利润\(人民币\)/,
+  'CSV 导出需要明确标注售价口径、售价/结算为日元，其余费用/利润为人民币'
 );
 
 assert.match(
   esmSource,
-  /computeOrderPlatformFee[\s\S]*computeOrderCreatorCommission[\s\S]*computeOrderEstimatedProfit/,
-  'CSV 导出需要按当前 V3 参数重新计算平台手续费、达人佣金和人民币预估利润，不能直接信任旧存量字段'
+  /computeOrderPlatformFee[\s\S]*computeOrderCreatorCommission[\s\S]*computeOrderEstimatedProfit[\s\S]*computeOrderActualProfit/,
+  'CSV 导出需要按当前 V3 参数重新计算平台手续费、达人佣金、预估利润和实际利润'
 );
 
 assert.ok(!fs.existsSync(path.join(__dirname, '..', 'src', 'orders', 'index.mjs')), '完整 React SPA 重建后旧订单 DOM 入口应删除');
@@ -97,6 +97,7 @@ assert.doesNotMatch(
       '售价': '1350',
       '达人佣金率': '10',
       '预估运费': '5',
+      '结算金额': '784',
       '重量': '500',
       '尺寸': '10×10×10',
       '订单状态': '已采购',
@@ -135,7 +136,7 @@ assert.doesNotMatch(
 
   const rows = exportModule.buildExportRows({
     orders: [orders[0]],
-    exchangeRate: { rate: 20, platformFeeRate: 10 },
+    exchangeRate: { rate: 20, platformFeeRate: 10, labelFee: 1.2 },
     computeWarningFn: () => ({ text: '剩 6 天' })
   });
 
@@ -150,6 +151,8 @@ assert.doesNotMatch(
   assert.equal(rows[0][12], 6.75, 'ESM 订单导出模块应按 V3 当前参数计算包邮转嫁平台手续费');
   assert.equal(rows[0][14], 6.75, 'ESM 订单导出模块应按实际商品售价计算包邮转嫁达人佣金');
   assert.equal(rows[0][16], 11.5, 'ESM 订单导出模块应按当前 V3 参数计算包邮转嫁预估利润');
+  assert.equal(rows[0][17], '784', 'ESM 订单导出模块应导出平台结算金额');
+  assert.equal(rows[0][18], 18, 'ESM 订单导出模块应按结算金额计算实际利润');
   assert.equal(rows[0].at(-1), '催采购', 'ESM 订单导出模块应包含订单备注');
 
   const csv = exportModule.buildOrdersCsv({ rows });

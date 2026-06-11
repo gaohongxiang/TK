@@ -82,7 +82,7 @@ assert.match(
 
 assert.match(
   finance,
-  /收支数据保存到你自己的 Firebase Firestore[\s\S]*预估口径[\s\S]*现金口径[\s\S]*公共账[\s\S]*finance_records/,
+  /收支数据保存到你自己的 Firebase Firestore[\s\S]*预估口径[\s\S]*真实口径[\s\S]*公共账[\s\S]*finance_records/,
   '收支文档需要说明保存位置、两套口径、公共账和 Firestore 集合'
 );
 
@@ -112,7 +112,7 @@ assert.match(
 
 assert.match(
   technicalArchitecture,
-  /# TK 技术架构[\s\S]*## 入口[\s\S]*src\/react\/app\/App\.tsx[\s\S]*## 领域代码[\s\S]*src\/calc\/[\s\S]*src\/finance\/[\s\S]*## 数据边界[\s\S]*收支记录[\s\S]*用户 Firestore[\s\S]*## 计算口径[\s\S]*包邮转嫁[\s\S]*## 收支口径[\s\S]*现金净额[\s\S]*## 平台接口边界[\s\S]*不把平台第三方接口作为技术路线[\s\S]*## 测试/,
+  /# TK 技术架构[\s\S]*## 入口[\s\S]*src\/react\/app\/App\.tsx[\s\S]*## 领域代码[\s\S]*src\/calc\/[\s\S]*src\/finance\/[\s\S]*## 数据边界[\s\S]*收支记录[\s\S]*用户 Firestore[\s\S]*## 计算口径[\s\S]*包邮转嫁[\s\S]*## 收支口径[\s\S]*实际净额[\s\S]*## 平台接口边界[\s\S]*不把平台第三方接口作为技术路线[\s\S]*## 测试/,
   '技术架构文档需要取代旧交接文档，记录当前架构、数据边界、计算口径、收支口径和平台接口边界'
 );
 

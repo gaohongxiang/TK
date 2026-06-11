@@ -49,7 +49,7 @@ assert.match(
 assert.match(
   financeSummarySource,
   /derivePurchaseSummary[\s\S]*estimatedIncome[\s\S]*repaymentIncome[\s\S]*cashOrderCost[\s\S]*cashNetProfit/,
-  '预估收入需要复用订单利润，现金口径需要用回款扣订单成本和运营成本'
+  '预估收入需要复用订单利润，真实口径需要用回款扣订单成本和运营成本'
 );
 
 assert.match(
@@ -78,8 +78,8 @@ assert.match(
 
 assert.match(
   financePageSource,
-  /预估口径[\s\S]*来自订单管理预估利润[\s\S]*预估净利润[\s\S]*renderDepositSwitch\(\)[\s\S]*预估收入[\s\S]*运营成本[\s\S]*押金占用[\s\S]*现金口径[\s\S]*现金净额[\s\S]*renderDepositSwitch\(\)[\s\S]*回款[\s\S]*订单成本[\s\S]*运营成本[\s\S]*押金占用/,
-  '收支页面左侧保持预估口径，右侧需要改成现金口径并支持净额是否扣押金'
+  /预估口径[\s\S]*来自订单管理预估利润[\s\S]*预估净利润[\s\S]*renderDepositSwitch\(\)[\s\S]*预估收入[\s\S]*运营成本[\s\S]*押金占用[\s\S]*真实口径[\s\S]*实际净额[\s\S]*renderDepositSwitch\(\)[\s\S]*回款[\s\S]*订单成本[\s\S]*运营成本[\s\S]*押金占用/,
+  '收支页面左侧保持预估口径，右侧需要改成真实口径并支持净额是否扣押金'
 );
 
 assert.match(
@@ -91,7 +91,7 @@ assert.match(
 assert.match(
   financePageSource,
   /financeSummaryCashLedgerClass = 'finance-summary-ledger finance-summary-cash-ledger[\s\S]*grid-cols-4[\s\S]*financeSummaryCashLedgerValueClass = '[^']*text-\[16px\][\s\S]*financeSummaryCashLedgerNoteClass = '[^']*text-\[10px\]/,
-  '现金口径需要用更紧凑的四列展示回款、订单成本、运营成本和押金占用'
+  '真实口径需要用更紧凑的四列展示回款、订单成本、运营成本和押金占用'
 );
 
 assert.match(
@@ -126,7 +126,7 @@ assert.match(
 
 assert.match(
   financePageSource,
-  /financeSummarySurfaceClass[\s\S]*financeSummaryGridClass[\s\S]*grid-cols-2[\s\S]*预估口径[\s\S]*预估净利润[\s\S]*现金口径[\s\S]*现金净额/,
+  /financeSummarySurfaceClass[\s\S]*financeSummaryGridClass[\s\S]*grid-cols-2[\s\S]*预估口径[\s\S]*预估净利润[\s\S]*真实口径[\s\S]*实际净额/,
   '收支汇总需要使用和订单管理一致的左右双栏账本布局'
 );
 
@@ -144,8 +144,8 @@ assert.doesNotMatch(
 
 assert.match(
   financePageSource,
-  /cashOrderCostNote = `采购价 \$\{formatCompactFinanceMoney\(summary\.orderPurchaseCost\.total\)\} \/ 贴单费 \$\{formatCompactFinanceMoney\(summary\.orderLabelFee\.total\)\}`[\s\S]*按实际到账计算，押金可切换计入净额[\s\S]*现金净额[\s\S]*summary\.repaymentIncome\.total[\s\S]*TK 结算已扣运费[\s\S]*订单成本[\s\S]*summary\.cashOrderCost\.total[\s\S]*押金占用[\s\S]*summary\.depositBalance/,
-  '右侧现金口径需要说明 TK 运费已在回款中扣除，并把采购价+贴单费合并为订单成本'
+  /cashOrderCostNote = `采购价 \$\{formatCompactFinanceMoney\(summary\.orderPurchaseCost\.total\)\} \/ 贴单费 \$\{formatCompactFinanceMoney\(summary\.orderLabelFee\.total\)\}`[\s\S]*按实际到账计算，押金可切换计入净额[\s\S]*实际净额[\s\S]*summary\.repaymentIncome\.total[\s\S]*TK 结算已扣运费[\s\S]*订单成本[\s\S]*summary\.cashOrderCost\.total[\s\S]*押金占用[\s\S]*summary\.depositBalance/,
+  '右侧真实口径需要说明 TK 运费已在回款中扣除，并把采购价+贴单费合并为订单成本'
 );
 
 assert.match(
@@ -247,16 +247,16 @@ const summary = module.deriveFinanceSummary({
 
 assert.strictEqual(summary.estimatedIncome.total, 25, '订单利润 1000 / 20 - 20 - 5 应作为预估收入');
 assert.strictEqual(summary.actualIncome.total, 50, '回款总额应包含 TK 提现和押金退回');
-assert.strictEqual(summary.repaymentIncome.total, 40, '现金口径回款应排除押金退回，避免押金口径重复计算');
+assert.strictEqual(summary.repaymentIncome.total, 40, '真实口径回款应排除押金退回，避免押金口径重复计算');
 assert.strictEqual(summary.costs.total, 17, '运营成本应包含普通成本和押金扣除，不包含押金占用');
-assert.strictEqual(summary.orderPurchaseCost.total, 20, '现金口径订单成本需要包含订单采购价');
-assert.strictEqual(summary.orderLabelFee.total, 1.2, '现金口径订单成本需要按订单数乘以全局贴单费');
-assert.strictEqual(summary.cashOrderCost.total, 21.2, '现金口径订单成本 = 采购价 + 贴单费');
+assert.strictEqual(summary.orderPurchaseCost.total, 20, '真实口径订单成本需要包含订单采购价');
+assert.strictEqual(summary.orderLabelFee.total, 1.2, '真实口径订单成本需要按订单数乘以全局贴单费');
+assert.strictEqual(summary.cashOrderCost.total, 21.2, '真实口径订单成本 = 采购价 + 贴单费');
 assert.strictEqual(summary.depositsPaid.total, 30, '押金类别需要单独汇总为押金占用来源');
 assert.strictEqual(summary.depositsReturned.total, 10, '押金退回需要单独汇总');
 assert.strictEqual(summary.depositLosses.total, 5, '押金扣除需要汇总为押金损失/扣除');
 assert.strictEqual(summary.estimatedNetProfit, 8, '预估净利润默认 = 预估收入 - 运营成本');
-assert.strictEqual(summary.cashNetProfit, 1.8, '现金净额默认 = 回款 - 订单采购价 - 贴单费 - 运营成本');
+assert.strictEqual(summary.cashNetProfit, 1.8, '实际净额默认 = 回款 - 订单采购价 - 贴单费 - 运营成本');
 assert.strictEqual(summary.depositBalance, 15, '押金占用 = 押金 - 押金退回 - 押金扣除');
 assert.strictEqual(summary.pendingIncome, -15, '待确认收入 = 预估收入 - 回款');
 

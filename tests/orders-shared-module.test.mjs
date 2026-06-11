@@ -32,7 +32,7 @@ assert.match(
 
 assert.match(
   esmSource,
-  /export \{[\s\S]*OrderTrackerShared[\s\S]*create[\s\S]*normalizeOrderRecord[\s\S]*computeOrderEstimatedProfit[\s\S]*\}/,
+  /export \{[\s\S]*OrderTrackerShared[\s\S]*create[\s\S]*normalizeOrderRecord[\s\S]*computeOrderEstimatedProfit[\s\S]*computeOrderActualProfit[\s\S]*\}/,
   'ESM 订单共享 helper 需要导出共享命名空间和关键纯函数'
 );
 
@@ -258,6 +258,12 @@ function toPlain(value) {
   );
 
   assert.equal(
+    esmTools.computeOrderActualProfit({ '结算金额': '784', '采购价格': '16' }, { rate: 23.5, labelFee: 1.2 }),
+    16.16,
+    'ESM 共享 helper 实际利润应按结算金额折人民币后扣采购价和贴单费'
+  );
+
+  assert.equal(
     esmTools.computeOrderEstimatedProfit({ '售价': '0', '采购价格': '19.8', '预估运费': '6.5' }, 20),
     null,
     'ESM 共享 helper 应把 0 日元售价视为未录入，不应产出 0 利润'
@@ -341,6 +347,12 @@ function toPlain(value) {
     sharedModule.computeOrderEstimatedProfit({ '售价': '600', '采购价格': '19.8', '预估运费': '6.5', '达人佣金率': '10' }, 20),
     0.7,
     'ESM 订单共享模块应支持直接导入核心纯函数'
+  );
+
+  assert.equal(
+    sharedModule.computeOrderActualProfit({ '结算金额': '784', '采购价格': '16' }, { rate: 23.5, labelFee: 1.2 }),
+    16.16,
+    'ESM 订单共享模块应支持直接导入实际利润纯函数'
   );
 
   console.log('orders shared module contract ok');

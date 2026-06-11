@@ -55,6 +55,8 @@ type OrderRecord = {
   estimatedShippingFee?: string | number | null;
   estimatedShippingFeeMode?: 'auto' | 'manual' | string | null;
   estimatedProfit?: string | number | null;
+  settlementAmount?: string | number | null;
+  actualProfit?: string | number | null;
   platformFee?: string | number | null;
   creatorCommissionRate?: string | number | null;
   creatorCommission?: string | number | null;
@@ -80,6 +82,8 @@ type OrderRecord = {
   '售价'?: string | number | null;
   '预估运费'?: string | number | null;
   '预估利润'?: string | number | null;
+  '结算金额'?: string | number | null;
+  '实际利润'?: string | number | null;
   '重量'?: string | number | null;
   '尺寸'?: string | null;
   '订单状态'?: OrderStatus | null;
@@ -154,6 +158,7 @@ type DerivePurchaseSummaryOptions = DeriveDisplayedOrdersOptions & {
   computeOrderPlatformFee?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
   computeOrderCreatorCommission?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
   computeOrderEstimatedProfit?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
+  computeOrderActualProfit?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
 };
 
 type PurchaseSummary = {
@@ -171,6 +176,18 @@ type PurchaseSummary = {
   allCreatorCommissionTotal: number;
   filteredProfitTotal: number;
   allProfitTotal: number;
+  filteredActualProfitTotal: number;
+  allActualProfitTotal: number;
+  filteredSettlementJpyTotal: number;
+  allSettlementJpyTotal: number;
+  filteredSettlementCnyTotal: number;
+  allSettlementCnyTotal: number;
+  filteredActualCostTotal: number;
+  allActualCostTotal: number;
+  filteredSettledCount: number;
+  allSettledCount: number;
+  filteredUnsettledCount: number;
+  allUnsettledCount: number;
   filteredPurchaseMetric: OrderSummaryMetric;
   allPurchaseMetric: OrderSummaryMetric;
   filteredSaleMetric: OrderSummaryMetric;
@@ -187,6 +204,14 @@ type PurchaseSummary = {
   allRefundMetric: OrderSummaryMetric;
   filteredProfitMetric: OrderSummaryMetric;
   allProfitMetric: OrderSummaryMetric;
+  filteredActualProfitMetric: OrderSummaryMetric;
+  allActualProfitMetric: OrderSummaryMetric;
+  filteredSettlementJpyMetric: OrderSummaryMetric;
+  allSettlementJpyMetric: OrderSummaryMetric;
+  filteredSettlementCnyMetric: OrderSummaryMetric;
+  allSettlementCnyMetric: OrderSummaryMetric;
+  filteredActualCostMetric: OrderSummaryMetric;
+  allActualCostMetric: OrderSummaryMetric;
 };
 
 type OrderExportAccountOption = {
@@ -208,6 +233,7 @@ type BuildOrderExportRowsOptions = {
   computeOrderPlatformFeeFn?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
   computeOrderCreatorCommissionFn?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
   computeOrderEstimatedProfitFn?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
+  computeOrderActualProfitFn?: (order: OrderRecord, exchangeRate?: unknown) => number | null;
 };
 
 type BuildOrdersCsvOptions = {
@@ -363,6 +389,8 @@ type OrderFirestoreDoc = {
   estimatedShippingFee: number | null;
   estimatedShippingFeeMode: 'auto' | 'manual';
   estimatedProfit: number | null;
+  settlementAmount: number | null;
+  actualProfit: number | null;
   weightText: string | null;
   sizeText: string | null;
   orderStatus: string | null;

@@ -98,8 +98,8 @@ assert.match(
 
 assert.match(
   esmSource,
-  /salePrice[\s\S]*estimatedShippingFee[\s\S]*estimatedProfit/,
-  'Firestore provider 需要按字段映射售价、预估运费、预估利润'
+  /salePrice[\s\S]*estimatedShippingFee[\s\S]*estimatedProfit[\s\S]*settlementAmount[\s\S]*actualProfit/,
+  'Firestore provider 需要按字段映射售价、预估运费、预估利润、结算金额和实际利润'
 );
 
 assert.match(
@@ -371,6 +371,8 @@ const configText = `const firebaseConfig = {
       '达人佣金': '3',
       '预估运费': '6.5',
       '预估利润': '0.7',
+      '结算金额': '784',
+      '实际利润': '16.16',
       items: [
         {
           lineId: 'line-1',
@@ -394,6 +396,8 @@ const configText = `const firebaseConfig = {
     assert.equal(orderDoc.purchasePrice, 20, 'ESM Firestore provider 写入时应汇总采购价格');
     assert.equal(orderDoc.salePrice, 600, 'ESM Firestore provider 写入时应汇总售价');
     assert.equal(orderDoc.salePricingMode, 'free_shipping_transfer', 'ESM Firestore provider 写入时应保存包邮转嫁售价口径');
+    assert.equal(orderDoc.settlementAmount, 784, 'ESM Firestore provider 写入时应保存平台结算金额');
+    assert.equal(orderDoc.actualProfit, 16.16, 'ESM Firestore provider 写入时应保存实际利润');
     assert.equal(orderDoc.note, '催单记录', 'ESM Firestore provider 写入时应保存订单备注');
     assert.equal(orderDoc.isRefunded, true, 'ESM Firestore provider 写入时应映射退款字段');
     assert.deepEqual(

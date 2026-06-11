@@ -32,8 +32,8 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /computeOrderCreatorCommission\(\{[\s\S]*'售价口径': draft\.salePricingMode[\s\S]*'达人佣金率': draft\.creatorCommissionRate[\s\S]*computeOrderEstimatedProfit\(\{[\s\S]*'售价口径': draft\.salePricingMode[\s\S]*'预估运费': estimatedShippingFee/,
-  'React 订单弹窗需要复用共享订单口径自动计算达人佣金和预估利润，并传入售价口径'
+  /computeOrderCreatorCommission\(\{[\s\S]*'售价口径': draft\.salePricingMode[\s\S]*'达人佣金率': draft\.creatorCommissionRate[\s\S]*computeOrderEstimatedProfit\(\{[\s\S]*'售价口径': draft\.salePricingMode[\s\S]*'预估运费': estimatedShippingFee[\s\S]*computeOrderActualProfit\(\{[\s\S]*'结算金额': draft\.settlementAmount/,
+  'React 订单弹窗需要复用共享订单口径自动计算达人佣金、预估利润和实际利润'
 );
 
 assert.match(
@@ -110,14 +110,14 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /orderMoneyRowClass = 'quint[\s\S]*70px_minmax\(88px,\.72fr\)_minmax\(88px,\.72fr\)_minmax\(116px,\.9fr\)_minmax\(170px,1\.15fr\)_minmax\(118px,\.9fr\)[\s\S]*orderShippingRuleClass = 'ot-shipping-rule flex min-h-\[42px\][\s\S]*orderShippingRuleButtonClass = 'ml-1 inline-flex h-\[20px\][\s\S]*orderShippingHelpButtonClass[\s\S]*orderProfitLabelClass = '!flex-nowrap'/,
-  'React 订单金额行需要让金额输入、参数和预估利润对齐并填满行宽'
+  /orderMoneyRowClass = 'quint[\s\S]*76px_repeat\(4,minmax\(0,1fr\)\)[\s\S]*orderMetaRowClass = 'quint[\s\S]*76px_repeat\(4,minmax\(0,1fr\)\)[\s\S]*orderSettlementRowClass = 'triple[\s\S]*orderShippingRuleClass = 'ot-shipping-rule flex min-h-\[42px\]/,
+  'React 订单金额行需要和达人佣金行使用同样间距，并把利润结算字段移到独立行'
 );
 
 assert.match(
   ordersPageSource,
-  /label="包邮转嫁"[\s\S]*id="ot-free-shipping-transfer"[\s\S]*name="售价口径"[\s\S]*label="总售价（円）"[\s\S]*<FormRow columns=\{5\} className=\{orderMetaRowClass\}>[\s\S]*label="是否退款"/,
-  'React 订单弹窗应把包邮转嫁放在金额行第一格，并把是否退款移到下一行'
+  /label="包邮转嫁"[\s\S]*id="ot-free-shipping-transfer"[\s\S]*name="售价口径"[\s\S]*label="售价（円）"[\s\S]*<FormRow columns=\{5\} className=\{orderMetaRowClass\}>[\s\S]*label="是否退款"[\s\S]*<FormRow columns=\{3\} className=\{orderSettlementRowClass\}>[\s\S]*预估利润（¥）[\s\S]*结算金额（円）[\s\S]*实际利润（¥）[\s\S]*label="备注"/,
+  'React 订单弹窗应把包邮转嫁放在金额行第一格，并把利润/结算行放在备注上方'
 );
 
 assert.match(
@@ -128,13 +128,13 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /label="总售价（円）"[\s\S]*label="总采购额（¥）"[\s\S]*预估总海外运费（¥）[\s\S]*预估利润（¥）[\s\S]*达人佣金（¥）/,
+  /label="售价（円）"[\s\S]*label="采购额（¥）"[\s\S]*预估总海外运费（¥）[\s\S]*达人佣金（¥）[\s\S]*结算金额（円）[\s\S]*实际利润（¥）/,
   'React 订单金额字段单位需要统一使用符号'
 );
 
 assert.doesNotMatch(
   ordersPageSource,
-  /当前规则计算|预估总海外运费（计入利润）|总售价（日元）|总采购额（元）|预估利润（人民币）/,
+  /当前规则计算|预估总海外运费（计入利润）|总售价|总采购额|总售价（日元）|总采购额（元）|预估利润（人民币）/,
   'React 订单金额区需要使用短文案，避免挤出弹窗'
 );
 
@@ -186,6 +186,11 @@ assert.match(
     shared.computeOrderEstimatedProfit({ '售价': '600', '采购价格': '19.8', '预估运费': '6.5', '达人佣金率': '10' }, 20),
     0.7,
     '订单共享纯函数需要扣除采购价、预估运费和达人佣金'
+  );
+  assert.equal(
+    shared.computeOrderActualProfit({ '结算金额': '784', '采购价格': '16' }, { rate: 23.5, labelFee: 1.2 }),
+    16.16,
+    '订单共享纯函数需要按平台结算金额计算实际利润'
   );
 
   console.log('orders react form behavior ok');

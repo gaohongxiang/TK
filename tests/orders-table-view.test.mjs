@@ -75,6 +75,24 @@ assert.match(
 
 assert.match(
   esmSource,
+  /hasOrderSettlementAmount[\s\S]*已结算 结算|已结算 结算[\s\S]*hasOrderSettlementAmount/,
+  '订单搜索口径需要支持已结算关键词'
+);
+
+assert.match(
+  ordersPageSource,
+  /SearchHelpButton[\s\S]*结算状态[\s\S]*已结算、未结算、yjs、wjs/,
+  '订单搜索说明需要把结算状态和英文别名作为搜索条件说明'
+);
+
+assert.doesNotMatch(
+  ordersPageSource,
+  /id="ot-settlement-status-filter"|SETTLEMENT_STATUS_OPTIONS|onSettlementStatusChange|settlementStatus=\{settlementStatus\}/,
+  '结算状态不应做成搜索框外的独立筛选控件'
+);
+
+assert.match(
+  esmSource,
   /ot-order-tag ot-order-tag-creator"[\s\S]*>达人<\/span>/,
   '订单号纯函数需要在达人带货订单后显示达人标记'
 );
@@ -181,6 +199,56 @@ function toPlain(value) {
 
   assert.equal(noteSearchResult.sorted.length, 1, '搜索应支持按订单备注匹配');
   assert.equal(noteSearchResult.sorted[0].id, 'note-1', '备注搜索应命中对应订单');
+
+  const settledResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'settled-1', '账号': 'A', '订单号': 'AA-1', '结算金额': '500' },
+      { id: 'unsettled-1', '账号': 'A', '订单号': 'AA-2', '结算金额': '' },
+      { id: 'unsettled-2', '账号': 'A', '订单号': 'AA-3' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '已结算',
+    sortOrder: 'asc'
+  });
+
+  assert.deepEqual(settledResult.sorted.map(order => order.id), ['settled-1'], '搜索已结算应只保留填写结算金额的订单');
+
+  const settledAliasResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'settled-1', '账号': 'A', '订单号': 'AA-1', '结算金额': '500' },
+      { id: 'unsettled-1', '账号': 'A', '订单号': 'AA-2', '结算金额': '' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: 'yjs',
+    sortOrder: 'asc'
+  });
+
+  assert.deepEqual(settledAliasResult.sorted.map(order => order.id), ['settled-1'], '搜索 yjs 应等同于已结算');
+
+  const unsettledResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'settled-1', '账号': 'A', '订单号': 'AA-1', '结算金额': '500' },
+      { id: 'unsettled-1', '账号': 'A', '订单号': 'AA-2', '结算金额': '' },
+      { id: 'unsettled-2', '账号': 'A', '订单号': 'AA-3' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '未结算',
+    sortOrder: 'asc'
+  });
+
+  assert.deepEqual(unsettledResult.sorted.map(order => order.id), ['unsettled-1', 'unsettled-2'], '搜索未结算应只保留未填写结算金额的订单');
+
+  const unsettledAliasResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'settled-1', '账号': 'A', '订单号': 'AA-1', '结算金额': '500' },
+      { id: 'unsettled-1', '账号': 'A', '订单号': 'AA-2', '结算金额': '' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: 'wjs',
+    sortOrder: 'asc'
+  });
+
+  assert.deepEqual(unsettledAliasResult.sorted.map(order => order.id), ['unsettled-1'], '搜索 wjs 应等同于未结算');
 
   const bareDateSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
     orders: [

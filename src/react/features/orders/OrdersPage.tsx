@@ -1159,6 +1159,7 @@ function OrdersTable({
                   onOpenChange={onSearchHelpOpenChange}
                   items={[
                     { label: '裸文本', children: 'NOMA、雨衣、5834、顺丰。会搜索订单号、账号、产品、快递、备注、状态等字段。' },
+                    { label: '结算状态', children: '已结算、未结算、yjs、wjs。' },
                     { label: '裸日期', children: '05-18 等于 下单:2026-05-18。' },
                     { label: '定语日期', children: '采购:05-18、到仓:05-25；也可用英文键盘别名 cg:05-18、dc:05-25。' },
                     { label: '别名', children: 'xd=下单，cg=采购，dc=到仓。' },

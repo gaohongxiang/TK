@@ -307,6 +307,7 @@ function getOrderSearchText(order: OrderRecord): unknown[] {
     isFreeShippingTransferOrder(order) ? '包邮转嫁 包邮 运费转嫁' : '',
     isOrderRefunded(order) ? '退款 已退款' : '',
     isCreatorOrder(order) ? '达人 达人单' : '',
+    getOrderSettlementSearchText(order),
     order?.['产品名称'],
     order?.['数量'],
     order?.['采购价格'],
@@ -331,6 +332,14 @@ function getOrderSearchText(order: OrderRecord): unknown[] {
 
 function getOrderSearchDate(order: OrderRecord, field: string): unknown {
   return order?.[field] || '';
+}
+
+function hasOrderSettlementAmount(order: OrderRecord): boolean {
+  return parseMoneyAmount(order?.['结算金额']).hasValue;
+}
+
+function getOrderSettlementSearchText(order: OrderRecord): string {
+  return hasOrderSettlementAmount(order) ? '已结算 结算 yjs' : '未结算 wjs';
 }
 
 function deriveDisplayedOrders({ orders = [], activeAccount = '__all__', searchQuery = '', sortOrder = 'asc' }: DeriveDisplayedOrdersOptions = {}): DeriveDisplayedOrdersResult {
@@ -615,6 +624,8 @@ const OrderTableView = {
   getOrderCourierValues,
   getOrderSearchDate,
   getOrderSearchText,
+  getOrderSettlementSearchText,
+  hasOrderSettlementAmount,
   getProfitCellToneClass,
   getSummaryTone,
   isCreatorOrder,
@@ -648,6 +659,8 @@ export {
   getOrderCourierValues,
   getOrderSearchDate,
   getOrderSearchText,
+  getOrderSettlementSearchText,
+  hasOrderSettlementAmount,
   getProfitCellToneClass,
   getSummaryTone,
   isCreatorOrder,

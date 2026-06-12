@@ -111,7 +111,7 @@ assert.match(
 
 assert.match(
   ordersPageSource,
-  /真实口径[\s\S]*实际利润[\s\S]*summary\.filteredActualProfitMetric[\s\S]*summary\.filteredSettlementJpyMetric/,
+  /derivePurchaseSummary\(\{[\s\S]*searchQuery[\s\S]*真实口径[\s\S]*实际利润[\s\S]*summary\.filteredActualProfitMetric[\s\S]*summary\.filteredSettlementJpyMetric/,
   '统计区右侧需要按当前范围内已填写结算金额的订单展示真实口径'
 );
 
@@ -187,6 +187,18 @@ function toPlain(value) {
   assert.equal(tableModule.formatSummaryMetric(summary.filteredProfitMetric), '¥ 11.75', '有数据时汇总金额应正常格式化');
   assert.equal(tableModule.formatSummaryMetric(summary.filteredActualProfitMetric), '¥ 9.00', '实际利润汇总金额应正常格式化');
   assert.equal(tableModule.formatJpySummaryMetric(summary.filteredSettlementJpyMetric), '円 320.00', '结算金额应按日元原值格式化');
+
+  const settledSummary = tableModule.OrderTableView.derivePurchaseSummary({
+    orders,
+    activeAccount: 'B',
+    searchQuery: '蓝色 已结算',
+    exchangeRate: 20
+  });
+
+  assert.equal(settledSummary.filteredCount, 1, '已结算筛选下当前范围应只包含已填结算金额的订单');
+  assert.equal(settledSummary.filteredProfitTotal, 5.5, '已结算筛选下左侧预估利润应只统计已结算订单');
+  assert.equal(settledSummary.filteredActualProfitTotal, 9, '已结算筛选下右侧真实利润应统计同一批已结算订单');
+  assert.equal(settledSummary.filteredUnsettledCount, 0, '已结算筛选下不应再显示未结算订单数');
   assert.equal(tableModule.formatSummaryMetric({ total: 0, count: 1 }), '¥ 0.00', '有真实数据且结果为 0 时应显示 0');
   assert.equal(tableModule.formatSummaryMetric({ total: 0, count: 0 }), '-', '无数据时汇总金额应显示为 -');
   assert.equal(tableModule.formatSummaryMetric({ total: Number.NaN, count: 1 }), '-', '无效金额不应被兜底显示为 0');

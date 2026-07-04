@@ -57,6 +57,12 @@ const ORDER_DATE_TITLE_LABELS: Record<string, string> = {
   '最晚到仓时间': '到仓时间'
 };
 
+const ORDER_FIELD_ALIASES = {
+  '备注': '备注',
+  'bz': '备注',
+  'note': '备注'
+};
+
 function parseOrderSortTime(order: OrderRecord): number {
   const createdAt = String(order?.createdAt || order?.created_at || order?.updatedAt || order?.updated_at || '').trim();
   const timestamp = Date.parse(createdAt || '');
@@ -334,6 +340,11 @@ function getOrderSearchDate(order: OrderRecord, field: string): unknown {
   return order?.[field] || '';
 }
 
+function getOrderSearchFieldText(order: OrderRecord, field: string): unknown[] {
+  if (field === '备注') return [order?.['备注']];
+  return [];
+}
+
 function hasOrderSettlementAmount(order: OrderRecord): boolean {
   return parseMoneyAmount(order?.['结算金额']).hasValue;
 }
@@ -353,14 +364,16 @@ function deriveDisplayedOrders({ orders = [], activeAccount = '__all__', searchQ
   const query = parseSearchQuery(searchQuery, {
     currentYear: getCurrentSearchYear(),
     defaultDateField: '下单时间',
-    dateAliases: ORDER_DATE_ALIASES
+    dateAliases: ORDER_DATE_ALIASES,
+    fieldAliases: ORDER_FIELD_ALIASES
   });
-  const filtered = query.textTokens.length || query.dateFilters.length
+  const filtered = query.textTokens.length || query.dateFilters.length || query.fieldFilters.length
     ? accountFiltered.filter(order => matchesParsedSearchQuery({
       query,
       record: order,
       getText: getOrderSearchText,
-      getDate: getOrderSearchDate
+      getDate: getOrderSearchDate,
+      getFieldText: getOrderSearchFieldText
     }))
     : accountFiltered;
   const sorted = [...filtered].sort((a, b) => {
@@ -603,6 +616,7 @@ function buildCurrentFilterTitle(activeAccount = '__all__', searchQuery = '', op
 
 const OrderTableView = {
   ORDER_DATE_ALIASES,
+  ORDER_FIELD_ALIASES,
   buildCurrentFilterTitle,
   buildOrderCourierSummary,
   buildOrderNoCellMarkup,
@@ -622,6 +636,7 @@ const OrderTableView = {
   formatTableCellValue,
   formatTableMoneyValue,
   getOrderCourierValues,
+  getOrderSearchFieldText,
   getOrderSearchDate,
   getOrderSearchText,
   getOrderSettlementSearchText,
@@ -636,6 +651,7 @@ const OrderTableView = {
 
 export {
   ORDER_DATE_ALIASES,
+  ORDER_FIELD_ALIASES,
   ORDER_DATE_TITLE_LABELS,
   OrderTableView,
   buildCurrentFilterTitle,
@@ -657,6 +673,7 @@ export {
   formatTableCellValue,
   formatTableMoneyValue,
   getOrderCourierValues,
+  getOrderSearchFieldText,
   getOrderSearchDate,
   getOrderSearchText,
   getOrderSettlementSearchText,

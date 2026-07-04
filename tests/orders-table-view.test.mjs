@@ -200,6 +200,31 @@ function toPlain(value) {
   assert.equal(noteSearchResult.sorted.length, 1, '搜索应支持按订单备注匹配');
   assert.equal(noteSearchResult.sorted[0].id, 'note-1', '备注搜索应命中对应订单');
 
+  const noteFieldSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'note-field-1', '账号': 'A', '订单号': 'AA-催', '产品名称': '普通款', '备注': '' },
+      { id: 'note-field-2', '账号': 'A', '订单号': 'AA-2', '产品名称': '催款商品', '备注': '' },
+      { id: 'note-field-3', '账号': 'A', '订单号': 'AA-3', '产品名称': '普通款', '备注': '催' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: '备注:催',
+    sortOrder: 'asc'
+  });
+
+  assert.deepEqual(noteFieldSearchResult.sorted.map(order => order.id), ['note-field-3'], '备注限定搜索应只匹配订单备注字段');
+
+  const noteAliasFieldSearchResult = tableModule.OrderTableView.deriveDisplayedOrders({
+    orders: [
+      { id: 'note-alias-1', '账号': 'A', '订单号': 'AA-急', '产品名称': '普通款', '备注': '' },
+      { id: 'note-alias-2', '账号': 'A', '订单号': 'AA-2', '产品名称': '普通款', '备注': '急' }
+    ],
+    activeAccount: '__all__',
+    searchQuery: 'bz:急',
+    sortOrder: 'asc'
+  });
+
+  assert.deepEqual(noteAliasFieldSearchResult.sorted.map(order => order.id), ['note-alias-2'], 'bz 限定搜索应等同于备注字段搜索');
+
   const settledResult = tableModule.OrderTableView.deriveDisplayedOrders({
     orders: [
       { id: 'settled-1', '账号': 'A', '订单号': 'AA-1', '结算金额': '500' },

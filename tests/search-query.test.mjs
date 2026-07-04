@@ -82,6 +82,34 @@ const searchPath = path.join(__dirname, '..', 'src', 'search-query.ts');
   assert.deepEqual(combo.textTokens, ['noma', '雨衣'], '组合搜索应保留文本 token');
   assert.equal(combo.dateFilters.length, 2, '组合搜索应同时保留多个日期过滤');
 
+  const fieldScoped = search.parseSearchQuery('NOMA 备注:催 bz:急', {
+    currentYear: 2026,
+    defaultDateField: '下单时间',
+    dateAliases: { '下单': '下单时间' },
+    fieldAliases: { '备注': '备注', 'bz': '备注' }
+  });
+  assert.deepEqual(fieldScoped.textTokens, ['noma'], '字段限定搜索不应混入普通文本 token');
+  assert.deepEqual(
+    fieldScoped.fieldFilters,
+    [
+      { field: '备注', value: '催' },
+      { field: '备注', value: '急' }
+    ],
+    '字段限定搜索应解析为字段过滤条件'
+  );
+
+  assert.equal(
+    search.matchesParsedSearchQuery({
+      query: fieldScoped,
+      record: { account: 'NOMA', note: '催 急', orderedAt: '2026-05-12' },
+      getText: record => [record.account],
+      getFieldText: (record, field) => field === '备注' ? [record.note] : [],
+      getDate: record => record.orderedAt
+    }),
+    true,
+    '共享匹配器应同时支持普通文本和字段限定过滤'
+  );
+
   const productText = search.parseSearchQuery('05-18', { enableBareDate: false });
   assert.deepEqual(productText.textTokens, ['05-18'], '禁用裸日期时，05-18 应作为普通文本搜索');
   assert.deepEqual(productText.dateFilters, [], '禁用裸日期时不应产生日期过滤');

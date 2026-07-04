@@ -9,10 +9,18 @@ type SearchDateFilter = {
 
 type SearchDateAliasMap = Record<string, string>;
 
+type SearchFieldFilter = {
+  field: string;
+  value: string;
+};
+
+type SearchFieldAliasMap = Record<string, string>;
+
 type ParseSearchQueryOptions = {
   currentYear?: number;
   defaultDateField?: string;
   dateAliases?: SearchDateAliasMap;
+  fieldAliases?: SearchFieldAliasMap;
   enableBareDate?: boolean;
 };
 
@@ -20,6 +28,7 @@ type ParsedSearchQuery = {
   raw: string;
   textTokens: string[];
   dateFilters: SearchDateFilter[];
+  fieldFilters: SearchFieldFilter[];
 };
 
 type SearchableRecordOptions<T> = {
@@ -27,6 +36,7 @@ type SearchableRecordOptions<T> = {
   record: T;
   getText: (record: T) => unknown[];
   getDate: (record: T, field: string) => unknown;
+  getFieldText?: (record: T, field: string) => unknown[];
 };
 
 const DEFAULT_CURRENT_YEAR = 2026;
@@ -101,7 +111,13 @@ function hasDateAlias(label: string, aliases: SearchDateAliasMap = {}): boolean 
     || Object.prototype.hasOwnProperty.call(aliases, lower);
 }
 
-function parseSearchToken(token: string, options: Required<Pick<ParseSearchQueryOptions, 'currentYear' | 'enableBareDate'>> & ParseSearchQueryOptions): { text?: string; date?: SearchDateFilter } {
+function resolveFieldAlias(label: string, aliases: SearchFieldAliasMap = {}): string {
+  const normalized = String(label || '').trim();
+  const lower = normalized.toLowerCase();
+  return aliases[normalized] || aliases[lower] || '';
+}
+
+function parseSearchToken(token: string, options: Required<Pick<ParseSearchQueryOptions, 'currentYear' | 'enableBareDate'>> & ParseSearchQueryOptions): { text?: string; date?: SearchDateFilter; field?: SearchFieldFilter } {
   const colonIndex = token.indexOf(':');
   const fullWidthColonIndex = token.indexOf('：');
   const delimiterIndex = colonIndex > 0
@@ -112,14 +128,14 @@ function parseSearchToken(token: string, options: Required<Pick<ParseSearchQuery
   if (delimiterIndex > 0) {
     const label = token.slice(0, delimiterIndex).trim();
     const expression = token.slice(delimiterIndex + 1).trim();
-    if (options.dateAliases && !hasDateAlias(label, options.dateAliases)) {
-      return { text: token };
-    }
-    const field = resolveDateField(label, options.dateAliases);
-    if (field) {
+    const hasScopedDateAliases = !!options.dateAliases;
+    if (!hasScopedDateAliases || hasDateAlias(label, options.dateAliases)) {
+      const field = resolveDateField(label, options.dateAliases);
       const date = parseDateExpression(field, expression, options.currentYear);
       if (date) return { date };
     }
+    const field = resolveFieldAlias(label, options.fieldAliases);
+    if (field && expression) return { field: { field, value: normalizeSearchValue(expression) } };
   }
   if (options.enableBareDate && options.defaultDateField) {
     const date = parseDateExpression(options.defaultDateField, token, options.currentYear);
@@ -132,11 +148,12 @@ function parseSearchQuery(query: unknown, options: ParseSearchQueryOptions = {})
   const raw = String(query || '').trim();
   const currentYear = options.currentYear || DEFAULT_CURRENT_YEAR;
   const enableBareDate = options.enableBareDate !== false;
-  const parsed: ParsedSearchQuery = { raw, textTokens: [], dateFilters: [] };
+  const parsed: ParsedSearchQuery = { raw, textTokens: [], dateFilters: [], fieldFilters: [] };
   if (!raw) return parsed;
   raw.split(/\s+/).filter(Boolean).forEach(token => {
     const result = parseSearchToken(token, { ...options, currentYear, enableBareDate });
     if (result.date) parsed.dateFilters.push(result.date);
+    else if (result.field) parsed.fieldFilters.push(result.field);
     else if (result.text) parsed.textTokens.push(normalizeSearchValue(result.text));
   });
   return parsed;
@@ -157,10 +174,16 @@ function matchesDateFilter(value: unknown, filter: SearchDateFilter): boolean {
   return date >= filter.value && date <= (filter.endValue || filter.value);
 }
 
-function matchesParsedSearchQuery<T>({ query, record, getText, getDate }: SearchableRecordOptions<T>): boolean {
+function matchesParsedSearchQuery<T>({ query, record, getText, getDate, getFieldText }: SearchableRecordOptions<T>): boolean {
   const haystack = normalizeSearchValue(getText(record).join(' '));
   const textMatched = query.textTokens.every(token => haystack.includes(token));
   if (!textMatched) return false;
+  const fieldMatched = query.fieldFilters.every(filter => {
+    if (typeof getFieldText !== 'function') return false;
+    const fieldHaystack = normalizeSearchValue(getFieldText(record, filter.field).join(' '));
+    return fieldHaystack.includes(filter.value);
+  });
+  if (!fieldMatched) return false;
   return query.dateFilters.every(filter => matchesDateFilter(getDate(record, filter.field), filter));
 }
 
@@ -177,5 +200,6 @@ export type {
   ParsedSearchQuery,
   ParseSearchQueryOptions,
   SearchDateFilter,
+  SearchFieldFilter,
   SearchDateOperator
 };

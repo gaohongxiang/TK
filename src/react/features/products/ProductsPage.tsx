@@ -1200,6 +1200,16 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     }
   }
 
+  function markProductsSynced(count = products.length) {
+    const status = buildFirestoreSyncStatus('confirmed', {
+      action: '商品更改',
+      count,
+      unit: '个商品'
+    });
+    setSyncText(status.text);
+    setSyncClass(status.className);
+  }
+
   function applyDraftChange(next: ProductFormDraft) {
     const matchText = String(next.matchText || '').trim().toLowerCase();
     const weightChanged = next.defaultWeightG !== draft.defaultWeightG;
@@ -1385,9 +1395,14 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       }, { clientId: clientIdRef.current, waitForCommit: false });
       const saved = isProductDeferredWrite(result) ? result.product : result;
       if (!saved) throw new Error('商品保存结果为空');
+      const syncedProductCount = products.some(item => item.tkId === saved.tkId)
+        ? products.length
+        : products.length + 1;
       setProducts(previous => [...previous.filter(item => item.tkId !== saved.tkId), saved]);
       notifyProductsChanged({ action: 'upsert', tkId: saved?.tkId || payload.tkId });
       if (isProductDeferredWrite(result)) result.commitPromise.then(() => {
+        setPermissionBlocked(false);
+        markProductsSynced(syncedProductCount);
         notifyProductsChanged({ action: 'commit', tkId: saved?.tkId || payload.tkId });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
@@ -1413,9 +1428,12 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       setSyncText(queueStatus.text);
       setSyncClass(queueStatus.className);
       const result = await providerRef.current.deleteProduct(tkId, { clientId: clientIdRef.current, waitForCommit: false });
+      const syncedProductCount = products.filter(item => item.tkId !== tkId).length;
       setProducts(previous => previous.filter(item => item.tkId !== tkId));
       notifyProductsChanged({ action: 'delete', tkId });
       if (typeof result === 'object' && result?.commitPromise) result.commitPromise.then(() => {
+        setPermissionBlocked(false);
+        markProductsSynced(syncedProductCount);
         notifyProductsChanged({ action: 'commit', tkId });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
@@ -1454,6 +1472,8 @@ function ProductsPage({ active = true }: { active?: boolean }) {
       setSyncClass(queueStatus.className);
       notifyAccountsChanged({ action: 'upsert', account: name, accounts: nextAccounts });
       if (typeof result === 'object' && result?.commitPromise) result.commitPromise.then(() => {
+        setPermissionBlocked(false);
+        markProductsSynced(products.length);
         notifyAccountsChanged({ action: 'commit', account: name, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
@@ -1474,9 +1494,15 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     if (!nextAccounts.length) return;
     setAccounts(nextAccounts);
     notifyAccountsChanged({ action: 'reorder', accounts: nextAccounts });
+    const queueStatus = buildFirestoreSyncStatus('queueing', { action: '账号排序' });
+    setSyncText(queueStatus.text);
+    setSyncClass(queueStatus.className);
     try {
       const result = await providerRef.current.saveAccountOrder(nextAccounts, { clientId: clientIdRef.current, waitForCommit: false });
-      if (typeof result === 'object' && result?.commitPromise) result.commitPromise.catch(error => {
+      if (typeof result === 'object' && result?.commitPromise) result.commitPromise.then(() => {
+        setPermissionBlocked(false);
+        markProductsSynced(products.length);
+      }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
         showToast(formatFirestoreError(error, '账号排序保存失败'), 'error');
       });
@@ -1528,6 +1554,8 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     try {
       const result = await providerRef.current.renameAccount(oldName, newName, { accountOrder: allAccounts, clientId: clientIdRef.current, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
+        setPermissionBlocked(false);
+        markProductsSynced(nextProducts.length);
         notifyAccountsChanged({ action: 'commit', account: newName, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();
@@ -1559,6 +1587,8 @@ function ProductsPage({ active = true }: { active?: boolean }) {
     try {
       const result = await providerRef.current.deleteAccount(name, { accountOrder: allAccounts, clientId: clientIdRef.current, waitForCommit: false });
       if (result?.commitPromise) result.commitPromise.then(() => {
+        setPermissionBlocked(false);
+        markProductsSynced(products.length);
         notifyAccountsChanged({ action: 'commit-delete', account: name, accounts: nextAccounts });
       }).catch(error => {
         if (isPermissionDenied(error)) markPermissionBlocked();

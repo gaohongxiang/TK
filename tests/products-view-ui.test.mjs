@@ -349,6 +349,18 @@ assert.match(
 );
 
 assert.match(
+  reactProductsPageSource,
+  /function markProductsSynced\([\s\S]*buildFirestoreSyncStatus\('confirmed'[\s\S]*setSyncText\(status\.text\)[\s\S]*setSyncClass\(status\.className\)/,
+  'React 商品库需要提供统一的远端提交确认状态'
+);
+
+assert.equal(
+  (reactProductsPageSource.match(/markProductsSynced\(/g) || []).length,
+  7,
+  'React 商品库的商品保存、删除和账号新增、排序、改名、删除都需要在远端提交后切换为已同步'
+);
+
+assert.match(
   reactAppSource,
   /function UnifiedExportDialog[\s\S]*allLabel="全部店铺"[\s\S]*id="app-export-confirm"/,
   '商品库导出需要通过顶部统一导出弹层选择店铺和模块'
